@@ -54,6 +54,7 @@ type Pokemon = {
   rank: Rank;
   current_attrs: Record<string, number>;
   social_attrs: Record<string, number>;
+  skills: Record<string, number>;
   modifiers: Record<string, number>;
   hp: number;
   will: number;
