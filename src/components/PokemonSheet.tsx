@@ -534,3 +534,64 @@ function AddMoveDialog({
     </Dialog>
   );
 }
+
+function MoveRollDialog({
+  move, pokemonName, accPool, dmgPool, onRoll, onChat,
+}: {
+  move: Move;
+  pokemonName: string;
+  accPool: number;
+  dmgPool: number;
+  onRoll: (label: string, n: number) => void;
+  onChat: (body: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [accBonus, setAccBonus] = useState(0);
+  const [dmgBonus, setDmgBonus] = useState(0);
+  function confirm() {
+    const desc = `**${pokemonName}** uses **${move.name}** (${move.type})${move.effect ? ` — ${move.effect}` : ""}`;
+    onChat(desc);
+    onRoll(`${pokemonName} · ${move.name} · Accuracy`, Math.max(0, accPool + accBonus));
+    if (dmgPool > 0) {
+      onRoll(`${pokemonName} · ${move.name} · Damage`, Math.max(0, dmgPool + dmgBonus));
+    }
+    setOpen(false);
+    setAccBonus(0);
+    setDmgBonus(0);
+  }
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm">
+          <Dices className="mr-1.5 h-3.5 w-3.5" /> Roll {accPool}d6 / {dmgPool}d6
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>{move.name}</DialogTitle></DialogHeader>
+        {move.effect && <p className="text-sm text-muted-foreground">{move.effect}</p>}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <Label className="text-xs">Accuracy bonus dice</Label>
+              <p className="text-[11px] text-muted-foreground">Pool: {accPool}d6 → rolling {Math.max(0, accPool + accBonus)}d6</p>
+            </div>
+            <Input type="number" value={accBonus} onChange={(e) => setAccBonus(parseInt(e.target.value) || 0)} className="h-9 w-20" />
+          </div>
+          {dmgPool > 0 && (
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <Label className="text-xs">Damage bonus dice</Label>
+                <p className="text-[11px] text-muted-foreground">Pool: {dmgPool}d6 → rolling {Math.max(0, dmgPool + dmgBonus)}d6</p>
+              </div>
+              <Input type="number" value={dmgBonus} onChange={(e) => setDmgBonus(parseInt(e.target.value) || 0)} className="h-9 w-20" />
+            </div>
+          )}
+          <Button onClick={confirm} className="w-full">
+            <Dices className="mr-1.5 h-4 w-4" /> Roll
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
