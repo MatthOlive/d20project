@@ -81,7 +81,13 @@ export function TrainerSheet({
   const hp = vit + str + RANK_BONUS[trainer.rank];
   const will = ins + RANK_BONUS[trainer.rank];
   const initiativePool = dex + alert;
-  const catchPool = ins + empathy;
+  // Catch UI state (per-sheet, local)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const [ballKey, setBallKey] = useState<BallKey>("pokeball");
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const [catchBonus, setCatchBonus] = useState(0);
+  const ball = POKEBALLS[ballKey];
+  const catchPool = ball.pool;
 
   return (
     <div className="space-y-5 p-4">
