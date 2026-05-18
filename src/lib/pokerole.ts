@@ -36,6 +36,15 @@ export const ATTRS = [
 ] as const;
 export type Attr = (typeof ATTRS)[number];
 
+// Pokémon use a different attribute set than Trainers
+export const POKEMON_ATTRS = [
+  "strength",
+  "dexterity",
+  "vitality",
+  "special",
+  "insight",
+] as const;
+
 export const HUMAN_ATTR_CAP = 5;
 
 export const SKILLS = [
