@@ -89,9 +89,14 @@ function RootComponent() {
   const router = useRouter();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      router.invalidate();
-      queryClient.invalidateQueries();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      // Only react to real sign-in / sign-out transitions. INITIAL_SESSION and
+      // TOKEN_REFRESHED would otherwise trigger a reload/redirect loop between
+      // /_app guarded routes and /auth.
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
+        router.invalidate();
+        queryClient.invalidateQueries();
+      }
     });
     return () => subscription.unsubscribe();
   }, [router, queryClient]);
