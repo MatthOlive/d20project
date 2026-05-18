@@ -157,6 +157,20 @@ export function PokemonSheet({
     },
   });
 
+  const speciesAbilityNames = species?.abilities ?? [];
+  const { data: abilityDetails = [] } = useQuery({
+    queryKey: ["abilities", speciesAbilityNames],
+    enabled: speciesAbilityNames.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("abilities")
+        .select("name, effect")
+        .in("name", speciesAbilityNames);
+      if (error) throw error;
+      return (data ?? []) as { name: string; effect: string }[];
+    },
+  });
+
   const canEdit = !!pokemon && (pokemon.owner_id === userId || isNarrator);
 
   const commit = useCallback(async (p: Partial<Pokemon>) => {
