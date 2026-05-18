@@ -262,9 +262,11 @@ export function PokemonSheet({
                 ))}
               </SelectContent>
             </Select>
-            <div className="ml-auto text-sm">
+            <div className="ml-auto flex flex-wrap items-center gap-1.5 text-sm">
               <span className="rounded-full bg-success/15 px-2.5 py-0.5 font-bold text-success">HP {pokemon.hp}</span>
-              <span className="ml-2 rounded-full bg-accent px-2.5 py-0.5 font-bold">Will {pokemon.will}</span>
+              <span className="rounded-full bg-accent px-2.5 py-0.5 font-bold">Will {pokemon.will}</span>
+              <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-bold text-primary">Def {pokemon.current_attrs.vitality ?? 1}</span>
+              <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-bold text-primary">SpDef {pokemon.current_attrs.vitality ?? 1}</span>
             </div>
           </div>
           <div className="flex flex-wrap gap-1.5 pt-1">
