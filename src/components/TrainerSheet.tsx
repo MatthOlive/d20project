@@ -73,6 +73,7 @@ export function TrainerSheet({
 
   return (
     <div className="space-y-5 p-4">
+      <TrainerImage trainer={trainer} canEdit={canEdit} onChange={(url) => patch({ image_url: url })} />
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-2">
           <Label>Name</Label>
