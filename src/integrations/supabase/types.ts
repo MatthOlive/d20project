@@ -239,6 +239,7 @@ export type Database = {
           confidence: number
           created_at: string
           current_attrs: Json
+          current_hp: number | null
           folder: string | null
           game_id: string
           happiness: number
@@ -265,6 +266,7 @@ export type Database = {
           confidence?: number
           created_at?: string
           current_attrs?: Json
+          current_hp?: number | null
           folder?: string | null
           game_id: string
           happiness?: number
@@ -291,6 +293,7 @@ export type Database = {
           confidence?: number
           created_at?: string
           current_attrs?: Json
+          current_hp?: number | null
           folder?: string | null
           game_id?: string
           happiness?: number
@@ -540,6 +543,7 @@ export type Database = {
           concept: string | null
           confidence: number
           created_at: string
+          current_hp: number | null
           folder: string | null
           game_id: string
           id: string
@@ -553,6 +557,7 @@ export type Database = {
           rank: Database["public"]["Enums"]["pokerole_rank"]
           skills: Json
           social_attrs: Json
+          status_conditions: string[]
         }
         Insert: {
           age?: number | null
@@ -563,6 +568,7 @@ export type Database = {
           concept?: string | null
           confidence?: number
           created_at?: string
+          current_hp?: number | null
           folder?: string | null
           game_id: string
           id?: string
@@ -576,6 +582,7 @@ export type Database = {
           rank?: Database["public"]["Enums"]["pokerole_rank"]
           skills?: Json
           social_attrs?: Json
+          status_conditions?: string[]
         }
         Update: {
           age?: number | null
@@ -586,6 +593,7 @@ export type Database = {
           concept?: string | null
           confidence?: number
           created_at?: string
+          current_hp?: number | null
           folder?: string | null
           game_id?: string
           id?: string
@@ -599,6 +607,7 @@ export type Database = {
           rank?: Database["public"]["Enums"]["pokerole_rank"]
           skills?: Json
           social_attrs?: Json
+          status_conditions?: string[]
         }
         Relationships: [
           {
