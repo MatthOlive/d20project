@@ -209,6 +209,10 @@ export function PokemonSheet({
   if (!pokemon) return <div className="p-4 text-sm text-muted-foreground">Loading…</div>;
   if (!species) return <div className="p-4 text-sm text-muted-foreground">Loading species…</div>;
 
+  const maxHpEff = pokemon.hp;
+  const painPen = painPenaltyFor(pokemon.current_hp ?? maxHpEff, maxHpEff);
+  const boundRoll = (label: string, n: number, p?: number) => onRoll(label, n, p ?? painPen);
+
   async function setAttr(key: string, val: number) {
     if (!canEdit) return;
     const limit = species!.attr_limits[key] ?? 5;
