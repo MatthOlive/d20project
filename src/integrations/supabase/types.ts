@@ -455,6 +455,48 @@ export type Database = {
           },
         ]
       }
+      tokens: {
+        Row: {
+          character_id: string
+          character_kind: string
+          created_at: string
+          game_id: string
+          id: string
+          image_url: string | null
+          label: string
+          owner_id: string
+          size: number
+          x: number
+          y: number
+        }
+        Insert: {
+          character_id: string
+          character_kind: string
+          created_at?: string
+          game_id: string
+          id?: string
+          image_url?: string | null
+          label?: string
+          owner_id: string
+          size?: number
+          x?: number
+          y?: number
+        }
+        Update: {
+          character_id?: string
+          character_kind?: string
+          created_at?: string
+          game_id?: string
+          id?: string
+          image_url?: string | null
+          label?: string
+          owner_id?: string
+          size?: number
+          x?: number
+          y?: number
+        }
+        Relationships: []
+      }
       trainer_moves: {
         Row: {
           move_id: string

@@ -18,6 +18,7 @@ import { ChatPanel } from "@/components/ChatPanel";
 import { FloatingWindow } from "@/components/FloatingWindow";
 import { PokemonSheet } from "@/components/PokemonSheet";
 import { TrainerSheet } from "@/components/TrainerSheet";
+import { MapBoard, DRAG_MIME, type DragCharacterPayload } from "@/components/MapBoard";
 import { toast } from "sonner";
 import { Copy, Plus, Crown, Sparkles, User } from "lucide-react";
 import { rollD6 } from "@/lib/pokerole";
@@ -49,12 +50,12 @@ function GameRoom() {
     queryKey: ["characters", gameId],
     queryFn: async () => {
       const [pkm, tr] = await Promise.all([
-        supabase.from("pokemon").select("id,nickname,owner_id,species:species_id(name,sprite_url)").eq("game_id", gameId),
-        supabase.from("trainers").select("id,name,owner_id").eq("game_id", gameId),
+        supabase.from("pokemon").select("id,nickname,owner_id,image_url,species:species_id(name,sprite_url)").eq("game_id", gameId),
+        supabase.from("trainers").select("id,name,owner_id,image_url").eq("game_id", gameId),
       ]);
       return {
-        pokemon: (pkm.data ?? []) as { id: string; nickname: string | null; owner_id: string; species: { name: string; sprite_url: string | null } }[],
-        trainers: (tr.data ?? []) as { id: string; name: string; owner_id: string }[],
+        pokemon: (pkm.data ?? []) as { id: string; nickname: string | null; owner_id: string; image_url: string | null; species: { name: string; sprite_url: string | null } }[],
+        trainers: (tr.data ?? []) as { id: string; name: string; owner_id: string; image_url: string | null }[],
       };
     },
   });
@@ -152,32 +153,31 @@ function GameRoom() {
     <div className="mx-auto grid h-[calc(100vh-4rem)] max-w-7xl grid-cols-1 gap-3 px-3 py-3 lg:grid-cols-[1fr_360px]">
       {/* Center: background + characters */}
       <div className="flex min-h-0 flex-col gap-3">
-        <div
-          className="relative flex-1 overflow-hidden rounded-xl border border-border bg-muted"
-          style={
-            game.background_url
-              ? { backgroundImage: `url(${game.background_url})`, backgroundSize: "cover", backgroundPosition: "center" }
-              : undefined
-          }
-        >
-          <div className="absolute left-3 top-3 flex items-center gap-2">
-            <span className="rounded-full bg-card/90 px-3 py-1 text-sm font-bold backdrop-blur">{game.name}</span>
-            {isNarrator && (
+        <div className="relative flex-1 min-h-0">
+          <MapBoard
+            gameId={gameId}
+            backgroundUrl={game.background_url}
+            userId={user.id}
+            isNarrator={isNarrator}
+            topLeftSlot={
               <>
-                <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-0.5 text-xs font-bold text-primary-foreground">
-                  <Crown className="h-3 w-3" /> Narrator
-                </span>
-                <InviteButton url={inviteUrl} />
-                <label className="cursor-pointer rounded-full bg-card/90 px-3 py-1 text-xs font-semibold backdrop-blur hover:bg-card">
-                  Set background
-                  <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadBackground(e.target.files[0])} />
-                </label>
+                <span className="rounded-full bg-card/90 px-3 py-1 text-sm font-bold backdrop-blur">{game.name}</span>
+                {isNarrator && (
+                  <>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-0.5 text-xs font-bold text-primary-foreground">
+                      <Crown className="h-3 w-3" /> Narrator
+                    </span>
+                    <InviteButton url={inviteUrl} />
+                    <label className="cursor-pointer rounded-full bg-card/90 px-3 py-1 text-xs font-semibold backdrop-blur hover:bg-card">
+                      Set background
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadBackground(e.target.files[0])} />
+                    </label>
+                  </>
+                )}
               </>
-            )}
-          </div>
+            }
+          />
         </div>
-
-        {/* Characters strip */}
       </div>
 
       {/* Right: tabs */}
@@ -223,24 +223,36 @@ function GameRoom() {
                 </Dialog>
               </div>
             </div>
+            <p className="mb-2 text-[11px] text-muted-foreground">Tip: drag a character onto the map to place a token.</p>
             <div className="space-y-1.5">
-              {characters?.trainers.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => openWindow({ kind: "trainer", id: t.id, title: t.name })}
-                  className="flex w-full items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-left text-sm hover:border-primary"
-                ><User className="h-3.5 w-3.5 shrink-0" /> {t.name}</button>
-              ))}
-              {characters?.pokemon.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => openWindow({ kind: "pokemon", id: p.id, title: p.nickname ?? p.species.name })}
-                  className="flex w-full items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-left text-sm hover:border-primary"
-                >
-                  {p.species.sprite_url && <img src={p.species.sprite_url} alt="" className="h-6 w-6 shrink-0" />}
-                  <span className="truncate">{p.nickname ?? p.species.name}</span>
-                </button>
-              ))}
+              {characters?.trainers.map((t) => {
+                const payload: DragCharacterPayload = { kind: "trainer", id: t.id, label: t.name, imageUrl: t.image_url, ownerId: t.owner_id };
+                return (
+                  <button
+                    key={t.id}
+                    draggable
+                    onDragStart={(e) => { e.dataTransfer.setData(DRAG_MIME, JSON.stringify(payload)); e.dataTransfer.effectAllowed = "copy"; }}
+                    onClick={() => openWindow({ kind: "trainer", id: t.id, title: t.name })}
+                    className="flex w-full items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-left text-sm hover:border-primary"
+                  ><User className="h-3.5 w-3.5 shrink-0" /> {t.name}</button>
+                );
+              })}
+              {characters?.pokemon.map((p) => {
+                const label = p.nickname ?? p.species.name;
+                const payload: DragCharacterPayload = { kind: "pokemon", id: p.id, label, imageUrl: p.image_url ?? p.species.sprite_url, ownerId: p.owner_id };
+                return (
+                  <button
+                    key={p.id}
+                    draggable
+                    onDragStart={(e) => { e.dataTransfer.setData(DRAG_MIME, JSON.stringify(payload)); e.dataTransfer.effectAllowed = "copy"; }}
+                    onClick={() => openWindow({ kind: "pokemon", id: p.id, title: label })}
+                    className="flex w-full items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-left text-sm hover:border-primary"
+                  >
+                    {p.species.sprite_url && <img src={p.species.sprite_url} alt="" className="h-6 w-6 shrink-0" />}
+                    <span className="truncate">{label}</span>
+                  </button>
+                );
+              })}
               {(characters?.trainers.length ?? 0) + (characters?.pokemon.length ?? 0) === 0 && (
                 <p className="text-xs text-muted-foreground">No characters yet. Create one to get started.</p>
               )}
