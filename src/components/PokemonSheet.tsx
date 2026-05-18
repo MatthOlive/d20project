@@ -540,12 +540,13 @@ function AddMoveDialog({
 }
 
 function MoveRollDialog({
-  move, pokemonName, accPool, dmgPool, onRoll, onChat,
+  move, pokemonName, accPool, dmgPool, isStatus, onRoll, onChat,
 }: {
   move: Move;
   pokemonName: string;
   accPool: number;
   dmgPool: number;
+  isStatus?: boolean;
   onRoll: (label: string, n: number) => void;
   onChat: (body: string) => void;
 }) {
@@ -556,7 +557,7 @@ function MoveRollDialog({
     const desc = `**${pokemonName}** uses **${move.name}** (${move.type})${move.effect ? ` — ${move.effect}` : ""}`;
     onChat(desc);
     onRoll(`${pokemonName} · ${move.name} · Accuracy`, Math.max(0, accPool + accBonus));
-    if (dmgPool > 0) {
+    if (!isStatus && dmgPool > 0) {
       onRoll(`${pokemonName} · ${move.name} · Damage`, Math.max(0, dmgPool + dmgBonus));
     }
     setOpen(false);
@@ -567,7 +568,7 @@ function MoveRollDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm">
-          <Dices className="mr-1.5 h-3.5 w-3.5" /> Roll {accPool}d6 / {dmgPool}d6
+          <Dices className="mr-1.5 h-3.5 w-3.5" /> Roll {accPool}d6{isStatus ? "" : ` / ${dmgPool}d6`}
         </Button>
       </DialogTrigger>
       <DialogContent>
@@ -581,7 +582,8 @@ function MoveRollDialog({
             </div>
             <Input type="number" value={accBonus} onChange={(e) => setAccBonus(parseInt(e.target.value) || 0)} className="h-9 w-20" />
           </div>
-          {dmgPool > 0 && (
+          {!isStatus && dmgPool > 0 && (
+
             <div className="flex items-center justify-between gap-3">
               <div>
                 <Label className="text-xs">Damage bonus dice</Label>
