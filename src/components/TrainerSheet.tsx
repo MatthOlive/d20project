@@ -420,3 +420,125 @@ function NatureSelect({
   );
 }
 
+
+type PokedexEntry = { name: string; captured: boolean; sprite_url?: string | null };
+
+function PokedexSection({
+  trainer,
+  canEdit,
+  onChange,
+}: {
+  trainer: Trainer;
+  canEdit: boolean;
+  onChange: (pokedex: Record<string, PokedexEntry>) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const pokedex = (trainer.pokedex ?? {}) as Record<string, PokedexEntry>;
+  const entries = Object.entries(pokedex).sort((a, b) => a[1].name.localeCompare(b[1].name));
+
+  const { data: speciesList = [] } = useQuery({
+    queryKey: ["species-all"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("species")
+        .select("id,name,dex_number,sprite_url")
+        .order("dex_number", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: open,
+  });
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return speciesList.filter((s) => !q || s.name.toLowerCase().includes(q));
+  }, [speciesList, search]);
+
+  function addSpecies(s: { id: string; name: string; sprite_url: string | null }) {
+    if (pokedex[s.id]) { toast.info(`${s.name} already in Pokédex`); return; }
+    onChange({ ...pokedex, [s.id]: { name: s.name, captured: false, sprite_url: s.sprite_url } });
+  }
+  function toggleCaptured(id: string) {
+    onChange({ ...pokedex, [id]: { ...pokedex[id], captured: !pokedex[id].captured } });
+  }
+  function removeEntry(id: string) {
+    const next = { ...pokedex }; delete next[id]; onChange(next);
+  }
+
+  const seen = entries.length;
+  const caught = entries.filter(([, e]) => e.captured).length;
+
+  return (
+    <section>
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className="text-sm font-bold">Pokédex <span className="text-muted-foreground font-normal">· Seen {seen} · Caught {caught}</span></h3>
+        {canEdit && (
+          <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+            <Plus className="mr-1 h-3.5 w-3.5" /> Add
+          </Button>
+        )}
+      </div>
+      {entries.length === 0 ? (
+        <p className="text-xs text-muted-foreground">No Pokémon recorded yet.</p>
+      ) : (
+        <div className="grid gap-1.5 sm:grid-cols-2">
+          {entries.map(([id, e]) => (
+            <div key={id} className="flex items-center gap-2 rounded-md border border-border bg-card px-2 py-1.5">
+              {e.sprite_url ? (
+                <img src={e.sprite_url} alt={e.name} className="h-8 w-8 object-contain" />
+              ) : (
+                <div className="h-8 w-8 rounded bg-muted" />
+              )}
+              <span className="flex-1 text-sm">{e.name}</span>
+              <label className="flex items-center gap-1.5 text-xs">
+                <Checkbox
+                  checked={e.captured}
+                  onCheckedChange={() => canEdit && toggleCaptured(id)}
+                  disabled={!canEdit}
+                />
+                Caught
+              </label>
+              {canEdit && (
+                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => removeEntry(id)}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[80vh] max-w-lg overflow-hidden">
+          <DialogHeader><DialogTitle>Add Pokémon to Pokédex</DialogTitle></DialogHeader>
+          <Input placeholder="Search species…" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <div className="max-h-[55vh] overflow-y-auto rounded-md border border-border">
+            {filtered.map((s) => {
+              const added = !!pokedex[s.id];
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => addSpecies(s)}
+                  disabled={added}
+                  className="flex w-full items-center gap-2 border-b border-border px-2 py-1.5 text-left hover:bg-accent disabled:opacity-50"
+                >
+                  {s.sprite_url ? (
+                    <img src={s.sprite_url} alt={s.name} className="h-8 w-8 object-contain" />
+                  ) : <div className="h-8 w-8 rounded bg-muted" />}
+                  <span className="flex-1 text-sm">
+                    {s.dex_number ? <span className="text-muted-foreground">#{String(s.dex_number).padStart(3, "0")} </span> : null}
+                    {s.name}
+                  </span>
+                  {added && <span className="text-xs text-muted-foreground">Added</span>}
+                </button>
+              );
+            })}
+            {filtered.length === 0 && <p className="p-4 text-center text-xs text-muted-foreground">No species found.</p>}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </section>
+  );
+}
