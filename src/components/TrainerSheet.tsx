@@ -178,16 +178,41 @@ export function TrainerSheet({
         </div>
       </div>
 
+      <HpAndStatusBlock
+        current={currentHp}
+        max={hp}
+        status={trainer.status_conditions ?? []}
+        painPenalty={painPenalty}
+        canEdit={canEdit}
+        onHpChange={(n) => patch({ current_hp: n })}
+        onStatusChange={(s) => patch({ status_conditions: s })}
+      />
+
       <div className="space-y-2 rounded-lg border border-border bg-card p-3">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-success/15 px-3 py-1 text-sm font-bold text-success">HP {hp}</span>
+          <span className="rounded-full bg-success/15 px-3 py-1 text-sm font-bold text-success">HP {currentHp}/{hp}</span>
           <span className="rounded-full bg-accent px-3 py-1 text-sm font-bold">Will {will}</span>
           <span className="rounded-full bg-muted px-3 py-1 text-sm font-bold" title="Defense = Vitality">Def {vit}</span>
           <span className="rounded-full bg-muted px-3 py-1 text-sm font-bold" title="Special Defense = Vitality">Sp.Def {vit}</span>
           <Button size="sm" variant="outline" className="h-7"
-            onClick={() => onRoll(`${trainer.name} · Initiative (Dex+Alert)`, initiativePool)}>
+            onClick={() => onRoll(`${charName} · Initiative (Dex+Alert)`, initiativePool, painPenalty)}>
             <Dices className="mr-1 h-3.5 w-3.5" /> Initiative · {initiativePool}d6
           </Button>
+          <AttackRollButton
+            characterName={charName}
+            attrLabel="Dexterity"
+            attrValue={dex}
+            skillOptions={attackSkillOptions}
+            painPenalty={painPenalty}
+            onRoll={onRoll}
+          />
+          <GenericRollButton
+            characterName={charName}
+            attrs={allAttrsForRoll}
+            skills={allSkillsForRoll}
+            painPenalty={painPenalty}
+            onRoll={onRoll}
+          />
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-semibold uppercase text-muted-foreground">Catch</span>
