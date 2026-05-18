@@ -69,12 +69,14 @@ function GameRoom() {
 
   const isNarrator = !!game && !!user && game.narrator_id === user.id;
 
-  async function rollFromSheet(label: string, n: number) {
+  async function rollFromSheet(label: string, n: number, penalty = 0) {
     if (!user) return;
     const result = rollD6(n);
+    const adjusted = Math.max(0, result.successes - (penalty || 0));
+    const finalLabel = penalty > 0 ? `${label} (−${penalty} pain)` : label;
     await supabase.from("chat_messages").insert({
       game_id: gameId, user_id: user.id, kind: "roll",
-      body: label, roll_data: { ...result, label },
+      body: finalLabel, roll_data: { ...result, successes: adjusted, penalty, label: finalLabel },
     });
   }
   async function sendChatFromSheet(body: string) {
