@@ -660,3 +660,59 @@ function MoveRollDialog({
   );
 }
 
+
+type Nature = {
+  id: string;
+  name: string;
+  keywords: string;
+  description: string;
+  confidence: number;
+};
+
+function NatureSelect({
+  value,
+  disabled,
+  onChange,
+}: {
+  value: string | null;
+  disabled?: boolean;
+  onChange: (nature: string, confidence: number) => void;
+}) {
+  const { data: natures = [] } = useQuery({
+    queryKey: ["natures"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("natures").select("*").order("sort_order");
+      if (error) throw error;
+      return (data ?? []) as Nature[];
+    },
+  });
+
+  const current = natures.find((n) => n.name === value);
+
+  return (
+    <div className="space-y-1">
+      <Select
+        value={value ?? ""}
+        onValueChange={(name) => {
+          const n = natures.find((x) => x.name === name);
+          if (n) onChange(n.name, n.confidence);
+        }}
+        disabled={disabled}
+      >
+        <SelectTrigger>
+          <SelectValue placeholder="Choose a nature…" />
+        </SelectTrigger>
+        <SelectContent>
+          {natures.map((n) => (
+            <SelectItem key={n.id} value={n.name}>
+              <span className="font-medium">{n.name}</span>
+              <span className="ml-2 text-xs text-muted-foreground">{n.keywords}</span>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {current && <p className="text-xs text-muted-foreground">{current.description}</p>}
+    </div>
+  );
+}
