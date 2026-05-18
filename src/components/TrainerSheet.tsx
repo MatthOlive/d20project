@@ -152,18 +152,47 @@ export function TrainerSheet({
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 rounded-lg border border-border bg-card p-3">
-        <span className="rounded-full bg-success/15 px-3 py-1 text-sm font-bold text-success">HP {hp}</span>
-        <span className="rounded-full bg-accent px-3 py-1 text-sm font-bold">Will {will}</span>
-        <Button size="sm" variant="outline" className="h-7"
-          onClick={() => onRoll(`${trainer.name} · Initiative (Dex+Alert)`, initiativePool)}>
-          <Dices className="mr-1 h-3.5 w-3.5" /> Initiative · {initiativePool}d6
-        </Button>
-        <Button size="sm" variant="outline" className="h-7"
-          onClick={() => onRoll(`${trainer.name} · Catch (Ins+Empathy)`, catchPool)}>
-          <Dices className="mr-1 h-3.5 w-3.5" /> Catch · {catchPool}d6
-        </Button>
+      <div className="space-y-2 rounded-lg border border-border bg-card p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-success/15 px-3 py-1 text-sm font-bold text-success">HP {hp}</span>
+          <span className="rounded-full bg-accent px-3 py-1 text-sm font-bold">Will {will}</span>
+          <Button size="sm" variant="outline" className="h-7"
+            onClick={() => onRoll(`${trainer.name} · Initiative (Dex+Alert)`, initiativePool)}>
+            <Dices className="mr-1 h-3.5 w-3.5" /> Initiative · {initiativePool}d6
+          </Button>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold uppercase text-muted-foreground">Catch</span>
+          <Select value={ballKey} onValueChange={(v) => setBallKey(v as BallKey)}>
+            <SelectTrigger className="h-7 w-40 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {Object.entries(POKEBALLS).map(([k, v]) => (
+                <SelectItem key={k} value={k}>{v.label} · {v.pool}d6</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <label className="flex items-center gap-1 text-xs text-muted-foreground">
+            +bonus
+            <Input type="number" min={0} max={3} value={catchBonus}
+              onChange={(e) => setCatchBonus(Math.max(0, Math.min(3, parseInt(e.target.value) || 0)))}
+              className="h-7 w-12 text-xs" />
+          </label>
+          <Button size="sm" variant="outline" className="h-7"
+            disabled={ballKey === "masterball"}
+            onClick={() => onRoll(
+              `${trainer.name} · Catch (${ball.label}${catchBonus ? ` +${catchBonus}` : ""})`,
+              catchPool,
+            )}>
+            <Dices className="mr-1 h-3.5 w-3.5" />
+            {ballKey === "masterball" ? "Auto-catch" : `Catch · ${catchPool}d6${catchBonus ? ` +${catchBonus}` : ""}`}
+          </Button>
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          Bonus successes: +1 if target at half HP, +1 at 1 HP, +1 with a status ailment (max +3, lost if fainted).
+          Required successes — Starter 3 · Beginner 4 · Amateur 6 · Ace 8 · Pro 9.
+        </p>
       </div>
+
 
       <section>
         <h3 className="mb-2 text-sm font-bold">Attributes <span className="text-muted-foreground font-normal">(max {HUMAN_ATTR_CAP})</span></h3>
