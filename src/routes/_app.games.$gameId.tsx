@@ -18,6 +18,7 @@ import { ChatPanel } from "@/components/ChatPanel";
 import { FloatingWindow } from "@/components/FloatingWindow";
 import { PokemonSheet } from "@/components/PokemonSheet";
 import { TrainerSheet } from "@/components/TrainerSheet";
+import { MapBoard, DRAG_MIME, type DragCharacterPayload } from "@/components/MapBoard";
 import { toast } from "sonner";
 import { Copy, Plus, Crown, Sparkles, User } from "lucide-react";
 import { rollD6 } from "@/lib/pokerole";
