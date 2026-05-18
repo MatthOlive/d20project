@@ -110,6 +110,7 @@ export function PokemonSheet({
   const qc = useQueryClient();
   const [zMode, setZMode] = useState(false);
   const [gMaxMode, setGMaxMode] = useState(false);
+  const [dynaMode, setDynaMode] = useState<null | "dynamax" | "gigantamax">(null);
 
   const queryKey = useMemo(() => ["pokemon", pokemonId], [pokemonId]);
   const { data: pokemon } = useQuery({
