@@ -146,7 +146,7 @@ export function PokemonSheet({
     if (pokemon && species && Object.keys(pokemon.current_attrs).length === 0) {
       void supabase.from("pokemon").update({
         current_attrs: species.base_attrs,
-        hp: species.base_hp + (species.base_attrs.vitality ?? 1) + RANK_BONUS[pokemon.rank],
+        hp: species.base_hp + (species.base_attrs.vitality ?? 1),
       }).eq("id", pokemonId).then(() => qc.invalidateQueries({ queryKey: ["pokemon", pokemonId] }));
     }
   }, [pokemon, species, pokemonId, qc]);
