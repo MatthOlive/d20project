@@ -88,6 +88,12 @@ function GameRoom() {
       body: label, roll_data: { ...result, label },
     });
   }
+  async function sendChatFromSheet(body: string) {
+    if (!user || !body.trim()) return;
+    await supabase.from("chat_messages").insert({
+      game_id: gameId, user_id: user.id, kind: "chat", body,
+    });
+  }
 
   const inviteUrl = typeof window !== "undefined" && game
     ? `${window.location.origin}/join/${game.invite_code}` : "";
