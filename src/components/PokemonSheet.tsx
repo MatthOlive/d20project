@@ -157,6 +157,20 @@ export function PokemonSheet({
     },
   });
 
+  const speciesAbilityNames = species?.abilities ?? [];
+  const { data: abilityDetails = [] } = useQuery({
+    queryKey: ["abilities", speciesAbilityNames],
+    enabled: speciesAbilityNames.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("abilities")
+        .select("name, effect")
+        .in("name", speciesAbilityNames);
+      if (error) throw error;
+      return (data ?? []) as { name: string; effect: string }[];
+    },
+  });
+
   const canEdit = !!pokemon && (pokemon.owner_id === userId || isNarrator);
 
   const commit = useCallback(async (p: Partial<Pokemon>) => {
@@ -382,7 +396,7 @@ export function PokemonSheet({
                 <span className="w-24 text-sm font-medium capitalize">{a}</span>
                 <DotEditor
                   value={val}
-                  max={Math.max(5, limit)}
+                  max={Math.max(10, limit)}
                   cap={limit}
                   onChange={(n) => setAttr(a, n)}
                   disabled={!canEdit}
@@ -407,10 +421,20 @@ export function PokemonSheet({
       {/* Abilities */}
       <section>
         <h3 className="mb-2 text-sm font-bold">Abilities</h3>
-        <div className="flex flex-wrap gap-1.5">
-          {species.abilities.map((a) => <Badge key={a} variant="secondary">{a}</Badge>)}
-          {species.hidden_ability && (
-            <Badge variant="outline" className="border-primary text-primary">{species.hidden_ability} (hidden)</Badge>
+        <div className="space-y-2">
+          {species.abilities.map((a) => {
+            const detail = abilityDetails.find((d) => d.name === a);
+            return (
+              <div key={a} className="rounded-md border border-border bg-card px-3 py-2">
+                <div className="text-sm font-semibold">{a}</div>
+                {detail?.effect && (
+                  <div className="mt-1 text-xs text-muted-foreground whitespace-pre-wrap">{detail.effect}</div>
+                )}
+              </div>
+            );
+          })}
+          {species.abilities.length === 0 && (
+            <div className="text-xs text-muted-foreground">No abilities listed for this species.</div>
           )}
         </div>
       </section>
