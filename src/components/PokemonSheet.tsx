@@ -444,11 +444,20 @@ export function PokemonSheet({
           {species.abilities.map((a) => {
             const detail = abilityDetails.find((d) => d.name === a);
             return (
-              <div key={a} className="rounded-md border border-border bg-card px-3 py-2">
-                <div className="text-sm font-semibold">{a}</div>
-                {detail?.effect && (
-                  <div className="mt-1 text-xs text-muted-foreground whitespace-pre-wrap">{detail.effect}</div>
-                )}
+              <div key={a} className="flex items-start justify-between gap-2 rounded-md border border-border bg-card px-3 py-2">
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold">{a}</div>
+                  {detail?.effect && (
+                    <div className="mt-1 text-xs text-muted-foreground whitespace-pre-wrap">{detail.effect}</div>
+                  )}
+                </div>
+                <AbilityRollDialog
+                  name={a}
+                  effect={detail?.effect ?? ""}
+                  pokemonName={pokemon.nickname || species.name}
+                  onRoll={onRoll}
+                  onChat={onChat}
+                />
               </div>
             );
           })}
@@ -457,6 +466,7 @@ export function PokemonSheet({
           )}
         </div>
       </section>
+
 
       {/* Social attributes */}
       <section>
