@@ -47,7 +47,7 @@ export const SKILLS = [
 
 export const POKEMON_TYPES = [
   "normal","fire","water","electric","grass","ice","fighting","poison","ground",
-  "flying","psychic","bug","rock","ghost","dragon","dark","steel","fairy",
+  "flying","psychic","bug","rock","ghost","dragon","dark","steel","fairy","typeless",
 ] as const;
 export type PokemonType = (typeof POKEMON_TYPES)[number];
 
