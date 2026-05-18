@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import {
   POKEMON_ATTRS, SOCIAL_ATTRS, RANKS, RANK_LABELS, RANK_BONUS, TYPE_COLORS, SKILLS, type Rank,
   rankAtLeast,
 } from "@/lib/pokerole";
+import { useDebouncedPatch } from "@/lib/use-debounced-patch";
 import { toast } from "sonner";
 import { Plus, Dices, Trash2, ImagePlus, RotateCcw } from "lucide-react";
 
@@ -71,21 +72,24 @@ type Pokemon = {
 
 export function PokemonSheet({
   pokemonId,
-  gameId,
+  gameId: _gameId,
   userId,
   isNarrator,
   onRoll,
+  onChat,
 }: {
   pokemonId: string;
   gameId: string;
   userId: string;
   isNarrator: boolean;
   onRoll: (label: string, n: number) => void;
+  onChat: (body: string) => void;
 }) {
   const qc = useQueryClient();
 
+  const queryKey = useMemo(() => ["pokemon", pokemonId], [pokemonId]);
   const { data: pokemon } = useQuery({
-    queryKey: ["pokemon", pokemonId],
+    queryKey,
     queryFn: async () => {
       const { data, error } = await supabase.from("pokemon").select("*").eq("id", pokemonId).single();
       if (error) throw error;
@@ -131,6 +135,12 @@ export function PokemonSheet({
 
   const canEdit = !!pokemon && (pokemon.owner_id === userId || isNarrator);
 
+  const commit = useCallback(async (p: Partial<Pokemon>) => {
+    const { error } = await supabase.from("pokemon").update(p).eq("id", pokemonId);
+    if (error) toast.error(error.message);
+  }, [pokemonId]);
+  const { patch } = useDebouncedPatch<Pokemon>(queryKey, commit);
+
   // Auto-init current_attrs from species base if empty
   useEffect(() => {
     if (pokemon && species && Object.keys(pokemon.current_attrs).length === 0) {
@@ -154,12 +164,6 @@ export function PokemonSheet({
   if (!pokemon) return <div className="p-4 text-sm text-muted-foreground">Loading…</div>;
   if (!species) return <div className="p-4 text-sm text-muted-foreground">Loading species…</div>;
 
-  async function patch(p: Partial<Pokemon>) {
-    const { error } = await supabase.from("pokemon").update(p).eq("id", pokemonId);
-    if (error) toast.error(error.message);
-    else qc.invalidateQueries({ queryKey: ["pokemon", pokemonId] });
-  }
-
   async function setAttr(key: string, val: number) {
     if (!canEdit) return;
     const limit = species!.attr_limits[key] ?? 5;
@@ -168,7 +172,7 @@ export function PokemonSheet({
     const vit = key === "vitality" ? clamped : (newAttrs.vitality ?? 1);
     const str = key === "strength" ? clamped : (newAttrs.strength ?? 1);
     const ins = key === "insight" ? clamped : (newAttrs.insight ?? 1);
-    await patch({
+    patch({
       current_attrs: newAttrs,
       hp: species!.base_hp + vit + str + RANK_BONUS[pokemon!.rank],
       will: ins + 2,
@@ -438,9 +442,14 @@ export function PokemonSheet({
         <div className="grid gap-2 sm:grid-cols-2">
           {knownMoves.map((m) => {
             const tcol = TYPE_COLORS[m.type] ?? { bg: "#888", fg: "#fff" };
-            const attrName = m.damage_stat ?? "strength";
-            const attrVal = pokemon.current_attrs[attrName] ?? 1;
-            const rollPool = m.power + attrVal;
+            const accStat = m.accuracy_stat ?? "dexterity";
+            const accAttrVal = pokemon.current_attrs[accStat] ?? 1;
+            const accSkillVal = m.accuracy_skill ? (pokemon.skills?.[m.accuracy_skill] ?? 0) : 0;
+            const accPool = accAttrVal + accSkillVal;
+            const dmgStat = m.damage_stat ?? "strength";
+            const dmgAttrVal = pokemon.current_attrs[dmgStat] ?? 1;
+            const dmgPool = m.power + dmgAttrVal;
+            const name = pokemon.nickname || species.name;
             return (
               <div key={m.id} className="overflow-hidden rounded-lg border border-border">
                 <div className="flex items-center justify-between px-3 py-1.5" style={{ backgroundColor: tcol.bg, color: tcol.fg }}>
@@ -449,13 +458,19 @@ export function PokemonSheet({
                 </div>
                 <div className="space-y-2 bg-card p-3">
                   <div className="text-xs text-muted-foreground">
-                    Power {m.power} · Accuracy {m.accuracy_stat ?? "—"} {m.accuracy_skill ? `+ ${m.accuracy_skill}` : ""}
+                    Accuracy {accStat}{m.accuracy_skill ? `+${m.accuracy_skill}` : ""} · {accPool}d6
+                    {" · "}Damage {dmgStat}+Power · {dmgPool}d6
                   </div>
                   {m.effect && <p className="text-xs">{m.effect}</p>}
                   <div className="flex items-center justify-between">
-                    <Button size="sm" onClick={() => onRoll(`${m.name} (${m.type})`, rollPool)}>
-                      <Dices className="mr-1.5 h-3.5 w-3.5" /> Roll {rollPool}d6
-                    </Button>
+                    <MoveRollDialog
+                      move={m}
+                      pokemonName={name}
+                      accPool={accPool}
+                      dmgPool={dmgPool}
+                      onRoll={onRoll}
+                      onChat={onChat}
+                    />
                     {canEdit && (
                       <Button size="icon" variant="ghost" onClick={() => removeMove(m.id)}>
                         <Trash2 className="h-3.5 w-3.5" />
@@ -468,6 +483,8 @@ export function PokemonSheet({
           })}
         </div>
       </section>
+
+
 
       <section>
         <Label className="text-xs">Notes</Label>
@@ -517,3 +534,64 @@ function AddMoveDialog({
     </Dialog>
   );
 }
+
+function MoveRollDialog({
+  move, pokemonName, accPool, dmgPool, onRoll, onChat,
+}: {
+  move: Move;
+  pokemonName: string;
+  accPool: number;
+  dmgPool: number;
+  onRoll: (label: string, n: number) => void;
+  onChat: (body: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [accBonus, setAccBonus] = useState(0);
+  const [dmgBonus, setDmgBonus] = useState(0);
+  function confirm() {
+    const desc = `**${pokemonName}** uses **${move.name}** (${move.type})${move.effect ? ` — ${move.effect}` : ""}`;
+    onChat(desc);
+    onRoll(`${pokemonName} · ${move.name} · Accuracy`, Math.max(0, accPool + accBonus));
+    if (dmgPool > 0) {
+      onRoll(`${pokemonName} · ${move.name} · Damage`, Math.max(0, dmgPool + dmgBonus));
+    }
+    setOpen(false);
+    setAccBonus(0);
+    setDmgBonus(0);
+  }
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm">
+          <Dices className="mr-1.5 h-3.5 w-3.5" /> Roll {accPool}d6 / {dmgPool}d6
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>{move.name}</DialogTitle></DialogHeader>
+        {move.effect && <p className="text-sm text-muted-foreground">{move.effect}</p>}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <Label className="text-xs">Accuracy bonus dice</Label>
+              <p className="text-[11px] text-muted-foreground">Pool: {accPool}d6 → rolling {Math.max(0, accPool + accBonus)}d6</p>
+            </div>
+            <Input type="number" value={accBonus} onChange={(e) => setAccBonus(parseInt(e.target.value) || 0)} className="h-9 w-20" />
+          </div>
+          {dmgPool > 0 && (
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <Label className="text-xs">Damage bonus dice</Label>
+                <p className="text-[11px] text-muted-foreground">Pool: {dmgPool}d6 → rolling {Math.max(0, dmgPool + dmgBonus)}d6</p>
+              </div>
+              <Input type="number" value={dmgBonus} onChange={(e) => setDmgBonus(parseInt(e.target.value) || 0)} className="h-9 w-20" />
+            </div>
+          )}
+          <Button onClick={confirm} className="w-full">
+            <Dices className="mr-1.5 h-4 w-4" /> Roll
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { DotEditor } from "@/components/DotEditor";
 import {
   ATTRS, SOCIAL_ATTRS, RANKS, RANK_LABELS, RANK_BONUS, SKILLS, HUMAN_ATTR_CAP, type Rank,
 } from "@/lib/pokerole";
+import { useDebouncedPatch } from "@/lib/use-debounced-patch";
 import { toast } from "sonner";
 import { Dices, ImagePlus, X as XIcon } from "lucide-react";
 
@@ -53,11 +54,11 @@ export function TrainerSheet({
   isNarrator: boolean;
   onRoll: (label: string, n: number) => void;
 }) {
-  const qc = useQueryClient();
   const [ballKey, setBallKey] = useState<BallKey>("pokeball");
   const [catchBonus, setCatchBonus] = useState(0);
+  const queryKey = useMemo(() => ["trainer", trainerId], [trainerId]);
   const { data: trainer } = useQuery({
-    queryKey: ["trainer", trainerId],
+    queryKey,
     queryFn: async () => {
       const { data, error } = await supabase.from("trainers").select("*").eq("id", trainerId).single();
       if (error) throw error;
@@ -65,14 +66,14 @@ export function TrainerSheet({
     },
   });
 
-  if (!trainer) return <div className="p-4 text-sm text-muted-foreground">Loading…</div>;
-  const canEdit = trainer.owner_id === userId || isNarrator;
-
-  async function patch(p: Partial<Trainer>) {
+  const commit = useCallback(async (p: Partial<Trainer>) => {
     const { error } = await supabase.from("trainers").update(p).eq("id", trainerId);
     if (error) toast.error(error.message);
-    else qc.invalidateQueries({ queryKey: ["trainer", trainerId] });
-  }
+  }, [trainerId]);
+  const { patch } = useDebouncedPatch<Trainer>(queryKey, commit);
+
+  if (!trainer) return <div className="p-4 text-sm text-muted-foreground">Loading…</div>;
+  const canEdit = trainer.owner_id === userId || isNarrator;
 
   const vit = trainer.attrs.vitality ?? 1;
   const str = trainer.attrs.strength ?? 1;

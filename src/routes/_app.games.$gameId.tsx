@@ -88,6 +88,12 @@ function GameRoom() {
       body: label, roll_data: { ...result, label },
     });
   }
+  async function sendChatFromSheet(body: string) {
+    if (!user || !body.trim()) return;
+    await supabase.from("chat_messages").insert({
+      game_id: gameId, user_id: user.id, kind: "chat", body,
+    });
+  }
 
   const inviteUrl = typeof window !== "undefined" && game
     ? `${window.location.origin}/join/${game.invite_code}` : "";
@@ -256,7 +262,7 @@ function GameRoom() {
             height={600}
           >
             {w.kind === "pokemon"
-              ? <PokemonSheet pokemonId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} />
+              ? <PokemonSheet pokemonId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} />
               : <TrainerSheet trainerId={w.id} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} />}
           </FloatingWindow>
         ))}
