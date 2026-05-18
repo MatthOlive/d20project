@@ -19,6 +19,9 @@ import {
 import { useDebouncedPatch } from "@/lib/use-debounced-patch";
 import { toast } from "sonner";
 import { Dices, ImagePlus, X as XIcon, Plus, Trash2 } from "lucide-react";
+import {
+  HpAndStatusBlock, AttackRollButton, GenericRollButton, painPenaltyFor,
+} from "@/components/SheetRolls";
 
 const POKEBALLS = {
   pokeball:  { label: "Pokéball",  pool: 4 },
@@ -48,6 +51,8 @@ type Trainer = {
   bag: string;
   battle_items: string;
   pokedex: Record<string, { name: string; captured: boolean; sprite_url?: string | null }>;
+  current_hp: number | null;
+  status_conditions: string[];
 };
 
 export function TrainerSheet({
@@ -60,7 +65,7 @@ export function TrainerSheet({
   trainerId: string;
   userId: string;
   isNarrator: boolean;
-  onRoll: (label: string, n: number) => void;
+  onRoll: (label: string, n: number, penalty?: number) => void;
   onDeleted?: () => void;
 }) {
   const [ballKey, setBallKey] = useState<BallKey>("pokeball");
@@ -89,11 +94,25 @@ export function TrainerSheet({
   const dex = trainer.attrs.dexterity ?? 1;
   const ins = trainer.attrs.insight ?? 1;
   const alert = trainer.skills?.Alert ?? 0;
-  const hp = vit + str + RANK_BONUS[trainer.rank];
+  const hp = 4 + vit;
+  const currentHp = trainer.current_hp ?? hp;
+  const painPenalty = painPenaltyFor(currentHp, hp);
   const will = ins + 2;
   const initiativePool = dex + alert;
   const ball = POKEBALLS[ballKey];
   const catchPool = ball.pool;
+
+  const attackSkillOptions = [
+    { name: "Brawl", value: trainer.skills?.Brawl ?? 0 },
+    { name: "Throw", value: trainer.skills?.Throw ?? 0 },
+    { name: "Weapons", value: trainer.skills?.Weapons ?? 0 },
+  ];
+  const allAttrsForRoll = [
+    ...ATTRS.map((a) => ({ name: a, value: trainer.attrs[a] ?? 1 })),
+    ...SOCIAL_ATTRS.map((a) => ({ name: a, value: trainer.social_attrs?.[a] ?? 1 })),
+  ];
+  const allSkillsForRoll = TRAINER_SKILLS.map((s) => ({ name: s, value: trainer.skills?.[s] ?? 0 }));
+  const charName = trainer.name;
 
   return (
     <div className="space-y-5 p-4">
@@ -159,16 +178,41 @@ export function TrainerSheet({
         </div>
       </div>
 
+      <HpAndStatusBlock
+        current={currentHp}
+        max={hp}
+        status={trainer.status_conditions ?? []}
+        painPenalty={painPenalty}
+        canEdit={canEdit}
+        onHpChange={(n) => patch({ current_hp: n })}
+        onStatusChange={(s) => patch({ status_conditions: s })}
+      />
+
       <div className="space-y-2 rounded-lg border border-border bg-card p-3">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-success/15 px-3 py-1 text-sm font-bold text-success">HP {hp}</span>
+          <span className="rounded-full bg-success/15 px-3 py-1 text-sm font-bold text-success">HP {currentHp}/{hp}</span>
           <span className="rounded-full bg-accent px-3 py-1 text-sm font-bold">Will {will}</span>
           <span className="rounded-full bg-muted px-3 py-1 text-sm font-bold" title="Defense = Vitality">Def {vit}</span>
           <span className="rounded-full bg-muted px-3 py-1 text-sm font-bold" title="Special Defense = Vitality">Sp.Def {vit}</span>
           <Button size="sm" variant="outline" className="h-7"
-            onClick={() => onRoll(`${trainer.name} · Initiative (Dex+Alert)`, initiativePool)}>
+            onClick={() => onRoll(`${charName} · Initiative (Dex+Alert)`, initiativePool, painPenalty)}>
             <Dices className="mr-1 h-3.5 w-3.5" /> Initiative · {initiativePool}d6
           </Button>
+          <AttackRollButton
+            characterName={charName}
+            attrLabel="Dexterity"
+            attrValue={dex}
+            skillOptions={attackSkillOptions}
+            painPenalty={painPenalty}
+            onRoll={onRoll}
+          />
+          <GenericRollButton
+            characterName={charName}
+            attrs={allAttrsForRoll}
+            skills={allSkillsForRoll}
+            painPenalty={painPenalty}
+            onRoll={onRoll}
+          />
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-semibold uppercase text-muted-foreground">Catch</span>
@@ -217,7 +261,8 @@ export function TrainerSheet({
                   onChange={(n) => patch({ attrs: { ...trainer.attrs, [a]: n } })}
                   disabled={!canEdit}
                 />
-                <Button size="sm" variant="ghost" className="ml-1 h-7 px-2" onClick={() => onRoll(`${trainer.name} · ${a}`, v)}>
+                <Button size="sm" variant="ghost" className="ml-1 h-7 px-2" onClick={() => onRoll(`${charName} · ${a}`, v, painPenalty)}>
+
                   <Dices className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -234,7 +279,7 @@ export function TrainerSheet({
                   onChange={(n) => patch({ social_attrs: { ...trainer.social_attrs, [a]: n } })}
                   disabled={!canEdit}
                 />
-                <Button size="sm" variant="ghost" className="ml-1 h-7 px-2" onClick={() => onRoll(`${trainer.name} · ${a}`, v)}>
+                <Button size="sm" variant="ghost" className="ml-1 h-7 px-2" onClick={() => onRoll(`${charName} · ${a}`, v, painPenalty)}>
                   <Dices className="h-3.5 w-3.5" />
                 </Button>
               </div>

@@ -21,6 +21,9 @@ import { useDebouncedPatch } from "@/lib/use-debounced-patch";
 import { toast } from "sonner";
 import { Plus, Dices, Trash2, ImagePlus, RotateCcw, Sparkles, Zap, Maximize2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  HpAndStatusBlock, AttackRollButton, GenericRollButton, painPenaltyFor,
+} from "@/components/SheetRolls";
 
 // Z-Move names per type (Pokérole 2.0)
 const Z_MOVE_NAMES: Record<string, string> = {
@@ -79,6 +82,7 @@ type Pokemon = {
   skills: Record<string, number>;
   modifiers: Record<string, number>;
   hp: number;
+  current_hp: number | null;
   will: number;
   status: string[];
   notes: string;
@@ -105,7 +109,7 @@ export function PokemonSheet({
   gameId: string;
   userId: string;
   isNarrator: boolean;
-  onRoll: (label: string, n: number) => void;
+  onRoll: (label: string, n: number, penalty?: number) => void;
   onChat: (body: string) => void;
   onDeleted?: () => void;
 }) {
@@ -204,6 +208,10 @@ export function PokemonSheet({
 
   if (!pokemon) return <div className="p-4 text-sm text-muted-foreground">Loading…</div>;
   if (!species) return <div className="p-4 text-sm text-muted-foreground">Loading species…</div>;
+
+  const maxHpEff = pokemon.hp;
+  const painPen = painPenaltyFor(pokemon.current_hp ?? maxHpEff, maxHpEff);
+  const boundRoll = (label: string, n: number, p?: number) => onRoll(label, n, p ?? painPen);
 
   async function setAttr(key: string, val: number) {
     if (!canEdit) return;
@@ -335,7 +343,7 @@ export function PokemonSheet({
             )}
             <div className="ml-auto flex flex-wrap items-center gap-1.5 text-sm">
               <span className="rounded-full bg-success/15 px-2.5 py-0.5 font-bold text-success">
-                HP {dynaMode ? pokemon.hp * 2 : pokemon.hp}{dynaMode ? " ×2" : ""}
+                HP {pokemon.current_hp ?? (dynaMode ? pokemon.hp * 2 : pokemon.hp)}/{dynaMode ? pokemon.hp * 2 : pokemon.hp}{dynaMode ? " ×2" : ""}
               </span>
               <span className="rounded-full bg-accent px-2.5 py-0.5 font-bold">Will {pokemon.will}</span>
               <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-bold text-primary">Def {pokemon.current_attrs.vitality ?? 1}</span>
@@ -359,26 +367,61 @@ export function PokemonSheet({
               const clash = str + clashSkill;
               const evasion = dex + evasionSkill;
               const name = pokemon.nickname || species.name;
+              const maxHp = dynaMode ? pokemon.hp * 2 : pokemon.hp;
+              const curHp = pokemon.current_hp ?? maxHp;
+              const pen = painPenaltyFor(curHp, maxHp);
+              const attackSkills = [
+                { name: "Brawl", value: pokemon.skills?.Brawl ?? 0 },
+                { name: "Channel", value: pokemon.skills?.Channel ?? 0 },
+              ];
+              const allAttrs = POKEMON_ATTRS.map((a) => ({ name: a, value: pokemon.current_attrs[a] ?? 1 }));
+              const allSocial = SOCIAL_ATTRS.map((a) => ({ name: a, value: pokemon.social_attrs?.[a] ?? 1 }));
+              const allSkills = SKILLS.map((s) => ({ name: s, value: pokemon.skills?.[s] ?? 0 }));
               return (
                 <>
                   <Button size="sm" variant="outline" className="h-7"
-                    onClick={() => onRoll(`${name} · Initiative (Dex+Alert)`, init)}>
+                    onClick={() => onRoll(`${name} · Initiative (Dex+Alert)`, init, pen)}>
                     <Dices className="mr-1 h-3.5 w-3.5" /> Initiative · {init}d6
                   </Button>
                   <Button size="sm" variant="outline" className="h-7"
-                    onClick={() => onRoll(`${name} · Clash (Str+Clash)`, clash)}>
+                    onClick={() => onRoll(`${name} · Clash (Str+Clash)`, clash, pen)}>
                     <Dices className="mr-1 h-3.5 w-3.5" /> Clash · {clash}d6
                   </Button>
                   <Button size="sm" variant="outline" className="h-7"
-                    onClick={() => onRoll(`${name} · Evasion (Dex+Evasion)`, evasion)}>
+                    onClick={() => onRoll(`${name} · Evasion (Dex+Evasion)`, evasion, pen)}>
                     <Dices className="mr-1 h-3.5 w-3.5" /> Evasion · {evasion}d6
                   </Button>
+                  <AttackRollButton
+                    characterName={name}
+                    attrLabel="Dexterity"
+                    attrValue={dex}
+                    skillOptions={attackSkills}
+                    painPenalty={pen}
+                    onRoll={boundRoll}
+                  />
+                  <GenericRollButton
+                    characterName={name}
+                    attrs={[...allAttrs, ...allSocial]}
+                    skills={allSkills}
+                    painPenalty={pen}
+                    onRoll={boundRoll}
+                  />
                 </>
               );
             })()}
           </div>
         </div>
       </div>
+
+      <HpAndStatusBlock
+        current={pokemon.current_hp ?? (dynaMode ? pokemon.hp * 2 : pokemon.hp)}
+        max={dynaMode ? pokemon.hp * 2 : pokemon.hp}
+        status={pokemon.status ?? []}
+        painPenalty={painPenaltyFor(pokemon.current_hp ?? pokemon.hp, dynaMode ? pokemon.hp * 2 : pokemon.hp)}
+        canEdit={canEdit}
+        onHpChange={(n) => patch({ current_hp: n })}
+        onStatusChange={(s) => patch({ status: s })}
+      />
 
       {/* Details */}
       <section className="grid gap-3 sm:grid-cols-2">
@@ -448,7 +491,7 @@ export function PokemonSheet({
                 />
                 <Button
                   size="sm" variant="ghost" className="ml-1 h-7 px-2"
-                  onClick={() => onRoll(`${a} check`, val + mod)}
+                  onClick={() => boundRoll(`${a} check`, val + mod)}
                 ><Dices className="h-3.5 w-3.5" /></Button>
               </div>
             );
@@ -474,7 +517,7 @@ export function PokemonSheet({
                   name={a}
                   effect={detail?.effect ?? ""}
                   pokemonName={pokemon.nickname || species.name}
-                  onRoll={onRoll}
+                  onRoll={boundRoll}
                   onChat={onChat}
                 />
               </div>
@@ -503,7 +546,7 @@ export function PokemonSheet({
                   disabled={!canEdit}
                 />
                 <Button size="sm" variant="ghost" className="ml-1 h-7 px-2"
-                  onClick={() => onRoll(`${a} check`, v)}>
+                  onClick={() => boundRoll(`${a} check`, v)}>
                   <Dices className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -606,7 +649,7 @@ export function PokemonSheet({
                       accPool={accPool}
                       dmgPool={dmgPool}
                       isStatus={isStatus}
-                      onRoll={onRoll}
+                      onRoll={boundRoll}
                       onChat={onChat}
                     />
 
