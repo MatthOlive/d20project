@@ -402,7 +402,7 @@ export function PokemonSheet({
                   {m.effect && <p className="text-xs">{m.effect}</p>}
                   <div className="flex items-center justify-between">
                     <Button size="sm" onClick={() => onRoll(`${m.name} (${m.type})`, rollPool)}>
-                      <Dices className="mr-1.5 h-3.5 w-3.5" /> Roll {rollPool}d10
+                      <Dices className="mr-1.5 h-3.5 w-3.5" /> Roll {rollPool}d6
                     </Button>
                     {canEdit && (
                       <Button size="icon" variant="ghost" onClick={() => removeMove(m.id)}>
