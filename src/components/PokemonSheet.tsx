@@ -442,9 +442,14 @@ export function PokemonSheet({
         <div className="grid gap-2 sm:grid-cols-2">
           {knownMoves.map((m) => {
             const tcol = TYPE_COLORS[m.type] ?? { bg: "#888", fg: "#fff" };
-            const attrName = m.damage_stat ?? "strength";
-            const attrVal = pokemon.current_attrs[attrName] ?? 1;
-            const rollPool = m.power + attrVal;
+            const accStat = m.accuracy_stat ?? "dexterity";
+            const accAttrVal = pokemon.current_attrs[accStat] ?? 1;
+            const accSkillVal = m.accuracy_skill ? (pokemon.skills?.[m.accuracy_skill] ?? 0) : 0;
+            const accPool = accAttrVal + accSkillVal;
+            const dmgStat = m.damage_stat ?? "strength";
+            const dmgAttrVal = pokemon.current_attrs[dmgStat] ?? 1;
+            const dmgPool = m.power + dmgAttrVal;
+            const name = pokemon.nickname || species.name;
             return (
               <div key={m.id} className="overflow-hidden rounded-lg border border-border">
                 <div className="flex items-center justify-between px-3 py-1.5" style={{ backgroundColor: tcol.bg, color: tcol.fg }}>
@@ -453,13 +458,19 @@ export function PokemonSheet({
                 </div>
                 <div className="space-y-2 bg-card p-3">
                   <div className="text-xs text-muted-foreground">
-                    Power {m.power} · Accuracy {m.accuracy_stat ?? "—"} {m.accuracy_skill ? `+ ${m.accuracy_skill}` : ""}
+                    Accuracy {accStat}{m.accuracy_skill ? `+${m.accuracy_skill}` : ""} · {accPool}d6
+                    {" · "}Damage {dmgStat}+Power · {dmgPool}d6
                   </div>
                   {m.effect && <p className="text-xs">{m.effect}</p>}
                   <div className="flex items-center justify-between">
-                    <Button size="sm" onClick={() => onRoll(`${m.name} (${m.type})`, rollPool)}>
-                      <Dices className="mr-1.5 h-3.5 w-3.5" /> Roll {rollPool}d6
-                    </Button>
+                    <MoveRollDialog
+                      move={m}
+                      pokemonName={name}
+                      accPool={accPool}
+                      dmgPool={dmgPool}
+                      onRoll={onRoll}
+                      onChat={onChat}
+                    />
                     {canEdit && (
                       <Button size="icon" variant="ghost" onClick={() => removeMove(m.id)}>
                         <Trash2 className="h-3.5 w-3.5" />
@@ -472,6 +483,8 @@ export function PokemonSheet({
           })}
         </div>
       </section>
+
+
 
       <section>
         <Label className="text-xs">Notes</Label>
