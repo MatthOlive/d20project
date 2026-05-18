@@ -54,6 +54,8 @@ export function TrainerSheet({
   onRoll: (label: string, n: number) => void;
 }) {
   const qc = useQueryClient();
+  const [ballKey, setBallKey] = useState<BallKey>("pokeball");
+  const [catchBonus, setCatchBonus] = useState(0);
   const { data: trainer } = useQuery({
     queryKey: ["trainer", trainerId],
     queryFn: async () => {
@@ -80,11 +82,6 @@ export function TrainerSheet({
   const hp = vit + str + RANK_BONUS[trainer.rank];
   const will = ins + RANK_BONUS[trainer.rank];
   const initiativePool = dex + alert;
-  // Catch UI state (per-sheet, local)
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const [ballKey, setBallKey] = useState<BallKey>("pokeball");
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const [catchBonus, setCatchBonus] = useState(0);
   const ball = POKEBALLS[ballKey];
   const catchPool = ball.pool;
 
