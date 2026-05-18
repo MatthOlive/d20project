@@ -147,10 +147,8 @@ function GameRoom() {
           <TabsContent value="chat" className="flex-1 overflow-hidden">
             <ChatPanel gameId={gameId} userId={user.id} />
           </TabsContent>
-          <TabsContent value="compendium" className="flex-1 overflow-auto p-4">
-            <p className="text-sm text-muted-foreground">
-              The Pokérole 2.0 compendium will live here. Upload the rules PDF and entries will populate.
-            </p>
+          <TabsContent value="compendium" className="flex-1 overflow-auto p-3">
+            <CompendiumPanel />
           </TabsContent>
           <TabsContent value="files" className="flex-1 overflow-auto p-3">
             <FilesPanel gameId={gameId} userId={user.id} onOpen={openWindow} />
