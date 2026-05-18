@@ -1,0 +1,188 @@
+import { useEffect, useRef, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dices, Send } from "lucide-react";
+import { rollD10, parseRollCommand } from "@/lib/pokerole";
+import { cn } from "@/lib/utils";
+
+type Msg = {
+  id: string;
+  game_id: string;
+  user_id: string;
+  kind: string;
+  body: string;
+  roll_data: { dice: number[]; successes: number; ones: number; label?: string } | null;
+  created_at: string;
+};
+
+export function ChatPanel({ gameId, userId }: { gameId: string; userId: string }) {
+  const qc = useQueryClient();
+  const [text, setText] = useState("");
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const { data: messages = [] } = useQuery({
+    queryKey: ["chat", gameId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("chat_messages")
+        .select("*")
+        .eq("game_id", gameId)
+        .order("created_at", { ascending: true })
+        .limit(200);
+      if (error) throw error;
+      return (data ?? []) as Msg[];
+    },
+  });
+
+  const { data: profiles = {} } = useQuery({
+    queryKey: ["profiles-for-chat", gameId, messages.length],
+    queryFn: async () => {
+      const ids = Array.from(new Set(messages.map((m) => m.user_id)));
+      if (ids.length === 0) return {};
+      const { data } = await supabase.from("profiles").select("id,display_name").in("id", ids);
+      const map: Record<string, string> = {};
+      (data ?? []).forEach((p) => (map[p.id] = p.display_name));
+      return map;
+    },
+    enabled: messages.length > 0,
+  });
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`chat:${gameId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "chat_messages", filter: `game_id=eq.${gameId}` },
+        () => qc.invalidateQueries({ queryKey: ["chat", gameId] }),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [gameId, qc]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+  }, [messages.length]);
+
+  async function send() {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    setText("");
+    const roll = parseRollCommand(trimmed);
+    if (roll) {
+      const result = rollD10(roll.n);
+      await supabase.from("chat_messages").insert({
+        game_id: gameId,
+        user_id: userId,
+        kind: "roll",
+        body: roll.label ?? `${roll.n}d10`,
+        roll_data: { ...result, label: roll.label },
+      });
+    } else {
+      await supabase.from("chat_messages").insert({
+        game_id: gameId,
+        user_id: userId,
+        kind: "chat",
+        body: trimmed,
+      });
+    }
+  }
+
+  async function quickRoll(n: number) {
+    const result = rollD10(n);
+    await supabase.from("chat_messages").insert({
+      game_id: gameId,
+      user_id: userId,
+      kind: "roll",
+      body: `${n}d10`,
+      roll_data: { ...result, label: `${n}d10` },
+    });
+  }
+
+  return (
+    <div className="flex h-full flex-col">
+      <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto p-3">
+        {messages.map((m) => (
+          <MessageBubble key={m.id} msg={m} authorName={profiles[m.user_id] ?? "…"} isMe={m.user_id === userId} />
+        ))}
+        {messages.length === 0 && (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            No messages yet. Try <code className="rounded bg-muted px-1.5 py-0.5">/roll 5</code> to roll 5d10.
+          </p>
+        )}
+      </div>
+      <div className="border-t border-border p-3">
+        <div className="mb-2 flex flex-wrap gap-1">
+          {[2, 3, 4, 5, 6, 7].map((n) => (
+            <Button key={n} variant="outline" size="sm" className="h-7 text-xs" onClick={() => quickRoll(n)}>
+              <Dices className="mr-1 h-3 w-3" /> {n}d10
+            </Button>
+          ))}
+        </div>
+        <form
+          onSubmit={(e) => { e.preventDefault(); void send(); }}
+          className="flex gap-2"
+        >
+          <Input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Message or /roll N"
+          />
+          <Button type="submit" size="icon"><Send className="h-4 w-4" /></Button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string; isMe: boolean }) {
+  if (msg.kind === "roll" && msg.roll_data) {
+    return (
+      <div className="rounded-lg border border-border bg-card p-3">
+        <div className="mb-1.5 flex items-baseline justify-between text-xs">
+          <span className="font-semibold text-foreground">{authorName}</span>
+          <span className="text-muted-foreground">rolled {msg.body}</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {msg.roll_data.dice.map((d, i) => (
+            <span
+              key={i}
+              className={cn(
+                "inline-flex h-7 w-7 items-center justify-center rounded-md border text-sm font-bold tabular-nums",
+                d >= 6
+                  ? "border-success bg-success text-success-foreground"
+                  : d === 1
+                    ? "border-destructive/30 bg-destructive/10 text-destructive"
+                    : "border-border bg-muted text-foreground",
+              )}
+            >{d}</span>
+          ))}
+          <span className="ml-2 rounded-full bg-success/15 px-2.5 py-0.5 text-xs font-bold text-success">
+            {msg.roll_data.successes} success{msg.roll_data.successes === 1 ? "" : "es"}
+          </span>
+          {msg.roll_data.ones > 0 && (
+            <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive">
+              {msg.roll_data.ones} × 1
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className={cn("flex flex-col", isMe ? "items-end" : "items-start")}>
+      <span className="px-1 text-xs text-muted-foreground">{authorName}</span>
+      <div
+        className={cn(
+          "max-w-[85%] rounded-2xl px-3 py-1.5 text-sm",
+          isMe ? "bg-primary text-primary-foreground" : "bg-muted text-foreground",
+        )}
+      >
+        {msg.body}
+      </div>
+    </div>
+  );
+}

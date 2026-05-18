@@ -1,0 +1,166 @@
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { DotEditor } from "@/components/DotEditor";
+import {
+  ATTRS, RANKS, RANK_LABELS, RANK_BONUS, SKILLS, HUMAN_ATTR_CAP, type Rank,
+} from "@/lib/pokerole";
+import { toast } from "sonner";
+import { Dices } from "lucide-react";
+
+type Trainer = {
+  id: string;
+  game_id: string;
+  owner_id: string;
+  name: string;
+  nature: string | null;
+  age: number | null;
+  concept: string | null;
+  confidence: number;
+  rank: Rank;
+  attrs: Record<string, number>;
+  skills: Record<string, number>;
+  notes: string;
+};
+
+export function TrainerSheet({
+  trainerId,
+  userId,
+  isNarrator,
+  onRoll,
+}: {
+  trainerId: string;
+  userId: string;
+  isNarrator: boolean;
+  onRoll: (label: string, n: number) => void;
+}) {
+  const qc = useQueryClient();
+  const { data: trainer } = useQuery({
+    queryKey: ["trainer", trainerId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("trainers").select("*").eq("id", trainerId).single();
+      if (error) throw error;
+      return data as Trainer;
+    },
+  });
+
+  if (!trainer) return <div className="p-4 text-sm text-muted-foreground">Loading…</div>;
+  const canEdit = trainer.owner_id === userId || isNarrator;
+
+  async function patch(p: Partial<Trainer>) {
+    const { error } = await supabase.from("trainers").update(p).eq("id", trainerId);
+    if (error) toast.error(error.message);
+    else qc.invalidateQueries({ queryKey: ["trainer", trainerId] });
+  }
+
+  const vit = trainer.attrs.vitality ?? 1;
+  const str = trainer.attrs.strength ?? 1;
+  const tough = trainer.attrs.toughness ?? 1;
+  const ins = trainer.attrs.insight ?? 1;
+  const hp = vit + str + RANK_BONUS[trainer.rank];
+  const will = ins + tough + RANK_BONUS[trainer.rank];
+
+  return (
+    <div className="space-y-5 p-4">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label>Name</Label>
+          <Input value={trainer.name} onChange={(e) => patch({ name: e.target.value })} disabled={!canEdit} />
+        </div>
+        <div className="space-y-2">
+          <Label>Concept</Label>
+          <Input value={trainer.concept ?? ""} onChange={(e) => patch({ concept: e.target.value })} disabled={!canEdit} />
+        </div>
+        <div className="space-y-2">
+          <Label>Nature</Label>
+          <Input value={trainer.nature ?? ""} onChange={(e) => patch({ nature: e.target.value })} disabled={!canEdit} />
+        </div>
+        <div className="space-y-2">
+          <Label>Age</Label>
+          <Input
+            type="number" value={trainer.age ?? ""}
+            onChange={(e) => patch({ age: parseInt(e.target.value) || null })}
+            disabled={!canEdit}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Rank</Label>
+          <Select value={trainer.rank} onValueChange={(v) => patch({ rank: v as Rank })} disabled={!canEdit}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {RANKS.map((r) => <SelectItem key={r} value={r}>{RANK_LABELS[r]}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Confidence</Label>
+          <Input
+            type="number" value={trainer.confidence}
+            onChange={(e) => patch({ confidence: parseInt(e.target.value) || 0 })}
+            disabled={!canEdit}
+          />
+        </div>
+      </div>
+
+      <div className="flex gap-3 rounded-lg border border-border bg-card p-3">
+        <span className="rounded-full bg-success/15 px-3 py-1 text-sm font-bold text-success">HP {hp}</span>
+        <span className="rounded-full bg-accent px-3 py-1 text-sm font-bold">Will {will}</span>
+      </div>
+
+      <section>
+        <h3 className="mb-2 text-sm font-bold">Attributes <span className="text-muted-foreground font-normal">(max {HUMAN_ATTR_CAP})</span></h3>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {ATTRS.map((a) => {
+            const v = trainer.attrs[a] ?? 1;
+            return (
+              <div key={a} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
+                <span className="w-24 text-sm font-medium capitalize">{a}</span>
+                <DotEditor
+                  value={v}
+                  max={HUMAN_ATTR_CAP}
+                  onChange={(n) => patch({ attrs: { ...trainer.attrs, [a]: n } })}
+                  disabled={!canEdit}
+                />
+                <Button size="sm" variant="ghost" className="ml-1 h-7 px-2" onClick={() => onRoll(`${trainer.name} · ${a}`, v)}>
+                  <Dices className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section>
+        <h3 className="mb-2 text-sm font-bold">Skills</h3>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {SKILLS.map((s) => {
+            const v = trainer.skills[s] ?? 0;
+            return (
+              <div key={s} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
+                <span className="text-sm">{s}</span>
+                <DotEditor
+                  value={v}
+                  max={5}
+                  onChange={(n) => patch({ skills: { ...trainer.skills, [s]: n } })}
+                  disabled={!canEdit}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section>
+        <Label>Notes</Label>
+        <Textarea value={trainer.notes} onChange={(e) => patch({ notes: e.target.value })} disabled={!canEdit} rows={4} />
+      </section>
+    </div>
+  );
+}
