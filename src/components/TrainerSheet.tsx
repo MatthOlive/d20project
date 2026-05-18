@@ -338,33 +338,40 @@ export function TrainerSheet({
       </section>
 
 
-      <section className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <Label>Bag (general items)</Label>
-          <Textarea
-            value={trainer.bag ?? ""}
-            onChange={(e) => patch({ bag: e.target.value })}
-            disabled={!canEdit}
-            rows={4}
-            placeholder="Potions, Pokéballs, Repels…"
-          />
-        </div>
-        <div>
-          <Label>Battle items</Label>
-          <Textarea
-            value={trainer.battle_items ?? ""}
-            onChange={(e) => patch({ battle_items: e.target.value })}
-            disabled={!canEdit}
-            rows={4}
-            placeholder="X-Attack, Guard Spec, held items…"
-          />
-        </div>
+      <ItemListSection
+        title="Bag (general items)"
+        items={trainer.bag_list ?? []}
+        canEdit={canEdit}
+        onChange={(items) => patch({ bag_list: items })}
+        placeholder="Item name…"
+      />
+
+      <section className="grid gap-3 lg:grid-cols-2">
+        <ItemListSection
+          title="Battle items"
+          items={trainer.battle_items_list ?? []}
+          canEdit={canEdit}
+          onChange={(items) => patch({ battle_items_list: items })}
+          placeholder="X-Attack, Guard Spec…"
+          embedded
+        />
+        <PotionsBlock
+          potions={trainer.potions ?? {}}
+          canEdit={canEdit}
+          onChange={(potions) => patch({ potions })}
+        />
       </section>
 
       <PokedexSection
         trainer={trainer}
         canEdit={canEdit}
         onChange={(pokedex) => patch({ pokedex })}
+      />
+
+      <AchievementsSection
+        items={trainer.achievements ?? []}
+        canEdit={canEdit}
+        onChange={(items) => patch({ achievements: items })}
       />
 
 
