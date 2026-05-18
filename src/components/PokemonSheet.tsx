@@ -491,7 +491,7 @@ export function PokemonSheet({
                 />
                 <Button
                   size="sm" variant="ghost" className="ml-1 h-7 px-2"
-                  onClick={() => onRoll(`${a} check`, val + mod)}
+                  onClick={() => boundRoll(`${a} check`, val + mod)}
                 ><Dices className="h-3.5 w-3.5" /></Button>
               </div>
             );
