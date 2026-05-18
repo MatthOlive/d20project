@@ -153,32 +153,31 @@ function GameRoom() {
     <div className="mx-auto grid h-[calc(100vh-4rem)] max-w-7xl grid-cols-1 gap-3 px-3 py-3 lg:grid-cols-[1fr_360px]">
       {/* Center: background + characters */}
       <div className="flex min-h-0 flex-col gap-3">
-        <div
-          className="relative flex-1 overflow-hidden rounded-xl border border-border bg-muted"
-          style={
-            game.background_url
-              ? { backgroundImage: `url(${game.background_url})`, backgroundSize: "cover", backgroundPosition: "center" }
-              : undefined
-          }
-        >
-          <div className="absolute left-3 top-3 flex items-center gap-2">
-            <span className="rounded-full bg-card/90 px-3 py-1 text-sm font-bold backdrop-blur">{game.name}</span>
-            {isNarrator && (
+        <div className="relative flex-1 min-h-0">
+          <MapBoard
+            gameId={gameId}
+            backgroundUrl={game.background_url}
+            userId={user.id}
+            isNarrator={isNarrator}
+            topLeftSlot={
               <>
-                <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-0.5 text-xs font-bold text-primary-foreground">
-                  <Crown className="h-3 w-3" /> Narrator
-                </span>
-                <InviteButton url={inviteUrl} />
-                <label className="cursor-pointer rounded-full bg-card/90 px-3 py-1 text-xs font-semibold backdrop-blur hover:bg-card">
-                  Set background
-                  <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadBackground(e.target.files[0])} />
-                </label>
+                <span className="rounded-full bg-card/90 px-3 py-1 text-sm font-bold backdrop-blur">{game.name}</span>
+                {isNarrator && (
+                  <>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-0.5 text-xs font-bold text-primary-foreground">
+                      <Crown className="h-3 w-3" /> Narrator
+                    </span>
+                    <InviteButton url={inviteUrl} />
+                    <label className="cursor-pointer rounded-full bg-card/90 px-3 py-1 text-xs font-semibold backdrop-blur hover:bg-card">
+                      Set background
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadBackground(e.target.files[0])} />
+                    </label>
+                  </>
+                )}
               </>
-            )}
-          </div>
+            }
+          />
         </div>
-
-        {/* Characters strip */}
       </div>
 
       {/* Right: tabs */}
