@@ -451,19 +451,45 @@ export function PokemonSheet({
 
       {/* Moves */}
       <section>
-        <div className="mb-2 flex items-center justify-between">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-bold">Moves <span className="font-normal text-muted-foreground">({knownMoves.length} / {moveCap})</span></h3>
-          {canEdit && (
-            <AddMoveDialog
-              available={filteredLearnable.map((l) => l.moves)}
-              onAdd={addMove}
-              atCap={knownMoves.length >= moveCap}
-              moveCap={moveCap}
-            />
-          )}
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-1.5 text-xs font-medium cursor-pointer">
+              <Checkbox checked={zMode} onCheckedChange={(v) => { setZMode(!!v); if (v) setGMaxMode(false); }} /> Z-Move
+            </label>
+            <label className="flex items-center gap-1.5 text-xs font-medium cursor-pointer">
+              <Checkbox checked={gMaxMode} onCheckedChange={(v) => { setGMaxMode(!!v); if (v) setZMode(false); }} /> G-Max
+            </label>
+            {canEdit && (
+              <AddMoveDialog
+                available={filteredLearnable.map((l) => l.moves)}
+                onAdd={addMove}
+                atCap={knownMoves.length >= moveCap}
+                moveCap={moveCap}
+              />
+            )}
+          </div>
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
-          {knownMoves.map((m) => {
+          {knownMoves.map((baseMove) => {
+            // Apply Z-Move or G-Max transformation for display + damage roll
+            const m: Move = (() => {
+              if (zMode && baseMove.power > 0) {
+                return {
+                  ...baseMove,
+                  name: Z_MOVE_NAMES[baseMove.type] ?? `Z-${baseMove.name}`,
+                  power: zMovePower(baseMove.power),
+                };
+              }
+              if (gMaxMode && baseMove.power > 0) {
+                return {
+                  ...baseMove,
+                  name: `G-Max ${baseMove.name}`,
+                  power: baseMove.power + 3,
+                };
+              }
+              return baseMove;
+            })();
             const tcol = TYPE_COLORS[m.type] ?? { bg: "#888", fg: "#fff" };
             const accStat = m.accuracy_stat ?? "dexterity";
             const accAttrVal = pokemon.current_attrs[accStat] ?? 1;
