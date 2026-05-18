@@ -30,9 +30,6 @@ export const ATTRS = [
   "dexterity",
   "vitality",
   "insight",
-  "toughness",
-  "appeal",
-  "control",
 ] as const;
 export type Attr = (typeof ATTRS)[number];
 
@@ -55,7 +52,7 @@ export const SKILLS = [
   "Brawl", "Channel", "Clash", "Evasion",
   "Alert", "Athletic", "Nature", "Stealth", "Allure", "Etiquette",
   "Intimidate", "Perform", "Crafts", "Lore", "Medicine", "Science",
-  "Empathy", "Survival", "Travel",
+  "Empathy", "Survival",
 ] as const;
 
 export const POKEMON_TYPES = [
@@ -87,22 +84,22 @@ export const TYPE_COLORS: Record<PokemonType, { bg: string; fg: string }> = {
   typeless: { bg: "#9aa0a6", fg: "#fff" },
 };
 
-// Roll N d10, return successes (>=6) and the dice
-export function rollD10(n: number): { dice: number[]; successes: number; ones: number } {
+// Roll N d6, Pokérole 2.0: success on 4+
+export function rollD6(n: number): { dice: number[]; successes: number; ones: number } {
   const dice: number[] = [];
   for (let i = 0; i < Math.max(0, Math.min(50, n)); i++) {
-    dice.push(1 + Math.floor(Math.random() * 10));
+    dice.push(1 + Math.floor(Math.random() * 6));
   }
   return {
     dice,
-    successes: dice.filter((d) => d >= 6).length,
+    successes: dice.filter((d) => d >= 4).length,
     ones: dice.filter((d) => d === 1).length,
   };
 }
 
-// /roll syntax: "5", "5d10", "3 athletic", with optional " for <label>"
+// /roll syntax: "5", "5d6", optional label
 export function parseRollCommand(input: string): { n: number; label?: string } | null {
-  const m = input.trim().match(/^\/roll\s+(\d+)(?:d10)?(?:\s+(.+))?$/i);
+  const m = input.trim().match(/^\/roll\s+(\d+)(?:d6)?(?:\s+(.+))?$/i);
   if (!m) return null;
   const n = parseInt(m[1], 10);
   if (!Number.isFinite(n) || n <= 0) return null;
