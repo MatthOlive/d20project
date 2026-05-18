@@ -116,6 +116,23 @@ export function TrainerSheet({
             disabled={!canEdit}
           />
         </div>
+        <div className="space-y-2">
+          <Label>Money (₽)</Label>
+          <Input
+            type="number" value={trainer.money}
+            onChange={(e) => patch({ money: parseInt(e.target.value) || 0 })}
+            disabled={!canEdit}
+          />
+        </div>
+        <div className="space-y-2 sm:col-span-2">
+          <Label>Background</Label>
+          <Textarea
+            value={trainer.background ?? ""}
+            onChange={(e) => patch({ background: e.target.value })}
+            disabled={!canEdit}
+            rows={2}
+          />
+        </div>
       </div>
 
       <div className="flex gap-3 rounded-lg border border-border bg-card p-3">
