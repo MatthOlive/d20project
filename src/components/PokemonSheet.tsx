@@ -170,11 +170,10 @@ export function PokemonSheet({
     const clamped = Math.min(val, limit);
     const newAttrs = { ...pokemon!.current_attrs, [key]: clamped };
     const vit = key === "vitality" ? clamped : (newAttrs.vitality ?? 1);
-    const str = key === "strength" ? clamped : (newAttrs.strength ?? 1);
     const ins = key === "insight" ? clamped : (newAttrs.insight ?? 1);
     patch({
       current_attrs: newAttrs,
-      hp: species!.base_hp + vit + str + RANK_BONUS[pokemon!.rank],
+      hp: species!.base_hp + vit,
       will: ins + 2,
     });
   }
