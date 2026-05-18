@@ -267,10 +267,13 @@ export function PokemonSheet({
           <div className="flex flex-wrap gap-1.5 pt-1">
             {(() => {
               const dex = pokemon.current_attrs.dexterity ?? 1;
-              const rb = RANK_BONUS[pokemon.rank];
-              const init = dex + rb;
-              const clash = dex + rb;
-              const evasion = dex + rb;
+              const str = pokemon.current_attrs.strength ?? 1;
+              const alert = pokemon.skills?.Alert ?? 0;
+              const clashSkill = pokemon.skills?.Clash ?? 0;
+              const evasionSkill = pokemon.skills?.Evasion ?? 0;
+              const init = dex + alert;
+              const clash = str + clashSkill;
+              const evasion = dex + evasionSkill;
               const name = pokemon.nickname || species.name;
               return (
                 <>
@@ -279,7 +282,7 @@ export function PokemonSheet({
                     <Dices className="mr-1 h-3.5 w-3.5" /> Initiative · {init}d6
                   </Button>
                   <Button size="sm" variant="outline" className="h-7"
-                    onClick={() => onRoll(`${name} · Clash (Dex+Clash)`, clash)}>
+                    onClick={() => onRoll(`${name} · Clash (Str+Clash)`, clash)}>
                     <Dices className="mr-1 h-3.5 w-3.5" /> Clash · {clash}d6
                   </Button>
                   <Button size="sm" variant="outline" className="h-7"
