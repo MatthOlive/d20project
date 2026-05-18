@@ -246,7 +246,7 @@ export function TrainerSheet({
       <section>
         <h3 className="mb-2 text-sm font-bold">Skills</h3>
         <div className="grid gap-2 sm:grid-cols-2">
-          {SKILLS.map((s) => {
+          {TRAINER_SKILLS.map((s) => {
             const v = trainer.skills[s] ?? 0;
             return (
               <div key={s} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
