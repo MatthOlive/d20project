@@ -240,6 +240,7 @@ export type Database = {
           created_at: string
           current_attrs: Json
           current_hp: number | null
+          current_will: number | null
           folder: string | null
           game_id: string
           happiness: number
@@ -267,6 +268,7 @@ export type Database = {
           created_at?: string
           current_attrs?: Json
           current_hp?: number | null
+          current_will?: number | null
           folder?: string | null
           game_id: string
           happiness?: number
@@ -294,6 +296,7 @@ export type Database = {
           created_at?: string
           current_attrs?: Json
           current_hp?: number | null
+          current_will?: number | null
           folder?: string | null
           game_id?: string
           happiness?: number
@@ -380,6 +383,33 @@ export type Database = {
           created_at?: string
           display_name?: string
           id?: string
+        }
+        Relationships: []
+      }
+      scenarios: {
+        Row: {
+          background_url: string | null
+          created_at: string
+          game_id: string
+          id: string
+          name: string
+          notes: string
+        }
+        Insert: {
+          background_url?: string | null
+          created_at?: string
+          game_id: string
+          id?: string
+          name?: string
+          notes?: string
+        }
+        Update: {
+          background_url?: string | null
+          created_at?: string
+          game_id?: string
+          id?: string
+          name?: string
+          notes?: string
         }
         Relationships: []
       }
@@ -535,15 +565,19 @@ export type Database = {
       }
       trainers: {
         Row: {
+          achievements: Json
           age: number | null
           attrs: Json
           background: string | null
           bag: string
+          bag_list: Json
           battle_items: string
+          battle_items_list: Json
           concept: string | null
           confidence: number
           created_at: string
           current_hp: number | null
+          current_will: number | null
           folder: string | null
           game_id: string
           id: string
@@ -554,21 +588,26 @@ export type Database = {
           notes: string
           owner_id: string
           pokedex: Json
+          potions: Json
           rank: Database["public"]["Enums"]["pokerole_rank"]
           skills: Json
           social_attrs: Json
           status_conditions: string[]
         }
         Insert: {
+          achievements?: Json
           age?: number | null
           attrs?: Json
           background?: string | null
           bag?: string
+          bag_list?: Json
           battle_items?: string
+          battle_items_list?: Json
           concept?: string | null
           confidence?: number
           created_at?: string
           current_hp?: number | null
+          current_will?: number | null
           folder?: string | null
           game_id: string
           id?: string
@@ -579,21 +618,26 @@ export type Database = {
           notes?: string
           owner_id: string
           pokedex?: Json
+          potions?: Json
           rank?: Database["public"]["Enums"]["pokerole_rank"]
           skills?: Json
           social_attrs?: Json
           status_conditions?: string[]
         }
         Update: {
+          achievements?: Json
           age?: number | null
           attrs?: Json
           background?: string | null
           bag?: string
+          bag_list?: Json
           battle_items?: string
+          battle_items_list?: Json
           concept?: string | null
           confidence?: number
           created_at?: string
           current_hp?: number | null
+          current_will?: number | null
           folder?: string | null
           game_id?: string
           id?: string
@@ -604,6 +648,7 @@ export type Database = {
           notes?: string
           owner_id?: string
           pokedex?: Json
+          potions?: Json
           rank?: Database["public"]["Enums"]["pokerole_rank"]
           skills?: Json
           social_attrs?: Json
