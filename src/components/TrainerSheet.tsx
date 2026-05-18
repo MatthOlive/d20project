@@ -80,7 +80,11 @@ export function TrainerSheet({
         </div>
         <div className="space-y-2">
           <Label>Nature</Label>
-          <Input value={trainer.nature ?? ""} onChange={(e) => patch({ nature: e.target.value })} disabled={!canEdit} />
+          <NatureSelect
+            value={trainer.nature}
+            disabled={!canEdit}
+            onChange={(nature, conf) => patch({ nature, confidence: conf })}
+          />
         </div>
         <div className="space-y-2">
           <Label>Age</Label>
