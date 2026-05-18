@@ -20,6 +20,26 @@ import {
 import { useDebouncedPatch } from "@/lib/use-debounced-patch";
 import { toast } from "sonner";
 import { Plus, Dices, Trash2, ImagePlus, RotateCcw } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+
+// Z-Move names per type (Pokérole 2.0)
+const Z_MOVE_NAMES: Record<string, string> = {
+  normal: "Breakneck Blitz", fire: "Inferno Overwhelming", water: "Hydro Vortex",
+  electric: "Gigavolt Havoc", grass: "Bloom Doom", ice: "Subzero Slammer",
+  fighting: "All-Out Pummeling", poison: "Acid Downpour", ground: "Tectonic Rage",
+  flying: "Supersonic Skystrike", psychic: "Shattered Psyche", bug: "Savage Spin-Out",
+  rock: "Continental Crush", ghost: "Never-Ending Nightmare", dragon: "Devastating Drake",
+  dark: "Black Hole Eclipse", steel: "Corkscrew Crash", fairy: "Twinkle Tackle",
+  typeless: "Breakneck Blitz",
+};
+// Z-Move power bumps per base power bracket (Pokérole 2.0)
+function zMovePower(p: number): number {
+  if (p <= 0) return 0;
+  if (p <= 3) return p + 5;
+  if (p <= 5) return p + 4;
+  if (p <= 7) return p + 3;
+  return p + 2;
+}
 
 type Species = {
   id: string;
