@@ -399,6 +399,26 @@ export function PokemonSheet({
         </div>
       </section>
 
+      {/* Skills */}
+      <section>
+        <h3 className="mb-2 text-sm font-bold">Skills</h3>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {SKILLS.map((s) => {
+            const v = pokemon.skills?.[s] ?? 0;
+            return (
+              <div key={s} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
+                <span className="text-sm">{s}</span>
+                <DotEditor
+                  value={v}
+                  max={5}
+                  onChange={(n) => patch({ skills: { ...pokemon.skills, [s]: n } })}
+                  disabled={!canEdit}
+                />
+              </div>
+            );
+          })}
+        </div>
+
       {/* Moves */}
       <section>
         <div className="mb-2 flex items-center justify-between">
