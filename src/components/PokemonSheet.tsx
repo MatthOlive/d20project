@@ -14,7 +14,7 @@ import {
 import { DotEditor } from "@/components/DotEditor";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  POKEMON_ATTRS, SOCIAL_ATTRS, RANKS, RANK_LABELS, RANK_BONUS, TYPE_COLORS, type Rank,
+  POKEMON_ATTRS, SOCIAL_ATTRS, RANKS, RANK_LABELS, RANK_BONUS, TYPE_COLORS, SKILLS, type Rank,
   rankAtLeast,
 } from "@/lib/pokerole";
 import { toast } from "sonner";
@@ -54,6 +54,7 @@ type Pokemon = {
   rank: Rank;
   current_attrs: Record<string, number>;
   social_attrs: Record<string, number>;
+  skills: Record<string, number>;
   modifiers: Record<string, number>;
   hp: number;
   will: number;
@@ -170,7 +171,7 @@ export function PokemonSheet({
     await patch({
       current_attrs: newAttrs,
       hp: species!.base_hp + vit + str + RANK_BONUS[pokemon!.rank],
-      will: ins + RANK_BONUS[pokemon!.rank],
+      will: ins + 2,
     });
   }
 
@@ -266,10 +267,13 @@ export function PokemonSheet({
           <div className="flex flex-wrap gap-1.5 pt-1">
             {(() => {
               const dex = pokemon.current_attrs.dexterity ?? 1;
-              const rb = RANK_BONUS[pokemon.rank];
-              const init = dex + rb;
-              const clash = dex + rb;
-              const evasion = dex + rb;
+              const str = pokemon.current_attrs.strength ?? 1;
+              const alert = pokemon.skills?.Alert ?? 0;
+              const clashSkill = pokemon.skills?.Clash ?? 0;
+              const evasionSkill = pokemon.skills?.Evasion ?? 0;
+              const init = dex + alert;
+              const clash = str + clashSkill;
+              const evasion = dex + evasionSkill;
               const name = pokemon.nickname || species.name;
               return (
                 <>
@@ -278,7 +282,7 @@ export function PokemonSheet({
                     <Dices className="mr-1 h-3.5 w-3.5" /> Initiative · {init}d6
                   </Button>
                   <Button size="sm" variant="outline" className="h-7"
-                    onClick={() => onRoll(`${name} · Clash (Dex+Clash)`, clash)}>
+                    onClick={() => onRoll(`${name} · Clash (Str+Clash)`, clash)}>
                     <Dices className="mr-1 h-3.5 w-3.5" /> Clash · {clash}d6
                   </Button>
                   <Button size="sm" variant="outline" className="h-7"
@@ -394,6 +398,29 @@ export function PokemonSheet({
           })}
         </div>
       </section>
+
+      {/* Skills */}
+      <section>
+        <h3 className="mb-2 text-sm font-bold">Skills</h3>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {SKILLS.map((s) => {
+            const v = pokemon.skills?.[s] ?? 0;
+            return (
+              <div key={s} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
+                <span className="text-sm">{s}</span>
+                <DotEditor
+                  value={v}
+                  max={5}
+                  onChange={(n) => patch({ skills: { ...pokemon.skills, [s]: n } })}
+                  disabled={!canEdit}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+
 
       {/* Moves */}
       <section>

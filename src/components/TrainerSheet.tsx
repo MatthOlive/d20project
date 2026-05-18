@@ -80,7 +80,7 @@ export function TrainerSheet({
   const ins = trainer.attrs.insight ?? 1;
   const alert = trainer.skills?.Alert ?? 0;
   const hp = vit + str + RANK_BONUS[trainer.rank];
-  const will = ins + RANK_BONUS[trainer.rank];
+  const will = ins + 2;
   const initiativePool = dex + alert;
   const ball = POKEBALLS[ballKey];
   const catchPool = ball.pool;
