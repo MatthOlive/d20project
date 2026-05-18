@@ -19,6 +19,9 @@ import {
 import { useDebouncedPatch } from "@/lib/use-debounced-patch";
 import { toast } from "sonner";
 import { Dices, ImagePlus, X as XIcon, Plus, Trash2 } from "lucide-react";
+import {
+  HpAndStatusBlock, AttackRollButton, GenericRollButton, painPenaltyFor,
+} from "@/components/SheetRolls";
 
 const POKEBALLS = {
   pokeball:  { label: "Pokéball",  pool: 4 },
