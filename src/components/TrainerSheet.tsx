@@ -41,6 +41,8 @@ type Trainer = {
   image_url: string | null;
   money: number;
   background: string | null;
+  bag: string;
+  battle_items: string;
 };
 
 export function TrainerSheet({
@@ -48,11 +50,13 @@ export function TrainerSheet({
   userId,
   isNarrator,
   onRoll,
+  onDeleted,
 }: {
   trainerId: string;
   userId: string;
   isNarrator: boolean;
   onRoll: (label: string, n: number) => void;
+  onDeleted?: () => void;
 }) {
   const [ballKey, setBallKey] = useState<BallKey>("pokeball");
   const [catchBonus, setCatchBonus] = useState(0);
