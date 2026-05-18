@@ -345,6 +345,31 @@ export function PokemonSheet({
         </div>
       </section>
 
+      {/* Social attributes */}
+      <section>
+        <h3 className="mb-2 text-sm font-bold">Social Attributes</h3>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {SOCIAL_ATTRS.map((a) => {
+            const v = pokemon.social_attrs?.[a] ?? 1;
+            return (
+              <div key={a} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
+                <span className="w-24 text-sm font-medium capitalize">{a}</span>
+                <DotEditor
+                  value={v}
+                  max={5}
+                  onChange={(n) => patch({ social_attrs: { ...pokemon.social_attrs, [a]: n } })}
+                  disabled={!canEdit}
+                />
+                <Button size="sm" variant="ghost" className="ml-1 h-7 px-2"
+                  onClick={() => onRoll(`${a} check`, v)}>
+                  <Dices className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
       {/* Moves */}
       <section>
         <div className="mb-2 flex items-center justify-between">
