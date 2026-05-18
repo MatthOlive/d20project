@@ -382,7 +382,7 @@ export function PokemonSheet({
                 <span className="w-24 text-sm font-medium capitalize">{a}</span>
                 <DotEditor
                   value={val}
-                  max={Math.max(5, limit)}
+                  max={Math.max(10, limit)}
                   cap={limit}
                   onChange={(n) => setAttr(a, n)}
                   disabled={!canEdit}
