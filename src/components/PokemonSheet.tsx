@@ -106,6 +106,8 @@ export function PokemonSheet({
   onChat: (body: string) => void;
 }) {
   const qc = useQueryClient();
+  const [zMode, setZMode] = useState(false);
+  const [gMaxMode, setGMaxMode] = useState(false);
 
   const queryKey = useMemo(() => ["pokemon", pokemonId], [pokemonId]);
   const { data: pokemon } = useQuery({
