@@ -94,11 +94,25 @@ export function TrainerSheet({
   const dex = trainer.attrs.dexterity ?? 1;
   const ins = trainer.attrs.insight ?? 1;
   const alert = trainer.skills?.Alert ?? 0;
-  const hp = vit + str + RANK_BONUS[trainer.rank];
+  const hp = 4 + vit;
+  const currentHp = trainer.current_hp ?? hp;
+  const painPenalty = painPenaltyFor(currentHp, hp);
   const will = ins + 2;
   const initiativePool = dex + alert;
   const ball = POKEBALLS[ballKey];
   const catchPool = ball.pool;
+
+  const attackSkillOptions = [
+    { name: "Brawl", value: trainer.skills?.Brawl ?? 0 },
+    { name: "Throw", value: trainer.skills?.Throw ?? 0 },
+    { name: "Weapons", value: trainer.skills?.Weapons ?? 0 },
+  ];
+  const allAttrsForRoll = [
+    ...ATTRS.map((a) => ({ name: a, value: trainer.attrs[a] ?? 1 })),
+    ...SOCIAL_ATTRS.map((a) => ({ name: a, value: trainer.social_attrs?.[a] ?? 1 })),
+  ];
+  const allSkillsForRoll = TRAINER_SKILLS.map((s) => ({ name: s, value: trainer.skills?.[s] ?? 0 }));
+  const charName = trainer.name;
 
   return (
     <div className="space-y-5 p-4">
