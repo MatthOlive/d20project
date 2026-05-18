@@ -236,6 +236,7 @@ export type Database = {
       pokemon: {
         Row: {
           battles: number
+          confidence: number
           created_at: string
           current_attrs: Json
           game_id: string
@@ -260,6 +261,7 @@ export type Database = {
         }
         Insert: {
           battles?: number
+          confidence?: number
           created_at?: string
           current_attrs?: Json
           game_id: string
@@ -284,6 +286,7 @@ export type Database = {
         }
         Update: {
           battles?: number
+          confidence?: number
           created_at?: string
           current_attrs?: Json
           game_id?: string

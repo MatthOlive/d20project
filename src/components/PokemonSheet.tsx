@@ -86,6 +86,7 @@ type Pokemon = {
   held_item: string | null;
   happiness: number;
   loyalty: number;
+  confidence: number;
   battles: number;
   victories: number;
 };
@@ -327,11 +328,20 @@ export function PokemonSheet({
       <section className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
           <Label className="text-xs">Nature</Label>
-          <Input value={pokemon.nature ?? ""} onChange={(e) => patch({ nature: e.target.value })} disabled={!canEdit} />
+          <NatureSelect
+            value={pokemon.nature}
+            disabled={!canEdit}
+            onChange={(nature, conf) => patch({ nature, confidence: conf })}
+          />
         </div>
         <div className="space-y-1">
           <Label className="text-xs">Held item</Label>
           <Input value={pokemon.held_item ?? ""} onChange={(e) => patch({ held_item: e.target.value })} disabled={!canEdit} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Confidence</Label>
+          <Input type="number" value={pokemon.confidence}
+            onChange={(e) => patch({ confidence: parseInt(e.target.value) || 0 })} disabled={!canEdit} />
         </div>
         <div className="space-y-1">
           <Label className="text-xs">Happiness</Label>
@@ -650,3 +660,59 @@ function MoveRollDialog({
   );
 }
 
+
+type Nature = {
+  id: string;
+  name: string;
+  keywords: string;
+  description: string;
+  confidence: number;
+};
+
+function NatureSelect({
+  value,
+  disabled,
+  onChange,
+}: {
+  value: string | null;
+  disabled?: boolean;
+  onChange: (nature: string, confidence: number) => void;
+}) {
+  const { data: natures = [] } = useQuery({
+    queryKey: ["natures"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("natures").select("*").order("sort_order");
+      if (error) throw error;
+      return (data ?? []) as Nature[];
+    },
+  });
+
+  const current = natures.find((n) => n.name === value);
+
+  return (
+    <div className="space-y-1">
+      <Select
+        value={value ?? ""}
+        onValueChange={(name) => {
+          const n = natures.find((x) => x.name === name);
+          if (n) onChange(n.name, n.confidence);
+        }}
+        disabled={disabled}
+      >
+        <SelectTrigger>
+          <SelectValue placeholder="Choose a nature…" />
+        </SelectTrigger>
+        <SelectContent>
+          {natures.map((n) => (
+            <SelectItem key={n.id} value={n.name}>
+              <span className="font-medium">{n.name}</span>
+              <span className="ml-2 text-xs text-muted-foreground">{n.keywords}</span>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {current && <p className="text-xs text-muted-foreground">{current.description}</p>}
+    </div>
+  );
+}
