@@ -107,6 +107,7 @@ export type Database = {
           invite_code: string
           name: string
           narrator_id: string
+          narrator_type: string
         }
         Insert: {
           background_url?: string | null
@@ -115,6 +116,7 @@ export type Database = {
           invite_code?: string
           name: string
           narrator_id: string
+          narrator_type?: string
         }
         Update: {
           background_url?: string | null
@@ -123,6 +125,7 @@ export type Database = {
           invite_code?: string
           name?: string
           narrator_id?: string
+          narrator_type?: string
         }
         Relationships: []
       }
