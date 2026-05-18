@@ -200,3 +200,241 @@ function InviteButton({ url }: { url: string }) {
     </Dialog>
   );
 }
+
+type CharRow =
+  | { kind: "trainer"; id: string; label: string; owner_id: string; image_url: string | null; folder: string | null; sprite_url?: string | null }
+  | { kind: "pokemon"; id: string; label: string; owner_id: string; image_url: string | null; folder: string | null; sprite_url: string | null };
+
+const FOLDER_MIME = "application/x-pokerole-sheet";
+
+function FilesPanel({
+  gameId,
+  userId,
+  onOpen,
+}: {
+  gameId: string;
+  userId: string;
+  onOpen: (w: OpenWindow) => void;
+}) {
+  const qc = useQueryClient();
+  const [pkmDialogOpen, setPkmDialogOpen] = useState(false);
+  const [newPkmSpecies, setNewPkmSpecies] = useState<string>("");
+  const [newFolder, setNewFolder] = useState("");
+  const [extraFolders, setExtraFolders] = useState<string[]>([]);
+  const [dropHover, setDropHover] = useState<string | null>(null);
+
+  const { data: characters } = useQuery({
+    queryKey: ["characters", gameId],
+    queryFn: async () => {
+      const [pkm, tr] = await Promise.all([
+        supabase.from("pokemon").select("id,nickname,owner_id,image_url,folder,species:species_id(name,sprite_url)").eq("game_id", gameId),
+        supabase.from("trainers").select("id,name,owner_id,image_url,folder").eq("game_id", gameId),
+      ]);
+      return {
+        pokemon: (pkm.data ?? []) as { id: string; nickname: string | null; owner_id: string; image_url: string | null; folder: string | null; species: { name: string; sprite_url: string | null } }[],
+        trainers: (tr.data ?? []) as { id: string; name: string; owner_id: string; image_url: string | null; folder: string | null }[],
+      };
+    },
+  });
+
+  const { data: speciesList } = useQuery({
+    queryKey: ["species-list"],
+    queryFn: async () => {
+      const { data } = await supabase.from("species").select("id,name").order("dex_number");
+      return data ?? [];
+    },
+  });
+
+  const createTrainer = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase
+        .from("trainers")
+        .insert({ game_id: gameId, owner_id: userId, name: "New Trainer" })
+        .select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (t) => {
+      qc.invalidateQueries({ queryKey: ["characters", gameId] });
+      onOpen({ kind: "trainer", id: t.id, title: t.name });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const createPokemon = useMutation({
+    mutationFn: async () => {
+      if (!newPkmSpecies) throw new Error("Pick a species");
+      const { data, error } = await supabase
+        .from("pokemon")
+        .insert({ game_id: gameId, owner_id: userId, species_id: newPkmSpecies, rank: "starter" })
+        .select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (p) => {
+      qc.invalidateQueries({ queryKey: ["characters", gameId] });
+      setPkmDialogOpen(false);
+      setNewPkmSpecies("");
+      onOpen({ kind: "pokemon", id: p.id, title: "Pokémon" });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const rows: CharRow[] = [
+    ...(characters?.trainers ?? []).map<CharRow>((t) => ({
+      kind: "trainer", id: t.id, label: t.name, owner_id: t.owner_id,
+      image_url: t.image_url, folder: t.folder, sprite_url: null,
+    })),
+    ...(characters?.pokemon ?? []).map<CharRow>((p) => ({
+      kind: "pokemon", id: p.id, label: p.nickname ?? p.species.name, owner_id: p.owner_id,
+      image_url: p.image_url, folder: p.folder, sprite_url: p.species.sprite_url,
+    })),
+  ];
+
+  const folderNames = Array.from(
+    new Set<string>([
+      ...rows.map((r) => r.folder).filter((f): f is string => !!f),
+      ...extraFolders,
+    ]),
+  ).sort();
+  const groups: { name: string | null; items: CharRow[] }[] = [
+    ...folderNames.map((name) => ({ name, items: rows.filter((r) => r.folder === name) })),
+    { name: null, items: rows.filter((r) => !r.folder) },
+  ];
+
+  async function moveToFolder(row: CharRow, folder: string | null) {
+    if (row.folder === folder) return;
+    const table = row.kind === "trainer" ? "trainers" : "pokemon";
+    const { error } = await supabase.from(table).update({ folder }).eq("id", row.id);
+    if (error) { toast.error(error.message); return; }
+    qc.invalidateQueries({ queryKey: ["characters", gameId] });
+  }
+
+  function addFolder() {
+    const name = newFolder.trim();
+    if (!name) return;
+    if (!extraFolders.includes(name) && !folderNames.includes(name)) {
+      setExtraFolders((p) => [...p, name]);
+    }
+    setNewFolder("");
+  }
+
+  function renderItem(r: CharRow) {
+    const mapPayload: DragCharacterPayload = {
+      kind: r.kind, id: r.id, label: r.label,
+      imageUrl: r.image_url ?? (r.kind === "pokemon" ? r.sprite_url : null), ownerId: r.owner_id,
+    };
+    return (
+      <button
+        key={`${r.kind}-${r.id}`}
+        draggable
+        onDragStart={(e) => {
+          e.dataTransfer.setData(DRAG_MIME, JSON.stringify(mapPayload));
+          e.dataTransfer.setData(FOLDER_MIME, JSON.stringify({ kind: r.kind, id: r.id, folder: r.folder }));
+          e.dataTransfer.effectAllowed = "copyMove";
+        }}
+        onClick={() => onOpen({ kind: r.kind, id: r.id, title: r.label })}
+        className="flex w-full items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-left text-sm hover:border-primary"
+      >
+        {r.kind === "pokemon" && r.sprite_url
+          ? <img src={r.sprite_url} alt="" className="h-6 w-6 shrink-0" />
+          : <User className="h-3.5 w-3.5 shrink-0" />}
+        <span className="truncate">{r.label}</span>
+      </button>
+    );
+  }
+
+  function FolderGroup({ name, items }: { name: string | null; items: CharRow[] }) {
+    const key = name ?? "__root__";
+    const isHover = dropHover === key;
+    return (
+      <div
+        onDragOver={(e) => {
+          if (e.dataTransfer.types.includes(FOLDER_MIME)) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            setDropHover(key);
+          }
+        }}
+        onDragLeave={() => setDropHover((h) => (h === key ? null : h))}
+        onDrop={(e) => {
+          const raw = e.dataTransfer.getData(FOLDER_MIME);
+          setDropHover(null);
+          if (!raw) return;
+          e.preventDefault();
+          const { kind, id } = JSON.parse(raw) as { kind: "trainer" | "pokemon"; id: string };
+          const row = rows.find((r) => r.kind === kind && r.id === id);
+          if (row) moveToFolder(row, name);
+        }}
+        className={`rounded-md border ${isHover ? "border-primary bg-accent/40" : "border-border bg-background"} p-2`}
+      >
+        <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+          {name ? <Folder className="h-3.5 w-3.5" /> : <FolderOpen className="h-3.5 w-3.5" />}
+          {name ?? "Unfiled"}
+          <span className="ml-1 text-[10px] opacity-60">({items.length})</span>
+        </div>
+        <div className="space-y-1.5">
+          {items.map(renderItem)}
+          {items.length === 0 && (
+            <p className="px-2 py-1 text-[11px] text-muted-foreground">Drop a sheet here.</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-bold">Characters</h3>
+        <div className="flex gap-1.5">
+          <Button size="sm" variant="outline" onClick={() => createTrainer.mutate()}>
+            <User className="mr-1 h-3.5 w-3.5" /> Trainer
+          </Button>
+          <Dialog open={pkmDialogOpen} onOpenChange={setPkmDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm"><Sparkles className="mr-1 h-3.5 w-3.5" /> Pokémon</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Create a Pokémon</DialogTitle></DialogHeader>
+              <Label>Species</Label>
+              <Select value={newPkmSpecies} onValueChange={setNewPkmSpecies}>
+                <SelectTrigger><SelectValue placeholder="Pick a species" /></SelectTrigger>
+                <SelectContent>
+                  {speciesList?.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <DialogFooter>
+                <Button onClick={() => createPokemon.mutate()} disabled={createPokemon.isPending}>Create</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1.5">
+        <Input
+          value={newFolder}
+          onChange={(e) => setNewFolder(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && addFolder()}
+          placeholder="New folder name…"
+          className="h-8 text-xs"
+        />
+        <Button size="sm" variant="outline" onClick={addFolder} disabled={!newFolder.trim()}>
+          <FolderPlus className="mr-1 h-3.5 w-3.5" /> Add
+        </Button>
+      </div>
+
+      <p className="text-[11px] text-muted-foreground">
+        Tip: drag a character onto the map to place a token, or onto a folder to organize.
+      </p>
+
+      <div className="space-y-2">
+        {groups.map((g) => <FolderGroup key={g.name ?? "__root__"} name={g.name} items={g.items} />)}
+        {rows.length === 0 && (
+          <p className="text-xs text-muted-foreground">No characters yet. Create one to get started.</p>
+        )}
+      </div>
+    </div>
+  );
+}
