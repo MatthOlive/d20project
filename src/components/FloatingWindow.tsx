@@ -47,7 +47,7 @@ export function FloatingWindow({
     };
   }, []);
 
-  function bringFront() { setZ(++zCounter); }
+  function bringFront() { setZ(nextZ()); }
 
   return (
     <div
