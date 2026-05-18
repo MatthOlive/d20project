@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { DotEditor } from "@/components/DotEditor";
 import {
-  ATTRS, RANKS, RANK_LABELS, RANK_BONUS, TYPE_COLORS, type Rank,
+  POKEMON_ATTRS, RANKS, RANK_LABELS, RANK_BONUS, TYPE_COLORS, type Rank,
   rankAtLeast,
 } from "@/lib/pokerole";
 import { toast } from "sonner";
@@ -232,7 +232,7 @@ export function PokemonSheet({
       <section>
         <h3 className="mb-2 text-sm font-bold">Attributes</h3>
         <div className="grid gap-2 sm:grid-cols-2">
-          {ATTRS.filter((a) => species.base_attrs[a] !== undefined || a === "vitality" || a === "insight").map((a) => {
+          {POKEMON_ATTRS.map((a) => {
             const val = pokemon.current_attrs[a] ?? species.base_attrs[a] ?? 1;
             const limit = species.attr_limits[a] ?? 5;
             const mod = pokemon.modifiers[a] ?? 0;

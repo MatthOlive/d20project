@@ -36,6 +36,15 @@ export const ATTRS = [
 ] as const;
 export type Attr = (typeof ATTRS)[number];
 
+// Pokémon use a different attribute set than Trainers
+export const POKEMON_ATTRS = [
+  "strength",
+  "dexterity",
+  "vitality",
+  "special",
+  "insight",
+] as const;
+
 export const HUMAN_ATTR_CAP = 5;
 
 export const SKILLS = [
@@ -47,7 +56,7 @@ export const SKILLS = [
 
 export const POKEMON_TYPES = [
   "normal","fire","water","electric","grass","ice","fighting","poison","ground",
-  "flying","psychic","bug","rock","ghost","dragon","dark","steel","fairy",
+  "flying","psychic","bug","rock","ghost","dragon","dark","steel","fairy","typeless",
 ] as const;
 export type PokemonType = (typeof POKEMON_TYPES)[number];
 
@@ -71,6 +80,7 @@ export const TYPE_COLORS: Record<PokemonType, { bg: string; fg: string }> = {
   dark:     { bg: "#705848", fg: "#fff" },
   steel:    { bg: "#B8B8D0", fg: "#222" },
   fairy:    { bg: "#EE99AC", fg: "#222" },
+  typeless: { bg: "#9aa0a6", fg: "#fff" },
 };
 
 // Roll N d10, return successes (>=6) and the dice

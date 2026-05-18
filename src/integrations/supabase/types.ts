@@ -542,6 +542,7 @@ export type Database = {
         | "will"
         | "defense"
         | "special_defense"
+        | "special"
       game_role: "narrator" | "player"
       pokemon_type:
         | "normal"
@@ -562,6 +563,7 @@ export type Database = {
         | "dark"
         | "steel"
         | "fairy"
+        | "typeless"
       pokerole_rank:
         | "starter"
         | "beginner"
@@ -708,6 +710,7 @@ export const Constants = {
         "will",
         "defense",
         "special_defense",
+        "special",
       ],
       game_role: ["narrator", "player"],
       pokemon_type: [
@@ -729,6 +732,7 @@ export const Constants = {
         "dark",
         "steel",
         "fairy",
+        "typeless",
       ],
       pokerole_rank: ["starter", "beginner", "amateur", "ace", "pro", "master"],
     },
