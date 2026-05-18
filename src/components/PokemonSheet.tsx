@@ -520,8 +520,8 @@ export function PokemonSheet({
                 </div>
                 <div className="space-y-2 bg-card p-3">
                   <div className="text-xs text-muted-foreground">
-                    Accuracy {accStat}{m.accuracy_skill ? `+${m.accuracy_skill}` : ""} · {accPool}d6
-                    {isStatus ? " · Status (no damage)" : ` · Damage ${dmgStat}+Power · ${dmgPool}d6`}
+                    Accuracy {accAttrVal}{m.accuracy_skill ? `+${accSkillVal}` : ""} · {accPool}d6
+                    {isStatus ? " · Status (no damage)" : ` · Damage ${dmgAttrVal}+${m.power} · ${dmgPool}d6`}
                   </div>
                   {m.effect && <p className="text-xs">{m.effect}</p>}
                   <div className="flex items-center justify-between">
