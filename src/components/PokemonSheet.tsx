@@ -12,12 +12,13 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { DotEditor } from "@/components/DotEditor";
+import { Textarea } from "@/components/ui/textarea";
 import {
-  POKEMON_ATTRS, RANKS, RANK_LABELS, RANK_BONUS, TYPE_COLORS, type Rank,
+  POKEMON_ATTRS, SOCIAL_ATTRS, RANKS, RANK_LABELS, RANK_BONUS, TYPE_COLORS, type Rank,
   rankAtLeast,
 } from "@/lib/pokerole";
 import { toast } from "sonner";
-import { Plus, Dices, Trash2 } from "lucide-react";
+import { Plus, Dices, Trash2, ImagePlus, RotateCcw } from "lucide-react";
 
 type Species = {
   id: string;
