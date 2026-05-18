@@ -109,7 +109,7 @@ export function PokemonSheet({
   gameId: string;
   userId: string;
   isNarrator: boolean;
-  onRoll: (label: string, n: number) => void;
+  onRoll: (label: string, n: number, penalty?: number) => void;
   onChat: (body: string) => void;
   onDeleted?: () => void;
 }) {
