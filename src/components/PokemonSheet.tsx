@@ -301,15 +301,33 @@ export function PokemonSheet({
                 ))}
               </SelectContent>
             </Select>
-            {canEdit && species.evolutions.length > 0 && (
-              <EvolveButton pokemonId={pokemonId} fromSprite={species.sprite_url} evolutions={species.evolutions} />
+            {canEdit && (
+              <EvolveButton
+                pokemonId={pokemonId}
+                fromSprite={species.sprite_url}
+                fromSpeciesId={species.id}
+                currentName={species.name}
+                evolutions={species.evolutions}
+                baseSpeciesId={(pokemon.modifiers as Record<string, unknown>)?._base_species as string | undefined}
+              />
+            )}
+            {canEdit && (
+              <DynamaxToggle mode={dynaMode} onChange={setDynaMode} />
             )}
             <div className="ml-auto flex flex-wrap items-center gap-1.5 text-sm">
-              <span className="rounded-full bg-success/15 px-2.5 py-0.5 font-bold text-success">HP {pokemon.hp}</span>
+              <span className="rounded-full bg-success/15 px-2.5 py-0.5 font-bold text-success">
+                HP {dynaMode ? pokemon.hp * 2 : pokemon.hp}{dynaMode ? " ×2" : ""}
+              </span>
               <span className="rounded-full bg-accent px-2.5 py-0.5 font-bold">Will {pokemon.will}</span>
               <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-bold text-primary">Def {pokemon.current_attrs.vitality ?? 1}</span>
               <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-bold text-primary">SpDef {pokemon.current_attrs.vitality ?? 1}</span>
+              {dynaMode && (
+                <span className="rounded-full bg-red-500/20 px-2.5 py-0.5 text-xs font-bold uppercase text-red-500">
+                  {dynaMode === "gigantamax" ? "G-Max" : "Dynamax"}
+                </span>
+              )}
             </div>
+
           </div>
           <div className="flex flex-wrap gap-1.5 pt-1">
             {(() => {
