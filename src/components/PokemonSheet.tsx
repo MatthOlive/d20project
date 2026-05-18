@@ -190,13 +190,43 @@ export function PokemonSheet({
     qc.invalidateQueries({ queryKey: ["pokemon-moves", pokemonId] });
   }
 
+  async function uploadImage(file: File) {
+    if (!canEdit) return;
+    if (file.size > 2_000_000) { toast.error("Image must be under 2 MB"); return; }
+    const reader = new FileReader();
+    reader.onload = () => patch({ image_url: reader.result as string });
+    reader.readAsDataURL(file);
+  }
+
+  const displayImage = pokemon.image_url ?? species.sprite_url;
+
   return (
     <div className="space-y-5 p-4">
       {/* Header */}
       <div className="flex gap-4">
-        {species.sprite_url && (
-          <img src={species.sprite_url} alt={species.name} className="h-24 w-24 rounded-xl bg-muted object-contain" />
-        )}
+        <div className="group relative">
+          {displayImage ? (
+            <img src={displayImage} alt={species.name} className="h-24 w-24 rounded-xl bg-muted object-contain" />
+          ) : (
+            <div className="flex h-24 w-24 items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground">No image</div>
+          )}
+          {canEdit && (
+            <div className="absolute inset-0 flex items-end justify-center gap-1 rounded-xl bg-black/40 p-1 opacity-0 transition group-hover:opacity-100">
+              <label className="cursor-pointer rounded bg-card px-2 py-0.5 text-[10px] font-semibold hover:bg-accent">
+                <ImagePlus className="inline h-3 w-3" />
+                <input type="file" accept="image/*" className="hidden"
+                  onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0])} />
+              </label>
+              {pokemon.image_url && (
+                <button
+                  onClick={() => patch({ image_url: null })}
+                  className="cursor-pointer rounded bg-card px-2 py-0.5 text-[10px] font-semibold hover:bg-accent"
+                  title="Reset to sprite"
+                ><RotateCcw className="inline h-3 w-3" /></button>
+              )}
+            </div>
+          )}
+        </div>
         <div className="flex-1 space-y-2">
           <Input
             disabled={!canEdit}
@@ -236,6 +266,38 @@ export function PokemonSheet({
           </div>
         </div>
       </div>
+
+      {/* Details */}
+      <section className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1">
+          <Label className="text-xs">Nature</Label>
+          <Input value={pokemon.nature ?? ""} onChange={(e) => patch({ nature: e.target.value })} disabled={!canEdit} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Held item</Label>
+          <Input value={pokemon.held_item ?? ""} onChange={(e) => patch({ held_item: e.target.value })} disabled={!canEdit} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Happiness</Label>
+          <Input type="number" value={pokemon.happiness}
+            onChange={(e) => patch({ happiness: parseInt(e.target.value) || 0 })} disabled={!canEdit} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Loyalty</Label>
+          <Input type="number" value={pokemon.loyalty}
+            onChange={(e) => patch({ loyalty: parseInt(e.target.value) || 0 })} disabled={!canEdit} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Battles</Label>
+          <Input type="number" value={pokemon.battles}
+            onChange={(e) => patch({ battles: parseInt(e.target.value) || 0 })} disabled={!canEdit} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Victories</Label>
+          <Input type="number" value={pokemon.victories}
+            onChange={(e) => patch({ victories: parseInt(e.target.value) || 0 })} disabled={!canEdit} />
+        </div>
+      </section>
 
       {/* Attributes */}
       <section>
