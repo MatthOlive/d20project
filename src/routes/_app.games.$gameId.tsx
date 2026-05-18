@@ -99,42 +99,7 @@ function GameRoom() {
   const inviteUrl = typeof window !== "undefined" && game
     ? `${window.location.origin}/join/${game.invite_code}` : "";
 
-  const createTrainer = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase
-        .from("trainers")
-        .insert({ game_id: gameId, owner_id: user!.id, name: "New Trainer" })
-        .select().single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (t) => {
-      qc.invalidateQueries({ queryKey: ["characters", gameId] });
-      openWindow({ kind: "trainer", id: t.id, title: t.name });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const [newPkmSpecies, setNewPkmSpecies] = useState<string>("");
-  const [pkmDialogOpen, setPkmDialogOpen] = useState(false);
-  const createPokemon = useMutation({
-    mutationFn: async () => {
-      if (!newPkmSpecies) throw new Error("Pick a species");
-      const { data, error } = await supabase
-        .from("pokemon")
-        .insert({ game_id: gameId, owner_id: user!.id, species_id: newPkmSpecies, rank: "starter" })
-        .select().single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (p) => {
-      qc.invalidateQueries({ queryKey: ["characters", gameId] });
-      setPkmDialogOpen(false);
-      setNewPkmSpecies("");
-      openWindow({ kind: "pokemon", id: p.id, title: "Pokémon" });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
+  // Character creation lives in <FilesPanel>.
 
   async function uploadBackground(file: File) {
     if (!isNarrator) return;
