@@ -66,10 +66,14 @@ export function TrainerSheet({
 
   const vit = trainer.attrs.vitality ?? 1;
   const str = trainer.attrs.strength ?? 1;
-  const tough = trainer.attrs.toughness ?? 1;
+  const dex = trainer.attrs.dexterity ?? 1;
   const ins = trainer.attrs.insight ?? 1;
+  const alert = trainer.skills?.Alert ?? 0;
+  const empathy = trainer.skills?.Empathy ?? 0;
   const hp = vit + str + RANK_BONUS[trainer.rank];
-  const will = ins + tough + RANK_BONUS[trainer.rank];
+  const will = ins + RANK_BONUS[trainer.rank];
+  const initiativePool = dex + alert;
+  const catchPool = ins + empathy;
 
   return (
     <div className="space-y-5 p-4">
