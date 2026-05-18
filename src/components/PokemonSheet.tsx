@@ -21,6 +21,9 @@ import { useDebouncedPatch } from "@/lib/use-debounced-patch";
 import { toast } from "sonner";
 import { Plus, Dices, Trash2, ImagePlus, RotateCcw, Sparkles, Zap, Maximize2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  HpAndStatusBlock, AttackRollButton, GenericRollButton, painPenaltyFor,
+} from "@/components/SheetRolls";
 
 // Z-Move names per type (Pokérole 2.0)
 const Z_MOVE_NAMES: Record<string, string> = {
