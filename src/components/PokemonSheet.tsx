@@ -446,9 +446,11 @@ export function PokemonSheet({
             const accAttrVal = pokemon.current_attrs[accStat] ?? 1;
             const accSkillVal = m.accuracy_skill ? (pokemon.skills?.[m.accuracy_skill] ?? 0) : 0;
             const accPool = accAttrVal + accSkillVal;
+            const cat = (m.category ?? "").toLowerCase();
+            const isStatus = cat === "support" || cat === "status" || m.power <= 0 || !m.damage_stat;
             const dmgStat = m.damage_stat ?? "strength";
             const dmgAttrVal = pokemon.current_attrs[dmgStat] ?? 1;
-            const dmgPool = m.power + dmgAttrVal;
+            const dmgPool = isStatus ? 0 : m.power + dmgAttrVal;
             const name = pokemon.nickname || species.name;
             return (
               <div key={m.id} className="overflow-hidden rounded-lg border border-border">
@@ -459,7 +461,7 @@ export function PokemonSheet({
                 <div className="space-y-2 bg-card p-3">
                   <div className="text-xs text-muted-foreground">
                     Accuracy {accStat}{m.accuracy_skill ? `+${m.accuracy_skill}` : ""} · {accPool}d6
-                    {" · "}Damage {dmgStat}+Power · {dmgPool}d6
+                    {isStatus ? " · Status (no damage)" : ` · Damage ${dmgStat}+Power · ${dmgPool}d6`}
                   </div>
                   {m.effect && <p className="text-xs">{m.effect}</p>}
                   <div className="flex items-center justify-between">
@@ -468,9 +470,11 @@ export function PokemonSheet({
                       pokemonName={name}
                       accPool={accPool}
                       dmgPool={dmgPool}
+                      isStatus={isStatus}
                       onRoll={onRoll}
                       onChat={onChat}
                     />
+
                     {canEdit && (
                       <Button size="icon" variant="ghost" onClick={() => removeMove(m.id)}>
                         <Trash2 className="h-3.5 w-3.5" />
