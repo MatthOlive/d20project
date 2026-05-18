@@ -86,6 +86,7 @@ type Pokemon = {
   held_item: string | null;
   happiness: number;
   loyalty: number;
+  confidence: number;
   battles: number;
   victories: number;
 };
