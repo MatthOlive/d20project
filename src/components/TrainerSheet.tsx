@@ -158,6 +158,8 @@ export function TrainerSheet({
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-success/15 px-3 py-1 text-sm font-bold text-success">HP {hp}</span>
           <span className="rounded-full bg-accent px-3 py-1 text-sm font-bold">Will {will}</span>
+          <span className="rounded-full bg-muted px-3 py-1 text-sm font-bold" title="Defense = Vitality">Def {vit}</span>
+          <span className="rounded-full bg-muted px-3 py-1 text-sm font-bold" title="Special Defense = Vitality">Sp.Def {vit}</span>
           <Button size="sm" variant="outline" className="h-7"
             onClick={() => onRoll(`${trainer.name} · Initiative (Dex+Alert)`, initiativePool)}>
             <Dices className="mr-1 h-3.5 w-3.5" /> Initiative · {initiativePool}d6
