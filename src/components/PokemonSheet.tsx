@@ -19,7 +19,7 @@ import {
 } from "@/lib/pokerole";
 import { useDebouncedPatch } from "@/lib/use-debounced-patch";
 import { toast } from "sonner";
-import { Plus, Dices, Trash2, ImagePlus, RotateCcw } from "lucide-react";
+import { Plus, Dices, Trash2, ImagePlus, RotateCcw, Sparkles } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
 // Z-Move names per type (Pokérole 2.0)
