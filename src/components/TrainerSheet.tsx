@@ -261,7 +261,8 @@ export function TrainerSheet({
                   onChange={(n) => patch({ attrs: { ...trainer.attrs, [a]: n } })}
                   disabled={!canEdit}
                 />
-                <Button size="sm" variant="ghost" className="ml-1 h-7 px-2" onClick={() => onRoll(`${trainer.name} · ${a}`, v)}>
+                <Button size="sm" variant="ghost" className="ml-1 h-7 px-2" onClick={() => onRoll(`${charName} · ${a}`, v, painPenalty)}>
+
                   <Dices className="h-3.5 w-3.5" />
                 </Button>
               </div>
