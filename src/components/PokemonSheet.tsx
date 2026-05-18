@@ -20,6 +20,26 @@ import {
 import { useDebouncedPatch } from "@/lib/use-debounced-patch";
 import { toast } from "sonner";
 import { Plus, Dices, Trash2, ImagePlus, RotateCcw } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+
+// Z-Move names per type (Pokérole 2.0)
+const Z_MOVE_NAMES: Record<string, string> = {
+  normal: "Breakneck Blitz", fire: "Inferno Overwhelming", water: "Hydro Vortex",
+  electric: "Gigavolt Havoc", grass: "Bloom Doom", ice: "Subzero Slammer",
+  fighting: "All-Out Pummeling", poison: "Acid Downpour", ground: "Tectonic Rage",
+  flying: "Supersonic Skystrike", psychic: "Shattered Psyche", bug: "Savage Spin-Out",
+  rock: "Continental Crush", ghost: "Never-Ending Nightmare", dragon: "Devastating Drake",
+  dark: "Black Hole Eclipse", steel: "Corkscrew Crash", fairy: "Twinkle Tackle",
+  typeless: "Breakneck Blitz",
+};
+// Z-Move power bumps per base power bracket (Pokérole 2.0)
+function zMovePower(p: number): number {
+  if (p <= 0) return 0;
+  if (p <= 3) return p + 5;
+  if (p <= 5) return p + 4;
+  if (p <= 7) return p + 3;
+  return p + 2;
+}
 
 type Species = {
   id: string;
@@ -86,6 +106,8 @@ export function PokemonSheet({
   onChat: (body: string) => void;
 }) {
   const qc = useQueryClient();
+  const [zMode, setZMode] = useState(false);
+  const [gMaxMode, setGMaxMode] = useState(false);
 
   const queryKey = useMemo(() => ["pokemon", pokemonId], [pokemonId]);
   const { data: pokemon } = useQuery({
@@ -429,19 +451,45 @@ export function PokemonSheet({
 
       {/* Moves */}
       <section>
-        <div className="mb-2 flex items-center justify-between">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-bold">Moves <span className="font-normal text-muted-foreground">({knownMoves.length} / {moveCap})</span></h3>
-          {canEdit && (
-            <AddMoveDialog
-              available={filteredLearnable.map((l) => l.moves)}
-              onAdd={addMove}
-              atCap={knownMoves.length >= moveCap}
-              moveCap={moveCap}
-            />
-          )}
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-1.5 text-xs font-medium cursor-pointer">
+              <Checkbox checked={zMode} onCheckedChange={(v) => { setZMode(!!v); if (v) setGMaxMode(false); }} /> Z-Move
+            </label>
+            <label className="flex items-center gap-1.5 text-xs font-medium cursor-pointer">
+              <Checkbox checked={gMaxMode} onCheckedChange={(v) => { setGMaxMode(!!v); if (v) setZMode(false); }} /> G-Max
+            </label>
+            {canEdit && (
+              <AddMoveDialog
+                available={filteredLearnable.map((l) => l.moves)}
+                onAdd={addMove}
+                atCap={knownMoves.length >= moveCap}
+                moveCap={moveCap}
+              />
+            )}
+          </div>
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
-          {knownMoves.map((m) => {
+          {knownMoves.map((baseMove) => {
+            // Apply Z-Move or G-Max transformation for display + damage roll
+            const m: Move = (() => {
+              if (zMode && baseMove.power > 0) {
+                return {
+                  ...baseMove,
+                  name: Z_MOVE_NAMES[baseMove.type] ?? `Z-${baseMove.name}`,
+                  power: zMovePower(baseMove.power),
+                };
+              }
+              if (gMaxMode && baseMove.power > 0) {
+                return {
+                  ...baseMove,
+                  name: `G-Max ${baseMove.name}`,
+                  power: baseMove.power + 3,
+                };
+              }
+              return baseMove;
+            })();
             const tcol = TYPE_COLORS[m.type] ?? { bg: "#888", fg: "#fff" };
             const accStat = m.accuracy_stat ?? "dexterity";
             const accAttrVal = pokemon.current_attrs[accStat] ?? 1;
