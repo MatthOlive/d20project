@@ -99,6 +99,7 @@ export function PokemonSheet({
   isNarrator,
   onRoll,
   onChat,
+  onDeleted,
 }: {
   pokemonId: string;
   gameId: string;
@@ -106,6 +107,7 @@ export function PokemonSheet({
   isNarrator: boolean;
   onRoll: (label: string, n: number) => void;
   onChat: (body: string) => void;
+  onDeleted?: () => void;
 }) {
   const qc = useQueryClient();
   const [zMode, setZMode] = useState(false);
