@@ -52,6 +52,7 @@ type Species = {
   hidden_ability: string | null;
   suggested_rank: Rank | null;
   sprite_url: string | null;
+  evolutions: string[];
 };
 
 type Move = {
