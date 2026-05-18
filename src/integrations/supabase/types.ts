@@ -206,6 +206,33 @@ export type Database = {
         }
         Relationships: []
       }
+      natures: {
+        Row: {
+          confidence: number
+          description: string
+          id: string
+          keywords: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          confidence?: number
+          description?: string
+          id?: string
+          keywords?: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          confidence?: number
+          description?: string
+          id?: string
+          keywords?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       pokemon: {
         Row: {
           created_at: string
