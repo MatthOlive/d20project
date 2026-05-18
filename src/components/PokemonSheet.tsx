@@ -418,6 +418,9 @@ export function PokemonSheet({
             );
           })}
         </div>
+      </section>
+
+
 
       {/* Moves */}
       <section>
