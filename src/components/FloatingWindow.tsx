@@ -2,7 +2,8 @@ import { useRef, useState, useEffect, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-let zCounter = 100;
+// Keep windows below shadcn dialogs/popovers (z-50) so move-pickers stay on top.
+let zCounter = 10;
 
 export function FloatingWindow({
   title,
