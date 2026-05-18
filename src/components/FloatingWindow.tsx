@@ -23,7 +23,11 @@ export function FloatingWindow({
   height?: number;
 }) {
   const [pos, setPos] = useState({ x: initialX, y: initialY });
-  const [z, setZ] = useState(() => ++zCounter);
+  const nextZ = () => {
+    zCounter = zCounter >= 45 ? 10 : zCounter + 1;
+    return zCounter;
+  };
+  const [z, setZ] = useState(() => nextZ());
   const dragOrigin = useRef<{ mx: number; my: number; ox: number; oy: number } | null>(null);
 
   useEffect(() => {
