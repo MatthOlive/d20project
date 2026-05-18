@@ -113,6 +113,7 @@ export function TrainerSheet({
   const currentHp = trainer.current_hp ?? hp;
   const painPenalty = painPenaltyFor(currentHp, hp);
   const will = ins + 2;
+  const currentWill = trainer.current_will ?? will;
   const initiativePool = dex + alert;
   const ball = POKEBALLS[ballKey];
   const catchPool = ball.pool;
