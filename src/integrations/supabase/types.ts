@@ -170,9 +170,9 @@ export type Database = {
       moves: {
         Row: {
           accuracy_skill: string | null
-          accuracy_stat: Database["public"]["Enums"]["attr_key"] | null
+          accuracy_stat: string | null
           category: string
-          damage_stat: Database["public"]["Enums"]["attr_key"] | null
+          damage_stat: string | null
           effect: string
           id: string
           name: string
@@ -182,9 +182,9 @@ export type Database = {
         }
         Insert: {
           accuracy_skill?: string | null
-          accuracy_stat?: Database["public"]["Enums"]["attr_key"] | null
+          accuracy_stat?: string | null
           category?: string
-          damage_stat?: Database["public"]["Enums"]["attr_key"] | null
+          damage_stat?: string | null
           effect?: string
           id?: string
           name: string
@@ -194,9 +194,9 @@ export type Database = {
         }
         Update: {
           accuracy_skill?: string | null
-          accuracy_stat?: Database["public"]["Enums"]["attr_key"] | null
+          accuracy_stat?: string | null
           category?: string
-          damage_stat?: Database["public"]["Enums"]["attr_key"] | null
+          damage_stat?: string | null
           effect?: string
           id?: string
           name?: string
