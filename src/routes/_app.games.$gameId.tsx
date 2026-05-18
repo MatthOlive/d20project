@@ -262,7 +262,7 @@ function GameRoom() {
             height={600}
           >
             {w.kind === "pokemon"
-              ? <PokemonSheet pokemonId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} />
+              ? <PokemonSheet pokemonId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} />
               : <TrainerSheet trainerId={w.id} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} />}
           </FloatingWindow>
         ))}
