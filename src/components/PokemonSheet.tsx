@@ -446,9 +446,11 @@ export function PokemonSheet({
             const accAttrVal = pokemon.current_attrs[accStat] ?? 1;
             const accSkillVal = m.accuracy_skill ? (pokemon.skills?.[m.accuracy_skill] ?? 0) : 0;
             const accPool = accAttrVal + accSkillVal;
+            const cat = (m.category ?? "").toLowerCase();
+            const isStatus = cat === "support" || cat === "status" || m.power <= 0 || !m.damage_stat;
             const dmgStat = m.damage_stat ?? "strength";
             const dmgAttrVal = pokemon.current_attrs[dmgStat] ?? 1;
-            const dmgPool = m.power + dmgAttrVal;
+            const dmgPool = isStatus ? 0 : m.power + dmgAttrVal;
             const name = pokemon.nickname || species.name;
             return (
               <div key={m.id} className="overflow-hidden rounded-lg border border-border">
@@ -459,7 +461,7 @@ export function PokemonSheet({
                 <div className="space-y-2 bg-card p-3">
                   <div className="text-xs text-muted-foreground">
                     Accuracy {accStat}{m.accuracy_skill ? `+${m.accuracy_skill}` : ""} · {accPool}d6
-                    {" · "}Damage {dmgStat}+Power · {dmgPool}d6
+                    {isStatus ? " · Status (no damage)" : ` · Damage ${dmgStat}+Power · ${dmgPool}d6`}
                   </div>
                   {m.effect && <p className="text-xs">{m.effect}</p>}
                   <div className="flex items-center justify-between">
@@ -468,9 +470,11 @@ export function PokemonSheet({
                       pokemonName={name}
                       accPool={accPool}
                       dmgPool={dmgPool}
+                      isStatus={isStatus}
                       onRoll={onRoll}
                       onChat={onChat}
                     />
+
                     {canEdit && (
                       <Button size="icon" variant="ghost" onClick={() => removeMove(m.id)}>
                         <Trash2 className="h-3.5 w-3.5" />
@@ -536,12 +540,13 @@ function AddMoveDialog({
 }
 
 function MoveRollDialog({
-  move, pokemonName, accPool, dmgPool, onRoll, onChat,
+  move, pokemonName, accPool, dmgPool, isStatus, onRoll, onChat,
 }: {
   move: Move;
   pokemonName: string;
   accPool: number;
   dmgPool: number;
+  isStatus?: boolean;
   onRoll: (label: string, n: number) => void;
   onChat: (body: string) => void;
 }) {
@@ -552,7 +557,7 @@ function MoveRollDialog({
     const desc = `**${pokemonName}** uses **${move.name}** (${move.type})${move.effect ? ` — ${move.effect}` : ""}`;
     onChat(desc);
     onRoll(`${pokemonName} · ${move.name} · Accuracy`, Math.max(0, accPool + accBonus));
-    if (dmgPool > 0) {
+    if (!isStatus && dmgPool > 0) {
       onRoll(`${pokemonName} · ${move.name} · Damage`, Math.max(0, dmgPool + dmgBonus));
     }
     setOpen(false);
@@ -563,7 +568,7 @@ function MoveRollDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm">
-          <Dices className="mr-1.5 h-3.5 w-3.5" /> Roll {accPool}d6 / {dmgPool}d6
+          <Dices className="mr-1.5 h-3.5 w-3.5" /> Roll {accPool}d6{isStatus ? "" : ` / ${dmgPool}d6`}
         </Button>
       </DialogTrigger>
       <DialogContent>
@@ -577,7 +582,8 @@ function MoveRollDialog({
             </div>
             <Input type="number" value={accBonus} onChange={(e) => setAccBonus(parseInt(e.target.value) || 0)} className="h-9 w-20" />
           </div>
-          {dmgPool > 0 && (
+          {!isStatus && dmgPool > 0 && (
+
             <div className="flex items-center justify-between gap-3">
               <div>
                 <Label className="text-xs">Damage bonus dice</Label>
