@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -20,8 +21,9 @@ import { PokemonSheet } from "@/components/PokemonSheet";
 import { TrainerSheet } from "@/components/TrainerSheet";
 import { MapBoard, DRAG_MIME, type DragCharacterPayload } from "@/components/MapBoard";
 import { toast } from "sonner";
-import { Copy, Crown, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2 } from "lucide-react";
+import { Copy, Crown, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Send, Bot } from "lucide-react";
 import { rollD6, POKEMON_TYPES, TYPE_COLORS, type PokemonType } from "@/lib/pokerole";
+import { narratorChat } from "@/lib/narrator.functions";
 
 export const Route = createFileRoute("/_app/games/$gameId")({
   component: GameRoom,
@@ -139,14 +141,20 @@ function GameRoom() {
       {/* Right: tabs */}
       <Card className="flex min-h-0 flex-col overflow-hidden p-0">
         <Tabs defaultValue="chat" className="flex h-full flex-col">
-          <TabsList className="m-2 grid grid-cols-3">
+          <TabsList className={`m-2 grid ${game.narrator_type === "ai" ? "grid-cols-4" : "grid-cols-3"}`}>
             <TabsTrigger value="chat">Chat</TabsTrigger>
+            {game.narrator_type === "ai" && <TabsTrigger value="narrator"><Bot className="mr-1 h-3.5 w-3.5" />AI GM</TabsTrigger>}
             <TabsTrigger value="compendium">Compendium</TabsTrigger>
             <TabsTrigger value="files">Files</TabsTrigger>
           </TabsList>
           <TabsContent value="chat" className="flex-1 overflow-hidden">
             <ChatPanel gameId={gameId} userId={user.id} />
           </TabsContent>
+          {game.narrator_type === "ai" && (
+            <TabsContent value="narrator" className="flex-1 overflow-hidden">
+              <AINarratorPanel gameId={gameId} gameName={game.name} userId={user.id} />
+            </TabsContent>
+          )}
           <TabsContent value="compendium" className="flex-1 overflow-auto p-3">
             <CompendiumPanel />
           </TabsContent>
