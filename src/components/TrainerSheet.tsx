@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/select";
 import { DotEditor } from "@/components/DotEditor";
 import {
-  ATTRS, RANKS, RANK_LABELS, RANK_BONUS, SKILLS, HUMAN_ATTR_CAP, type Rank,
+  ATTRS, SOCIAL_ATTRS, RANKS, RANK_LABELS, RANK_BONUS, SKILLS, HUMAN_ATTR_CAP, type Rank,
 } from "@/lib/pokerole";
 import { toast } from "sonner";
 import { Dices } from "lucide-react";
