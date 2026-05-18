@@ -52,7 +52,7 @@ export const SKILLS = [
   "Brawl", "Channel", "Clash", "Evasion",
   "Alert", "Athletic", "Nature", "Stealth", "Allure", "Etiquette",
   "Intimidate", "Perform", "Crafts", "Lore", "Medicine", "Science",
-  "Empathy", "Survival",
+  "Empathy",
 ] as const;
 
 // Trainers do not have Channel; they have Throw and Weapons instead.
@@ -60,7 +60,7 @@ export const TRAINER_SKILLS = [
   "Brawl", "Throw", "Weapons", "Clash", "Evasion",
   "Alert", "Athletic", "Nature", "Stealth", "Allure", "Etiquette",
   "Intimidate", "Perform", "Crafts", "Lore", "Medicine", "Science",
-  "Empathy", "Survival",
+  "Empathy",
 ] as const;
 
 export const POKEMON_TYPES = [
