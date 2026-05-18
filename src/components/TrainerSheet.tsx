@@ -50,10 +50,25 @@ type Trainer = {
   background: string | null;
   bag: string;
   battle_items: string;
+  bag_list: InventoryItem[];
+  battle_items_list: InventoryItem[];
+  potions: Record<string, { count: number; used: number; max: number }>;
+  achievements: Achievement[];
   pokedex: Record<string, { name: string; captured: boolean; sprite_url?: string | null }>;
   current_hp: number | null;
+  current_will: number | null;
   status_conditions: string[];
 };
+
+type InventoryItem = { name: string; qty: number };
+type Achievement = { name: string; done: boolean };
+
+const POTION_TIERS: { key: string; label: string; defaultMax: number }[] = [
+  { key: "potion", label: "Potion", defaultMax: 2 },
+  { key: "super", label: "Super Potion", defaultMax: 4 },
+  { key: "hyper", label: "Hyper Potion", defaultMax: 14 },
+  { key: "max", label: "Max Potion", defaultMax: 20 },
+];
 
 export function TrainerSheet({
   trainerId,
