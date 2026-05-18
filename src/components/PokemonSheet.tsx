@@ -856,7 +856,7 @@ function EvolveButton({
     clearInterval(iv);
     setShowEvolved(true);
 
-    const newMods = { ...(((await supabase.from("pokemon").select("modifiers").eq("id", pokemonId).single()).data?.modifiers) as Record<string, unknown> ?? {}) };
+    const newMods: Record<string, string> = { ...(((await supabase.from("pokemon").select("modifiers").eq("id", pokemonId).single()).data?.modifiers) as Record<string, string> ?? {}) };
     if (newBaseSpecies === null) delete newMods._base_species;
     else if (newBaseSpecies) newMods._base_species = newBaseSpecies;
 
