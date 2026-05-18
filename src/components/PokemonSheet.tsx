@@ -72,21 +72,24 @@ type Pokemon = {
 
 export function PokemonSheet({
   pokemonId,
-  gameId,
+  gameId: _gameId,
   userId,
   isNarrator,
   onRoll,
+  onChat,
 }: {
   pokemonId: string;
   gameId: string;
   userId: string;
   isNarrator: boolean;
   onRoll: (label: string, n: number) => void;
+  onChat: (body: string) => void;
 }) {
   const qc = useQueryClient();
 
+  const queryKey = useMemo(() => ["pokemon", pokemonId], [pokemonId]);
   const { data: pokemon } = useQuery({
-    queryKey: ["pokemon", pokemonId],
+    queryKey,
     queryFn: async () => {
       const { data, error } = await supabase.from("pokemon").select("*").eq("id", pokemonId).single();
       if (error) throw error;
@@ -132,6 +135,12 @@ export function PokemonSheet({
 
   const canEdit = !!pokemon && (pokemon.owner_id === userId || isNarrator);
 
+  const commit = useCallback(async (p: Partial<Pokemon>) => {
+    const { error } = await supabase.from("pokemon").update(p).eq("id", pokemonId);
+    if (error) toast.error(error.message);
+  }, [pokemonId]);
+  const { patch } = useDebouncedPatch<Pokemon>(queryKey, commit);
+
   // Auto-init current_attrs from species base if empty
   useEffect(() => {
     if (pokemon && species && Object.keys(pokemon.current_attrs).length === 0) {
@@ -155,12 +164,6 @@ export function PokemonSheet({
   if (!pokemon) return <div className="p-4 text-sm text-muted-foreground">Loading…</div>;
   if (!species) return <div className="p-4 text-sm text-muted-foreground">Loading species…</div>;
 
-  async function patch(p: Partial<Pokemon>) {
-    const { error } = await supabase.from("pokemon").update(p).eq("id", pokemonId);
-    if (error) toast.error(error.message);
-    else qc.invalidateQueries({ queryKey: ["pokemon", pokemonId] });
-  }
-
   async function setAttr(key: string, val: number) {
     if (!canEdit) return;
     const limit = species!.attr_limits[key] ?? 5;
@@ -169,7 +172,7 @@ export function PokemonSheet({
     const vit = key === "vitality" ? clamped : (newAttrs.vitality ?? 1);
     const str = key === "strength" ? clamped : (newAttrs.strength ?? 1);
     const ins = key === "insight" ? clamped : (newAttrs.insight ?? 1);
-    await patch({
+    patch({
       current_attrs: newAttrs,
       hp: species!.base_hp + vit + str + RANK_BONUS[pokemon!.rank],
       will: ins + 2,
