@@ -127,6 +127,7 @@ function GameRoom() {
                       Set background
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadBackground(e.target.files[0])} />
                     </label>
+                    <ScenarioButtons gameId={gameId} currentBg={game.background_url} />
                   </>
                 )}
               </>
