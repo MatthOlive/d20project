@@ -623,3 +623,180 @@ function PokedexSection({
     </section>
   );
 }
+
+function ItemListSection({
+  title, items, canEdit, onChange, placeholder, embedded,
+}: {
+  title: string;
+  items: InventoryItem[];
+  canEdit: boolean;
+  onChange: (items: InventoryItem[]) => void;
+  placeholder?: string;
+  embedded?: boolean;
+}) {
+  const [name, setName] = useState("");
+  const [qty, setQty] = useState(1);
+  function add() {
+    const n = name.trim();
+    if (!n) return;
+    onChange([...items, { name: n, qty: Math.max(1, qty) }]);
+    setName(""); setQty(1);
+  }
+  function update(idx: number, patch: Partial<InventoryItem>) {
+    onChange(items.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
+  }
+  function remove(idx: number) {
+    onChange(items.filter((_, i) => i !== idx));
+  }
+  return (
+    <section className={embedded ? "" : ""}>
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className="text-sm font-bold">{title}</h3>
+      </div>
+      <div className="space-y-1.5 rounded-md border border-border bg-card p-2">
+        {items.length === 0 && (
+          <p className="px-1 text-xs text-muted-foreground">No items.</p>
+        )}
+        {items.map((it, i) => (
+          <div key={i} className="flex items-center gap-1.5">
+            <Input
+              value={it.name}
+              onChange={(e) => update(i, { name: e.target.value })}
+              disabled={!canEdit}
+              className="h-7 flex-1 text-sm"
+            />
+            <Input
+              type="number" min={0}
+              value={it.qty}
+              onChange={(e) => update(i, { qty: parseInt(e.target.value) || 0 })}
+              disabled={!canEdit}
+              className="h-7 w-14 text-center text-sm"
+            />
+            {canEdit && (
+              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => remove(i)}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
+        ))}
+        {canEdit && (
+          <div className="flex items-center gap-1.5 pt-1">
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && add()}
+              placeholder={placeholder ?? "Item…"}
+              className="h-7 flex-1 text-sm"
+            />
+            <Input
+              type="number" min={1} value={qty}
+              onChange={(e) => setQty(parseInt(e.target.value) || 1)}
+              className="h-7 w-14 text-center text-sm"
+            />
+            <Button size="sm" variant="outline" className="h-7" onClick={add}>
+              <Plus className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function PotionsBlock({
+  potions, canEdit, onChange,
+}: {
+  potions: Record<string, { count: number; used: number; max: number }>;
+  canEdit: boolean;
+  onChange: (p: Record<string, { count: number; used: number; max: number }>) => void;
+}) {
+  function update(key: string, field: "count" | "used" | "max", val: number) {
+    const tier = POTION_TIERS.find((t) => t.key === key);
+    const cur = potions[key] ?? { count: 0, used: 0, max: tier?.defaultMax ?? 0 };
+    onChange({ ...potions, [key]: { ...cur, [field]: Math.max(0, val) } });
+  }
+  return (
+    <section>
+      <h3 className="mb-2 text-sm font-bold">Potions</h3>
+      <div className="space-y-1 rounded-md border border-border bg-card p-2">
+        <div className="grid grid-cols-[1fr_repeat(3,minmax(0,3.5rem))] items-center gap-1.5 px-1 text-[10px] font-semibold uppercase text-muted-foreground">
+          <span></span><span className="text-center">Count</span><span className="text-center">Used</span><span className="text-center">Max</span>
+        </div>
+        {POTION_TIERS.map((tier) => {
+          const v = potions[tier.key] ?? { count: 0, used: 0, max: tier.defaultMax };
+          return (
+            <div key={tier.key} className="grid grid-cols-[1fr_repeat(3,minmax(0,3.5rem))] items-center gap-1.5">
+              <span className="text-xs font-medium">{tier.label}</span>
+              <Input type="number" min={0} value={v.count} disabled={!canEdit}
+                onChange={(e) => update(tier.key, "count", parseInt(e.target.value) || 0)}
+                className="h-7 text-center text-xs" />
+              <Input type="number" min={0} value={v.used} disabled={!canEdit}
+                onChange={(e) => update(tier.key, "used", parseInt(e.target.value) || 0)}
+                className="h-7 text-center text-xs" />
+              <Input type="number" min={0} value={v.max} disabled={!canEdit}
+                onChange={(e) => update(tier.key, "max", parseInt(e.target.value) || 0)}
+                className="h-7 text-center text-xs" />
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function AchievementsSection({
+  items, canEdit, onChange,
+}: {
+  items: Achievement[];
+  canEdit: boolean;
+  onChange: (items: Achievement[]) => void;
+}) {
+  const [name, setName] = useState("");
+  function add() {
+    const n = name.trim(); if (!n) return;
+    onChange([...items, { name: n, done: false }]); setName("");
+  }
+  return (
+    <section>
+      <h3 className="mb-2 text-sm font-bold">Achievements</h3>
+      <div className="space-y-1.5 rounded-md border border-border bg-card p-2">
+        {items.length === 0 && <p className="px-1 text-xs text-muted-foreground">No achievements yet.</p>}
+        {items.map((a, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <Checkbox
+              checked={a.done}
+              disabled={!canEdit}
+              onCheckedChange={() => onChange(items.map((x, j) => j === i ? { ...x, done: !x.done } : x))}
+            />
+            <Input
+              value={a.name}
+              disabled={!canEdit}
+              onChange={(e) => onChange(items.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}
+              className={`h-7 flex-1 text-sm ${a.done ? "line-through text-muted-foreground" : ""}`}
+            />
+            {canEdit && (
+              <Button size="sm" variant="ghost" className="h-7 w-7 p-0"
+                onClick={() => onChange(items.filter((_, j) => j !== i))}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
+        ))}
+        {canEdit && (
+          <div className="flex items-center gap-1.5 pt-1">
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && add()}
+              placeholder="New achievement…"
+              className="h-7 flex-1 text-sm"
+            />
+            <Button size="sm" variant="outline" className="h-7" onClick={add}>
+              <Plus className="mr-1 h-3.5 w-3.5" /> Add
+            </Button>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
