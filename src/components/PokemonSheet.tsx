@@ -720,3 +720,106 @@ function NatureSelect({
     </div>
   );
 }
+
+function EvolveButton({
+  pokemonId,
+  fromSprite,
+  evolutions,
+}: {
+  pokemonId: string;
+  fromSprite: string | null;
+  evolutions: string[];
+}) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [target, setTarget] = useState<string>(evolutions[0] ?? "");
+  const [animating, setAnimating] = useState(false);
+  const [showEvolved, setShowEvolved] = useState(false);
+  const [toggle, setToggle] = useState(false);
+
+  const { data: targetSpecies } = useQuery({
+    queryKey: ["species-by-name", target],
+    enabled: !!target && open,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("species").select("*").eq("name", target).maybeSingle();
+      if (error) throw error;
+      return data as Species | null;
+    },
+  });
+
+  async function evolve() {
+    if (!targetSpecies) { toast.error(`Evolution "${target}" not found in dex.`); return; }
+    setAnimating(true);
+    setShowEvolved(false);
+    // alternate sprites every 250ms for 3s
+    const iv = setInterval(() => setToggle((t) => !t), 250);
+    await new Promise((r) => setTimeout(r, 3000));
+    clearInterval(iv);
+    setShowEvolved(true);
+
+    const { error } = await supabase.from("pokemon").update({
+      species_id: targetSpecies.id,
+      current_attrs: targetSpecies.base_attrs,
+      hp: targetSpecies.base_hp + (targetSpecies.base_attrs.vitality ?? 1),
+    }).eq("id", pokemonId);
+    if (error) { toast.error(error.message); setAnimating(false); return; }
+    qc.invalidateQueries({ queryKey: ["pokemon", pokemonId] });
+    qc.invalidateQueries({ queryKey: ["species", targetSpecies.id] });
+  }
+
+  const evolvedSprite = targetSpecies?.sprite_url ?? null;
+  const displayedSprite = showEvolved
+    ? evolvedSprite
+    : (toggle ? evolvedSprite : fromSprite);
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => {
+      setOpen(o);
+      if (!o) { setAnimating(false); setShowEvolved(false); setToggle(false); }
+    }}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="secondary" className="h-8">
+          <Sparkles className="mr-1 h-3.5 w-3.5" /> Evolve
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>{showEvolved ? `Evolved into ${target}!` : "Evolution"}</DialogTitle></DialogHeader>
+        {!animating && (
+          <div className="space-y-3">
+            <Label className="text-xs">Evolves into</Label>
+            <Select value={target} onValueChange={setTarget}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {evolutions.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Button onClick={evolve} className="w-full">
+              <Sparkles className="mr-1.5 h-4 w-4" /> Start evolution
+            </Button>
+          </div>
+        )}
+        {animating && (
+          <div className="flex flex-col items-center justify-center gap-4 py-6">
+            {displayedSprite ? (
+              <img
+                src={displayedSprite}
+                alt=""
+                className={`h-48 w-48 object-contain transition-all duration-200 ${showEvolved ? "drop-shadow-[0_0_30px_hsl(var(--primary))]" : "brightness-200 contrast-150"}`}
+              />
+            ) : (
+              <div className="flex h-48 w-48 items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground">No sprite</div>
+            )}
+            <p className="text-sm font-bold">
+              {showEvolved ? `Congratulations! Evolved into ${target}.` : "Evolving…"}
+            </p>
+            {showEvolved && (
+              <Button onClick={() => setOpen(false)} className="w-full">Done</Button>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
