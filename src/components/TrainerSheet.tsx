@@ -287,6 +287,14 @@ export function TrainerSheet({
         </div>
       </section>
 
+      <PokedexSection
+        trainer={trainer}
+        canEdit={canEdit}
+        onChange={(pokedex) => patch({ pokedex })}
+      />
+
+
+
       <section>
         <Label>Notes</Label>
         <Textarea value={trainer.notes} onChange={(e) => patch({ notes: e.target.value })} disabled={!canEdit} rows={4} />
