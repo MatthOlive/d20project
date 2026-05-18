@@ -15,6 +15,14 @@ import {
 import { toast } from "sonner";
 import { Dices, ImagePlus, X as XIcon } from "lucide-react";
 
+const POKEBALLS = {
+  pokeball:  { label: "Pokéball",  pool: 4 },
+  greatball: { label: "Greatball", pool: 6 },
+  ultraball: { label: "Ultraball", pool: 8 },
+  masterball:{ label: "Master Ball (auto)", pool: 0 },
+} as const;
+type BallKey = keyof typeof POKEBALLS;
+
 type Trainer = {
   id: string;
   game_id: string;
