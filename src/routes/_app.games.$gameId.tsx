@@ -162,12 +162,7 @@ function GameRoom() {
             </p>
           </TabsContent>
           <TabsContent value="files" className="flex-1 overflow-auto p-3">
-            <FilesPanel
-              gameId={gameId}
-              characters={characters}
-              onOpen={(w) => openWindow(w)}
-              qc={qc}
-            />
+            <FilesPanel gameId={gameId} userId={user.id} onOpen={openWindow} />
           </TabsContent>
         </Tabs>
       </Card>
