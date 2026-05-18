@@ -146,7 +146,7 @@ export function PokemonSheet({
     if (pokemon && species && Object.keys(pokemon.current_attrs).length === 0) {
       void supabase.from("pokemon").update({
         current_attrs: species.base_attrs,
-        hp: species.base_hp + (species.base_attrs.vitality ?? 1) + RANK_BONUS[pokemon.rank],
+        hp: species.base_hp + (species.base_attrs.vitality ?? 1),
       }).eq("id", pokemonId).then(() => qc.invalidateQueries({ queryKey: ["pokemon", pokemonId] }));
     }
   }, [pokemon, species, pokemonId, qc]);
@@ -170,11 +170,10 @@ export function PokemonSheet({
     const clamped = Math.min(val, limit);
     const newAttrs = { ...pokemon!.current_attrs, [key]: clamped };
     const vit = key === "vitality" ? clamped : (newAttrs.vitality ?? 1);
-    const str = key === "strength" ? clamped : (newAttrs.strength ?? 1);
     const ins = key === "insight" ? clamped : (newAttrs.insight ?? 1);
     patch({
       current_attrs: newAttrs,
-      hp: species!.base_hp + vit + str + RANK_BONUS[pokemon!.rank],
+      hp: species!.base_hp + vit,
       will: ins + 2,
     });
   }
@@ -263,9 +262,11 @@ export function PokemonSheet({
                 ))}
               </SelectContent>
             </Select>
-            <div className="ml-auto text-sm">
+            <div className="ml-auto flex flex-wrap items-center gap-1.5 text-sm">
               <span className="rounded-full bg-success/15 px-2.5 py-0.5 font-bold text-success">HP {pokemon.hp}</span>
-              <span className="ml-2 rounded-full bg-accent px-2.5 py-0.5 font-bold">Will {pokemon.will}</span>
+              <span className="rounded-full bg-accent px-2.5 py-0.5 font-bold">Will {pokemon.will}</span>
+              <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-bold text-primary">Def {pokemon.current_attrs.vitality ?? 1}</span>
+              <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-bold text-primary">SpDef {pokemon.current_attrs.vitality ?? 1}</span>
             </div>
           </div>
           <div className="flex flex-wrap gap-1.5 pt-1">
