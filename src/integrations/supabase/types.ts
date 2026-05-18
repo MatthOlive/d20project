@@ -251,6 +251,7 @@ export type Database = {
           notes: string
           owner_id: string
           rank: Database["public"]["Enums"]["pokerole_rank"]
+          skills: Json
           social_attrs: Json
           species_id: string
           status: string[]
@@ -274,6 +275,7 @@ export type Database = {
           notes?: string
           owner_id: string
           rank?: Database["public"]["Enums"]["pokerole_rank"]
+          skills?: Json
           social_attrs?: Json
           species_id: string
           status?: string[]
@@ -297,6 +299,7 @@ export type Database = {
           notes?: string
           owner_id?: string
           rank?: Database["public"]["Enums"]["pokerole_rank"]
+          skills?: Json
           social_attrs?: Json
           species_id?: string
           status?: string[]
