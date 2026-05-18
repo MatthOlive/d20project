@@ -544,16 +544,247 @@ function ScenarioButtons({ gameId, currentBg }: { gameId: string; currentBg: str
 
 function CompendiumPanel() {
   return (
-    <Tabs defaultValue="pokedex" className="flex h-full flex-col">
-      <TabsList className="grid grid-cols-3">
+    <Tabs defaultValue="mechanics" className="flex h-full flex-col">
+      <TabsList className="grid grid-cols-4">
+        <TabsTrigger value="mechanics">Rules</TabsTrigger>
         <TabsTrigger value="pokedex">Pokédex</TabsTrigger>
         <TabsTrigger value="moves">Moves</TabsTrigger>
         <TabsTrigger value="abilities">Abilities</TabsTrigger>
       </TabsList>
+      <TabsContent value="mechanics" className="flex-1 overflow-hidden"><MechanicsCompendium /></TabsContent>
       <TabsContent value="pokedex" className="flex-1 overflow-hidden"><PokedexCompendium /></TabsContent>
       <TabsContent value="moves" className="flex-1 overflow-hidden"><MovesCompendium /></TabsContent>
       <TabsContent value="abilities" className="flex-1 overflow-hidden"><AbilitiesCompendium /></TabsContent>
     </Tabs>
+  );
+}
+
+const MECHANICS: { title: string; body: string }[] = [
+  {
+    title: "Dice & Successes",
+    body:
+      "Pokérole 2.0 uses pools of d6. Each die showing 4, 5 or 6 counts as 1 success. " +
+      "Build a pool by adding the relevant Attribute + Skill (or Attribute + Attribute) " +
+      "and roll that many d6s. Compare successes against a difficulty (1–5) or against " +
+      "an opposing roll. Ties favor the defender.",
+  },
+  {
+    title: "Action Economy (Round)",
+    body:
+      "On a round every character may take ONE main action (move + attack, or a full action " +
+      "like Defend, Help, use an item). Initiative = Dexterity + Alert. Movement is " +
+      "narrative — describe distance in close / nearby / far. Free actions (1‑word shouts, " +
+      "drop an item) don't cost the round.",
+  },
+  {
+    title: "Combat — Accuracy & Damage",
+    body:
+      "Attack roll = (Accuracy Attribute) + (Accuracy Skill). Each success beyond the " +
+      "defender's Evasion (Dex + Evasion) lands the hit. Damage roll = (Damage Stat) + " +
+      "(Move Power) in d6. Subtract the target's Defense (Vitality, or Special for Special " +
+      "moves) from successes; remainder = HP lost. STAB grants +1 die when the move type " +
+      "matches a type of the user.",
+  },
+  {
+    title: "Pain Penalty",
+    body:
+      "Track current HP vs max. At ≤ half max HP every roll loses 1 success (pain penalty 1). " +
+      "At 1 HP remaining the penalty becomes 2. Reaching 0 HP knocks the character out.",
+  },
+  {
+    title: "Will & Mental Effects",
+    body:
+      "Will = Insight + 2 (max). Spend Will to use Channel-based abilities, resist mental " +
+      "moves, or push through fear/charm/confusion. Restore Will by resting, eating a meal, " +
+      "or scenes of camaraderie.",
+  },
+  {
+    title: "Confidence & Loyalty",
+    body:
+      "Pokémon track Happiness, Loyalty and Confidence (0–5). Confidence is spent like Will " +
+      "to re-roll one die or shrug off a status. Build it through victories, training and " +
+      "respecting the Pokémon's Nature; lose it from defeat or mistreatment.",
+  },
+  {
+    title: "Status Conditions",
+    body:
+      "Burn: lose 1 HP at round start, −1 Strength. Poison: 1 HP/round, doubles after the " +
+      "third round. Paralyzed: lose 1 die from Dexterity pools. Sleep / Frozen: skip turn, " +
+      "wake on damage. Confused: roll d6 — on 1‑2 attack a random target. Flinched: skip " +
+      "the next action. Remove with rest, items or healing moves.",
+  },
+  {
+    title: "Ranks",
+    body:
+      "Starter → Beginner → Amateur → Ace → Pro → Master. Rank caps attributes & skills " +
+      "and unlocks new moves. Players advance by completing significant story beats — not by " +
+      "XP grinding. The Narrator decides when the party gains a Rank.",
+  },
+  {
+    title: "Move Learning Cap",
+    body:
+      "A Pokémon knows at most (Insight + 2) moves at a time. To learn a new move beyond " +
+      "the cap you must forget one. Trainers also cap their battle techniques the same way.",
+  },
+  {
+    title: "Evolution",
+    body:
+      "Evolve when at the required Rank (or holding the right item/stone) and after a " +
+      "meaningful narrative moment. Evolving raises Base HP and one Attribute cap. A Pokémon " +
+      "may refuse evolution — Loyalty rolls decide.",
+  },
+  {
+    title: "Z-Moves & Dynamax",
+    body:
+      "Z-Move: once per scene, transform one damaging move into its Z-form (renamed by type, " +
+      "Power +5/+4/+3/+2 by bracket). Dynamax: HP ×2 for 3 rounds; physical/special moves " +
+      "become Max-moves. Gigantamax: as Dynamax but the species gets a unique G-Max move " +
+      "(Power +3 of the base) — only species with a G-Max form.",
+  },
+  {
+    title: "Social / Contest Stats",
+    body:
+      "Tough · Cool · Beautiful · Cute · Clever. Used for Contests, performances, and " +
+      "social conflict (combined with skills like Allure, Perform, Etiquette, Intimidate). " +
+      "Same d6-success mechanics as combat.",
+  },
+  {
+    title: "Skills",
+    body:
+      "Trainer skills include Brawl, Throw, Weapons (attack rolls use Dex + one of these). " +
+      "Pokémon attack with Brawl or Channel + Dexterity. Shared skills: Clash, Evasion, " +
+      "Alert, Athletic, Nature, Stealth, Allure, Etiquette, Intimidate, Perform, Crafts, " +
+      "Lore, Medicine, Science, Empathy. Cap = current Rank tier.",
+  },
+  {
+    title: "Healing & Items",
+    body:
+      "Potion +2 HP, Super +4, Hyper +6, Max heals to full. Battle Items (X Attack, X Def…) " +
+      "give +1 to that stat's rolls until end of scene. Items are limited per fight — track " +
+      "your bag and battle pouch on the sheet.",
+  },
+];
+
+function MechanicsCompendium() {
+  const [q, setQ] = useState("");
+  const filtered = MECHANICS.filter(
+    (m) => !q || m.title.toLowerCase().includes(q.toLowerCase()) || m.body.toLowerCase().includes(q.toLowerCase()),
+  );
+  return (
+    <div className="flex h-full flex-col gap-2 p-2">
+      <Input placeholder="Search rules…" value={q} onChange={(e) => setQ(e.target.value)} className="h-8 text-sm" />
+      <div className="flex-1 overflow-y-auto space-y-1.5">
+        {filtered.map((m) => (
+          <details key={m.title} className="rounded-md border border-border bg-card">
+            <summary className="cursor-pointer px-3 py-2 text-sm font-semibold">{m.title}</summary>
+            <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground leading-relaxed whitespace-pre-line">{m.body}</p>
+          </details>
+        ))}
+        {filtered.length === 0 && <p className="p-4 text-center text-xs text-muted-foreground">No matches.</p>}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// AI Narrator panel
+// ============================================================
+
+type NarratorMsg = { role: "user" | "assistant"; content: string };
+
+function AINarratorPanel({ gameId, gameName, userId: _userId }: { gameId: string; gameName: string; userId: string }) {
+  const STORAGE_KEY = `narrator-${gameId}`;
+  const [messages, setMessages] = useState<NarratorMsg[]>(() => {
+    if (typeof window === "undefined") return [];
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]"); } catch { return []; }
+  });
+  const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const callNarrator = useServerFn(narratorChat);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages, STORAGE_KEY]);
+
+  async function send(text: string) {
+    const trimmed = text.trim();
+    if (!trimmed || busy) return;
+    const next: NarratorMsg[] = [...messages, { role: "user", content: trimmed }];
+    setMessages(next);
+    setInput("");
+    setBusy(true);
+    try {
+      const res = await callNarrator({ data: { messages: next, gameName } });
+      setMessages([...next, { role: "assistant", content: res.content }]);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "AI narrator failed");
+      setMessages(next);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function startScene() {
+    setBusy(true);
+    try {
+      const seed: NarratorMsg[] = [{ role: "user", content: "Begin the adventure. Set the opening scene and ask us what we do." }];
+      setMessages(seed);
+      const res = await callNarrator({ data: { messages: seed, gameName } });
+      setMessages([...seed, { role: "assistant", content: res.content }]);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "AI narrator failed");
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex items-center justify-between border-b border-border px-3 py-2">
+        <div className="flex items-center gap-2 text-sm font-bold">
+          <Bot className="h-4 w-4 text-primary" /> AI Game Master
+        </div>
+        <Button size="sm" variant="ghost" className="h-7 text-xs"
+          onClick={() => { if (confirm("Reset the AI narrator's memory of this session?")) setMessages([]); }}>
+          Reset
+        </Button>
+      </div>
+      <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-3 p-3">
+        {messages.length === 0 && (
+          <div className="rounded-lg border border-dashed border-border bg-card p-4 text-center">
+            <Bot className="mx-auto mb-2 h-8 w-8 text-primary" />
+            <p className="text-sm font-semibold">Your AI Narrator is ready.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Press Start to open the adventure, or type a custom prompt below.</p>
+            <Button size="sm" className="mt-3" onClick={startScene} disabled={busy}>
+              <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Start the adventure
+            </Button>
+          </div>
+        )}
+        {messages.map((m, i) => (
+          <div key={i} className={`rounded-lg p-3 text-sm ${m.role === "assistant" ? "bg-primary/10 border border-primary/20" : "bg-muted"}`}>
+            <div className="mb-1 text-[10px] font-bold uppercase tracking-wide opacity-70">
+              {m.role === "assistant" ? "Narrator" : "Players"}
+            </div>
+            <div className="whitespace-pre-wrap leading-relaxed">{m.content}</div>
+          </div>
+        ))}
+        {busy && <p className="text-center text-xs text-muted-foreground italic">Narrator is thinking…</p>}
+      </div>
+      <form
+        onSubmit={(e) => { e.preventDefault(); send(input); }}
+        className="flex gap-2 border-t border-border p-2"
+      >
+        <Input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder={messages.length === 0 ? "Describe your party, or hit Start…" : "What do you do?"}
+          disabled={busy}
+        />
+        <Button type="submit" size="icon" disabled={busy || !input.trim()}>
+          <Send className="h-4 w-4" />
+        </Button>
+      </form>
+    </div>
   );
 }
 
