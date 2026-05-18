@@ -99,6 +99,7 @@ export function PokemonSheet({
   isNarrator,
   onRoll,
   onChat,
+  onDeleted,
 }: {
   pokemonId: string;
   gameId: string;
@@ -106,6 +107,7 @@ export function PokemonSheet({
   isNarrator: boolean;
   onRoll: (label: string, n: number) => void;
   onChat: (body: string) => void;
+  onDeleted?: () => void;
 }) {
   const qc = useQueryClient();
   const [zMode, setZMode] = useState(false);
@@ -270,13 +272,30 @@ export function PokemonSheet({
           )}
         </div>
         <div className="flex-1 space-y-2">
-          <Input
-            disabled={!canEdit}
-            value={pokemon.nickname ?? ""}
-            placeholder={species.name}
-            onChange={(e) => patch({ nickname: e.target.value })}
-            className="text-lg font-bold"
-          />
+          <div className="flex items-start gap-2">
+            <Input
+              disabled={!canEdit}
+              value={pokemon.nickname ?? ""}
+              placeholder={species.name}
+              onChange={(e) => patch({ nickname: e.target.value })}
+              className="text-lg font-bold"
+            />
+            {canEdit && (
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-9 w-9 text-destructive hover:bg-destructive/10"
+                title="Delete sheet"
+                onClick={async () => {
+                  if (!confirm("Delete this Pokémon sheet? This cannot be undone.")) return;
+                  const { error } = await supabase.from("pokemon").delete().eq("id", pokemonId);
+                  if (error) { toast.error(error.message); return; }
+                  toast.success("Pokémon deleted");
+                  onDeleted?.();
+                }}
+              ><Trash2 className="h-4 w-4" /></Button>
+            )}
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             {species.types.map((t) => (
               <Badge

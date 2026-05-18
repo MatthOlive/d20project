@@ -239,6 +239,7 @@ export type Database = {
           confidence: number
           created_at: string
           current_attrs: Json
+          folder: string | null
           game_id: string
           happiness: number
           held_item: string | null
@@ -264,6 +265,7 @@ export type Database = {
           confidence?: number
           created_at?: string
           current_attrs?: Json
+          folder?: string | null
           game_id: string
           happiness?: number
           held_item?: string | null
@@ -289,6 +291,7 @@ export type Database = {
           confidence?: number
           created_at?: string
           current_attrs?: Json
+          folder?: string | null
           game_id?: string
           happiness?: number
           held_item?: string | null
@@ -532,9 +535,12 @@ export type Database = {
           age: number | null
           attrs: Json
           background: string | null
+          bag: string
+          battle_items: string
           concept: string | null
           confidence: number
           created_at: string
+          folder: string | null
           game_id: string
           id: string
           image_url: string | null
@@ -552,9 +558,12 @@ export type Database = {
           age?: number | null
           attrs?: Json
           background?: string | null
+          bag?: string
+          battle_items?: string
           concept?: string | null
           confidence?: number
           created_at?: string
+          folder?: string | null
           game_id: string
           id?: string
           image_url?: string | null
@@ -572,9 +581,12 @@ export type Database = {
           age?: number | null
           attrs?: Json
           background?: string | null
+          bag?: string
+          battle_items?: string
           concept?: string | null
           confidence?: number
           created_at?: string
+          folder?: string | null
           game_id?: string
           id?: string
           image_url?: string | null

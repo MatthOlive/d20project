@@ -41,6 +41,8 @@ type Trainer = {
   image_url: string | null;
   money: number;
   background: string | null;
+  bag: string;
+  battle_items: string;
 };
 
 export function TrainerSheet({
@@ -48,11 +50,13 @@ export function TrainerSheet({
   userId,
   isNarrator,
   onRoll,
+  onDeleted,
 }: {
   trainerId: string;
   userId: string;
   isNarrator: boolean;
   onRoll: (label: string, n: number) => void;
+  onDeleted?: () => void;
 }) {
   const [ballKey, setBallKey] = useState<BallKey>("pokeball");
   const [catchBonus, setCatchBonus] = useState(0);
@@ -154,6 +158,8 @@ export function TrainerSheet({
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-success/15 px-3 py-1 text-sm font-bold text-success">HP {hp}</span>
           <span className="rounded-full bg-accent px-3 py-1 text-sm font-bold">Will {will}</span>
+          <span className="rounded-full bg-muted px-3 py-1 text-sm font-bold" title="Defense = Vitality">Def {vit}</span>
+          <span className="rounded-full bg-muted px-3 py-1 text-sm font-bold" title="Special Defense = Vitality">Sp.Def {vit}</span>
           <Button size="sm" variant="outline" className="h-7"
             onClick={() => onRoll(`${trainer.name} · Initiative (Dex+Alert)`, initiativePool)}>
             <Dices className="mr-1 h-3.5 w-3.5" /> Initiative · {initiativePool}d6
@@ -253,10 +259,51 @@ export function TrainerSheet({
       </section>
 
 
+      <section className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <Label>Bag (general items)</Label>
+          <Textarea
+            value={trainer.bag ?? ""}
+            onChange={(e) => patch({ bag: e.target.value })}
+            disabled={!canEdit}
+            rows={4}
+            placeholder="Potions, Pokéballs, Repels…"
+          />
+        </div>
+        <div>
+          <Label>Battle items</Label>
+          <Textarea
+            value={trainer.battle_items ?? ""}
+            onChange={(e) => patch({ battle_items: e.target.value })}
+            disabled={!canEdit}
+            rows={4}
+            placeholder="X-Attack, Guard Spec, held items…"
+          />
+        </div>
+      </section>
+
       <section>
         <Label>Notes</Label>
         <Textarea value={trainer.notes} onChange={(e) => patch({ notes: e.target.value })} disabled={!canEdit} rows={4} />
       </section>
+
+      {canEdit && (
+        <section className="flex justify-end border-t border-border pt-3">
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={async () => {
+              if (!confirm(`Delete trainer "${trainer.name}"? This cannot be undone.`)) return;
+              const { error } = await supabase.from("trainers").delete().eq("id", trainerId);
+              if (error) { toast.error(error.message); return; }
+              toast.success("Trainer deleted");
+              onDeleted?.();
+            }}
+          >
+            <XIcon className="mr-1 h-3.5 w-3.5" /> Delete trainer
+          </Button>
+        </section>
+      )}
     </div>
   );
 }
