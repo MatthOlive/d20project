@@ -26,8 +26,12 @@ type Trainer = {
   confidence: number;
   rank: Rank;
   attrs: Record<string, number>;
+  social_attrs: Record<string, number>;
   skills: Record<string, number>;
   notes: string;
+  image_url: string | null;
+  money: number;
+  background: string | null;
 };
 
 export function TrainerSheet({
