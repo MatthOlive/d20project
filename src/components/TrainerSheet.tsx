@@ -10,10 +10,10 @@ import {
 } from "@/components/ui/select";
 import { DotEditor } from "@/components/DotEditor";
 import {
-  ATTRS, RANKS, RANK_LABELS, RANK_BONUS, SKILLS, HUMAN_ATTR_CAP, type Rank,
+  ATTRS, SOCIAL_ATTRS, RANKS, RANK_LABELS, RANK_BONUS, SKILLS, HUMAN_ATTR_CAP, type Rank,
 } from "@/lib/pokerole";
 import { toast } from "sonner";
-import { Dices } from "lucide-react";
+import { Dices, ImagePlus, X as XIcon } from "lucide-react";
 
 type Trainer = {
   id: string;
@@ -26,8 +26,12 @@ type Trainer = {
   confidence: number;
   rank: Rank;
   attrs: Record<string, number>;
+  social_attrs: Record<string, number>;
   skills: Record<string, number>;
   notes: string;
+  image_url: string | null;
+  money: number;
+  background: string | null;
 };
 
 export function TrainerSheet({
@@ -69,6 +73,7 @@ export function TrainerSheet({
 
   return (
     <div className="space-y-5 p-4">
+      <TrainerImage trainer={trainer} canEdit={canEdit} onChange={(url) => patch({ image_url: url })} />
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-2">
           <Label>Name</Label>
@@ -109,6 +114,23 @@ export function TrainerSheet({
             type="number" value={trainer.confidence}
             onChange={(e) => patch({ confidence: parseInt(e.target.value) || 0 })}
             disabled={!canEdit}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Money (₽)</Label>
+          <Input
+            type="number" value={trainer.money}
+            onChange={(e) => patch({ money: parseInt(e.target.value) || 0 })}
+            disabled={!canEdit}
+          />
+        </div>
+        <div className="space-y-2 sm:col-span-2">
+          <Label>Background</Label>
+          <Textarea
+            value={trainer.background ?? ""}
+            onChange={(e) => patch({ background: e.target.value })}
+            disabled={!canEdit}
+            rows={2}
           />
         </div>
       </div>
@@ -162,9 +184,71 @@ export function TrainerSheet({
       </section>
 
       <section>
+        <h3 className="mb-2 text-sm font-bold">Social Attributes</h3>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {SOCIAL_ATTRS.map((a) => {
+            const v = trainer.social_attrs?.[a] ?? 1;
+            return (
+              <div key={a} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
+                <span className="w-24 text-sm font-medium capitalize">{a}</span>
+                <DotEditor
+                  value={v}
+                  max={HUMAN_ATTR_CAP}
+                  onChange={(n) => patch({ social_attrs: { ...trainer.social_attrs, [a]: n } })}
+                  disabled={!canEdit}
+                />
+                <Button size="sm" variant="ghost" className="ml-1 h-7 px-2" onClick={() => onRoll(`${trainer.name} · ${a}`, v)}>
+                  <Dices className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section>
         <Label>Notes</Label>
         <Textarea value={trainer.notes} onChange={(e) => patch({ notes: e.target.value })} disabled={!canEdit} rows={4} />
       </section>
+    </div>
+  );
+}
+
+function TrainerImage({
+  trainer, canEdit, onChange,
+}: {
+  trainer: Trainer;
+  canEdit: boolean;
+  onChange: (url: string | null) => void;
+}) {
+  function upload(file: File) {
+    if (file.size > 2_000_000) { toast.error("Image must be under 2 MB"); return; }
+    const reader = new FileReader();
+    reader.onload = () => onChange(reader.result as string);
+    reader.readAsDataURL(file);
+  }
+  return (
+    <div className="flex items-center gap-4">
+      {trainer.image_url ? (
+        <img src={trainer.image_url} alt={trainer.name} className="h-24 w-24 rounded-xl border border-border bg-muted object-cover" />
+      ) : (
+        <div className="flex h-24 w-24 items-center justify-center rounded-xl border border-dashed border-border bg-muted text-xs text-muted-foreground">No image</div>
+      )}
+      {canEdit && (
+        <div className="flex flex-col gap-1.5">
+          <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:bg-accent">
+            <ImagePlus className="h-3.5 w-3.5" /> {trainer.image_url ? "Replace" : "Upload"} image
+            <input type="file" accept="image/*" className="hidden"
+              onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
+          </label>
+          {trainer.image_url && (
+            <button
+              onClick={() => onChange(null)}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:bg-accent"
+            ><XIcon className="h-3.5 w-3.5" /> Remove</button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

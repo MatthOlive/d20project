@@ -12,12 +12,13 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { DotEditor } from "@/components/DotEditor";
+import { Textarea } from "@/components/ui/textarea";
 import {
-  POKEMON_ATTRS, RANKS, RANK_LABELS, RANK_BONUS, TYPE_COLORS, type Rank,
+  POKEMON_ATTRS, SOCIAL_ATTRS, RANKS, RANK_LABELS, RANK_BONUS, TYPE_COLORS, type Rank,
   rankAtLeast,
 } from "@/lib/pokerole";
 import { toast } from "sonner";
-import { Plus, Dices, Trash2 } from "lucide-react";
+import { Plus, Dices, Trash2, ImagePlus, RotateCcw } from "lucide-react";
 
 type Species = {
   id: string;
@@ -52,11 +53,19 @@ type Pokemon = {
   nickname: string | null;
   rank: Rank;
   current_attrs: Record<string, number>;
+  social_attrs: Record<string, number>;
   modifiers: Record<string, number>;
   hp: number;
   will: number;
   status: string[];
   notes: string;
+  image_url: string | null;
+  nature: string | null;
+  held_item: string | null;
+  happiness: number;
+  loyalty: number;
+  battles: number;
+  victories: number;
 };
 
 export function PokemonSheet({
@@ -181,13 +190,43 @@ export function PokemonSheet({
     qc.invalidateQueries({ queryKey: ["pokemon-moves", pokemonId] });
   }
 
+  async function uploadImage(file: File) {
+    if (!canEdit) return;
+    if (file.size > 2_000_000) { toast.error("Image must be under 2 MB"); return; }
+    const reader = new FileReader();
+    reader.onload = () => patch({ image_url: reader.result as string });
+    reader.readAsDataURL(file);
+  }
+
+  const displayImage = pokemon.image_url ?? species.sprite_url;
+
   return (
     <div className="space-y-5 p-4">
       {/* Header */}
       <div className="flex gap-4">
-        {species.sprite_url && (
-          <img src={species.sprite_url} alt={species.name} className="h-24 w-24 rounded-xl bg-muted object-contain" />
-        )}
+        <div className="group relative">
+          {displayImage ? (
+            <img src={displayImage} alt={species.name} className="h-24 w-24 rounded-xl bg-muted object-contain" />
+          ) : (
+            <div className="flex h-24 w-24 items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground">No image</div>
+          )}
+          {canEdit && (
+            <div className="absolute inset-0 flex items-end justify-center gap-1 rounded-xl bg-black/40 p-1 opacity-0 transition group-hover:opacity-100">
+              <label className="cursor-pointer rounded bg-card px-2 py-0.5 text-[10px] font-semibold hover:bg-accent">
+                <ImagePlus className="inline h-3 w-3" />
+                <input type="file" accept="image/*" className="hidden"
+                  onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0])} />
+              </label>
+              {pokemon.image_url && (
+                <button
+                  onClick={() => patch({ image_url: null })}
+                  className="cursor-pointer rounded bg-card px-2 py-0.5 text-[10px] font-semibold hover:bg-accent"
+                  title="Reset to sprite"
+                ><RotateCcw className="inline h-3 w-3" /></button>
+              )}
+            </div>
+          )}
+        </div>
         <div className="flex-1 space-y-2">
           <Input
             disabled={!canEdit}
@@ -227,6 +266,38 @@ export function PokemonSheet({
           </div>
         </div>
       </div>
+
+      {/* Details */}
+      <section className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1">
+          <Label className="text-xs">Nature</Label>
+          <Input value={pokemon.nature ?? ""} onChange={(e) => patch({ nature: e.target.value })} disabled={!canEdit} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Held item</Label>
+          <Input value={pokemon.held_item ?? ""} onChange={(e) => patch({ held_item: e.target.value })} disabled={!canEdit} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Happiness</Label>
+          <Input type="number" value={pokemon.happiness}
+            onChange={(e) => patch({ happiness: parseInt(e.target.value) || 0 })} disabled={!canEdit} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Loyalty</Label>
+          <Input type="number" value={pokemon.loyalty}
+            onChange={(e) => patch({ loyalty: parseInt(e.target.value) || 0 })} disabled={!canEdit} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Battles</Label>
+          <Input type="number" value={pokemon.battles}
+            onChange={(e) => patch({ battles: parseInt(e.target.value) || 0 })} disabled={!canEdit} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Victories</Label>
+          <Input type="number" value={pokemon.victories}
+            onChange={(e) => patch({ victories: parseInt(e.target.value) || 0 })} disabled={!canEdit} />
+        </div>
+      </section>
 
       {/* Attributes */}
       <section>
@@ -271,6 +342,31 @@ export function PokemonSheet({
           {species.hidden_ability && (
             <Badge variant="outline" className="border-primary text-primary">{species.hidden_ability} (hidden)</Badge>
           )}
+        </div>
+      </section>
+
+      {/* Social attributes */}
+      <section>
+        <h3 className="mb-2 text-sm font-bold">Social Attributes</h3>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {SOCIAL_ATTRS.map((a) => {
+            const v = pokemon.social_attrs?.[a] ?? 1;
+            return (
+              <div key={a} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
+                <span className="w-24 text-sm font-medium capitalize">{a}</span>
+                <DotEditor
+                  value={v}
+                  max={5}
+                  onChange={(n) => patch({ social_attrs: { ...pokemon.social_attrs, [a]: n } })}
+                  disabled={!canEdit}
+                />
+                <Button size="sm" variant="ghost" className="ml-1 h-7 px-2"
+                  onClick={() => onRoll(`${a} check`, v)}>
+                  <Dices className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            );
+          })}
         </div>
       </section>
 
@@ -319,6 +415,11 @@ export function PokemonSheet({
             );
           })}
         </div>
+      </section>
+
+      <section>
+        <Label className="text-xs">Notes</Label>
+        <Textarea value={pokemon.notes} onChange={(e) => patch({ notes: e.target.value })} disabled={!canEdit} rows={3} />
       </section>
     </div>
   );

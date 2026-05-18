@@ -45,6 +45,10 @@ export const POKEMON_ATTRS = [
   "insight",
 ] as const;
 
+// Social attributes (Contest / Charm stats) — shared by Trainers and Pokémon
+export const SOCIAL_ATTRS = ["tough", "cool", "beautiful", "cute", "clever"] as const;
+export type SocialAttr = (typeof SOCIAL_ATTRS)[number];
+
 export const HUMAN_ATTR_CAP = 5;
 
 export const SKILLS = [

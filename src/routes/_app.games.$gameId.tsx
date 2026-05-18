@@ -172,56 +172,6 @@ function GameRoom() {
         </div>
 
         {/* Characters strip */}
-        <Card className="p-3">
-          <div className="mb-2 flex items-center justify-between">
-            <h3 className="text-sm font-bold">Characters</h3>
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => createTrainer.mutate()}>
-                <User className="mr-1.5 h-3.5 w-3.5" /> New Trainer
-              </Button>
-              <Dialog open={pkmDialogOpen} onOpenChange={setPkmDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm"><Sparkles className="mr-1.5 h-3.5 w-3.5" /> New Pokémon</Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader><DialogTitle>Create a Pokémon</DialogTitle></DialogHeader>
-                  <Label>Species</Label>
-                  <Select value={newPkmSpecies} onValueChange={setNewPkmSpecies}>
-                    <SelectTrigger><SelectValue placeholder="Pick a species" /></SelectTrigger>
-                    <SelectContent>
-                      {speciesList?.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <DialogFooter>
-                    <Button onClick={() => createPokemon.mutate()} disabled={createPokemon.isPending}>Create</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {characters?.trainers.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => openWindow({ kind: "trainer", id: t.id, title: t.name })}
-                className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs hover:border-primary"
-              ><User className="h-3.5 w-3.5" /> {t.name}</button>
-            ))}
-            {characters?.pokemon.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => openWindow({ kind: "pokemon", id: p.id, title: p.nickname ?? p.species.name })}
-                className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs hover:border-primary"
-              >
-                {p.species.sprite_url && <img src={p.species.sprite_url} alt="" className="h-5 w-5" />}
-                {p.nickname ?? p.species.name}
-              </button>
-            ))}
-            {(characters?.trainers.length ?? 0) + (characters?.pokemon.length ?? 0) === 0 && (
-              <p className="text-xs text-muted-foreground">No characters yet. Create one to get started.</p>
-            )}
-          </div>
-        </Card>
       </div>
 
       {/* Right: tabs */}
@@ -240,8 +190,55 @@ function GameRoom() {
               The Pokérole 2.0 compendium will live here. Upload the rules PDF and entries will populate.
             </p>
           </TabsContent>
-          <TabsContent value="files" className="flex-1 overflow-auto p-4">
-            <p className="text-sm text-muted-foreground">File manager coming soon.</p>
+          <TabsContent value="files" className="flex-1 overflow-auto p-3">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-bold">Characters</h3>
+              <div className="flex gap-1.5">
+                <Button size="sm" variant="outline" onClick={() => createTrainer.mutate()}>
+                  <User className="mr-1 h-3.5 w-3.5" /> Trainer
+                </Button>
+                <Dialog open={pkmDialogOpen} onOpenChange={setPkmDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm"><Sparkles className="mr-1 h-3.5 w-3.5" /> Pokémon</Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader><DialogTitle>Create a Pokémon</DialogTitle></DialogHeader>
+                    <Label>Species</Label>
+                    <Select value={newPkmSpecies} onValueChange={setNewPkmSpecies}>
+                      <SelectTrigger><SelectValue placeholder="Pick a species" /></SelectTrigger>
+                      <SelectContent>
+                        {speciesList?.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <DialogFooter>
+                      <Button onClick={() => createPokemon.mutate()} disabled={createPokemon.isPending}>Create</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              {characters?.trainers.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => openWindow({ kind: "trainer", id: t.id, title: t.name })}
+                  className="flex w-full items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-left text-sm hover:border-primary"
+                ><User className="h-3.5 w-3.5 shrink-0" /> {t.name}</button>
+              ))}
+              {characters?.pokemon.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => openWindow({ kind: "pokemon", id: p.id, title: p.nickname ?? p.species.name })}
+                  className="flex w-full items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-left text-sm hover:border-primary"
+                >
+                  {p.species.sprite_url && <img src={p.species.sprite_url} alt="" className="h-6 w-6 shrink-0" />}
+                  <span className="truncate">{p.nickname ?? p.species.name}</span>
+                </button>
+              ))}
+              {(characters?.trainers.length ?? 0) + (characters?.pokemon.length ?? 0) === 0 && (
+                <p className="text-xs text-muted-foreground">No characters yet. Create one to get started.</p>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       </Card>

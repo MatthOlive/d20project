@@ -235,48 +235,72 @@ export type Database = {
       }
       pokemon: {
         Row: {
+          battles: number
           created_at: string
           current_attrs: Json
           game_id: string
+          happiness: number
+          held_item: string | null
           hp: number
           id: string
+          image_url: string | null
+          loyalty: number
           modifiers: Json
+          nature: string | null
           nickname: string | null
           notes: string
           owner_id: string
           rank: Database["public"]["Enums"]["pokerole_rank"]
+          social_attrs: Json
           species_id: string
           status: string[]
+          victories: number
           will: number
         }
         Insert: {
+          battles?: number
           created_at?: string
           current_attrs?: Json
           game_id: string
+          happiness?: number
+          held_item?: string | null
           hp?: number
           id?: string
+          image_url?: string | null
+          loyalty?: number
           modifiers?: Json
+          nature?: string | null
           nickname?: string | null
           notes?: string
           owner_id: string
           rank?: Database["public"]["Enums"]["pokerole_rank"]
+          social_attrs?: Json
           species_id: string
           status?: string[]
+          victories?: number
           will?: number
         }
         Update: {
+          battles?: number
           created_at?: string
           current_attrs?: Json
           game_id?: string
+          happiness?: number
+          held_item?: string | null
           hp?: number
           id?: string
+          image_url?: string | null
+          loyalty?: number
           modifiers?: Json
+          nature?: string | null
           nickname?: string | null
           notes?: string
           owner_id?: string
           rank?: Database["public"]["Enums"]["pokerole_rank"]
+          social_attrs?: Json
           species_id?: string
           status?: string[]
+          victories?: number
           will?: number
         }
         Relationships: [
@@ -456,11 +480,14 @@ export type Database = {
         Row: {
           age: number | null
           attrs: Json
+          background: string | null
           concept: string | null
           confidence: number
           created_at: string
           game_id: string
           id: string
+          image_url: string | null
+          money: number
           name: string
           nature: string | null
           notes: string
@@ -468,15 +495,19 @@ export type Database = {
           pokedex: Json
           rank: Database["public"]["Enums"]["pokerole_rank"]
           skills: Json
+          social_attrs: Json
         }
         Insert: {
           age?: number | null
           attrs?: Json
+          background?: string | null
           concept?: string | null
           confidence?: number
           created_at?: string
           game_id: string
           id?: string
+          image_url?: string | null
+          money?: number
           name?: string
           nature?: string | null
           notes?: string
@@ -484,15 +515,19 @@ export type Database = {
           pokedex?: Json
           rank?: Database["public"]["Enums"]["pokerole_rank"]
           skills?: Json
+          social_attrs?: Json
         }
         Update: {
           age?: number | null
           attrs?: Json
+          background?: string | null
           concept?: string | null
           confidence?: number
           created_at?: string
           game_id?: string
           id?: string
+          image_url?: string | null
+          money?: number
           name?: string
           nature?: string | null
           notes?: string
@@ -500,6 +535,7 @@ export type Database = {
           pokedex?: Json
           rank?: Database["public"]["Enums"]["pokerole_rank"]
           skills?: Json
+          social_attrs?: Json
         }
         Relationships: [
           {
