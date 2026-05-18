@@ -55,6 +55,14 @@ export const SKILLS = [
   "Empathy", "Survival",
 ] as const;
 
+// Trainers do not have Channel; they have Throw and Weapons instead.
+export const TRAINER_SKILLS = [
+  "Brawl", "Throw", "Weapons", "Clash", "Evasion",
+  "Alert", "Athletic", "Nature", "Stealth", "Allure", "Etiquette",
+  "Intimidate", "Perform", "Crafts", "Lore", "Medicine", "Science",
+  "Empathy", "Survival",
+] as const;
+
 export const POKEMON_TYPES = [
   "normal","fire","water","electric","grass","ice","fighting","poison","ground",
   "flying","psychic","bug","rock","ghost","dragon","dark","steel","fairy","typeless",
