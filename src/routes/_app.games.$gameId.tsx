@@ -50,12 +50,12 @@ function GameRoom() {
     queryKey: ["characters", gameId],
     queryFn: async () => {
       const [pkm, tr] = await Promise.all([
-        supabase.from("pokemon").select("id,nickname,owner_id,image_url,species:species_id(name,sprite_url)").eq("game_id", gameId),
-        supabase.from("trainers").select("id,name,owner_id,image_url").eq("game_id", gameId),
+        supabase.from("pokemon").select("id,nickname,owner_id,image_url,folder,species:species_id(name,sprite_url)").eq("game_id", gameId),
+        supabase.from("trainers").select("id,name,owner_id,image_url,folder").eq("game_id", gameId),
       ]);
       return {
-        pokemon: (pkm.data ?? []) as { id: string; nickname: string | null; owner_id: string; image_url: string | null; species: { name: string; sprite_url: string | null } }[],
-        trainers: (tr.data ?? []) as { id: string; name: string; owner_id: string; image_url: string | null }[],
+        pokemon: (pkm.data ?? []) as { id: string; nickname: string | null; owner_id: string; image_url: string | null; folder: string | null; species: { name: string; sprite_url: string | null } }[],
+        trainers: (tr.data ?? []) as { id: string; name: string; owner_id: string; image_url: string | null; folder: string | null }[],
       };
     },
   });
