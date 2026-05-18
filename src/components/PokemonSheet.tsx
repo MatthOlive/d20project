@@ -171,7 +171,7 @@ export function PokemonSheet({
     await patch({
       current_attrs: newAttrs,
       hp: species!.base_hp + vit + str + RANK_BONUS[pokemon!.rank],
-      will: ins + RANK_BONUS[pokemon!.rank],
+      will: ins + 2,
     });
   }
 
