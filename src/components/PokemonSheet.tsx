@@ -339,7 +339,7 @@ export function PokemonSheet({
             )}
             <div className="ml-auto flex flex-wrap items-center gap-1.5 text-sm">
               <span className="rounded-full bg-success/15 px-2.5 py-0.5 font-bold text-success">
-                HP {dynaMode ? pokemon.hp * 2 : pokemon.hp}{dynaMode ? " ×2" : ""}
+                HP {pokemon.current_hp ?? (dynaMode ? pokemon.hp * 2 : pokemon.hp)}/{dynaMode ? pokemon.hp * 2 : pokemon.hp}{dynaMode ? " ×2" : ""}
               </span>
               <span className="rounded-full bg-accent px-2.5 py-0.5 font-bold">Will {pokemon.will}</span>
               <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-bold text-primary">Def {pokemon.current_attrs.vitality ?? 1}</span>
@@ -363,26 +363,61 @@ export function PokemonSheet({
               const clash = str + clashSkill;
               const evasion = dex + evasionSkill;
               const name = pokemon.nickname || species.name;
+              const maxHp = dynaMode ? pokemon.hp * 2 : pokemon.hp;
+              const curHp = pokemon.current_hp ?? maxHp;
+              const pen = painPenaltyFor(curHp, maxHp);
+              const attackSkills = [
+                { name: "Brawl", value: pokemon.skills?.Brawl ?? 0 },
+                { name: "Channel", value: pokemon.skills?.Channel ?? 0 },
+              ];
+              const allAttrs = POKEMON_ATTRS.map((a) => ({ name: a, value: pokemon.current_attrs[a] ?? 1 }));
+              const allSocial = SOCIAL_ATTRS.map((a) => ({ name: a, value: pokemon.social_attrs?.[a] ?? 1 }));
+              const allSkills = SKILLS.map((s) => ({ name: s, value: pokemon.skills?.[s] ?? 0 }));
               return (
                 <>
                   <Button size="sm" variant="outline" className="h-7"
-                    onClick={() => onRoll(`${name} · Initiative (Dex+Alert)`, init)}>
+                    onClick={() => onRoll(`${name} · Initiative (Dex+Alert)`, init, pen)}>
                     <Dices className="mr-1 h-3.5 w-3.5" /> Initiative · {init}d6
                   </Button>
                   <Button size="sm" variant="outline" className="h-7"
-                    onClick={() => onRoll(`${name} · Clash (Str+Clash)`, clash)}>
+                    onClick={() => onRoll(`${name} · Clash (Str+Clash)`, clash, pen)}>
                     <Dices className="mr-1 h-3.5 w-3.5" /> Clash · {clash}d6
                   </Button>
                   <Button size="sm" variant="outline" className="h-7"
-                    onClick={() => onRoll(`${name} · Evasion (Dex+Evasion)`, evasion)}>
+                    onClick={() => onRoll(`${name} · Evasion (Dex+Evasion)`, evasion, pen)}>
                     <Dices className="mr-1 h-3.5 w-3.5" /> Evasion · {evasion}d6
                   </Button>
+                  <AttackRollButton
+                    characterName={name}
+                    attrLabel="Dexterity"
+                    attrValue={dex}
+                    skillOptions={attackSkills}
+                    painPenalty={pen}
+                    onRoll={onRoll}
+                  />
+                  <GenericRollButton
+                    characterName={name}
+                    attrs={[...allAttrs, ...allSocial]}
+                    skills={allSkills}
+                    painPenalty={pen}
+                    onRoll={onRoll}
+                  />
                 </>
               );
             })()}
           </div>
         </div>
       </div>
+
+      <HpAndStatusBlock
+        current={pokemon.current_hp ?? (dynaMode ? pokemon.hp * 2 : pokemon.hp)}
+        max={dynaMode ? pokemon.hp * 2 : pokemon.hp}
+        status={pokemon.status ?? []}
+        painPenalty={painPenaltyFor(pokemon.current_hp ?? pokemon.hp, dynaMode ? pokemon.hp * 2 : pokemon.hp)}
+        canEdit={canEdit}
+        onHpChange={(n) => patch({ current_hp: n })}
+        onStatusChange={(s) => patch({ status: s })}
+      />
 
       {/* Details */}
       <section className="grid gap-3 sm:grid-cols-2">
