@@ -439,3 +439,257 @@ function FilesPanel({
     </div>
   );
 }
+
+// ============================================================
+// Scenarios (narrator-only)
+// ============================================================
+
+type Scenario = { id: string; game_id: string; name: string; background_url: string | null; notes: string };
+
+function ScenarioButtons({ gameId, currentBg }: { gameId: string; currentBg: string | null }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const { data: scenarios = [] } = useQuery({
+    queryKey: ["scenarios", gameId],
+    queryFn: async () => {
+      const { data } = await supabase.from("scenarios").select("*").eq("game_id", gameId).order("created_at");
+      return (data ?? []) as Scenario[];
+    },
+  });
+
+  async function createScenario() {
+    const name = prompt("Scenario name?")?.trim();
+    if (!name) return;
+    const { error } = await supabase.from("scenarios").insert({ game_id: gameId, name, background_url: currentBg });
+    if (error) toast.error(error.message);
+    else { toast.success("Scenario created"); qc.invalidateQueries({ queryKey: ["scenarios", gameId] }); }
+  }
+  async function applyScenario(s: Scenario) {
+    await supabase.from("games").update({ background_url: s.background_url }).eq("id", gameId);
+    qc.invalidateQueries({ queryKey: ["game", gameId] });
+    toast.success(`Loaded "${s.name}"`);
+    setOpen(false);
+  }
+  async function uploadBg(s: Scenario, file: File) {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      await supabase.from("scenarios").update({ background_url: reader.result as string }).eq("id", s.id);
+      qc.invalidateQueries({ queryKey: ["scenarios", gameId] });
+    };
+    reader.readAsDataURL(file);
+  }
+  async function deleteScenario(id: string) {
+    if (!confirm("Delete this scenario?")) return;
+    await supabase.from("scenarios").delete().eq("id", id);
+    qc.invalidateQueries({ queryKey: ["scenarios", gameId] });
+  }
+  async function rename(s: Scenario) {
+    const name = prompt("Rename scenario", s.name)?.trim();
+    if (!name) return;
+    await supabase.from("scenarios").update({ name }).eq("id", s.id);
+    qc.invalidateQueries({ queryKey: ["scenarios", gameId] });
+  }
+
+  return (
+    <>
+      <Button size="sm" variant="secondary" className="h-7" onClick={createScenario}>
+        <Plus className="mr-1 h-3.5 w-3.5" /> Scenario
+      </Button>
+      <Button size="sm" variant="secondary" className="h-7" onClick={() => setOpen(true)}>
+        <Folder className="mr-1 h-3.5 w-3.5" /> Scenarios ({scenarios.length})
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[80vh] max-w-2xl overflow-hidden">
+          <DialogHeader><DialogTitle>Scenarios</DialogTitle></DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto space-y-2">
+            {scenarios.length === 0 && <p className="text-sm text-muted-foreground">No scenarios yet. Click "Scenario" to capture the current map as a scenario.</p>}
+            {scenarios.map((s) => (
+              <div key={s.id} className="flex items-center gap-2 rounded-md border border-border bg-card p-2">
+                {s.background_url
+                  ? <img src={s.background_url} alt="" className="h-14 w-20 rounded object-cover" />
+                  : <div className="flex h-14 w-20 items-center justify-center rounded bg-muted text-[10px] text-muted-foreground">No bg</div>}
+                <div className="flex-1 min-w-0">
+                  <p className="truncate text-sm font-semibold">{s.name}</p>
+                </div>
+                <Button size="sm" variant="default" className="h-7" onClick={() => applyScenario(s)}>Load</Button>
+                <label className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-md border border-border bg-card px-2 text-xs hover:bg-accent">
+                  <ImageIcon className="h-3.5 w-3.5" />
+                  <input type="file" accept="image/*" className="hidden"
+                    onChange={(e) => e.target.files?.[0] && uploadBg(s, e.target.files[0])} />
+                </label>
+                <Button size="sm" variant="ghost" className="h-7" onClick={() => rename(s)}>Rename</Button>
+                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => deleteScenario(s.id)}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+// ============================================================
+// Compendium: Pokédex, Moves by type, Abilities
+// ============================================================
+
+function CompendiumPanel() {
+  return (
+    <Tabs defaultValue="pokedex" className="flex h-full flex-col">
+      <TabsList className="grid grid-cols-3">
+        <TabsTrigger value="pokedex">Pokédex</TabsTrigger>
+        <TabsTrigger value="moves">Moves</TabsTrigger>
+        <TabsTrigger value="abilities">Abilities</TabsTrigger>
+      </TabsList>
+      <TabsContent value="pokedex" className="flex-1 overflow-hidden"><PokedexCompendium /></TabsContent>
+      <TabsContent value="moves" className="flex-1 overflow-hidden"><MovesCompendium /></TabsContent>
+      <TabsContent value="abilities" className="flex-1 overflow-hidden"><AbilitiesCompendium /></TabsContent>
+    </Tabs>
+  );
+}
+
+type SpeciesRow = {
+  id: string; name: string; dex_number: number | null; sprite_url: string | null;
+  types: PokemonType[]; base_hp: number; base_attrs: Record<string, number>;
+  abilities: string[]; hidden_ability: string | null; suggested_rank: string | null;
+  evolutions: string[];
+};
+
+function PokedexCompendium() {
+  const [q, setQ] = useState("");
+  const { data: list = [] } = useQuery({
+    queryKey: ["compendium-species"],
+    queryFn: async () => {
+      const { data } = await supabase.from("species").select("*").order("dex_number");
+      return (data ?? []) as SpeciesRow[];
+    },
+  });
+  const filtered = list.filter((s) => !q || s.name.toLowerCase().includes(q.toLowerCase()));
+  return (
+    <div className="flex h-full flex-col gap-2 p-2">
+      <Input placeholder="Search Pokémon…" value={q} onChange={(e) => setQ(e.target.value)} className="h-8 text-sm" />
+      <div className="flex-1 overflow-y-auto space-y-2">
+        {filtered.map((s) => (
+          <details key={s.id} className="rounded-md border border-border bg-card">
+            <summary className="flex cursor-pointer items-center gap-2 px-2 py-1.5">
+              {s.sprite_url ? <img src={s.sprite_url} alt="" className="h-8 w-8 object-contain" /> : <div className="h-8 w-8 rounded bg-muted" />}
+              <span className="text-xs text-muted-foreground">#{String(s.dex_number ?? 0).padStart(3, "0")}</span>
+              <span className="flex-1 text-sm font-semibold">{s.name}</span>
+              <div className="flex gap-0.5">
+                {(s.types ?? []).map((t) => (
+                  <span key={t} className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase"
+                    style={{ background: TYPE_COLORS[t]?.bg, color: TYPE_COLORS[t]?.fg }}>{t}</span>
+                ))}
+              </div>
+            </summary>
+            <div className="space-y-1.5 border-t border-border px-3 py-2 text-xs">
+              <p><span className="font-semibold">Base HP:</span> {s.base_hp} · <span className="font-semibold">Suggested rank:</span> {s.suggested_rank ?? "—"}</p>
+              {Object.keys(s.base_attrs ?? {}).length > 0 && (
+                <p><span className="font-semibold">Base attrs:</span> {Object.entries(s.base_attrs).map(([k, v]) => `${k} ${v}`).join(" · ")}</p>
+              )}
+              <p><span className="font-semibold">Abilities:</span> {(s.abilities ?? []).join(", ") || "—"}
+                {s.hidden_ability && <em className="text-muted-foreground"> · Hidden: {s.hidden_ability}</em>}</p>
+              {(s.evolutions ?? []).length > 0 && (
+                <p><span className="font-semibold">Evolutions:</span> {s.evolutions.join(" → ")}</p>
+              )}
+            </div>
+          </details>
+        ))}
+        {filtered.length === 0 && <p className="p-4 text-center text-xs text-muted-foreground">No species found.</p>}
+      </div>
+    </div>
+  );
+}
+
+type MoveRow = {
+  id: string; name: string; type: PokemonType; power: number; category: string; target: string;
+  accuracy_stat: string | null; accuracy_skill: string | null; damage_stat: string | null; effect: string;
+};
+
+function MovesCompendium() {
+  const [q, setQ] = useState("");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const { data: list = [] } = useQuery({
+    queryKey: ["compendium-moves"],
+    queryFn: async () => {
+      const { data } = await supabase.from("moves").select("*").order("name");
+      return (data ?? []) as MoveRow[];
+    },
+  });
+  const filtered = list.filter((m) =>
+    (typeFilter === "all" || m.type === typeFilter) &&
+    (!q || m.name.toLowerCase().includes(q.toLowerCase()))
+  );
+  const grouped = POKEMON_TYPES
+    .map((t) => ({ type: t, moves: filtered.filter((m) => m.type === t) }))
+    .filter((g) => g.moves.length > 0);
+
+  return (
+    <div className="flex h-full flex-col gap-2 p-2">
+      <div className="flex gap-2">
+        <Input placeholder="Search move…" value={q} onChange={(e) => setQ(e.target.value)} className="h-8 flex-1 text-sm" />
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All types</SelectItem>
+            {POKEMON_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="flex-1 overflow-y-auto space-y-3">
+        {grouped.map(({ type, moves }) => (
+          <div key={type}>
+            <h4 className="mb-1 inline-block rounded px-2 py-0.5 text-xs font-bold uppercase"
+              style={{ background: TYPE_COLORS[type].bg, color: TYPE_COLORS[type].fg }}>{type} · {moves.length}</h4>
+            <div className="grid gap-1">
+              {moves.map((m) => (
+                <details key={m.id} className="rounded-md border border-border bg-card">
+                  <summary className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-xs">
+                    <span className="flex-1 font-semibold">{m.name}</span>
+                    <span className="text-muted-foreground">{m.category}</span>
+                    <span className="rounded bg-muted px-1.5 py-0.5">Pwr {m.power}</span>
+                  </summary>
+                  <div className="space-y-0.5 border-t border-border px-3 py-2 text-xs">
+                    <p><span className="font-semibold">Accuracy:</span> {m.accuracy_stat ?? "—"}{m.accuracy_skill ? ` + ${m.accuracy_skill}` : ""}</p>
+                    <p><span className="font-semibold">Damage:</span> {m.damage_stat ?? "—"} · <span className="font-semibold">Target:</span> {m.target}</p>
+                    {m.effect && <p className="text-muted-foreground">{m.effect}</p>}
+                  </div>
+                </details>
+              ))}
+            </div>
+          </div>
+        ))}
+        {grouped.length === 0 && <p className="p-4 text-center text-xs text-muted-foreground">No moves found.</p>}
+      </div>
+    </div>
+  );
+}
+
+type AbilityRow = { id: string; name: string; effect: string };
+
+function AbilitiesCompendium() {
+  const [q, setQ] = useState("");
+  const { data: list = [] } = useQuery({
+    queryKey: ["compendium-abilities"],
+    queryFn: async () => {
+      const { data } = await supabase.from("abilities").select("*").order("name");
+      return (data ?? []) as AbilityRow[];
+    },
+  });
+  const filtered = list.filter((a) => !q || a.name.toLowerCase().includes(q.toLowerCase()));
+  return (
+    <div className="flex h-full flex-col gap-2 p-2">
+      <Input placeholder="Search ability…" value={q} onChange={(e) => setQ(e.target.value)} className="h-8 text-sm" />
+      <div className="flex-1 overflow-y-auto space-y-1">
+        {filtered.map((a) => (
+          <details key={a.id} className="rounded-md border border-border bg-card">
+            <summary className="cursor-pointer px-3 py-1.5 text-sm font-semibold">{a.name}</summary>
+            <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground">{a.effect || "—"}</p>
+          </details>
+        ))}
+        {filtered.length === 0 && <p className="p-4 text-center text-xs text-muted-foreground">No abilities.</p>}
+      </div>
+    </div>
+  );
+}
