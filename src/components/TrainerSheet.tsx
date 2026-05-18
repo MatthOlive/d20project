@@ -47,6 +47,7 @@ type Trainer = {
   background: string | null;
   bag: string;
   battle_items: string;
+  pokedex: Record<string, { name: string; captured: boolean; sprite_url?: string | null }>;
 };
 
 export function TrainerSheet({
