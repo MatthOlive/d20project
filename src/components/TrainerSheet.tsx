@@ -65,7 +65,7 @@ export function TrainerSheet({
   trainerId: string;
   userId: string;
   isNarrator: boolean;
-  onRoll: (label: string, n: number) => void;
+  onRoll: (label: string, n: number, penalty?: number) => void;
   onDeleted?: () => void;
 }) {
   const [ballKey, setBallKey] = useState<BallKey>("pokeball");
