@@ -220,8 +220,8 @@ function GameRoom() {
             height={600}
           >
             {w.kind === "pokemon"
-              ? <PokemonSheet pokemonId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} />
-              : <TrainerSheet trainerId={w.id} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} />}
+              ? <PokemonSheet pokemonId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(w.kind, w.id); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
+              : <TrainerSheet trainerId={w.id} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onDeleted={() => { closeWindow(w.kind, w.id); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />}
           </FloatingWindow>
         ))}
       </div>
