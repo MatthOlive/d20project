@@ -197,66 +197,12 @@ function GameRoom() {
             </p>
           </TabsContent>
           <TabsContent value="files" className="flex-1 overflow-auto p-3">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-bold">Characters</h3>
-              <div className="flex gap-1.5">
-                <Button size="sm" variant="outline" onClick={() => createTrainer.mutate()}>
-                  <User className="mr-1 h-3.5 w-3.5" /> Trainer
-                </Button>
-                <Dialog open={pkmDialogOpen} onOpenChange={setPkmDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm"><Sparkles className="mr-1 h-3.5 w-3.5" /> Pokémon</Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader><DialogTitle>Create a Pokémon</DialogTitle></DialogHeader>
-                    <Label>Species</Label>
-                    <Select value={newPkmSpecies} onValueChange={setNewPkmSpecies}>
-                      <SelectTrigger><SelectValue placeholder="Pick a species" /></SelectTrigger>
-                      <SelectContent>
-                        {speciesList?.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <DialogFooter>
-                      <Button onClick={() => createPokemon.mutate()} disabled={createPokemon.isPending}>Create</Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </div>
-            <p className="mb-2 text-[11px] text-muted-foreground">Tip: drag a character onto the map to place a token.</p>
-            <div className="space-y-1.5">
-              {characters?.trainers.map((t) => {
-                const payload: DragCharacterPayload = { kind: "trainer", id: t.id, label: t.name, imageUrl: t.image_url, ownerId: t.owner_id };
-                return (
-                  <button
-                    key={t.id}
-                    draggable
-                    onDragStart={(e) => { e.dataTransfer.setData(DRAG_MIME, JSON.stringify(payload)); e.dataTransfer.effectAllowed = "copy"; }}
-                    onClick={() => openWindow({ kind: "trainer", id: t.id, title: t.name })}
-                    className="flex w-full items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-left text-sm hover:border-primary"
-                  ><User className="h-3.5 w-3.5 shrink-0" /> {t.name}</button>
-                );
-              })}
-              {characters?.pokemon.map((p) => {
-                const label = p.nickname ?? p.species.name;
-                const payload: DragCharacterPayload = { kind: "pokemon", id: p.id, label, imageUrl: p.image_url ?? p.species.sprite_url, ownerId: p.owner_id };
-                return (
-                  <button
-                    key={p.id}
-                    draggable
-                    onDragStart={(e) => { e.dataTransfer.setData(DRAG_MIME, JSON.stringify(payload)); e.dataTransfer.effectAllowed = "copy"; }}
-                    onClick={() => openWindow({ kind: "pokemon", id: p.id, title: label })}
-                    className="flex w-full items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-left text-sm hover:border-primary"
-                  >
-                    {p.species.sprite_url && <img src={p.species.sprite_url} alt="" className="h-6 w-6 shrink-0" />}
-                    <span className="truncate">{label}</span>
-                  </button>
-                );
-              })}
-              {(characters?.trainers.length ?? 0) + (characters?.pokemon.length ?? 0) === 0 && (
-                <p className="text-xs text-muted-foreground">No characters yet. Create one to get started.</p>
-              )}
-            </div>
+            <FilesPanel
+              gameId={gameId}
+              characters={characters}
+              onOpen={(w) => openWindow(w)}
+              qc={qc}
+            />
           </TabsContent>
         </Tabs>
       </Card>
