@@ -223,24 +223,36 @@ function GameRoom() {
                 </Dialog>
               </div>
             </div>
+            <p className="mb-2 text-[11px] text-muted-foreground">Tip: drag a character onto the map to place a token.</p>
             <div className="space-y-1.5">
-              {characters?.trainers.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => openWindow({ kind: "trainer", id: t.id, title: t.name })}
-                  className="flex w-full items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-left text-sm hover:border-primary"
-                ><User className="h-3.5 w-3.5 shrink-0" /> {t.name}</button>
-              ))}
-              {characters?.pokemon.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => openWindow({ kind: "pokemon", id: p.id, title: p.nickname ?? p.species.name })}
-                  className="flex w-full items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-left text-sm hover:border-primary"
-                >
-                  {p.species.sprite_url && <img src={p.species.sprite_url} alt="" className="h-6 w-6 shrink-0" />}
-                  <span className="truncate">{p.nickname ?? p.species.name}</span>
-                </button>
-              ))}
+              {characters?.trainers.map((t) => {
+                const payload: DragCharacterPayload = { kind: "trainer", id: t.id, label: t.name, imageUrl: t.image_url, ownerId: t.owner_id };
+                return (
+                  <button
+                    key={t.id}
+                    draggable
+                    onDragStart={(e) => { e.dataTransfer.setData(DRAG_MIME, JSON.stringify(payload)); e.dataTransfer.effectAllowed = "copy"; }}
+                    onClick={() => openWindow({ kind: "trainer", id: t.id, title: t.name })}
+                    className="flex w-full items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-left text-sm hover:border-primary"
+                  ><User className="h-3.5 w-3.5 shrink-0" /> {t.name}</button>
+                );
+              })}
+              {characters?.pokemon.map((p) => {
+                const label = p.nickname ?? p.species.name;
+                const payload: DragCharacterPayload = { kind: "pokemon", id: p.id, label, imageUrl: p.image_url ?? p.species.sprite_url, ownerId: p.owner_id };
+                return (
+                  <button
+                    key={p.id}
+                    draggable
+                    onDragStart={(e) => { e.dataTransfer.setData(DRAG_MIME, JSON.stringify(payload)); e.dataTransfer.effectAllowed = "copy"; }}
+                    onClick={() => openWindow({ kind: "pokemon", id: p.id, title: label })}
+                    className="flex w-full items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-left text-sm hover:border-primary"
+                  >
+                    {p.species.sprite_url && <img src={p.species.sprite_url} alt="" className="h-6 w-6 shrink-0" />}
+                    <span className="truncate">{label}</span>
+                  </button>
+                );
+              })}
               {(characters?.trainers.length ?? 0) + (characters?.pokemon.length ?? 0) === 0 && (
                 <p className="text-xs text-muted-foreground">No characters yet. Create one to get started.</p>
               )}
