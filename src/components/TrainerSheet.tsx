@@ -71,7 +71,7 @@ export function TrainerSheet({
     queryFn: async () => {
       const { data, error } = await supabase.from("trainers").select("*").eq("id", trainerId).single();
       if (error) throw error;
-      return data as Trainer;
+      return data as unknown as Trainer;
     },
   });
 
