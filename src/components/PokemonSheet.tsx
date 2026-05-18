@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { DotEditor } from "@/components/DotEditor";
 import {
-  ATTRS, RANKS, RANK_LABELS, RANK_BONUS, TYPE_COLORS, type Rank,
+  ATTRS, POKEMON_ATTRS, RANKS, RANK_LABELS, RANK_BONUS, TYPE_COLORS, type Rank,
   rankAtLeast,
 } from "@/lib/pokerole";
 import { toast } from "sonner";
