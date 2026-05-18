@@ -51,6 +51,8 @@ type Trainer = {
   bag: string;
   battle_items: string;
   pokedex: Record<string, { name: string; captured: boolean; sprite_url?: string | null }>;
+  current_hp: number | null;
+  status_conditions: string[];
 };
 
 export function TrainerSheet({
