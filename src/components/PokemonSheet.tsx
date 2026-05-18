@@ -53,11 +53,19 @@ type Pokemon = {
   nickname: string | null;
   rank: Rank;
   current_attrs: Record<string, number>;
+  social_attrs: Record<string, number>;
   modifiers: Record<string, number>;
   hp: number;
   will: number;
   status: string[];
   notes: string;
+  image_url: string | null;
+  nature: string | null;
+  held_item: string | null;
+  happiness: number;
+  loyalty: number;
+  battles: number;
+  victories: number;
 };
 
 export function PokemonSheet({
