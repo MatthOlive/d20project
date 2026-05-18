@@ -9,8 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Users, Crown } from "lucide-react";
+import { Plus, Users, Crown, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_app/dashboard")({
@@ -35,12 +38,13 @@ function Dashboard() {
 
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
+  const [narratorType, setNarratorType] = useState<"human" | "ai">("human");
   const createGame = useMutation({
     mutationFn: async (gameName: string) => {
       if (!user) throw new Error("Not signed in");
       const { data, error } = await supabase
         .from("games")
-        .insert({ name: gameName, narrator_id: user.id })
+        .insert({ name: gameName, narrator_id: user.id, narrator_type: narratorType })
         .select()
         .single();
       if (error) throw error;
@@ -50,6 +54,7 @@ function Dashboard() {
       qc.invalidateQueries({ queryKey: ["games"] });
       setOpen(false);
       setName("");
+      setNarratorType("human");
       toast.success("Game created!");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -70,9 +75,30 @@ function Dashboard() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Create a new game</DialogTitle></DialogHeader>
-            <div className="space-y-2">
-              <Label htmlFor="gname">Campaign name</Label>
-              <Input id="gname" value={name} onChange={(e) => setName(e.target.value)} placeholder="The Kanto Chronicles" />
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="gname">Campaign name</Label>
+                <Input id="gname" value={name} onChange={(e) => setName(e.target.value)} placeholder="The Kanto Chronicles" />
+              </div>
+              <div className="space-y-2">
+                <Label>Narrator</Label>
+                <Select value={narratorType} onValueChange={(v) => setNarratorType(v as "human" | "ai")}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="human">
+                      <span className="inline-flex items-center gap-2"><Crown className="h-3.5 w-3.5" /> Narrated by a person (you)</span>
+                    </SelectItem>
+                    <SelectItem value="ai">
+                      <span className="inline-flex items-center gap-2"><Sparkles className="h-3.5 w-3.5" /> Narrated by AI</span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground">
+                  {narratorType === "ai"
+                    ? "An AI Game Master will run the story inside the game room."
+                    : "You'll be the Game Master and run the story yourself."}
+                </p>
+              </div>
             </div>
             <DialogFooter>
               <Button

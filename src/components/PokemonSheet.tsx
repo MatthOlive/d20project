@@ -505,10 +505,25 @@ export function PokemonSheet({
         <div className="space-y-2">
           {species.abilities.map((a) => {
             const detail = abilityDetails.find((d) => d.name === a);
+            const hasChoice = species.abilities.length > 1;
+            const selected = (pokemon.modifiers?._selected_ability as string | undefined) ?? species.abilities[0];
+            const isSelected = selected === a;
             return (
               <div key={a} className="flex items-start justify-between gap-2 rounded-md border border-border bg-card px-3 py-2">
+                {hasChoice && (
+                  <button
+                    type="button"
+                    disabled={!canEdit}
+                    onClick={() => canEdit && patch({ modifiers: { ...pokemon.modifiers, _selected_ability: a } })}
+                    title={isSelected ? "Active ability" : "Set as active ability"}
+                    className={`mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 transition ${
+                      isSelected ? "border-primary bg-primary" : "border-border bg-transparent hover:border-primary"
+                    } ${canEdit ? "cursor-pointer" : "cursor-default"}`}
+                    aria-label={isSelected ? `${a} selected` : `Select ${a}`}
+                  />
+                )}
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold">{a}</div>
+                  <div className="text-sm font-semibold">{a}{hasChoice && isSelected && <span className="ml-2 text-[10px] uppercase tracking-wide text-primary">active</span>}</div>
                   {detail?.effect && (
                     <div className="mt-1 text-xs text-muted-foreground whitespace-pre-wrap">{detail.effect}</div>
                   )}
