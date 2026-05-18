@@ -207,7 +207,20 @@ export function TrainerSheet({
       <div className="space-y-2 rounded-lg border border-border bg-card p-3">
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-success/15 px-3 py-1 text-sm font-bold text-success">HP {currentHp}/{hp}</span>
-          <span className="rounded-full bg-accent px-3 py-1 text-sm font-bold">Will {will}</span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-accent px-3 py-1 text-sm font-bold">
+            Will
+            <Input
+              type="number" min={0} max={will}
+              value={currentWill}
+              disabled={!canEdit}
+              onChange={(e) => {
+                const n = Math.max(0, Math.min(will, parseInt(e.target.value) || 0));
+                patch({ current_will: n });
+              }}
+              className="h-6 w-12 px-1 text-center text-sm"
+            />
+            <span className="opacity-70">/ {will}</span>
+          </span>
           <span className="rounded-full bg-muted px-3 py-1 text-sm font-bold" title="Defense = Vitality">Def {vit}</span>
           <span className="rounded-full bg-muted px-3 py-1 text-sm font-bold" title="Special Defense = Vitality">Sp.Def {vit}</span>
           <Button size="sm" variant="outline" className="h-7"
