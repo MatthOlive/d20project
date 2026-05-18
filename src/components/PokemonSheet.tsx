@@ -328,11 +328,20 @@ export function PokemonSheet({
       <section className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
           <Label className="text-xs">Nature</Label>
-          <Input value={pokemon.nature ?? ""} onChange={(e) => patch({ nature: e.target.value })} disabled={!canEdit} />
+          <NatureSelect
+            value={pokemon.nature}
+            disabled={!canEdit}
+            onChange={(nature, conf) => patch({ nature, confidence: conf })}
+          />
         </div>
         <div className="space-y-1">
           <Label className="text-xs">Held item</Label>
           <Input value={pokemon.held_item ?? ""} onChange={(e) => patch({ held_item: e.target.value })} disabled={!canEdit} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Confidence</Label>
+          <Input type="number" value={pokemon.confidence}
+            onChange={(e) => patch({ confidence: parseInt(e.target.value) || 0 })} disabled={!canEdit} />
         </div>
         <div className="space-y-1">
           <Label className="text-xs">Happiness</Label>
