@@ -416,6 +416,11 @@ export function PokemonSheet({
           })}
         </div>
       </section>
+
+      <section>
+        <Label className="text-xs">Notes</Label>
+        <Textarea value={pokemon.notes} onChange={(e) => patch({ notes: e.target.value })} disabled={!canEdit} rows={3} />
+      </section>
     </div>
   );
 }
