@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dices, Send } from "lucide-react";
-import { rollD10, parseRollCommand } from "@/lib/pokerole";
+import { rollD6, parseRollCommand } from "@/lib/pokerole";
 import { cn } from "@/lib/utils";
 
 type Msg = {
@@ -73,12 +73,12 @@ export function ChatPanel({ gameId, userId }: { gameId: string; userId: string }
     setText("");
     const roll = parseRollCommand(trimmed);
     if (roll) {
-      const result = rollD10(roll.n);
+      const result = rollD6(roll.n);
       await supabase.from("chat_messages").insert({
         game_id: gameId,
         user_id: userId,
         kind: "roll",
-        body: roll.label ?? `${roll.n}d10`,
+        body: roll.label ?? `${roll.n}d6`,
         roll_data: { ...result, label: roll.label },
       });
     } else {
@@ -92,13 +92,13 @@ export function ChatPanel({ gameId, userId }: { gameId: string; userId: string }
   }
 
   async function quickRoll(n: number) {
-    const result = rollD10(n);
+    const result = rollD6(n);
     await supabase.from("chat_messages").insert({
       game_id: gameId,
       user_id: userId,
       kind: "roll",
-      body: `${n}d10`,
-      roll_data: { ...result, label: `${n}d10` },
+      body: `${n}d6`,
+      roll_data: { ...result, label: `${n}d6` },
     });
   }
 
@@ -110,7 +110,7 @@ export function ChatPanel({ gameId, userId }: { gameId: string; userId: string }
         ))}
         {messages.length === 0 && (
           <p className="py-6 text-center text-sm text-muted-foreground">
-            No messages yet. Try <code className="rounded bg-muted px-1.5 py-0.5">/roll 5</code> to roll 5d10.
+            No messages yet. Try <code className="rounded bg-muted px-1.5 py-0.5">/roll 5</code> to roll 5d6.
           </p>
         )}
       </div>
@@ -118,7 +118,7 @@ export function ChatPanel({ gameId, userId }: { gameId: string; userId: string }
         <div className="mb-2 flex flex-wrap gap-1">
           {[2, 3, 4, 5, 6, 7].map((n) => (
             <Button key={n} variant="outline" size="sm" className="h-7 text-xs" onClick={() => quickRoll(n)}>
-              <Dices className="mr-1 h-3 w-3" /> {n}d10
+              <Dices className="mr-1 h-3 w-3" /> {n}d6
             </Button>
           ))}
         </div>
@@ -152,7 +152,7 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
               key={i}
               className={cn(
                 "inline-flex h-7 w-7 items-center justify-center rounded-md border text-sm font-bold tabular-nums",
-                d >= 6
+                d >= 4
                   ? "border-success bg-success text-success-foreground"
                   : d === 1
                     ? "border-destructive/30 bg-destructive/10 text-destructive"

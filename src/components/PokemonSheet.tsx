@@ -166,12 +166,11 @@ export function PokemonSheet({
     const newAttrs = { ...pokemon!.current_attrs, [key]: clamped };
     const vit = key === "vitality" ? clamped : (newAttrs.vitality ?? 1);
     const str = key === "strength" ? clamped : (newAttrs.strength ?? 1);
-    const tough = key === "toughness" ? clamped : (newAttrs.toughness ?? 1);
     const ins = key === "insight" ? clamped : (newAttrs.insight ?? 1);
     await patch({
       current_attrs: newAttrs,
       hp: species!.base_hp + vit + str + RANK_BONUS[pokemon!.rank],
-      will: ins + tough + RANK_BONUS[pokemon!.rank],
+      will: ins + RANK_BONUS[pokemon!.rank],
     });
   }
 
@@ -263,6 +262,32 @@ export function PokemonSheet({
               <span className="rounded-full bg-success/15 px-2.5 py-0.5 font-bold text-success">HP {pokemon.hp}</span>
               <span className="ml-2 rounded-full bg-accent px-2.5 py-0.5 font-bold">Will {pokemon.will}</span>
             </div>
+          </div>
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {(() => {
+              const dex = pokemon.current_attrs.dexterity ?? 1;
+              const rb = RANK_BONUS[pokemon.rank];
+              const init = dex + rb;
+              const clash = dex + rb;
+              const evasion = dex + rb;
+              const name = pokemon.nickname || species.name;
+              return (
+                <>
+                  <Button size="sm" variant="outline" className="h-7"
+                    onClick={() => onRoll(`${name} · Initiative (Dex+Alert)`, init)}>
+                    <Dices className="mr-1 h-3.5 w-3.5" /> Initiative · {init}d6
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-7"
+                    onClick={() => onRoll(`${name} · Clash (Dex+Clash)`, clash)}>
+                    <Dices className="mr-1 h-3.5 w-3.5" /> Clash · {clash}d6
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-7"
+                    onClick={() => onRoll(`${name} · Evasion (Dex+Evasion)`, evasion)}>
+                    <Dices className="mr-1 h-3.5 w-3.5" /> Evasion · {evasion}d6
+                  </Button>
+                </>
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -402,7 +427,7 @@ export function PokemonSheet({
                   {m.effect && <p className="text-xs">{m.effect}</p>}
                   <div className="flex items-center justify-between">
                     <Button size="sm" onClick={() => onRoll(`${m.name} (${m.type})`, rollPool)}>
-                      <Dices className="mr-1.5 h-3.5 w-3.5" /> Roll {rollPool}d10
+                      <Dices className="mr-1.5 h-3.5 w-3.5" /> Roll {rollPool}d6
                     </Button>
                     {canEdit && (
                       <Button size="icon" variant="ghost" onClick={() => removeMove(m.id)}>

@@ -20,7 +20,7 @@ import { PokemonSheet } from "@/components/PokemonSheet";
 import { TrainerSheet } from "@/components/TrainerSheet";
 import { toast } from "sonner";
 import { Copy, Plus, Crown, Sparkles, User } from "lucide-react";
-import { rollD10 } from "@/lib/pokerole";
+import { rollD6 } from "@/lib/pokerole";
 
 export const Route = createFileRoute("/_app/games/$gameId")({
   component: GameRoom,
@@ -82,7 +82,7 @@ function GameRoom() {
 
   async function rollFromSheet(label: string, n: number) {
     if (!user) return;
-    const result = rollD10(n);
+    const result = rollD6(n);
     await supabase.from("chat_messages").insert({
       game_id: gameId, user_id: user.id, kind: "roll",
       body: label, roll_data: { ...result, label },

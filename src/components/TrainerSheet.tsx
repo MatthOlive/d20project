@@ -66,10 +66,14 @@ export function TrainerSheet({
 
   const vit = trainer.attrs.vitality ?? 1;
   const str = trainer.attrs.strength ?? 1;
-  const tough = trainer.attrs.toughness ?? 1;
+  const dex = trainer.attrs.dexterity ?? 1;
   const ins = trainer.attrs.insight ?? 1;
+  const alert = trainer.skills?.Alert ?? 0;
+  const empathy = trainer.skills?.Empathy ?? 0;
   const hp = vit + str + RANK_BONUS[trainer.rank];
-  const will = ins + tough + RANK_BONUS[trainer.rank];
+  const will = ins + RANK_BONUS[trainer.rank];
+  const initiativePool = dex + alert;
+  const catchPool = ins + empathy;
 
   return (
     <div className="space-y-5 p-4">
@@ -135,9 +139,17 @@ export function TrainerSheet({
         </div>
       </div>
 
-      <div className="flex gap-3 rounded-lg border border-border bg-card p-3">
+      <div className="flex flex-wrap gap-2 rounded-lg border border-border bg-card p-3">
         <span className="rounded-full bg-success/15 px-3 py-1 text-sm font-bold text-success">HP {hp}</span>
         <span className="rounded-full bg-accent px-3 py-1 text-sm font-bold">Will {will}</span>
+        <Button size="sm" variant="outline" className="h-7"
+          onClick={() => onRoll(`${trainer.name} · Initiative (Dex+Alert)`, initiativePool)}>
+          <Dices className="mr-1 h-3.5 w-3.5" /> Initiative · {initiativePool}d6
+        </Button>
+        <Button size="sm" variant="outline" className="h-7"
+          onClick={() => onRoll(`${trainer.name} · Catch (Ins+Empathy)`, catchPool)}>
+          <Dices className="mr-1 h-3.5 w-3.5" /> Catch · {catchPool}d6
+        </Button>
       </div>
 
       <section>
@@ -152,6 +164,23 @@ export function TrainerSheet({
                   value={v}
                   max={HUMAN_ATTR_CAP}
                   onChange={(n) => patch({ attrs: { ...trainer.attrs, [a]: n } })}
+                  disabled={!canEdit}
+                />
+                <Button size="sm" variant="ghost" className="ml-1 h-7 px-2" onClick={() => onRoll(`${trainer.name} · ${a}`, v)}>
+                  <Dices className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            );
+          })}
+          {SOCIAL_ATTRS.map((a) => {
+            const v = trainer.social_attrs?.[a] ?? 1;
+            return (
+              <div key={a} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
+                <span className="w-24 text-sm font-medium capitalize">{a}</span>
+                <DotEditor
+                  value={v}
+                  max={HUMAN_ATTR_CAP}
+                  onChange={(n) => patch({ social_attrs: { ...trainer.social_attrs, [a]: n } })}
                   disabled={!canEdit}
                 />
                 <Button size="sm" variant="ghost" className="ml-1 h-7 px-2" onClick={() => onRoll(`${trainer.name} · ${a}`, v)}>
@@ -183,28 +212,6 @@ export function TrainerSheet({
         </div>
       </section>
 
-      <section>
-        <h3 className="mb-2 text-sm font-bold">Social Attributes</h3>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {SOCIAL_ATTRS.map((a) => {
-            const v = trainer.social_attrs?.[a] ?? 1;
-            return (
-              <div key={a} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
-                <span className="w-24 text-sm font-medium capitalize">{a}</span>
-                <DotEditor
-                  value={v}
-                  max={HUMAN_ATTR_CAP}
-                  onChange={(n) => patch({ social_attrs: { ...trainer.social_attrs, [a]: n } })}
-                  disabled={!canEdit}
-                />
-                <Button size="sm" variant="ghost" className="ml-1 h-7 px-2" onClick={() => onRoll(`${trainer.name} · ${a}`, v)}>
-                  <Dices className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            );
-          })}
-        </div>
-      </section>
 
       <section>
         <Label>Notes</Label>
