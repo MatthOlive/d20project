@@ -82,6 +82,7 @@ type Pokemon = {
   skills: Record<string, number>;
   modifiers: Record<string, number>;
   hp: number;
+  current_hp: number | null;
   will: number;
   status: string[];
   notes: string;
