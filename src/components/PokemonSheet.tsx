@@ -286,6 +286,9 @@ export function PokemonSheet({
                 ))}
               </SelectContent>
             </Select>
+            {canEdit && species.evolutions.length > 0 && (
+              <EvolveButton pokemonId={pokemonId} fromSprite={species.sprite_url} evolutions={species.evolutions} />
+            )}
             <div className="ml-auto flex flex-wrap items-center gap-1.5 text-sm">
               <span className="rounded-full bg-success/15 px-2.5 py-0.5 font-bold text-success">HP {pokemon.hp}</span>
               <span className="rounded-full bg-accent px-2.5 py-0.5 font-bold">Will {pokemon.will}</span>
