@@ -13,7 +13,7 @@ import {
   ATTRS, SOCIAL_ATTRS, RANKS, RANK_LABELS, RANK_BONUS, SKILLS, HUMAN_ATTR_CAP, type Rank,
 } from "@/lib/pokerole";
 import { toast } from "sonner";
-import { Dices } from "lucide-react";
+import { Dices, ImagePlus, X as XIcon } from "lucide-react";
 
 type Trainer = {
   id: string;
