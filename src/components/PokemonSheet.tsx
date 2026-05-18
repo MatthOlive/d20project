@@ -397,14 +397,14 @@ export function PokemonSheet({
                     attrValue={dex}
                     skillOptions={attackSkills}
                     painPenalty={pen}
-                    onRoll={onRoll}
+                    onRoll={boundRoll}
                   />
                   <GenericRollButton
                     characterName={name}
                     attrs={[...allAttrs, ...allSocial]}
                     skills={allSkills}
                     painPenalty={pen}
-                    onRoll={onRoll}
+                    onRoll={boundRoll}
                   />
                 </>
               );
@@ -517,7 +517,7 @@ export function PokemonSheet({
                   name={a}
                   effect={detail?.effect ?? ""}
                   pokemonName={pokemon.nickname || species.name}
-                  onRoll={onRoll}
+                  onRoll={boundRoll}
                   onChat={onChat}
                 />
               </div>
@@ -649,7 +649,7 @@ export function PokemonSheet({
                       accPool={accPool}
                       dmgPool={dmgPool}
                       isStatus={isStatus}
-                      onRoll={onRoll}
+                      onRoll={boundRoll}
                       onChat={onChat}
                     />
 
