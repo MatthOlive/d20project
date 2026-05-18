@@ -263,6 +263,32 @@ export function PokemonSheet({
               <span className="ml-2 rounded-full bg-accent px-2.5 py-0.5 font-bold">Will {pokemon.will}</span>
             </div>
           </div>
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {(() => {
+              const dex = pokemon.current_attrs.dexterity ?? 1;
+              const rb = RANK_BONUS[pokemon.rank];
+              const init = dex + rb;
+              const clash = dex + rb;
+              const evasion = dex + rb;
+              const name = pokemon.nickname || species.name;
+              return (
+                <>
+                  <Button size="sm" variant="outline" className="h-7"
+                    onClick={() => onRoll(`${name} · Initiative (Dex+Alert)`, init)}>
+                    <Dices className="mr-1 h-3.5 w-3.5" /> Initiative · {init}d6
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-7"
+                    onClick={() => onRoll(`${name} · Clash (Dex+Clash)`, clash)}>
+                    <Dices className="mr-1 h-3.5 w-3.5" /> Clash · {clash}d6
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-7"
+                    onClick={() => onRoll(`${name} · Evasion (Dex+Evasion)`, evasion)}>
+                    <Dices className="mr-1 h-3.5 w-3.5" /> Evasion · {evasion}d6
+                  </Button>
+                </>
+              );
+            })()}
+          </div>
         </div>
       </div>
 
