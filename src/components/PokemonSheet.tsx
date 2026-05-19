@@ -638,7 +638,8 @@ export function PokemonSheet({
             const tcol = TYPE_COLORS[m.type] ?? { bg: "#888", fg: "#fff" };
             const accStat = m.accuracy_stat ?? "dexterity";
             const accAttrVal = pokemon.current_attrs[accStat] ?? 1;
-            const accSkillVal = m.accuracy_skill ? (pokemon.skills?.[m.accuracy_skill] ?? 0) : 0;
+            const accSkill = resolveSkillValue(m.accuracy_skill, pokemon.skills);
+            const accSkillVal = accSkill.value;
             const accPool = accAttrVal + accSkillVal;
             const cat = (m.category ?? "").toLowerCase();
             const isStatus = cat === "support" || cat === "status" || m.power <= 0 || !m.damage_stat;
@@ -654,8 +655,8 @@ export function PokemonSheet({
                 </div>
                 <div className="space-y-2 bg-card p-3">
                   <div className="text-xs text-muted-foreground">
-                    Accuracy {accAttrVal}{m.accuracy_skill ? `+${accSkillVal}` : ""} · {accPool}d6
-                    {isStatus ? " · Status (no damage)" : ` · Damage ${dmgAttrVal}+${m.power} · ${dmgPool}d6`}
+                    Accuracy {accStat} {accAttrVal}{m.accuracy_skill ? ` + ${accSkill.label} ${accSkillVal}` : ""} · {accPool}d6
+                    {isStatus ? " · Status (no damage)" : ` · Damage ${dmgStat} ${dmgAttrVal} + Pwr ${m.power} · ${dmgPool}d6`}
                   </div>
                   {m.effect && <p className="text-xs">{m.effect}</p>}
                   <div className="flex items-center justify-between">
