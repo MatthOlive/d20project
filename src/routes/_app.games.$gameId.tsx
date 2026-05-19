@@ -21,9 +21,8 @@ import { PokemonSheet } from "@/components/PokemonSheet";
 import { TrainerSheet } from "@/components/TrainerSheet";
 import { MapBoard, DRAG_MIME, type DragCharacterPayload } from "@/components/MapBoard";
 import { toast } from "sonner";
-import { Copy, Crown, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Send, Bot } from "lucide-react";
+import { Copy, Crown, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Swords } from "lucide-react";
 import { rollD6, POKEMON_TYPES, TYPE_COLORS, type PokemonType } from "@/lib/pokerole";
-import { narratorChat } from "@/lib/narrator.functions";
 
 export const Route = createFileRoute("/_app/games/$gameId")({
   component: GameRoom,
