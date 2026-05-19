@@ -133,6 +133,7 @@ function GameRoom() {
               </>
             }
           />
+          <InitiativePanel gameId={gameId} isNarrator={isNarrator} />
         </div>
       </div>
 
@@ -155,9 +156,6 @@ function GameRoom() {
           </TabsContent>
         </Tabs>
       </Card>
-
-      {/* Initiative tracker (auto-shows when combat is active) */}
-      <InitiativePanel gameId={gameId} isNarrator={isNarrator} />
 
       {/* Floating sheet windows */}
       <div className="pointer-events-none">
