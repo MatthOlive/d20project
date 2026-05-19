@@ -140,20 +140,14 @@ function GameRoom() {
       {/* Right: tabs */}
       <Card className="flex min-h-0 flex-col overflow-hidden p-0">
         <Tabs defaultValue="chat" className="flex h-full flex-col">
-          <TabsList className={`m-2 grid ${game.narrator_type === "ai" ? "grid-cols-4" : "grid-cols-3"}`}>
+          <TabsList className="m-2 grid grid-cols-3">
             <TabsTrigger value="chat">Chat</TabsTrigger>
-            {game.narrator_type === "ai" && <TabsTrigger value="narrator"><Bot className="mr-1 h-3.5 w-3.5" />AI GM</TabsTrigger>}
             <TabsTrigger value="compendium">Compendium</TabsTrigger>
             <TabsTrigger value="files">Files</TabsTrigger>
           </TabsList>
           <TabsContent value="chat" className="flex-1 overflow-hidden">
-            <ChatPanel gameId={gameId} userId={user.id} />
+            <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} />
           </TabsContent>
-          {game.narrator_type === "ai" && (
-            <TabsContent value="narrator" className="flex-1 overflow-hidden">
-              <AINarratorPanel gameId={gameId} gameName={game.name} userId={user.id} />
-            </TabsContent>
-          )}
           <TabsContent value="compendium" className="flex-1 overflow-auto p-3">
             <CompendiumPanel />
           </TabsContent>
@@ -162,6 +156,9 @@ function GameRoom() {
           </TabsContent>
         </Tabs>
       </Card>
+
+      {/* Initiative tracker (auto-shows when combat is active) */}
+      <InitiativePanel gameId={gameId} isNarrator={isNarrator} />
 
       {/* Floating sheet windows */}
       <div className="pointer-events-none">
