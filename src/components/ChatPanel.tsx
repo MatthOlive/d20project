@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dices, Send } from "lucide-react";
+import { Dices, Send, Bot, Sparkles } from "lucide-react";
 import { rollD6, parseRollCommand } from "@/lib/pokerole";
 import { cn } from "@/lib/utils";
+import { narratorTurn } from "@/lib/narrator.functions";
+import { toast } from "sonner";
 
 type Msg = {
   id: string;
@@ -17,10 +20,20 @@ type Msg = {
   created_at: string;
 };
 
-export function ChatPanel({ gameId, userId }: { gameId: string; userId: string }) {
+export function ChatPanel({
+  gameId,
+  userId,
+  aiNarrator = false,
+}: {
+  gameId: string;
+  userId: string;
+  aiNarrator?: boolean;
+}) {
   const qc = useQueryClient();
   const [text, setText] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const callNarrator = useServerFn(narratorTurn);
 
   const { data: messages = [] } = useQuery({
     queryKey: ["chat", gameId],
@@ -91,6 +104,21 @@ export function ChatPanel({ gameId, userId }: { gameId: string; userId: string }
     }
   }
 
+  async function askNarrator(prompt?: string) {
+    if (aiBusy) return;
+    setAiBusy(true);
+    try {
+      await callNarrator({ data: { gameId, userPrompt: prompt } });
+      qc.invalidateQueries({ queryKey: ["chat", gameId] });
+      qc.invalidateQueries({ queryKey: ["initiative", gameId] });
+      qc.invalidateQueries({ queryKey: ["characters", gameId] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Narrator failed");
+    } finally {
+      setAiBusy(false);
+    }
+  }
+
   async function quickRoll(n: number) {
     const result = rollD6(n);
     await supabase.from("chat_messages").insert({
@@ -110,11 +138,30 @@ export function ChatPanel({ gameId, userId }: { gameId: string; userId: string }
         ))}
         {messages.length === 0 && (
           <p className="py-6 text-center text-sm text-muted-foreground">
-            No messages yet. Try <code className="rounded bg-muted px-1.5 py-0.5">/roll 5</code> to roll 5d6.
+            {aiNarrator
+              ? "Tap “Ask AI Narrator” to open the scene."
+              : <>No messages yet. Try <code className="rounded bg-muted px-1.5 py-0.5">/roll 5</code> to roll 5d6.</>}
           </p>
+        )}
+        {aiBusy && (
+          <p className="text-center text-xs italic text-muted-foreground"><Bot className="inline h-3 w-3" /> Narrator is thinking…</p>
         )}
       </div>
       <div className="border-t border-border p-3">
+        {aiNarrator && (
+          <div className="mb-2 flex flex-wrap gap-1">
+            <Button
+              variant="default"
+              size="sm"
+              className="h-7 text-xs"
+              disabled={aiBusy}
+              onClick={() => askNarrator(messages.length === 0 ? "Begin the adventure. Set the opening scene." : undefined)}
+            >
+              <Sparkles className="mr-1 h-3 w-3" />
+              {messages.length === 0 ? "Start adventure" : "Ask AI Narrator"}
+            </Button>
+          </div>
+        )}
         <div className="mb-2 flex flex-wrap gap-1">
           {[2, 3, 4, 5, 6, 7].map((n) => (
             <Button key={n} variant="outline" size="sm" className="h-7 text-xs" onClick={() => quickRoll(n)}>
@@ -139,6 +186,16 @@ export function ChatPanel({ gameId, userId }: { gameId: string; userId: string }
 }
 
 function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string; isMe: boolean }) {
+  if (msg.kind === "narrator") {
+    return (
+      <div className="rounded-lg border border-primary/30 bg-primary/10 p-3">
+        <div className="mb-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-primary">
+          <Bot className="h-3 w-3" /> Narrator
+        </div>
+        <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.body}</p>
+      </div>
+    );
+  }
   if (msg.kind === "roll" && msg.roll_data) {
     return (
       <div className="rounded-lg border border-border bg-card p-3">
