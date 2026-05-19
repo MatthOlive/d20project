@@ -75,25 +75,10 @@ function rollD6Pool(n: number) {
 // Tool implementations (run on the server, use the user's RLS-scoped client)
 // ============================================================================
 
-type SBClient = {
-  // structural only – matches the supabase-js v2 surface we use here.
-  from: (table: string) => {
-    select: (cols?: string) => {
-      eq: (col: string, v: unknown) => {
-        single: () => Promise<{ data: unknown; error: unknown }>;
-        order: (col: string, opts?: { ascending: boolean }) => {
-          limit: (n: number) => Promise<{ data: unknown; error: unknown }>;
-        } & Promise<{ data: unknown; error: unknown }>;
-        limit?: (n: number) => Promise<{ data: unknown; error: unknown }>;
-      } & Promise<{ data: unknown; error: unknown }>;
-      ilike?: (col: string, v: string) => { single: () => Promise<{ data: unknown; error: unknown }> } & Promise<{ data: unknown; error: unknown }>;
-      order?: (col: string, opts?: { ascending: boolean }) => { limit: (n: number) => Promise<{ data: unknown; error: unknown }> } & Promise<{ data: unknown; error: unknown }>;
-      limit?: (n: number) => Promise<{ data: unknown; error: unknown }>;
-    };
-    insert: (rows: unknown) => { select: () => { single: () => Promise<{ data: unknown; error: unknown }> } & Promise<{ data: unknown; error: unknown }> } & Promise<{ data: unknown; error: unknown }>;
-    delete: () => { eq: (col: string, v: unknown) => Promise<{ error: unknown }> };
-  };
-};
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SBClient = any;
+
+
 
 async function spawnWildPokemon(
   supabase: SBClient,
