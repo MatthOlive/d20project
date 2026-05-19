@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -21,9 +20,8 @@ import { PokemonSheet } from "@/components/PokemonSheet";
 import { TrainerSheet } from "@/components/TrainerSheet";
 import { MapBoard, DRAG_MIME, type DragCharacterPayload } from "@/components/MapBoard";
 import { toast } from "sonner";
-import { Copy, Crown, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Send, Bot } from "lucide-react";
+import { Copy, Crown, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Swords } from "lucide-react";
 import { rollD6, POKEMON_TYPES, TYPE_COLORS, type PokemonType } from "@/lib/pokerole";
-import { narratorChat } from "@/lib/narrator.functions";
 
 export const Route = createFileRoute("/_app/games/$gameId")({
   component: GameRoom,
@@ -135,26 +133,21 @@ function GameRoom() {
               </>
             }
           />
+          <InitiativePanel gameId={gameId} isNarrator={isNarrator} />
         </div>
       </div>
 
       {/* Right: tabs */}
       <Card className="flex min-h-0 flex-col overflow-hidden p-0">
         <Tabs defaultValue="chat" className="flex h-full flex-col">
-          <TabsList className={`m-2 grid ${game.narrator_type === "ai" ? "grid-cols-4" : "grid-cols-3"}`}>
+          <TabsList className="m-2 grid grid-cols-3">
             <TabsTrigger value="chat">Chat</TabsTrigger>
-            {game.narrator_type === "ai" && <TabsTrigger value="narrator"><Bot className="mr-1 h-3.5 w-3.5" />AI GM</TabsTrigger>}
             <TabsTrigger value="compendium">Compendium</TabsTrigger>
             <TabsTrigger value="files">Files</TabsTrigger>
           </TabsList>
           <TabsContent value="chat" className="flex-1 overflow-hidden">
-            <ChatPanel gameId={gameId} userId={user.id} />
+            <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} />
           </TabsContent>
-          {game.narrator_type === "ai" && (
-            <TabsContent value="narrator" className="flex-1 overflow-hidden">
-              <AINarratorPanel gameId={gameId} gameName={game.name} userId={user.id} />
-            </TabsContent>
-          )}
           <TabsContent value="compendium" className="flex-1 overflow-auto p-3">
             <CompendiumPanel />
           </TabsContent>
@@ -687,106 +680,70 @@ function MechanicsCompendium() {
 }
 
 // ============================================================
-// AI Narrator panel
+// Initiative panel — auto-shows whenever combat is active
 // ============================================================
 
-type NarratorMsg = { role: "user" | "assistant"; content: string };
+type InitRow = {
+  id: string; game_id: string; character_name: string; character_kind: string;
+  character_ref: string | null; successes: number; position: number;
+};
 
-function AINarratorPanel({ gameId, gameName, userId: _userId }: { gameId: string; gameName: string; userId: string }) {
-  const STORAGE_KEY = `narrator-${gameId}`;
-  const [messages, setMessages] = useState<NarratorMsg[]>(() => {
-    if (typeof window === "undefined") return [];
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]"); } catch { return []; }
+function InitiativePanel({ gameId, isNarrator }: { gameId: string; isNarrator: boolean }) {
+  const qc = useQueryClient();
+  const { data: rows = [] } = useQuery({
+    queryKey: ["initiative", gameId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("initiative").select("*").eq("game_id", gameId).order("position");
+      return (data ?? []) as InitRow[];
+    },
   });
-  const [input, setInput] = useState("");
-  const [busy, setBusy] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const callNarrator = useServerFn(narratorChat);
 
   useEffect(() => {
-    if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, STORAGE_KEY]);
+    const ch = supabase
+      .channel(`initiative:${gameId}`)
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "initiative", filter: `game_id=eq.${gameId}` },
+        () => qc.invalidateQueries({ queryKey: ["initiative", gameId] }))
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [gameId, qc]);
 
-  async function send(text: string) {
-    const trimmed = text.trim();
-    if (!trimmed || busy) return;
-    const next: NarratorMsg[] = [...messages, { role: "user", content: trimmed }];
-    setMessages(next);
-    setInput("");
-    setBusy(true);
-    try {
-      const res = await callNarrator({ data: { messages: next, gameName } });
-      setMessages([...next, { role: "assistant", content: res.content }]);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "AI narrator failed");
-      setMessages(next);
-    } finally {
-      setBusy(false);
-    }
-  }
+  if (rows.length === 0) return null;
 
-  async function startScene() {
-    setBusy(true);
-    try {
-      const seed: NarratorMsg[] = [{ role: "user", content: "Begin the adventure. Set the opening scene and ask us what we do." }];
-      setMessages(seed);
-      const res = await callNarrator({ data: { messages: seed, gameName } });
-      setMessages([...seed, { role: "assistant", content: res.content }]);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "AI narrator failed");
-    } finally { setBusy(false); }
+  async function clearInit() {
+    if (!confirm("End combat and clear the turn order?")) return;
+    await supabase.from("initiative").delete().eq("game_id", gameId);
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-border px-3 py-2">
-        <div className="flex items-center gap-2 text-sm font-bold">
-          <Bot className="h-4 w-4 text-primary" /> AI Game Master
-        </div>
-        <Button size="sm" variant="ghost" className="h-7 text-xs"
-          onClick={() => { if (confirm("Reset the AI narrator's memory of this session?")) setMessages([]); }}>
-          Reset
-        </Button>
-      </div>
-      <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-3 p-3">
-        {messages.length === 0 && (
-          <div className="rounded-lg border border-dashed border-border bg-card p-4 text-center">
-            <Bot className="mx-auto mb-2 h-8 w-8 text-primary" />
-            <p className="text-sm font-semibold">Your AI Narrator is ready.</p>
-            <p className="mt-1 text-xs text-muted-foreground">Press Start to open the adventure, or type a custom prompt below.</p>
-            <Button size="sm" className="mt-3" onClick={startScene} disabled={busy}>
-              <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Start the adventure
-            </Button>
-          </div>
+    <div className="pointer-events-auto absolute right-4 top-20 z-20 w-60 rounded-lg border border-border bg-card/95 p-3 shadow-lg backdrop-blur">
+      <div className="mb-2 flex items-center justify-between">
+        <h4 className="flex items-center gap-1 text-xs font-bold uppercase tracking-wide">
+          <Swords className="h-3.5 w-3.5 text-primary" /> Turn Order
+        </h4>
+        {isNarrator && (
+          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={clearInit} title="End combat">
+            <Trash2 className="h-3 w-3" />
+          </Button>
         )}
-        {messages.map((m, i) => (
-          <div key={i} className={`rounded-lg p-3 text-sm ${m.role === "assistant" ? "bg-primary/10 border border-primary/20" : "bg-muted"}`}>
-            <div className="mb-1 text-[10px] font-bold uppercase tracking-wide opacity-70">
-              {m.role === "assistant" ? "Narrator" : "Players"}
-            </div>
-            <div className="whitespace-pre-wrap leading-relaxed">{m.content}</div>
-          </div>
-        ))}
-        {busy && <p className="text-center text-xs text-muted-foreground italic">Narrator is thinking…</p>}
       </div>
-      <form
-        onSubmit={(e) => { e.preventDefault(); send(input); }}
-        className="flex gap-2 border-t border-border p-2"
-      >
-        <Input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder={messages.length === 0 ? "Describe your party, or hit Start…" : "What do you do?"}
-          disabled={busy}
-        />
-        <Button type="submit" size="icon" disabled={busy || !input.trim()}>
-          <Send className="h-4 w-4" />
-        </Button>
-      </form>
+      <ol className="space-y-1">
+        {rows.map((r, i) => (
+          <li key={r.id} className={`flex items-center justify-between rounded px-2 py-1 text-xs ${i === 0 ? "bg-primary/15 font-semibold" : "bg-muted/50"}`}>
+            <span className="flex items-center gap-1.5">
+              <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-background text-[10px]">{i + 1}</span>
+              {r.character_name}
+            </span>
+            <span className="text-muted-foreground">{r.successes} ✦</span>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }
+
+
 
 type SpeciesRow = {
   id: string; name: string; dex_number: number | null; sprite_url: string | null;
