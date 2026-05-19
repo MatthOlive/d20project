@@ -15,7 +15,7 @@ import { DotEditor } from "@/components/DotEditor";
 import { Textarea } from "@/components/ui/textarea";
 import {
   POKEMON_ATTRS, SOCIAL_ATTRS, RANKS, RANK_LABELS, RANK_BONUS, TYPE_COLORS, SKILLS, type Rank,
-  rankAtLeast,
+  rankAtLeast, resolveSkillValue,
 } from "@/lib/pokerole";
 import { useDebouncedPatch } from "@/lib/use-debounced-patch";
 import { toast } from "sonner";
