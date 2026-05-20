@@ -9,8 +9,6 @@ import { rollD6, parseRollCommand } from "@/lib/pokerole";
 import { cn } from "@/lib/utils";
 import { narratorTurn } from "@/lib/narrator.functions";
 import { toast } from "sonner";
-import { narratorTurn } from "@/lib/narrator.functions";
-import { toast } from "sonner";
 
 type Msg = {
   id: string;
