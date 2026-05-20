@@ -24,14 +24,19 @@ export function ChatPanel({
   gameId,
   userId,
   aiNarrator = false,
+  isGameOwner = false,
 }: {
   gameId: string;
   userId: string;
   aiNarrator?: boolean;
+  /** Only the game's owner triggers the AI to avoid duplicate replies. */
+  isGameOwner?: boolean;
 }) {
   const qc = useQueryClient();
   const [text, setText] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
+  const aiBusyRef = useRef(false);
+  const lastTriggeredIdRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const callNarrator = useServerFn(narratorTurn);
 
@@ -68,13 +73,25 @@ export function ChatPanel({
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "chat_messages", filter: `game_id=eq.${gameId}` },
-        () => qc.invalidateQueries({ queryKey: ["chat", gameId] }),
+        (payload) => {
+          qc.invalidateQueries({ queryKey: ["chat", gameId] });
+          // Auto-trigger AI narrator on any player chat/roll message.
+          const row = payload.new as { id: string; kind: string; user_id: string; body: string };
+          if (!aiNarrator || !isGameOwner) return;
+          if (row.kind === "narrator") return;
+          if (row.id === lastTriggeredIdRef.current) return;
+          if (aiBusyRef.current) return;
+          lastTriggeredIdRef.current = row.id;
+          // Small debounce so a chat + roll combo is consumed as one beat.
+          window.setTimeout(() => { void askNarrator(row.kind === "roll" ? undefined : row.body); }, 800);
+        },
       )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [gameId, qc]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameId, qc, aiNarrator, isGameOwner]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
@@ -105,7 +122,8 @@ export function ChatPanel({
   }
 
   async function askNarrator(prompt?: string) {
-    if (aiBusy) return;
+    if (aiBusyRef.current) return;
+    aiBusyRef.current = true;
     setAiBusy(true);
     try {
       await callNarrator({ data: { gameId, userPrompt: prompt } });
@@ -115,6 +133,7 @@ export function ChatPanel({
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Narrator failed");
     } finally {
+      aiBusyRef.current = false;
       setAiBusy(false);
     }
   }

@@ -15,6 +15,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { ChatPanel } from "@/components/ChatPanel";
+import { KnowledgeIngest } from "@/components/KnowledgeIngest";
 import { FloatingWindow } from "@/components/FloatingWindow";
 import { PokemonSheet } from "@/components/PokemonSheet";
 import { TrainerSheet } from "@/components/TrainerSheet";
@@ -128,6 +129,7 @@ function GameRoom() {
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadBackground(e.target.files[0])} />
                     </label>
                     <ScenarioButtons gameId={gameId} currentBg={game.background_url} />
+                    {game.narrator_type === "ai" && <KnowledgeIngest />}
                   </>
                 )}
               </>
@@ -146,7 +148,7 @@ function GameRoom() {
             <TabsTrigger value="files">Files</TabsTrigger>
           </TabsList>
           <TabsContent value="chat" className="flex-1 overflow-hidden">
-            <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} />
+            <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} isGameOwner={isNarrator} />
           </TabsContent>
           <TabsContent value="compendium" className="flex-1 overflow-auto p-3">
             <CompendiumPanel />
