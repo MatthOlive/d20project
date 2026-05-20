@@ -10,10 +10,11 @@ import { BookOpen, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 async function extractPdfText(file: File): Promise<string> {
-  // Dynamic import so pdfjs is only loaded when needed.
-  const pdfjs = await import(/* @vite-ignore */ "pdfjs-dist/legacy/build/pdf.mjs" as string);
-  const workerSrc = (await import(/* @vite-ignore */ "pdfjs-dist/legacy/build/pdf.worker.mjs?url" as string)).default;
-  pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pdfjs: any = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const workerMod: any = await import("pdfjs-dist/legacy/build/pdf.worker.mjs?url");
+  pdfjs.GlobalWorkerOptions.workerSrc = workerMod.default;
   const buf = await file.arrayBuffer();
   const doc = await pdfjs.getDocument({ data: buf }).promise;
   let text = "";
