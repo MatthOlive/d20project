@@ -170,6 +170,33 @@ export type Database = {
           },
         ]
       }
+      knowledge_chunks: {
+        Row: {
+          chunk_index: number
+          content: string
+          created_at: string
+          embedding: string
+          id: string
+          source: string
+        }
+        Insert: {
+          chunk_index?: number
+          content: string
+          created_at?: string
+          embedding: string
+          id?: string
+          source?: string
+        }
+        Update: {
+          chunk_index?: number
+          content?: string
+          created_at?: string
+          embedding?: string
+          id?: string
+          source?: string
+        }
+        Relationships: []
+      }
       moves: {
         Row: {
           accuracy_skill: string | null
@@ -683,6 +710,15 @@ export type Database = {
       is_game_narrator: {
         Args: { _game: string; _user: string }
         Returns: boolean
+      }
+      match_knowledge: {
+        Args: { match_count?: number; query_embedding: string }
+        Returns: {
+          content: string
+          id: string
+          similarity: number
+          source: string
+        }[]
       }
     }
     Enums: {
