@@ -11,10 +11,8 @@ import { toast } from "sonner";
 
 async function extractPdfText(file: File): Promise<string> {
   // Dynamic import so pdfjs is only loaded when needed.
-  // @ts-expect-error – legacy build has no type for the entrypoint
-  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  // @ts-expect-error – worker url import
-  const workerSrc = (await import("pdfjs-dist/legacy/build/pdf.worker.mjs?url")).default;
+  const pdfjs = await import(/* @vite-ignore */ "pdfjs-dist/legacy/build/pdf.mjs" as string);
+  const workerSrc = (await import(/* @vite-ignore */ "pdfjs-dist/legacy/build/pdf.worker.mjs?url" as string)).default;
   pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
   const buf = await file.arrayBuffer();
   const doc = await pdfjs.getDocument({ data: buf }).promise;

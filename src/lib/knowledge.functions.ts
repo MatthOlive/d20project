@@ -65,13 +65,18 @@ export const ingestKnowledge = createServerFn({ method: "POST" })
     const chunks = chunkText(data.text);
     if (chunks.length === 0) return { ok: true, inserted: 0 };
 
-    // Embed in batches of 50.
-    const rows: { source: string; chunk_index: number; content: string; embedding: number[] }[] = [];
+    // pgvector expects embeddings as a string like "[0.1,0.2,...]" via supabase-js.
+    const rows: { source: string; chunk_index: number; content: string; embedding: string }[] = [];
     for (let i = 0; i < chunks.length; i += 50) {
       const batch = chunks.slice(i, i + 50);
       const embeds = await embedBatch(batch);
       embeds.forEach((emb, j) =>
-        rows.push({ source: data.source, chunk_index: i + j, content: batch[j], embedding: emb }),
+        rows.push({
+          source: data.source,
+          chunk_index: i + j,
+          content: batch[j],
+          embedding: `[${emb.join(",")}]`,
+        }),
       );
     }
 
@@ -79,7 +84,6 @@ export const ingestKnowledge = createServerFn({ method: "POST" })
       await supabaseAdmin.from("knowledge_chunks").delete().eq("source", data.source);
     }
 
-    // Insert in chunks of 200 rows.
     let inserted = 0;
     for (let i = 0; i < rows.length; i += 200) {
       const slice = rows.slice(i, i + 200);
@@ -100,7 +104,7 @@ export async function searchKnowledge(
   try {
     const [embedding] = await embedBatch([query]);
     const { data, error } = await supabase.rpc("match_knowledge", {
-      query_embedding: embedding,
+      query_embedding: `[${embedding.join(",")}]`,
       match_count: k,
     });
     if (error || !data) return [];
