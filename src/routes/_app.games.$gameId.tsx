@@ -690,7 +690,7 @@ type InitRow = {
   character_ref: string | null; successes: number; position: number;
 };
 
-function InitiativePanel({ gameId, isNarrator }: { gameId: string; isNarrator: boolean }) {
+function InitiativePanel({ gameId, isNarrator, open, onClose }: { gameId: string; isNarrator: boolean; open: boolean; onClose: () => void }) {
   const qc = useQueryClient();
   const { data: rows = [] } = useQuery({
     queryKey: ["initiative", gameId],
@@ -711,7 +711,7 @@ function InitiativePanel({ gameId, isNarrator }: { gameId: string; isNarrator: b
     return () => { supabase.removeChannel(ch); };
   }, [gameId, qc]);
 
-  if (rows.length === 0) return null;
+  if (!open || rows.length === 0) return null;
 
   async function clearInit() {
     if (!confirm("End combat and clear the turn order?")) return;
@@ -724,11 +724,14 @@ function InitiativePanel({ gameId, isNarrator }: { gameId: string; isNarrator: b
         <h4 className="flex items-center gap-1 text-xs font-bold uppercase tracking-wide">
           <Swords className="h-3.5 w-3.5 text-primary" /> Turn Order
         </h4>
-        {isNarrator && (
-          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={clearInit} title="End combat">
-            <Trash2 className="h-3 w-3" />
-          </Button>
-        )}
+        <div className="flex items-center gap-1">
+          {isNarrator && (
+            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={clearInit} title="End combat">
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          )}
+          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={onClose} title="Hide">×</Button>
+        </div>
       </div>
       <ol className="space-y-1">
         {rows.map((r, i) => (
