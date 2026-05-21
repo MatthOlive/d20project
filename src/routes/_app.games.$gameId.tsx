@@ -259,6 +259,10 @@ function FilesPanel({
     qc.invalidateQueries({ queryKey: ["characters", gameId] });
     toast.success("Deleted");
   }
+
+  const { data: characters } = useQuery({
+    queryKey: ["characters", gameId],
+    queryFn: async () => {
       const [pkm, tr] = await Promise.all([
         supabase.from("pokemon").select("id,nickname,owner_id,image_url,folder,species:species_id(name,sprite_url)").eq("game_id", gameId),
         supabase.from("trainers").select("id,name,owner_id,image_url,folder").eq("game_id", gameId),
