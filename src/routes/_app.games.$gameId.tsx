@@ -230,10 +230,35 @@ function FilesPanel({
   const [newFolder, setNewFolder] = useState("");
   const [extraFolders, setExtraFolders] = useState<string[]>([]);
   const [dropHover, setDropHover] = useState<string | null>(null);
-
-  const { data: characters } = useQuery({
-    queryKey: ["characters", gameId],
-    queryFn: async () => {
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
+    if (typeof window === "undefined") return {};
+    try { return JSON.parse(localStorage.getItem(`folders:${gameId}`) ?? "{}"); } catch { return {}; }
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") localStorage.setItem(`folders:${gameId}`, JSON.stringify(collapsed));
+  }, [collapsed, gameId]);
+  function toggleFolder(name: string) {
+    setCollapsed((c) => ({ ...c, [name]: !c[name] }));
+  }
+  function toggleSelected(key: string) {
+    setSelected((p) => { const n = new Set(p); if (n.has(key)) n.delete(key); else n.add(key); return n; });
+  }
+  async function bulkDelete() {
+    if (selected.size === 0) return;
+    if (!confirm(`Delete ${selected.size} selected sheet(s)? This cannot be undone.`)) return;
+    const pkmIds: string[] = [], trIds: string[] = [];
+    for (const k of selected) {
+      const [kind, id] = k.split(":");
+      if (kind === "pokemon") pkmIds.push(id); else if (kind === "trainer") trIds.push(id);
+    }
+    if (pkmIds.length) await supabase.from("pokemon").delete().in("id", pkmIds);
+    if (trIds.length) await supabase.from("trainers").delete().in("id", trIds);
+    setSelected(new Set()); setSelectMode(false);
+    qc.invalidateQueries({ queryKey: ["characters", gameId] });
+    toast.success("Deleted");
+  }
       const [pkm, tr] = await Promise.all([
         supabase.from("pokemon").select("id,nickname,owner_id,image_url,folder,species:species_id(name,sprite_url)").eq("game_id", gameId),
         supabase.from("trainers").select("id,name,owner_id,image_url,folder").eq("game_id", gameId),
