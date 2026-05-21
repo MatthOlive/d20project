@@ -58,6 +58,7 @@ function GameRoom() {
   });
 
   const [windows, setWindows] = useState<OpenWindow[]>([]);
+  const [turnOrderOpen, setTurnOrderOpen] = useState(true);
 
   function openWindow(w: OpenWindow) {
     if (!windows.find((x) => x.kind === w.kind && x.id === w.id)) {
@@ -129,13 +130,16 @@ function GameRoom() {
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadBackground(e.target.files[0])} />
                     </label>
                     <ScenarioButtons gameId={gameId} currentBg={game.background_url} />
+                    <Button size="sm" variant="secondary" className="h-7" onClick={() => setTurnOrderOpen((v) => !v)}>
+                      <Swords className="mr-1 h-3.5 w-3.5" /> Turn Order
+                    </Button>
                     {game.narrator_type === "ai" && <KnowledgeIngest />}
                   </>
                 )}
               </>
             }
           />
-          <InitiativePanel gameId={gameId} isNarrator={isNarrator} />
+          <InitiativePanel gameId={gameId} isNarrator={isNarrator} open={turnOrderOpen} onClose={() => setTurnOrderOpen(false)} />
         </div>
       </div>
 
