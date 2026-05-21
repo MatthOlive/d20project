@@ -105,6 +105,7 @@ export type Database = {
           created_at: string
           id: string
           invite_code: string
+          language: string
           name: string
           narrator_id: string
           narrator_type: string
@@ -114,6 +115,7 @@ export type Database = {
           created_at?: string
           id?: string
           invite_code?: string
+          language?: string
           name: string
           narrator_id: string
           narrator_type?: string
@@ -123,6 +125,7 @@ export type Database = {
           created_at?: string
           id?: string
           invite_code?: string
+          language?: string
           name?: string
           narrator_id?: string
           narrator_type?: string
@@ -265,6 +268,8 @@ export type Database = {
       }
       pokemon: {
         Row: {
+          ai_scene_id: string | null
+          ai_spawned: boolean
           battles: number
           confidence: number
           created_at: string
@@ -293,6 +298,8 @@ export type Database = {
           will: number
         }
         Insert: {
+          ai_scene_id?: string | null
+          ai_spawned?: boolean
           battles?: number
           confidence?: number
           created_at?: string
@@ -321,6 +328,8 @@ export type Database = {
           will?: number
         }
         Update: {
+          ai_scene_id?: string | null
+          ai_spawned?: boolean
           battles?: number
           confidence?: number
           created_at?: string
@@ -401,18 +410,21 @@ export type Database = {
           created_at: string
           display_name: string
           id: string
+          theme: string
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
           display_name: string
           id: string
+          theme?: string
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
           display_name?: string
           id?: string
+          theme?: string
         }
         Relationships: []
       }
@@ -597,6 +609,8 @@ export type Database = {
         Row: {
           achievements: Json
           age: number | null
+          ai_scene_id: string | null
+          ai_spawned: boolean
           attrs: Json
           background: string | null
           bag: string
@@ -627,6 +641,8 @@ export type Database = {
         Insert: {
           achievements?: Json
           age?: number | null
+          ai_scene_id?: string | null
+          ai_spawned?: boolean
           attrs?: Json
           background?: string | null
           bag?: string
@@ -657,6 +673,8 @@ export type Database = {
         Update: {
           achievements?: Json
           age?: number | null
+          ai_scene_id?: string | null
+          ai_spawned?: boolean
           attrs?: Json
           background?: string | null
           bag?: string
