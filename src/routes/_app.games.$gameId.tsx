@@ -14,6 +14,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ChatPanel } from "@/components/ChatPanel";
 import { KnowledgeIngest } from "@/components/KnowledgeIngest";
 import { FloatingWindow } from "@/components/FloatingWindow";
