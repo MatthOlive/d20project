@@ -8,17 +8,28 @@ POKÉROLE 2.0 — CORE MECHANICS
 
 DICE: Pools of d6. 4/5/6 = success. Difficulty 1–5 or opposed.
 INITIATIVE: Dexterity + Alert (count successes; highest acts first).
-ACCURACY: Accuracy Attribute + Accuracy Skill in d6.
+ACCURACY (always rolled FIRST): Accuracy Attribute + Accuracy Skill in d6.
   Trainer attacks: Dexterity + Brawl/Throw/Weapons.
   Pokémon attacks: Dexterity + Brawl/Channel.
   Defender's Evasion = Dex + Evasion.
-DAMAGE: Damage Stat + Move Power in d6, then subtract Defense (Vitality, or Special for Special moves). STAB = +1 die.
+DAMAGE (rolled SECOND, ONLY if Accuracy hits): Damage Stat + Move Power in d6.
+  STAB = +1 die when the move type matches a user's type.
+  Subtract target's Defense (Vitality) or Sp.Def (Insight on Pokémon) DICE from the damage pool BEFORE rolling.
 HP: Trainer = 4 + Vitality. Pokémon = species base HP + Vitality.
 PAIN PENALTY: ≤ half HP = −1 success on all rolls. 1 HP = −2.
-WILL: Max = Insight + 2. Spent for Channel / mental resistance.
-RANKS (and caps): Starter (+2 attr / 5 skill, max 1 per skill),
-Beginner (+4 / 10, max 2), Amateur (+6 / 15, max 3),
-Ace (+8 / 20, max 4), Pro (+10 / 25, max 5), Master (+12 / 30, max 5).
+WILL: Max = Insight + 2.
+
+RANKS — official point distribution (cumulative across rank up):
+  Pokémon attribute points (over starter baseline): starter 0, beginner +2, amateur +4, ace +6, pro +8, master +10.
+  Pokémon social points: same scale starter 0 to master +10.
+  Trainer = rank points (same) + AGE bonus.
+  Skill points: starter 5, beginner 10, amateur 15, ace 20, pro 25, master 30.
+  Skill cap per rank: 1 / 2 / 3 / 4 / 5 / 5.
+TRAINER AGE bonus:
+  child:    +0 physical / +0 social
+  young:    +2 physical / +2 social
+  adult:    +4 physical / +4 social
+  veteran:  +3 physical / +6 social
 MOVES KNOWN: Insight + 2.
 `;
 
@@ -26,17 +37,26 @@ const RANK_ORDER = ["starter", "beginner", "amateur", "ace", "pro", "master"] as
 type Rank = (typeof RANK_ORDER)[number];
 
 // Official Pokérole 2.0 distribution per rank.
-const RANK_TABLE: Record<Rank, { attrPoints: number; skillPoints: number; skillCap: number; attrCap: number }> = {
-  starter:  { attrPoints: 2,  skillPoints: 5,  skillCap: 1, attrCap: 3 },
-  beginner: { attrPoints: 4,  skillPoints: 10, skillCap: 2, attrCap: 4 },
-  amateur:  { attrPoints: 6,  skillPoints: 15, skillCap: 3, attrCap: 4 },
-  ace:      { attrPoints: 8,  skillPoints: 20, skillCap: 4, attrCap: 5 },
-  pro:      { attrPoints: 10, skillPoints: 25, skillCap: 5, attrCap: 5 },
-  master:   { attrPoints: 12, skillPoints: 30, skillCap: 5, attrCap: 5 },
+// attrPoints = ADDITIONAL points beyond starter baseline (the species/base trainer already has its starting stats).
+const RANK_TABLE: Record<Rank, { attrPoints: number; socialPoints: number; skillPoints: number; skillCap: number; attrCap: number }> = {
+  starter:  { attrPoints: 0,  socialPoints: 0,  skillPoints: 5,  skillCap: 1, attrCap: 3 },
+  beginner: { attrPoints: 2,  socialPoints: 2,  skillPoints: 10, skillCap: 2, attrCap: 4 },
+  amateur:  { attrPoints: 4,  socialPoints: 4,  skillPoints: 15, skillCap: 3, attrCap: 4 },
+  ace:      { attrPoints: 6,  socialPoints: 6,  skillPoints: 20, skillCap: 4, attrCap: 5 },
+  pro:      { attrPoints: 8,  socialPoints: 8,  skillPoints: 25, skillCap: 5, attrCap: 5 },
+  master:   { attrPoints: 10, socialPoints: 10, skillPoints: 30, skillCap: 5, attrCap: 5 },
+};
+
+const AGE_TABLE: Record<string, { phys: number; social: number }> = {
+  child:   { phys: 0, social: 0 },
+  young:   { phys: 2, social: 2 },
+  adult:   { phys: 4, social: 4 },
+  veteran: { phys: 3, social: 6 },
 };
 
 const POKEMON_ATTR_KEYS = ["strength", "dexterity", "vitality", "special", "insight"];
 const TRAINER_ATTR_KEYS = ["strength", "dexterity", "vitality", "insight"];
+const SOCIAL_KEYS = ["tough", "cool", "beautiful", "cute", "clever"];
 const POKEMON_SKILL_KEYS = [
   "Brawl", "Channel", "Clash", "Evasion", "Alert", "Athletic", "Nature", "Stealth",
   "Allure", "Etiquette", "Intimidate", "Perform", "Crafts", "Lore", "Medicine", "Science", "Empathy",
@@ -52,29 +72,37 @@ function rollD6Pool(n: number) {
   return { dice, successes: dice.filter((d) => d >= 4).length, ones: dice.filter((d) => d === 1).length };
 }
 
+// Distribute `points` across `keys`, respecting per-key `cap`. `importance: random` uses uniform shuffle,
+// `themed` weighs preferred keys ~60/40.
 function distributePoints(
   base: Record<string, number>,
   keys: string[],
   points: number,
-  cap: number,
-  preferred?: string[],
+  capFn: (key: string) => number,
+  importance: "random" | "themed" = "random",
+  preferred: string[] = [],
 ): Record<string, number> {
   const out: Record<string, number> = { ...base };
   for (const k of keys) if (out[k] == null) out[k] = 0;
-  // Apply preferred first.
-  const order = [
-    ...(preferred ?? []).filter((k) => keys.includes(k)),
-    ...keys.filter((k) => !(preferred ?? []).includes(k)),
-  ];
-  let remaining = points;
-  let safety = 200;
+  let remaining = Math.max(0, Math.floor(points));
+  const pref = preferred.filter((k) => keys.includes(k));
+  let safety = 500;
   while (remaining > 0 && safety-- > 0) {
-    let placed = false;
-    for (const k of order) {
-      if (remaining <= 0) break;
-      if ((out[k] ?? 0) < cap) { out[k] = (out[k] ?? 0) + 1; remaining -= 1; placed = true; }
+    // pick a candidate key
+    let pool: string[];
+    if (importance === "themed" && pref.length > 0 && Math.random() < 0.6) {
+      pool = pref.filter((k) => out[k] < capFn(k));
+    } else {
+      pool = keys.filter((k) => out[k] < capFn(k));
     }
-    if (!placed) break;
+    if (pool.length === 0) {
+      // fallback to full pool
+      pool = keys.filter((k) => out[k] < capFn(k));
+      if (pool.length === 0) break;
+    }
+    const choice = pool[Math.floor(Math.random() * pool.length)];
+    out[choice] = (out[choice] ?? 0) + 1;
+    remaining -= 1;
   }
   return out;
 }
@@ -82,12 +110,28 @@ function distributePoints(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SBClient = any;
 
+async function findExistingAiCharacter(
+  supabase: SBClient,
+  gameId: string,
+  table: "pokemon" | "trainers",
+  match: { species_id?: string; name?: string },
+): Promise<{ id: string } | null> {
+  let q = supabase.from(table).select("id").eq("game_id", gameId).eq("ai_spawned", true);
+  if (table === "pokemon" && match.species_id) q = q.eq("species_id", match.species_id);
+  if (table === "trainers" && match.name) q = q.ilike("name", match.name);
+  // Only reuse if combat (initiative) is currently active OR sheet was created < 30 min ago.
+  const { data } = await q.limit(1);
+  if (data && data.length > 0) return { id: data[0].id as string };
+  return null;
+}
+
 async function spawnWildPokemon(
   supabase: SBClient,
   gameId: string,
   userId: string,
   params: {
     species: string; rank?: Rank; nickname?: string;
+    importance?: "random" | "themed";
     preferred_attrs?: string[]; preferred_skills?: string[];
   },
 ): Promise<{ ok: boolean; message: string; pokemon_id?: string; summary?: Record<string, unknown> }> {
@@ -102,24 +146,34 @@ async function spawnWildPokemon(
     id: string; name: string; base_hp: number; base_attrs: Record<string, number>;
     attr_limits: Record<string, number>; abilities: string[]; sprite_url: string | null;
   };
-  // Attribute caps = min(species limit, rank cap).
-  const limits = sp.attr_limits ?? {};
-  const attrs: Record<string, number> = { ...sp.base_attrs };
-  for (const k of POKEMON_ATTR_KEYS) if (attrs[k] == null) attrs[k] = 1;
-  // Distribute attribute points respecting species cap & rank cap.
-  let pts = tbl.attrPoints;
-  const order = [...(params.preferred_attrs ?? []), ...POKEMON_ATTR_KEYS];
-  let safety = 200;
-  while (pts > 0 && safety-- > 0) {
-    let placed = false;
-    for (const k of order) {
-      if (pts <= 0) break;
-      const cap = Math.min(limits[k] ?? 5, tbl.attrCap);
-      if ((attrs[k] ?? 1) < cap) { attrs[k] = (attrs[k] ?? 1) + 1; pts -= 1; placed = true; }
-    }
-    if (!placed) break;
+
+  // Reuse an existing AI-spawned sheet for the same species in this game.
+  const existing = await findExistingAiCharacter(supabase, gameId, "pokemon", { species_id: sp.id });
+  if (existing) {
+    return {
+      ok: true, pokemon_id: existing.id,
+      message: `Reusing existing ${sp.name} sheet (id ${existing.id}). Do NOT create a new one — refer to it by name in narration.`,
+      summary: { reused: true, species: sp.name },
+    };
   }
-  const skills = distributePoints({}, POKEMON_SKILL_KEYS, tbl.skillPoints, tbl.skillCap, params.preferred_skills);
+
+  const limits = sp.attr_limits ?? {};
+  const importance = params.importance ?? "random";
+  const baseAttrs: Record<string, number> = {};
+  for (const k of POKEMON_ATTR_KEYS) baseAttrs[k] = sp.base_attrs?.[k] ?? 1;
+  const attrs = distributePoints(
+    baseAttrs, POKEMON_ATTR_KEYS, tbl.attrPoints,
+    (k) => Math.min(limits[k] ?? 5, tbl.attrCap),
+    importance, params.preferred_attrs,
+  );
+  const social = distributePoints(
+    { tough: 1, cool: 1, beautiful: 1, cute: 1, clever: 1 },
+    SOCIAL_KEYS, tbl.socialPoints, () => tbl.attrCap, importance,
+  );
+  const skills = distributePoints(
+    {}, POKEMON_SKILL_KEYS, tbl.skillPoints,
+    () => tbl.skillCap, importance, params.preferred_skills,
+  );
 
   const hp = sp.base_hp + (attrs.vitality ?? 1);
   const will = (attrs.insight ?? 1) + 2;
@@ -128,14 +182,16 @@ async function spawnWildPokemon(
     .from("pokemon").insert({
       game_id: gameId, owner_id: userId, species_id: sp.id,
       nickname: params.nickname ?? null, rank,
-      current_attrs: attrs, skills, hp, will, current_hp: hp, current_will: will,
+      current_attrs: attrs, social_attrs: social, skills,
+      hp, will, current_hp: hp, current_will: will,
       image_url: sp.sprite_url, folder: "AI Encounters",
+      ai_spawned: true,
     }).select().single();
   if (iErr || !ins1) return { ok: false, message: `Failed to create Pokémon: ${String(iErr?.message ?? "unknown")}` };
   return {
     ok: true, pokemon_id: ins1.id,
-    message: `Spawned ${sp.name} (${rank}) — HP ${hp}, Will ${will}.`,
-    summary: { species: sp.name, rank, attrs, skills, hp, will, abilities: sp.abilities },
+    message: `Spawned ${sp.name} (${rank}) — HP ${hp}, Will ${will}. Use THIS sheet for the entire combat — do not spawn another.`,
+    summary: { species: sp.name, rank, attrs, skills, social, hp, will, abilities: sp.abilities },
   };
 }
 
@@ -145,14 +201,41 @@ async function spawnTrainer(
   userId: string,
   params: {
     name: string; rank?: Rank; concept?: string; nature?: string;
+    age_group?: "child" | "young" | "adult" | "veteran";
+    importance?: "random" | "themed";
     preferred_attrs?: string[]; preferred_skills?: string[];
   },
 ): Promise<{ ok: boolean; message: string; trainer_id?: string; summary?: Record<string, unknown> }> {
   const rank = (params.rank ?? "starter") as Rank;
   const tbl = RANK_TABLE[rank];
+  const age = AGE_TABLE[params.age_group ?? "young"] ?? AGE_TABLE.young;
+
+  // Reuse same-name trainer the AI already created in this game.
+  const existing = await findExistingAiCharacter(supabase, gameId, "trainers", { name: params.name });
+  if (existing) {
+    return {
+      ok: true, trainer_id: existing.id,
+      message: `Reusing existing trainer "${params.name}" (id ${existing.id}). Do NOT create another.`,
+      summary: { reused: true, name: params.name },
+    };
+  }
+
+  const importance = params.importance ?? "random";
   const baseAttrs: Record<string, number> = { strength: 1, dexterity: 1, vitality: 1, insight: 1 };
-  const attrs = distributePoints(baseAttrs, TRAINER_ATTR_KEYS, tbl.attrPoints, tbl.attrCap, params.preferred_attrs);
-  const skills = distributePoints({}, TRAINER_SKILL_KEYS, tbl.skillPoints, tbl.skillCap, params.preferred_skills);
+  const physPoints = tbl.attrPoints + age.phys;
+  const socialPoints = tbl.socialPoints + age.social;
+  const attrs = distributePoints(
+    baseAttrs, TRAINER_ATTR_KEYS, physPoints,
+    () => tbl.attrCap, importance, params.preferred_attrs,
+  );
+  const social = distributePoints(
+    { tough: 1, cool: 1, beautiful: 1, cute: 1, clever: 1 },
+    SOCIAL_KEYS, socialPoints, () => tbl.attrCap, importance,
+  );
+  const skills = distributePoints(
+    {}, TRAINER_SKILL_KEYS, tbl.skillPoints,
+    () => tbl.skillCap, importance, params.preferred_skills,
+  );
   const hp = 4 + (attrs.vitality ?? 1);
   const will = (attrs.insight ?? 1) + 2;
 
@@ -160,15 +243,15 @@ async function spawnTrainer(
     .from("trainers").insert({
       game_id: gameId, owner_id: userId, name: params.name, rank,
       concept: params.concept ?? null, nature: params.nature ?? null,
-      attrs, skills,
+      attrs, social_attrs: social, skills,
       current_hp: hp, current_will: will,
-      folder: "NPCs",
+      folder: "NPCs", ai_spawned: true,
     }).select().single();
   if (error || !data) return { ok: false, message: `Failed to create trainer: ${String(error?.message ?? "unknown")}` };
   return {
     ok: true, trainer_id: data.id,
-    message: `Created trainer ${params.name} (${rank}) — HP ${hp}, Will ${will}.`,
-    summary: { name: params.name, rank, attrs, skills, hp, will },
+    message: `Created trainer ${params.name} (${rank}, age=${params.age_group ?? "young"}) — HP ${hp}, Will ${will}.`,
+    summary: { name: params.name, rank, attrs, social, skills, hp, will },
   };
 }
 
@@ -202,15 +285,16 @@ const TOOLS = [
     type: "function",
     function: {
       name: "spawn_wild_pokemon",
-      description: "Create a Pokémon sheet in the Files panel using the database Pokédex. Use whenever a Pokémon (wild, NPC trainer's, or starter gift) needs a stat block. Distributes attribute & skill points according to the official Pokérole rank table.",
+      description: "Create a Pokémon sheet in the Files panel using the database Pokédex. If a Pokémon with this species was already AI-spawned in this game, REUSE that sheet automatically — do not create duplicates. Distributes attribute, social, and skill points according to the official Pokérole rank table.",
       parameters: {
         type: "object",
         properties: {
           species: { type: "string", description: "Exact Pokédex name (e.g. Pikachu)." },
           rank: { type: "string", enum: RANK_ORDER as unknown as string[] },
           nickname: { type: "string" },
-          preferred_attrs: { type: "array", items: { type: "string", enum: POKEMON_ATTR_KEYS }, description: "Attributes to favor when distributing rank points." },
-          preferred_skills: { type: "array", items: { type: "string", enum: POKEMON_SKILL_KEYS }, description: "Skills to favor when distributing rank points." },
+          importance: { type: "string", enum: ["random", "themed"], description: "Use 'random' for wild/throwaway encounters. Use 'themed' for gym leaders, rivals, recurring NPCs — also pass preferred_attrs/preferred_skills." },
+          preferred_attrs: { type: "array", items: { type: "string", enum: POKEMON_ATTR_KEYS } },
+          preferred_skills: { type: "array", items: { type: "string", enum: POKEMON_SKILL_KEYS } },
         },
         required: ["species"],
       },
@@ -220,14 +304,16 @@ const TOOLS = [
     type: "function",
     function: {
       name: "spawn_trainer",
-      description: "Create an NPC Trainer sheet in the Files panel with attributes and skills distributed by the official Pokérole rank table.",
+      description: "Create an NPC Trainer sheet. Distributes points by rank + age. REUSES an existing same-name AI trainer if present.",
       parameters: {
         type: "object",
         properties: {
           name: { type: "string" },
           rank: { type: "string", enum: RANK_ORDER as unknown as string[] },
-          concept: { type: "string", description: "Short concept (Ranger, Rocket Grunt, etc.)." },
+          age_group: { type: "string", enum: ["child", "young", "adult", "veteran"], description: "Determines extra physical/social points on top of rank." },
+          concept: { type: "string" },
           nature: { type: "string" },
+          importance: { type: "string", enum: ["random", "themed"] },
           preferred_attrs: { type: "array", items: { type: "string", enum: TRAINER_ATTR_KEYS } },
           preferred_skills: { type: "array", items: { type: "string", enum: TRAINER_SKILL_KEYS } },
         },
@@ -286,6 +372,12 @@ async function callGateway(messages: Msg[]) {
   return res.json();
 }
 
+const LANG_INSTRUCTION: Record<string, string> = {
+  "pt-BR": "Responda SEMPRE em português brasileiro. Mantenha em inglês apenas nomes próprios de Pokémon, moves, abilities e naturezas.",
+  "en": "Respond in English. Keep Pokémon/move/ability names in English.",
+  "es": "Responde SIEMPRE en español. Mantén en inglés solo los nombres propios de Pokémon, moves, abilities y naturezas.",
+};
+
 export const narratorTurn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { gameId: string; userPrompt?: string }) => {
@@ -298,16 +390,18 @@ export const narratorTurn = createServerFn({ method: "POST" })
     const userId = context.userId as string;
 
     const [{ data: game }, { data: chat }, { data: pokes }, { data: trainers }, { data: init }, { data: members }] = await Promise.all([
-      supabase.from("games").select("id,name,narrator_type").eq("id", data.gameId).single(),
+      supabase.from("games").select("id,name,narrator_type,language").eq("id", data.gameId).single(),
       supabase.from("chat_messages").select("kind,body,roll_data,created_at,user_id").eq("game_id", data.gameId).order("created_at", { ascending: false }).limit(40),
-      supabase.from("pokemon").select("id,nickname,rank,current_hp,hp,current_attrs,species:species_id(name)").eq("game_id", data.gameId),
-      supabase.from("trainers").select("id,name,rank,current_hp,attrs").eq("game_id", data.gameId),
+      supabase.from("pokemon").select("id,nickname,rank,current_hp,hp,current_attrs,ai_spawned,species:species_id(name)").eq("game_id", data.gameId),
+      supabase.from("trainers").select("id,name,rank,current_hp,attrs,ai_spawned").eq("game_id", data.gameId),
       supabase.from("initiative").select("character_name,successes,position").eq("game_id", data.gameId).order("position"),
       supabase.from("game_members").select("user_id,role").eq("game_id", data.gameId),
     ]);
     if (!game) throw new Error("Game not found");
 
     const playerCount = ((members ?? []) as { role: string }[]).filter((m) => m.role === "player").length;
+    const lang = (game.language as string) || "pt-BR";
+    const langDirective = LANG_INSTRUCTION[lang] ?? LANG_INSTRUCTION["en"];
 
     const transcript = ((chat ?? []) as { kind: string; body: string; roll_data: { successes?: number; label?: string; dice?: number[] } | null }[])
       .slice().reverse()
@@ -320,7 +414,6 @@ export const narratorTurn = createServerFn({ method: "POST" })
         return `PLAYER: ${m.body}`;
       }).join("\n");
 
-    // RAG: pull top relevant rule passages.
     const ragQuery = data.userPrompt
       ?? (chat?.[0] as { body?: string } | undefined)?.body
       ?? game.name;
@@ -329,11 +422,21 @@ export const narratorTurn = createServerFn({ method: "POST" })
       ? `RULEBOOK EXCERPTS (use as ground truth):\n${passages.map((p, i) => `[${i + 1}] ${p}`).join("\n\n")}`
       : "(No rulebook excerpts indexed — rely on core mechanics below.)";
 
+    const aiSheets = [
+      ...((pokes ?? []) as { ai_spawned: boolean; nickname: string | null; species: { name: string } | null }[])
+        .filter((p) => p.ai_spawned)
+        .map((p) => `pokemon:${p.nickname ?? p.species?.name ?? "?"}`),
+      ...((trainers ?? []) as { ai_spawned: boolean; name: string }[])
+        .filter((t) => t.ai_spawned)
+        .map((t) => `trainer:${t.name}`),
+    ];
+
     const partySummary = [
       "TRAINERS: " + ((trainers ?? []).map((t: { name: string; rank: string; current_hp: number | null; attrs: Record<string, number> }) =>
         `${t.name} (${t.rank}, HP ${t.current_hp ?? "?"}, Dex ${t.attrs?.dexterity ?? "?"})`).join("; ") || "none"),
       "POKÉMON: " + ((pokes ?? []).map((p: { nickname: string | null; rank: string; current_hp: number | null; hp: number; current_attrs: Record<string, number>; species: { name: string } | null }) =>
         `${p.nickname ?? p.species?.name ?? "?"} [${p.species?.name ?? "?"}] (${p.rank}, HP ${p.current_hp ?? p.hp}, Dex ${p.current_attrs?.dexterity ?? "?"})`).join("; ") || "none"),
+      "AI-SPAWNED SHEETS (already exist — REUSE, do not duplicate): " + (aiSheets.join(", ") || "none"),
     ].join("\n");
 
     const initSummary = (init ?? []).length === 0
@@ -345,6 +448,8 @@ export const narratorTurn = createServerFn({ method: "POST" })
     const isFirstTurn = narratorMsgCount === 0;
 
     const systemContent = `You are the AI Game Master for a Pokérole 2.0 session titled "${game.name as string}".
+
+LANGUAGE: ${langDirective}
 
 ${ragBlock}
 
@@ -360,14 +465,16 @@ INITIATIVE:
 ${initSummary}
 
 YOUR ROLE — act like a real tabletop RPG narrator:
-- Read the chat as living memory. ALWAYS verify [ROLL] entries: count the successes, apply pain penalty, narrate hits/misses based on the actual dice.
-- ${isFirstTurn ? `THIS IS THE OPENING. First, greet the table, ASK how many players are joining today and what kind of adventure they want (mystery, gym challenge, exploration…). Tailor the opening scene to that answer. Do NOT spawn anything yet.` : `Continue the story. React to player actions and roll results in 2-4 vivid paragraphs.`}
-- When creating an NPC trainer, CALL spawn_trainer (it builds the sheet & distributes points by rank).
-- When a Pokémon appears (wild, NPC's, gifted starter), CALL spawn_wild_pokemon FIRST, then continue narrating.
+- Read the chat as living memory. ALWAYS verify [ROLL] entries.
+- ROLL ORDER: every attack produces TWO rolls in sequence — first "· Accuracy" then "· Damage". A move ONLY deals damage if the Accuracy roll exceeded the target's evasion. NEVER narrate damage before reading the matching "· Damage" entry; treat a missing damage roll as "the attack missed" unless context says otherwise.
+- ${isFirstTurn ? `THIS IS THE OPENING. Greet the table, ASK how many players are joining today and what kind of adventure they want. Tailor the opening scene to that answer. Do NOT spawn anything yet.` : `Continue the story. React to player actions and roll results in 2-4 vivid paragraphs.`}
+- BEFORE calling spawn_wild_pokemon or spawn_trainer, CHECK the "AI-SPAWNED SHEETS" list above. If the creature/NPC is already there, REUSE it — refer to it by name and DO NOT call the spawn tool again. The same Caterpie said three times is ONE Caterpie.
+- When creating an NPC trainer, CALL spawn_trainer (sheet + points by rank+age).
+- For wild encounters use importance="random". For gym leaders / rivals / recurring villains use importance="themed" with preferred_attrs & preferred_skills that fit the concept (e.g. Fire-type gym leader → preferred_attrs:["special","insight"], preferred_skills:["Channel","Lore"]).
 - When combat begins, CALL start_combat with EVERY participant before describing it.
 - Ask for the correct roll when a player attacks: Trainer = Dex + Brawl/Throw/Weapons; Pokémon = Dex + Brawl/Channel.
-- Always end your reply with a clear prompt: "What do you do?", "Roll Dex + Brawl", etc.
-- Stay warm, dramatic, concise (≤ 320 words). Portuguese if the players write in Portuguese.`;
+- Always end your reply with a clear prompt.
+- Stay warm, dramatic, concise (≤ 320 words).`;
 
     const userTurnContent = data.userPrompt?.trim()
       ? `Latest chat:\n${transcript}\n\nMost recent player input: ${data.userPrompt.trim()}`

@@ -14,6 +14,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ChatPanel } from "@/components/ChatPanel";
 import { KnowledgeIngest } from "@/components/KnowledgeIngest";
 import { FloatingWindow } from "@/components/FloatingWindow";
@@ -58,6 +59,7 @@ function GameRoom() {
   });
 
   const [windows, setWindows] = useState<OpenWindow[]>([]);
+  const [turnOrderOpen, setTurnOrderOpen] = useState(true);
 
   function openWindow(w: OpenWindow) {
     if (!windows.find((x) => x.kind === w.kind && x.id === w.id)) {
@@ -129,13 +131,16 @@ function GameRoom() {
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadBackground(e.target.files[0])} />
                     </label>
                     <ScenarioButtons gameId={gameId} currentBg={game.background_url} />
+                    <Button size="sm" variant="secondary" className="h-7" onClick={() => setTurnOrderOpen((v) => !v)}>
+                      <Swords className="mr-1 h-3.5 w-3.5" /> Turn Order
+                    </Button>
                     {game.narrator_type === "ai" && <KnowledgeIngest />}
                   </>
                 )}
               </>
             }
           />
-          <InitiativePanel gameId={gameId} isNarrator={isNarrator} />
+          <InitiativePanel gameId={gameId} isNarrator={isNarrator} open={turnOrderOpen} onClose={() => setTurnOrderOpen(false)} />
         </div>
       </div>
 
@@ -226,6 +231,35 @@ function FilesPanel({
   const [newFolder, setNewFolder] = useState("");
   const [extraFolders, setExtraFolders] = useState<string[]>([]);
   const [dropHover, setDropHover] = useState<string | null>(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
+    if (typeof window === "undefined") return {};
+    try { return JSON.parse(localStorage.getItem(`folders:${gameId}`) ?? "{}"); } catch { return {}; }
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") localStorage.setItem(`folders:${gameId}`, JSON.stringify(collapsed));
+  }, [collapsed, gameId]);
+  function toggleFolder(name: string) {
+    setCollapsed((c) => ({ ...c, [name]: !c[name] }));
+  }
+  function toggleSelected(key: string) {
+    setSelected((p) => { const n = new Set(p); if (n.has(key)) n.delete(key); else n.add(key); return n; });
+  }
+  async function bulkDelete() {
+    if (selected.size === 0) return;
+    if (!confirm(`Delete ${selected.size} selected sheet(s)? This cannot be undone.`)) return;
+    const pkmIds: string[] = [], trIds: string[] = [];
+    for (const k of selected) {
+      const [kind, id] = k.split(":");
+      if (kind === "pokemon") pkmIds.push(id); else if (kind === "trainer") trIds.push(id);
+    }
+    if (pkmIds.length) await supabase.from("pokemon").delete().in("id", pkmIds);
+    if (trIds.length) await supabase.from("trainers").delete().in("id", trIds);
+    setSelected(new Set()); setSelectMode(false);
+    qc.invalidateQueries({ queryKey: ["characters", gameId] });
+    toast.success("Deleted");
+  }
 
   const { data: characters } = useQuery({
     queryKey: ["characters", gameId],
@@ -324,33 +358,39 @@ function FilesPanel({
   }
 
   function renderItem(r: CharRow) {
+    const key = `${r.kind}:${r.id}`;
     const mapPayload: DragCharacterPayload = {
       kind: r.kind, id: r.id, label: r.label,
       imageUrl: r.image_url ?? (r.kind === "pokemon" ? r.sprite_url : null), ownerId: r.owner_id,
     };
     return (
-      <button
-        key={`${r.kind}-${r.id}`}
-        draggable
-        onDragStart={(e) => {
-          e.dataTransfer.setData(DRAG_MIME, JSON.stringify(mapPayload));
-          e.dataTransfer.setData(FOLDER_MIME, JSON.stringify({ kind: r.kind, id: r.id, folder: r.folder }));
-          e.dataTransfer.effectAllowed = "copyMove";
-        }}
-        onClick={() => onOpen({ kind: r.kind, id: r.id, title: r.label })}
-        className="flex w-full items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-left text-sm hover:border-primary"
-      >
-        {r.kind === "pokemon" && r.sprite_url
-          ? <img src={r.sprite_url} alt="" className="h-6 w-6 shrink-0" />
-          : <User className="h-3.5 w-3.5 shrink-0" />}
-        <span className="truncate">{r.label}</span>
-      </button>
+      <div key={key} className="flex items-center gap-1.5">
+        {selectMode && (
+          <Checkbox checked={selected.has(key)} onCheckedChange={() => toggleSelected(key)} />
+        )}
+        <button
+          draggable={!selectMode}
+          onDragStart={(e) => {
+            e.dataTransfer.setData(DRAG_MIME, JSON.stringify(mapPayload));
+            e.dataTransfer.setData(FOLDER_MIME, JSON.stringify({ kind: r.kind, id: r.id, folder: r.folder }));
+            e.dataTransfer.effectAllowed = "copyMove";
+          }}
+          onClick={() => selectMode ? toggleSelected(key) : onOpen({ kind: r.kind, id: r.id, title: r.label })}
+          className={`flex w-full items-center gap-2 rounded-md border ${selected.has(key) ? "border-primary bg-primary/5" : "border-border bg-card"} px-3 py-2 text-left text-sm hover:border-primary`}
+        >
+          {r.kind === "pokemon" && r.sprite_url
+            ? <img src={r.sprite_url} alt="" className="h-6 w-6 shrink-0" />
+            : <User className="h-3.5 w-3.5 shrink-0" />}
+          <span className="truncate">{r.label}</span>
+        </button>
+      </div>
     );
   }
 
   function FolderGroup({ name, items }: { name: string | null; items: CharRow[] }) {
     const key = name ?? "__root__";
     const isHover = dropHover === key;
+    const isCollapsed = !!collapsed[key];
     return (
       <div
         onDragOver={(e) => {
@@ -372,17 +412,24 @@ function FilesPanel({
         }}
         className={`rounded-md border ${isHover ? "border-primary bg-accent/40" : "border-border bg-background"} p-2`}
       >
-        <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+        <button
+          type="button"
+          onClick={() => toggleFolder(key)}
+          className="mb-1.5 flex w-full items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+        >
+          <span className="inline-block w-3 text-center">{isCollapsed ? "▸" : "▾"}</span>
           {name ? <Folder className="h-3.5 w-3.5" /> : <FolderOpen className="h-3.5 w-3.5" />}
           {name ?? "Unfiled"}
           <span className="ml-1 text-[10px] opacity-60">({items.length})</span>
-        </div>
-        <div className="space-y-1.5">
-          {items.map(renderItem)}
-          {items.length === 0 && (
-            <p className="px-2 py-1 text-[11px] text-muted-foreground">Drop a sheet here.</p>
-          )}
-        </div>
+        </button>
+        {!isCollapsed && (
+          <div className="space-y-1.5">
+            {items.map(renderItem)}
+            {items.length === 0 && (
+              <p className="px-2 py-1 text-[11px] text-muted-foreground">Drop a sheet here.</p>
+            )}
+          </div>
+        )}
       </div>
     );
   }
@@ -391,7 +438,7 @@ function FilesPanel({
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold">Characters</h3>
-        <div className="flex gap-1.5">
+        <div className="flex flex-wrap gap-1.5">
           <Button size="sm" variant="outline" onClick={() => createTrainer.mutate()}>
             <User className="mr-1 h-3.5 w-3.5" /> Trainer
           </Button>
@@ -413,6 +460,16 @@ function FilesPanel({
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          {!selectMode ? (
+            <Button size="sm" variant="outline" onClick={() => setSelectMode(true)}>Select</Button>
+          ) : (
+            <>
+              <Button size="sm" variant="destructive" disabled={selected.size === 0} onClick={bulkDelete}>
+                <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete ({selected.size})
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => { setSelectMode(false); setSelected(new Set()); }}>Cancel</Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -690,7 +747,7 @@ type InitRow = {
   character_ref: string | null; successes: number; position: number;
 };
 
-function InitiativePanel({ gameId, isNarrator }: { gameId: string; isNarrator: boolean }) {
+function InitiativePanel({ gameId, isNarrator, open, onClose }: { gameId: string; isNarrator: boolean; open: boolean; onClose: () => void }) {
   const qc = useQueryClient();
   const { data: rows = [] } = useQuery({
     queryKey: ["initiative", gameId],
@@ -711,7 +768,7 @@ function InitiativePanel({ gameId, isNarrator }: { gameId: string; isNarrator: b
     return () => { supabase.removeChannel(ch); };
   }, [gameId, qc]);
 
-  if (rows.length === 0) return null;
+  if (!open || rows.length === 0) return null;
 
   async function clearInit() {
     if (!confirm("End combat and clear the turn order?")) return;
@@ -724,11 +781,14 @@ function InitiativePanel({ gameId, isNarrator }: { gameId: string; isNarrator: b
         <h4 className="flex items-center gap-1 text-xs font-bold uppercase tracking-wide">
           <Swords className="h-3.5 w-3.5 text-primary" /> Turn Order
         </h4>
-        {isNarrator && (
-          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={clearInit} title="End combat">
-            <Trash2 className="h-3 w-3" />
-          </Button>
-        )}
+        <div className="flex items-center gap-1">
+          {isNarrator && (
+            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={clearInit} title="End combat">
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          )}
+          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={onClose} title="Hide">×</Button>
+        </div>
       </div>
       <ol className="space-y-1">
         {rows.map((r, i) => (

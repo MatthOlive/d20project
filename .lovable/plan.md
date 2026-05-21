@@ -1,74 +1,108 @@
-# Pokérole 2.0 VTT — v1 Plan
+## Visão geral
 
-Per your dev note, the **Pokémon sheet database and logic** is the priority. v1 ships the data engine, auth, game rooms, realtime chat + dice. Other sections are scaffolded with empty/placeholder UI so the app feels complete and we expand in follow-ups.
+Onze mudanças agrupadas por área. Implemento tudo de uma vez, mas confirma o escopo antes — algumas têm trade-offs.
 
-## What you'll get in v1
+---
 
-1. **Auth** — email/password + Google sign-in (Lovable Cloud).
-2. **Dashboard** — list your games, "Create New Game" (you become Narrator), join via invite link.
-3. **Game room** — Narrator-uploaded background image, three tabs: Chat & Dice, Compendium (UI shell), Files & Sheets (basic).
-4. **Chat & Dice** — realtime chat, `/roll 6d10` syntax, successes (≥6) highlighted green, botches (1s) tracked.
-5. **Pokémon sheet engine** — the centerpiece. Species dropdown auto-fills type/abilities/base attributes/species limits; dot editor enforces species cap; rank filter (Pokéball icons) on learnable moves; hard `Insight + 2` move cap with alert; type-colored move cards with "Roll" button that posts `(Accuracy + Attribute)` to chat.
-6. **Trainer sheet** — attributes (cap 5), derived HP/Will, skills, moves (cap `Insight + 2`), personal Pokédex checklist.
-7. **Floating windows** — sheets, compendium entries, and a basic Initiative Tracker open as draggable floating panels.
+### 1. Combate — STAB + defesa do alvo
 
-## Deferred to v2 (scaffolded only)
+- No `SheetRolls` / botão de Move da `PokemonSheet`:
+  - **STAB**: se o tipo do move ∈ tipos do Pokémon → `+1 dado` na damage pool (rótulo "STAB").
+  - **Defesa do alvo**: ao clicar em rolar um move, abrir um mini-popover com input numérico "Defense / Sp.Def do alvo" (default 0). Esse valor é **subtraído da damage pool** antes de rolar. Mostra no chat como `Damage {Stat}+{Skill}+STAB − Def(N) · {Pool}d6`.
+  - Move físico usa Def, especial usa Sp.Def — o popover já sugere o label certo baseado em `move.category`.
 
-- Compendium content (UI ready; you'll upload rules text later).
-- Files & Sheets folder permissions per-user (basic upload/list ships, granular perms later).
-- Condition toggles with mechanical penalty automation.
-- Status effect visual indicators on sheets.
+### 2. Ordem de rolagem de Move (Accuracy → Damage)
 
-## Pokérole 2.0 PDF ingest
+- Hoje só rola Accuracy. Vou mudar pra fluxo de 2 passos atômicos:
+  1. Rola **Accuracy** (`accuracy_stat + accuracy_skill`) e posta no chat.
+  2. Se sucessos > 0, **automaticamente** rola **Damage** (`damage_stat + STAB − defesa`) e posta logo abaixo com label `"… Damage"`.
+- No `narrator.functions.ts`: o system prompt instrui a IA a ler **pares Accuracy+Damage** consecutivos do mesmo autor/move antes de narrar o resultado, e a só considerar dano quando Accuracy passou.
 
-You mentioned importing the Pokérole 2.0 PDF. **Please upload the PDF in your next message** and I'll run a one-time parser (skill/pdf) to extract into seed data:
+### 3. Botão "Turn Order" pro mestre
 
-- `species` (name, types, base attributes, species attribute limits, abilities, rank-keyed learnable moves)
-- `moves` (name, type, power, accuracy stat, damage stat, effect, target)
-- `abilities` (name, effect)
+- No header do jogo, ao lado dos botões de cenário, adiciono botão `Turn Order` (só narrador) que abre/fecha o `InitiativePanel` flutuante. Hoje ele aparece sozinho quando há iniciativa — vou manter aparecendo, mas o botão permite reabrir após fechar.
 
-I'll review the parse for accuracy before seeding the DB. If parsing misses fields (PDFs are messy), I'll flag gaps and we can patch them.
+### 4. Seleção de idioma + tradução da UI
 
-## Technical details
+- Ao criar jogo: select com `pt-BR`, `en`, `es` (posso adicionar mais — diz aí).
+- Persisto em `games.language`.
+- Adiciono i18n leve com `react-i18next` (sem libs pesadas), com dicionários `pt-BR / en / es` cobrindo labels da UI principal (header, fichas, chat, compendium, dashboard).
+- **Não traduzo**: nomes de moves, abilities, naturezas, espécies — ficam no idioma original do dado.
+- A IA narradora recebe o idioma no system prompt: "Responda sempre em {language}, mas mantenha em inglês os nomes próprios de Pokémon, moves e abilities".
 
-**Stack:** TanStack Start + Lovable Cloud (Supabase). Realtime via Supabase Realtime channels for chat, dice rolls, initiative.
+> ⚠️ Heads-up: traduzir 100% da UI é trabalhoso. Vou cobrir o essencial (labels visíveis, botões, headings). Strings perdidas continuam em inglês até serem reportadas.
 
-**Schema (high level):**
-```text
-profiles(id, display_name, avatar_url)
-games(id, narrator_id, name, background_url, invite_code, created_at)
-game_members(game_id, user_id, role)           -- role: narrator | player
-chat_messages(id, game_id, user_id, kind, body, roll_data jsonb, created_at)
-species(id, name, types[], base_attrs jsonb, attr_limits jsonb, abilities[])
-species_moves(species_id, move_id, min_rank)   -- rank: starter|beginner|amateur|ace|pro|master
-moves(id, name, type, power, accuracy_stat, damage_stat, effect, target)
-abilities(id, name, effect)
-trainers(id, game_id, owner_id, name, nature, age, concept, rank, attrs jsonb, skills jsonb, pokedex jsonb)
-trainer_moves(trainer_id, move_id)
-pokemon(id, game_id, owner_id, species_id, nickname, rank, current_attrs jsonb, modifiers jsonb, hp, will, status[])
-pokemon_moves(pokemon_id, move_id)
-files(id, game_id, owner_id, parent_id, name, kind, storage_path, perms jsonb)
-initiative(game_id, character_ref, successes, position)
+### 5. Modo seleção nas fichas + pastas colapsáveis
+
+- Lista de fichas (sidebar Files):
+  - Botão `Select` ativa modo seleção → cada ficha ganha checkbox.
+  - Ações em lote: `Delete selecionadas`, `Mover para pasta…`.
+  - Drag continua funcionando para o mapa; em modo seleção, o drag move múltiplas fichas pra pasta de destino.
+  - Pastas viram **colapsáveis** (click no header expande/recolhe, estado salvo em localStorage por jogo).
+
+### 6. Confidence conforme o livro
+
+- Verifique a confidence no livre e use os valores q estao al apenas sem formulas.
+
+### 7. Dark mode como tema padrão
+
+- `<html class="dark">` por default no `__root.tsx`.
+- Toggle no menu do usuário (após login) com persistência em localStorage + `profiles.theme`.
+- `styles.css` já tem `.dark` definido — só preciso preencher tokens que estão usando cores hardcoded em alguns componentes.
+
+### 8. Tela de jogos — deletar e deleção em massa
+
+- Dashboard: cada card de jogo ganha botão `Delete` (ícone lixeira, com confirmação).
+- Botão `Select` no topo ativa modo de seleção em massa → checkbox por card → `Delete selecionados`.
+- Só o narrador (owner) consegue deletar — RLS já cobre isso.
+
+### 9–11. IA: usar ficha já criada + atributos corretos + variação
+
+Três correções no `narrator.functions.ts`:
+
+**(a) Não duplicar fichas (#9):** antes de chamar `spawn_wild_pokemon`/`spawn_trainer`, a tool busca em `pokemon`/`trainers` do jogo se já existe ficha com mesmo nome/species + flag `ai_spawned=true` numa cena ativa. Se existir, retorna a ficha existente em vez de criar nova. Adiciono coluna `ai_spawned boolean` e `ai_scene_id text` opcional pra rastrear "este encontro". Quando combate acaba (initiative limpa), libera novos spawns.
+
+**(b) Atributos corretos por rank (#10):**
+
+- Audito a tabela `RANK_TABLE` no `narrator.functions.ts` vs livro:
+  - Pokémon e treinador: starter +0 attr/+0 social, beginner +2 attr/+2 social, amateur +4 attr/+4 social, ace +6 attr/+6 social, pro +8 attr/+8 social. (valores sao referentes ao starter entao se um personagem é pro ele tem +8 pontos de atributo q um starter e +4 q um amateur por exemplo) (caps 1/2/3/4/5/5 em skills).
+  - **Treinador**: o livro usa `rank + faixa etária`. Vou implementar: idade dá pontos extras (criança +0 atributo fisico / +0 social, jovem +2 attr/+2 social, adulto +4 attr/+4 social, veterano +3attr/+6 social) somados ao rank base.
+- Adiciono validação **server-side**: `clampPoints()` rejeita distribuições que excedem o total, e a tool retorna erro pra IA refazer.
+
+**(c) Aleatoriedade vs priorização (#11):**
+
+- Tool ganha parâmetro `importance: "random" | "themed"`.
+- `random` → distribuição uniforme (já existente, melhoro a RNG pra não viciar em strength).
+- `themed` → IA passa `priorities: { attrs: [...], skills: [...] }` e o servidor distribui ~60% nesses, ~40% no resto.
+- System prompt instrui: "Encontros aleatórios (selvagens) usam `random`. NPCs nomeados (líderes de ginásio, rivais, recorrentes) usam `themed` com prioridades coerentes (ex: líder de ginásio de fogo → Special alto, Channel alto)".
+
+---
+
+### Migração de DB necessária
+
+```sql
+alter table games add column language text not null default 'pt-BR';
+alter table profiles add column theme text not null default 'dark';
+alter table pokemon add column ai_spawned boolean not null default false;
+alter table pokemon add column ai_scene_id text;
+alter table trainers add column ai_spawned boolean not null default false;
+alter table trainers add column ai_scene_id text;
 ```
 
-RLS: members can read game-scoped rows; only Narrator can mutate game settings/uploads; owners control their own sheets unless Narrator overrides.
+---
 
-**Move cap enforcement:** DB trigger + client-side guard so adding a move past `Insight + 2` rejects with the alert.
+### Detalhes técnicos
 
-**Dice roller:** server function rolls cryptographically, returns `{dice:[…], successes, botches}`, broadcast via Realtime. UI renders dice with green for ≥6.
+- **Arquivos editados**: `SheetRolls.tsx`, `PokemonSheet.tsx`, `TrainerSheet.tsx`, `ChatPanel.tsx`, `narrator.functions.ts`, `pokerole.ts`, `_app.games.$gameId.tsx`, `_app.dashboard.tsx`, `__root.tsx`, `styles.css`.
+- **Arquivos novos**: `src/lib/i18n.ts` (config react-i18next), `src/lib/locales/{pt-BR,en,es}.json`, `src/components/ThemeToggle.tsx`, `src/components/FileBrowser.tsx` (extraído do route file pra caber seleção em lote).
+- **Dependências novas**: `react-i18next`, `i18next` (~30kb gzip, sem polyfills nativos).
 
-**Floating windows:** lightweight draggable wrapper around shadcn `Dialog`/`Card` with `react-rnd` or a small custom hook (no heavy deps).
+---
 
-**Theme:** white / light-gray / vibrant Pokédex red, semantic tokens in `src/styles.css`. Type-colored move cards use a `--type-fire`, `--type-water`, … token map.
+### O que NÃO está incluso
 
-## Build order
+- Tradução de descrições de moves/abilities/effects (são texto livre dos PDFs, fora de escopo).
+- Tradução dinâmica de respostas da IA via tradutor externo — quem traduz é o próprio modelo via instrução de sistema.
+- Sincronização de tema entre dispositivos em tempo real (só carrega no login).
 
-1. Enable Lovable Cloud, auth + dashboard + create/join game.
-2. Parse uploaded PDF → seed `species` / `moves` / `abilities`.
-3. Pokémon sheet engine (the core — species auto-fill, rank filter, move cap, roll-to-chat).
-4. Realtime chat + D10 roller wired to sheet "Roll" buttons.
-5. Trainer sheet.
-6. Floating-window framework + basic Initiative Tracker.
-7. Compendium + Files UI shells.
-
-**Next step from you:** upload the Pokérole 2.0 PDF so step 2 can land in the first build.
+Posso seguir com tudo isso? Se quiser cortar/reordenar (ex: deixar i18n pra depois) é só dizer.

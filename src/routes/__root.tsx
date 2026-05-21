@@ -10,6 +10,8 @@ import {
 import { useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { I18nProvider } from "@/lib/i18n";
+import { initTheme } from "@/components/ThemeToggle";
 
 import appCss from "../styles.css?url";
 
@@ -77,9 +79,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <head><HeadContent /></head>
-      <body>{children}<Scripts /></body>
+      <body className="bg-background text-foreground">{children}<Scripts /></body>
     </html>
   );
 }
@@ -89,10 +91,8 @@ function RootComponent() {
   const router = useRouter();
 
   useEffect(() => {
+    initTheme();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      // Only react to real sign-in / sign-out transitions. INITIAL_SESSION and
-      // TOKEN_REFRESHED would otherwise trigger a reload/redirect loop between
-      // /_app guarded routes and /auth.
       if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
         router.invalidate();
         queryClient.invalidateQueries();
@@ -103,8 +103,10 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
-      <Toaster richColors position="top-right" />
+      <I18nProvider>
+        <Outlet />
+        <Toaster richColors position="top-right" />
+      </I18nProvider>
     </QueryClientProvider>
   );
 }

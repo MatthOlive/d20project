@@ -617,22 +617,9 @@ export function PokemonSheet({
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
           {knownMoves.map((baseMove) => {
-            // Apply Z-Move or G-Max transformation for display + damage roll
             const m: Move = (() => {
-              if (zMode && baseMove.power > 0) {
-                return {
-                  ...baseMove,
-                  name: Z_MOVE_NAMES[baseMove.type] ?? `Z-${baseMove.name}`,
-                  power: zMovePower(baseMove.power),
-                };
-              }
-              if (gMaxMode && baseMove.power > 0) {
-                return {
-                  ...baseMove,
-                  name: `G-Max ${baseMove.name}`,
-                  power: baseMove.power + 3,
-                };
-              }
+              if (zMode && baseMove.power > 0) return { ...baseMove, name: Z_MOVE_NAMES[baseMove.type] ?? `Z-${baseMove.name}`, power: zMovePower(baseMove.power) };
+              if (gMaxMode && baseMove.power > 0) return { ...baseMove, name: `G-Max ${baseMove.name}`, power: baseMove.power + 3 };
               return baseMove;
             })();
             const tcol = TYPE_COLORS[m.type] ?? { bg: "#888", fg: "#fff" };
@@ -645,18 +632,22 @@ export function PokemonSheet({
             const isStatus = cat === "support" || cat === "status" || m.power <= 0 || !m.damage_stat;
             const dmgStat = m.damage_stat ?? "strength";
             const dmgAttrVal = pokemon.current_attrs[dmgStat] ?? 1;
-            const dmgPool = isStatus ? 0 : m.power + dmgAttrVal;
+            // STAB: +1 die if move type matches any species type
+            const hasStab = !isStatus && (species.types ?? []).some((t) => String(t).toLowerCase() === String(m.type).toLowerCase());
+            const stabBonus = hasStab ? 1 : 0;
+            const dmgPool = isStatus ? 0 : m.power + dmgAttrVal + stabBonus;
+            const isSpecial = cat === "special";
             const name = pokemon.nickname || species.name;
             return (
               <div key={m.id} className="overflow-hidden rounded-lg border border-border">
                 <div className="flex items-center justify-between px-3 py-1.5" style={{ backgroundColor: tcol.bg, color: tcol.fg }}>
                   <span className="text-sm font-bold">{m.name}</span>
-                  <span className="text-xs uppercase opacity-90">{m.type}</span>
+                  <span className="text-xs uppercase opacity-90">{m.type}{hasStab ? " · STAB" : ""}</span>
                 </div>
                 <div className="space-y-2 bg-card p-3">
                   <div className="text-xs text-muted-foreground">
                     Accuracy {accStat} {accAttrVal}{m.accuracy_skill ? ` + ${accSkill.label} ${accSkillVal}` : ""} · {accPool}d6
-                    {isStatus ? " · Status (no damage)" : ` · Damage ${dmgStat} ${dmgAttrVal} + Pwr ${m.power} · ${dmgPool}d6`}
+                    {isStatus ? " · Status (no damage)" : ` · Damage ${dmgStat} ${dmgAttrVal} + Pwr ${m.power}${hasStab ? " + STAB" : ""} · ${dmgPool}d6`}
                   </div>
                   {m.effect && <p className="text-xs">{m.effect}</p>}
                   <div className="flex items-center justify-between">
@@ -666,10 +657,11 @@ export function PokemonSheet({
                       accPool={accPool}
                       dmgPool={dmgPool}
                       isStatus={isStatus}
+                      isSpecial={isSpecial}
+                      hasStab={hasStab}
                       onRoll={boundRoll}
                       onChat={onChat}
                     />
-
                     {canEdit && (
                       <Button size="icon" variant="ghost" onClick={() => removeMove(m.id)}>
                         <Trash2 className="h-3.5 w-3.5" />
@@ -735,29 +727,37 @@ function AddMoveDialog({
 }
 
 function MoveRollDialog({
-  move, pokemonName, accPool, dmgPool, isStatus, onRoll, onChat,
+  move, pokemonName, accPool, dmgPool, isStatus, isSpecial, hasStab, onRoll, onChat,
 }: {
   move: Move;
   pokemonName: string;
   accPool: number;
   dmgPool: number;
   isStatus?: boolean;
+  isSpecial?: boolean;
+  hasStab?: boolean;
   onRoll: (label: string, n: number) => void;
   onChat: (body: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [accBonus, setAccBonus] = useState(0);
   const [dmgBonus, setDmgBonus] = useState(0);
+  const [targetDef, setTargetDef] = useState(0);
+  const defLabel = isSpecial ? "Target Sp.Def" : "Target Def";
+  const finalDmg = Math.max(0, dmgPool + dmgBonus - targetDef);
   function confirm() {
-    const desc = `**${pokemonName}** uses **${move.name}** (${move.type})${move.effect ? ` — ${move.effect}` : ""}`;
+    const stab = hasStab ? " STAB" : "";
+    const defNote = targetDef > 0 ? ` −${defLabel} ${targetDef}` : "";
+    const desc = `**${pokemonName}** uses **${move.name}** (${move.type}${stab})${move.effect ? ` — ${move.effect}` : ""}`;
     onChat(desc);
+    // Step 1: Accuracy
     onRoll(`${pokemonName} · ${move.name} · Accuracy`, Math.max(0, accPool + accBonus));
-    if (!isStatus && dmgPool > 0) {
-      onRoll(`${pokemonName} · ${move.name} · Damage`, Math.max(0, dmgPool + dmgBonus));
+    // Step 2: Damage (computed after subtracting target defense)
+    if (!isStatus && finalDmg > 0) {
+      onRoll(`${pokemonName} · ${move.name} · Damage${stab}${defNote}`, finalDmg);
     }
     setOpen(false);
-    setAccBonus(0);
-    setDmgBonus(0);
+    setAccBonus(0); setDmgBonus(0); setTargetDef(0);
   }
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -767,8 +767,9 @@ function MoveRollDialog({
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogHeader><DialogTitle>{move.name}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{move.name}{hasStab ? <span className="ml-2 rounded bg-success/20 px-1.5 py-0.5 text-xs font-bold text-success">STAB +1</span> : null}</DialogTitle></DialogHeader>
         {move.effect && <p className="text-sm text-muted-foreground">{move.effect}</p>}
+        <p className="text-[11px] text-muted-foreground italic">Order: 1) Accuracy roll → 2) if it hits, Damage roll.</p>
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -778,14 +779,22 @@ function MoveRollDialog({
             <Input type="number" value={accBonus} onChange={(e) => setAccBonus(parseInt(e.target.value) || 0)} className="h-9 w-20" />
           </div>
           {!isStatus && dmgPool > 0 && (
-
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <Label className="text-xs">Damage bonus dice</Label>
-                <p className="text-[11px] text-muted-foreground">Pool: {dmgPool}d6 → rolling {Math.max(0, dmgPool + dmgBonus)}d6</p>
+            <>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <Label className="text-xs">Damage bonus dice</Label>
+                  <p className="text-[11px] text-muted-foreground">Base: {dmgPool}d6{hasStab ? " (incl. STAB)" : ""}</p>
+                </div>
+                <Input type="number" value={dmgBonus} onChange={(e) => setDmgBonus(parseInt(e.target.value) || 0)} className="h-9 w-20" />
               </div>
-              <Input type="number" value={dmgBonus} onChange={(e) => setDmgBonus(parseInt(e.target.value) || 0)} className="h-9 w-20" />
-            </div>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <Label className="text-xs">{defLabel} (subtracted from damage pool)</Label>
+                  <p className="text-[11px] text-muted-foreground">Final damage pool: <b>{finalDmg}d6</b></p>
+                </div>
+                <Input type="number" min={0} value={targetDef} onChange={(e) => setTargetDef(Math.max(0, parseInt(e.target.value) || 0))} className="h-9 w-20" />
+              </div>
+            </>
           )}
           <Button onClick={confirm} className="w-full">
             <Dices className="mr-1.5 h-4 w-4" /> Roll
