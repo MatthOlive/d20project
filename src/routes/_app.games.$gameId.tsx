@@ -357,33 +357,39 @@ function FilesPanel({
   }
 
   function renderItem(r: CharRow) {
+    const key = `${r.kind}:${r.id}`;
     const mapPayload: DragCharacterPayload = {
       kind: r.kind, id: r.id, label: r.label,
       imageUrl: r.image_url ?? (r.kind === "pokemon" ? r.sprite_url : null), ownerId: r.owner_id,
     };
     return (
-      <button
-        key={`${r.kind}-${r.id}`}
-        draggable
-        onDragStart={(e) => {
-          e.dataTransfer.setData(DRAG_MIME, JSON.stringify(mapPayload));
-          e.dataTransfer.setData(FOLDER_MIME, JSON.stringify({ kind: r.kind, id: r.id, folder: r.folder }));
-          e.dataTransfer.effectAllowed = "copyMove";
-        }}
-        onClick={() => onOpen({ kind: r.kind, id: r.id, title: r.label })}
-        className="flex w-full items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-left text-sm hover:border-primary"
-      >
-        {r.kind === "pokemon" && r.sprite_url
-          ? <img src={r.sprite_url} alt="" className="h-6 w-6 shrink-0" />
-          : <User className="h-3.5 w-3.5 shrink-0" />}
-        <span className="truncate">{r.label}</span>
-      </button>
+      <div key={key} className="flex items-center gap-1.5">
+        {selectMode && (
+          <Checkbox checked={selected.has(key)} onCheckedChange={() => toggleSelected(key)} />
+        )}
+        <button
+          draggable={!selectMode}
+          onDragStart={(e) => {
+            e.dataTransfer.setData(DRAG_MIME, JSON.stringify(mapPayload));
+            e.dataTransfer.setData(FOLDER_MIME, JSON.stringify({ kind: r.kind, id: r.id, folder: r.folder }));
+            e.dataTransfer.effectAllowed = "copyMove";
+          }}
+          onClick={() => selectMode ? toggleSelected(key) : onOpen({ kind: r.kind, id: r.id, title: r.label })}
+          className={`flex w-full items-center gap-2 rounded-md border ${selected.has(key) ? "border-primary bg-primary/5" : "border-border bg-card"} px-3 py-2 text-left text-sm hover:border-primary`}
+        >
+          {r.kind === "pokemon" && r.sprite_url
+            ? <img src={r.sprite_url} alt="" className="h-6 w-6 shrink-0" />
+            : <User className="h-3.5 w-3.5 shrink-0" />}
+          <span className="truncate">{r.label}</span>
+        </button>
+      </div>
     );
   }
 
   function FolderGroup({ name, items }: { name: string | null; items: CharRow[] }) {
     const key = name ?? "__root__";
     const isHover = dropHover === key;
+    const isCollapsed = !!collapsed[key];
     return (
       <div
         onDragOver={(e) => {
@@ -405,17 +411,24 @@ function FilesPanel({
         }}
         className={`rounded-md border ${isHover ? "border-primary bg-accent/40" : "border-border bg-background"} p-2`}
       >
-        <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+        <button
+          type="button"
+          onClick={() => toggleFolder(key)}
+          className="mb-1.5 flex w-full items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+        >
+          <span className="inline-block w-3 text-center">{isCollapsed ? "▸" : "▾"}</span>
           {name ? <Folder className="h-3.5 w-3.5" /> : <FolderOpen className="h-3.5 w-3.5" />}
           {name ?? "Unfiled"}
           <span className="ml-1 text-[10px] opacity-60">({items.length})</span>
-        </div>
-        <div className="space-y-1.5">
-          {items.map(renderItem)}
-          {items.length === 0 && (
-            <p className="px-2 py-1 text-[11px] text-muted-foreground">Drop a sheet here.</p>
-          )}
-        </div>
+        </button>
+        {!isCollapsed && (
+          <div className="space-y-1.5">
+            {items.map(renderItem)}
+            {items.length === 0 && (
+              <p className="px-2 py-1 text-[11px] text-muted-foreground">Drop a sheet here.</p>
+            )}
+          </div>
+        )}
       </div>
     );
   }
@@ -424,7 +437,7 @@ function FilesPanel({
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold">Characters</h3>
-        <div className="flex gap-1.5">
+        <div className="flex flex-wrap gap-1.5">
           <Button size="sm" variant="outline" onClick={() => createTrainer.mutate()}>
             <User className="mr-1 h-3.5 w-3.5" /> Trainer
           </Button>
@@ -446,6 +459,16 @@ function FilesPanel({
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          {!selectMode ? (
+            <Button size="sm" variant="outline" onClick={() => setSelectMode(true)}>Select</Button>
+          ) : (
+            <>
+              <Button size="sm" variant="destructive" disabled={selected.size === 0} onClick={bulkDelete}>
+                <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete ({selected.size})
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => { setSelectMode(false); setSelected(new Set()); }}>Cancel</Button>
+            </>
+          )}
         </div>
       </div>
 
