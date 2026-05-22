@@ -289,11 +289,13 @@ export type Database = {
           nickname: string | null
           notes: string
           owner_id: string
+          owner_trainer_id: string | null
           rank: Database["public"]["Enums"]["pokerole_rank"]
           skills: Json
           social_attrs: Json
           species_id: string
           status: string[]
+          team_slot: number | null
           victories: number
           will: number
         }
@@ -319,11 +321,13 @@ export type Database = {
           nickname?: string | null
           notes?: string
           owner_id: string
+          owner_trainer_id?: string | null
           rank?: Database["public"]["Enums"]["pokerole_rank"]
           skills?: Json
           social_attrs?: Json
           species_id: string
           status?: string[]
+          team_slot?: number | null
           victories?: number
           will?: number
         }
@@ -349,11 +353,13 @@ export type Database = {
           nickname?: string | null
           notes?: string
           owner_id?: string
+          owner_trainer_id?: string | null
           rank?: Database["public"]["Enums"]["pokerole_rank"]
           skills?: Json
           social_attrs?: Json
           species_id?: string
           status?: string[]
+          team_slot?: number | null
           victories?: number
           will?: number
         }
@@ -363,6 +369,13 @@ export type Database = {
             columns: ["game_id"]
             isOneToOne: false
             referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pokemon_owner_trainer_id_fkey"
+            columns: ["owner_trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
             referencedColumns: ["id"]
           },
           {
@@ -613,6 +626,7 @@ export type Database = {
           ai_spawned: boolean
           attrs: Json
           background: string | null
+          badges: Json
           bag: string
           bag_list: Json
           battle_items: string
@@ -622,6 +636,7 @@ export type Database = {
           created_at: string
           current_hp: number | null
           current_will: number | null
+          custom_skills: Json
           folder: string | null
           game_id: string
           id: string
@@ -634,6 +649,7 @@ export type Database = {
           pokedex: Json
           potions: Json
           rank: Database["public"]["Enums"]["pokerole_rank"]
+          sex: string | null
           skills: Json
           social_attrs: Json
           status_conditions: string[]
@@ -645,6 +661,7 @@ export type Database = {
           ai_spawned?: boolean
           attrs?: Json
           background?: string | null
+          badges?: Json
           bag?: string
           bag_list?: Json
           battle_items?: string
@@ -654,6 +671,7 @@ export type Database = {
           created_at?: string
           current_hp?: number | null
           current_will?: number | null
+          custom_skills?: Json
           folder?: string | null
           game_id: string
           id?: string
@@ -666,6 +684,7 @@ export type Database = {
           pokedex?: Json
           potions?: Json
           rank?: Database["public"]["Enums"]["pokerole_rank"]
+          sex?: string | null
           skills?: Json
           social_attrs?: Json
           status_conditions?: string[]
@@ -677,6 +696,7 @@ export type Database = {
           ai_spawned?: boolean
           attrs?: Json
           background?: string | null
+          badges?: Json
           bag?: string
           bag_list?: Json
           battle_items?: string
@@ -686,6 +706,7 @@ export type Database = {
           created_at?: string
           current_hp?: number | null
           current_will?: number | null
+          custom_skills?: Json
           folder?: string | null
           game_id?: string
           id?: string
@@ -698,6 +719,7 @@ export type Database = {
           pokedex?: Json
           potions?: Json
           rank?: Database["public"]["Enums"]["pokerole_rank"]
+          sex?: string | null
           skills?: Json
           social_attrs?: Json
           status_conditions?: string[]
