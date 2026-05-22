@@ -1,108 +1,101 @@
-## Visão geral
+# Redesign de fichas estilo "Pokémon League Trainer Card"
 
-Onze mudanças agrupadas por área. Implemento tudo de uma vez, mas confirma o escopo antes — algumas têm trade-offs.
+Mudança grande que toca `TrainerSheet.tsx`, `PokemonSheet.tsx` e o painel de fichas em `_app.games.$gameId.tsx`. Antes de mexer, alinhamento de escopo e decisões abertas.
 
----
+## 1. Novo layout da Ficha de Treinador (6 blocos)
 
-### 1. Combate — STAB + defesa do alvo
+**Bloco 1 — Identidade**
+- Esquerda: imagem grande (avatar do treinador) + caixa "Money" abaixo.
+- Direita: linha 1 = Nome ocupando largura toda. Abaixo grid com Sexo, Idade, Nature, HP/HPmax, Will/Willmax, Confidence.
+- Linha de botões: Initiative, Attack, Evasion, Clash, Generic Roll, **Catch** (nova rolagem — fórmula a confirmar, ver §7).
 
-- No `SheetRolls` / botão de Move da `PokemonSheet`:
-  - **STAB**: se o tipo do move ∈ tipos do Pokémon → `+1 dado` na damage pool (rótulo "STAB").
-  - **Defesa do alvo**: ao clicar em rolar um move, abrir um mini-popover com input numérico "Defense / Sp.Def do alvo" (default 0). Esse valor é **subtraído da damage pool** antes de rolar. Mostra no chat como `Damage {Stat}+{Skill}+STAB − Def(N) · {Pool}d6`.
-  - Move físico usa Def, especial usa Sp.Def — o popover já sugere o label certo baseado em `move.category`.
+**Bloco 2 — Três caixas lado a lado**
+- (a) Status Problems (Burn, Poison, Paralyzed, etc. — já existe em `SheetRolls.tsx`).
+- (b) Atributos físicos: Strength, Dexterity, Vitality, Insight (dots).
+- (c) Atributos sociais: Tough, Cool, Beauty, Clever, Cute (dots).
 
-### 2. Ordem de rolagem de Move (Accuracy → Damage)
+**Bloco 3 — Skills em 5 colunas**
+- Fight: Brawl, Throw, Evasion, Weapons.
+- Survival: Alert, Athletic, Nature, Stealth.
+- Social: Allure, Etiquette, Intimidate, Perform.
+- Knowledge: Crafts, Lore, Medicine, Science.
+- Custom: botão **+ Add Skill** → cria linha editável (nome livre + dots). Persistido em coluna nova `trainers.custom_skills jsonb`.
 
-- Hoje só rola Accuracy. Vou mudar pra fluxo de 2 passos atômicos:
-  1. Rola **Accuracy** (`accuracy_stat + accuracy_skill`) e posta no chat.
-  2. Se sucessos > 0, **automaticamente** rola **Damage** (`damage_stat + STAB − defesa`) e posta logo abaixo com label `"… Damage"`.
-- No `narrator.functions.ts`: o system prompt instrui a IA a ler **pares Accuracy+Damage** consecutivos do mesmo autor/move antes de narrar o resultado, e a só considerar dano quando Accuracy passou.
+**Bloco 4 — Inventário**
+- Box Potions: Potion / Super Potion / Hyper Potion com quantidade + indicador de cargas.
+- Outras 2 boxes: Itens-chave / Itens diversos (lista simples com add/remove).
 
-### 3. Botão "Turn Order" pro mestre
+**Bloco 5 — Badges & Achievements**
+- Badges: grid de 8 slots com **+ Add Badge** (nome + sprite opcional).
+- Achievements: mantém o sistema atual com add → linha editável + checkbox.
 
-- No header do jogo, ao lado dos botões de cenário, adiciono botão `Turn Order` (só narrador) que abre/fecha o `InitiativePanel` flutuante. Hoje ele aparece sozinho quando há iniciativa — vou manter aparecendo, mas o botão permite reabrir após fechar.
+**Bloco 6 — Pokédex** (mantém o componente atual).
 
-### 4. Seleção de idioma + tradução da UI
+**Bloco 7 — Moves do treinador** (interpretei o "sexto bloco sera para os moves" como sétimo — confirme se faz sentido para treinador; treinadores em Pokérole normalmente não têm moves. Posso **omitir** este bloco da ficha de treinador e deixar moves só na ficha do Pokémon, que é o padrão do livro).
 
-- Ao criar jogo: select com `pt-BR`, `en`, `es` (posso adicionar mais — diz aí).
-- Persisto em `games.language`.
-- Adiciono i18n leve com `react-i18next` (sem libs pesadas), com dicionários `pt-BR / en / es` cobrindo labels da UI principal (header, fichas, chat, compendium, dashboard).
-- **Não traduzo**: nomes de moves, abilities, naturezas, espécies — ficam no idioma original do dado.
-- A IA narradora recebe o idioma no system prompt: "Responda sempre em {language}, mas mantenha em inglês os nomes próprios de Pokémon, moves e abilities".
+## 2. Abas-fichário laterais (8 abas)
 
-> ⚠️ Heads-up: traduzir 100% da UI é trabalhoso. Vou cobrir o essencial (labels visíveis, botões, headings). Strings perdidas continuam em inglês até serem reportadas.
+Coluna vertical à esquerda da ficha, estilo separadores de fichário:
 
-### 5. Modo seleção nas fichas + pastas colapsáveis
-
-- Lista de fichas (sidebar Files):
-  - Botão `Select` ativa modo seleção → cada ficha ganha checkbox.
-  - Ações em lote: `Delete selecionadas`, `Mover para pasta…`.
-  - Drag continua funcionando para o mapa; em modo seleção, o drag move múltiplas fichas pra pasta de destino.
-  - Pastas viram **colapsáveis** (click no header expande/recolhe, estado salvo em localStorage por jogo).
-
-### 6. Confidence conforme o livro
-
-- Verifique a confidence no livre e use os valores q estao al apenas sem formulas.
-
-### 7. Dark mode como tema padrão
-
-- `<html class="dark">` por default no `__root.tsx`.
-- Toggle no menu do usuário (após login) com persistência em localStorage + `profiles.theme`.
-- `styles.css` já tem `.dark` definido — só preciso preencher tokens que estão usando cores hardcoded em alguns componentes.
-
-### 8. Tela de jogos — deletar e deleção em massa
-
-- Dashboard: cada card de jogo ganha botão `Delete` (ícone lixeira, com confirmação).
-- Botão `Select` no topo ativa modo de seleção em massa → checkbox por card → `Delete selecionados`.
-- Só o narrador (owner) consegue deletar — RLS já cobre isso.
-
-### 9–11. IA: usar ficha já criada + atributos corretos + variação
-
-Três correções no `narrator.functions.ts`:
-
-**(a) Não duplicar fichas (#9):** antes de chamar `spawn_wild_pokemon`/`spawn_trainer`, a tool busca em `pokemon`/`trainers` do jogo se já existe ficha com mesmo nome/species + flag `ai_spawned=true` numa cena ativa. Se existir, retorna a ficha existente em vez de criar nova. Adiciono coluna `ai_spawned boolean` e `ai_scene_id text` opcional pra rastrear "este encontro". Quando combate acaba (initiative limpa), libera novos spawns.
-
-**(b) Atributos corretos por rank (#10):**
-
-- Audito a tabela `RANK_TABLE` no `narrator.functions.ts` vs livro:
-  - Pokémon e treinador: starter +0 attr/+0 social, beginner +2 attr/+2 social, amateur +4 attr/+4 social, ace +6 attr/+6 social, pro +8 attr/+8 social. (valores sao referentes ao starter entao se um personagem é pro ele tem +8 pontos de atributo q um starter e +4 q um amateur por exemplo) (caps 1/2/3/4/5/5 em skills).
-  - **Treinador**: o livro usa `rank + faixa etária`. Vou implementar: idade dá pontos extras (criança +0 atributo fisico / +0 social, jovem +2 attr/+2 social, adulto +4 attr/+4 social, veterano +3attr/+6 social) somados ao rank base.
-- Adiciono validação **server-side**: `clampPoints()` rejeita distribuições que excedem o total, e a tool retorna erro pra IA refazer.
-
-**(c) Aleatoriedade vs priorização (#11):**
-
-- Tool ganha parâmetro `importance: "random" | "themed"`.
-- `random` → distribuição uniforme (já existente, melhoro a RNG pra não viciar em strength).
-- `themed` → IA passa `priorities: { attrs: [...], skills: [...] }` e o servidor distribui ~60% nesses, ~40% no resto.
-- System prompt instrui: "Encontros aleatórios (selvagens) usam `random`. NPCs nomeados (líderes de ginásio, rivais, recorrentes) usam `themed` com prioridades coerentes (ex: líder de ginásio de fogo → Special alto, Channel alto)".
-
----
-
-### Migração de DB necessária
-
-```sql
-alter table games add column language text not null default 'pt-BR';
-alter table profiles add column theme text not null default 'dark';
-alter table pokemon add column ai_spawned boolean not null default false;
-alter table pokemon add column ai_scene_id text;
-alter table trainers add column ai_spawned boolean not null default false;
-alter table trainers add column ai_scene_id text;
+```text
+┌──┐
+│T │  Aba 1 — Treinador (abre a ficha do treinador)
+├──┤
+│P1│  Abas 2-7 — slots de equipe (sprite do Pokémon no slot)
+│P2│         Slot vazio mostra "+" → botão "Copiar de Files"
+│..│         que abre dropdown com Pokémon já criados em Files
+│P6│
+├──┤
+│PC│  Aba 8 — Caixa. Grid de sprites de todos Pokémon
+└──┘       capturados que não estão na equipe. Click abre ficha.
 ```
 
----
+Detalhes:
+- Equipe = novos campos no schema: `pokemon.owner_trainer_id uuid` + `pokemon.team_slot smallint` (1-6, null = no PC).
+- "Copiar ficha" duplica a row do Pokémon em Files e atribui ao trainer/slot (cópia, não referência — para o jogador poder editar sem afetar a original-template).
+- Registro na Pokédex (já existe) dispara ícone na aba PC do dono.
+- Sprite resolvido a partir de `species` via PokeAPI ou tabela local (a confirmar — ver §7).
 
-### Detalhes técnicos
+## 3. Banco de dados (migration)
 
-- **Arquivos editados**: `SheetRolls.tsx`, `PokemonSheet.tsx`, `TrainerSheet.tsx`, `ChatPanel.tsx`, `narrator.functions.ts`, `pokerole.ts`, `_app.games.$gameId.tsx`, `_app.dashboard.tsx`, `__root.tsx`, `styles.css`.
-- **Arquivos novos**: `src/lib/i18n.ts` (config react-i18next), `src/lib/locales/{pt-BR,en,es}.json`, `src/components/ThemeToggle.tsx`, `src/components/FileBrowser.tsx` (extraído do route file pra caber seleção em lote).
-- **Dependências novas**: `react-i18next`, `i18next` (~30kb gzip, sem polyfills nativos).
+```sql
+alter table public.trainers
+  add column if not exists custom_skills jsonb not null default '[]'::jsonb,
+  add column if not exists badges jsonb not null default '[]'::jsonb,
+  add column if not exists inventory jsonb not null default '{}'::jsonb;
 
----
+alter table public.pokemon
+  add column if not exists owner_trainer_id uuid references public.trainers(id) on delete set null,
+  add column if not exists team_slot smallint check (team_slot between 1 and 6);
 
-### O que NÃO está incluso
+create unique index if not exists pokemon_team_slot_unique
+  on public.pokemon(owner_trainer_id, team_slot)
+  where team_slot is not null;
+```
 
-- Tradução de descrições de moves/abilities/effects (são texto livre dos PDFs, fora de escopo).
-- Tradução dinâmica de respostas da IA via tradutor externo — quem traduz é o próprio modelo via instrução de sistema.
-- Sincronização de tema entre dispositivos em tempo real (só carrega no login).
+Money, sexo, idade, will já existem em `trainers`? Vou checar antes da migration; adiciono o que faltar.
 
-Posso seguir com tudo isso? Se quiser cortar/reordenar (ex: deixar i18n pra depois) é só dizer.
+## 4. Componentes a criar/editar
+
+- **Criar** `src/components/SheetTabs.tsx` — barra lateral de 8 abas + lógica de seleção/cópia.
+- **Reescrever** `src/components/TrainerSheet.tsx` com os 6 blocos.
+- **Editar** `src/components/PokemonSheet.tsx` — só para envolver no `SheetTabs` (mantém conteúdo atual).
+- **Editar** `_app.games.$gameId.tsx` — quando abrir ficha de treinador, mostra `SheetTabs` por volta.
+
+## 5. Visual
+
+Vou manter o estilo dark do app (não copiar o vermelho/branco do PDF literalmente, já que o tema é dark). Uso da imagem como **referência de layout** (organização dos blocos, dots, separadores tipo "fichário"). Quer que eu reproduza as cores vermelhas exatas estilo cartão da Pokémon League? Por padrão vou de dark theme com accents vermelhos discretos.
+
+## 6. O que **NÃO** está incluso
+
+- Trocar dots por inputs numéricos (mantém `DotEditor` existente).
+- Drag-and-drop entre slots da equipe e PC (botão "mover para equipe / PC" via menu).
+- Sincronia em tempo real do PC com outros jogadores assistindo (mantém o pattern atual de realtime).
+- Sistema completo de "ride pokémon", "happiness", etc. fora do escopo do livro básico.
+
+## 7. Perguntas (responda antes de eu codar)
+
+1. **Botão Catch** — qual fórmula? Pokérole usa rolagem com modificadores baseados em HP atual do alvo + status. Posso (a) implementar o cálculo oficial do livro (puxando HP do alvo selecionado no Turn Order), ou (b) abrir um diálogo onde o mestre digita o "dificuldade" e o jogador rola Dex + Throw. Qual prefere?
+2. **Bloco 7 (moves do treinador)** — omitir (treinadores não têm moves no Pokérole), ou criar mesmo assim como lista livre de "técnicas"?
+3. **Sprites dos Pokémon nas abas/PC** — usar PokeAPI (`https://raw.githubusercontent.com/PokeAPI/sprites/...`) ou já existe uma fonte local no projeto?
+4. **Visual** — manter dark theme com toques vermelhos, ou reproduzir o cartão claro vermelho/branco da referência?

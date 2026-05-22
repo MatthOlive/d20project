@@ -1,0 +1,373 @@
+import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { TrainerSheet } from "@/components/TrainerSheet";
+import { PokemonSheet } from "@/components/PokemonSheet";
+import { User, Boxes, Plus } from "lucide-react";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+
+type SlotPokemon = {
+  id: string;
+  nickname: string | null;
+  team_slot: number | null;
+  image_url: string | null;
+  species_id: string;
+};
+
+type Tab =
+  | { kind: "trainer" }
+  | { kind: "slot"; slot: number; pokemonId: string | null }
+  | { kind: "pc" }
+  | { kind: "pcPokemon"; pokemonId: string };
+
+const SLOTS = [1, 2, 3, 4, 5, 6] as const;
+
+export function SheetTabs(props: {
+  trainerId: string;
+  gameId: string;
+  userId: string;
+  isNarrator: boolean;
+  onRoll: (label: string, n: number, penalty?: number) => void;
+  onChat: (body: string) => void;
+  onDeleted?: () => void;
+}) {
+  const { trainerId, gameId, userId, isNarrator } = props;
+  const qc = useQueryClient();
+  const [active, setActive] = useState<Tab>({ kind: "trainer" });
+
+  // Pokemon owned by this trainer (team + PC)
+  const { data: roster = [] } = useQuery({
+    queryKey: ["trainer-roster", trainerId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pokemon")
+        .select("id, nickname, team_slot, image_url, species_id")
+        .eq("owner_trainer_id", trainerId);
+      if (error) throw error;
+      return (data ?? []) as SlotPokemon[];
+    },
+  });
+
+  // Species sprite map (for fallback)
+  const speciesIds = useMemo(() => roster.map((p) => p.species_id).filter(Boolean), [roster]);
+  const { data: spriteMap = {} } = useQuery({
+    queryKey: ["trainer-roster-sprites", trainerId, speciesIds.join(",")],
+    queryFn: async () => {
+      if (speciesIds.length === 0) return {};
+      const { data, error } = await supabase
+        .from("species")
+        .select("id, sprite_url, name")
+        .in("id", speciesIds);
+      if (error) throw error;
+      const map: Record<string, { sprite_url: string | null; name: string }> = {};
+      (data ?? []).forEach((s) => { map[s.id] = { sprite_url: s.sprite_url, name: s.name }; });
+      return map;
+    },
+    enabled: speciesIds.length > 0,
+  });
+
+  const team = SLOTS.map((slot) => ({
+    slot,
+    pokemon: roster.find((p) => p.team_slot === slot) ?? null,
+  }));
+  const pcPokemon = roster.filter((p) => p.team_slot === null);
+
+  function spriteFor(p: SlotPokemon | null): string | null {
+    if (!p) return null;
+    return p.image_url || spriteMap[p.species_id]?.sprite_url || null;
+  }
+  function nameFor(p: SlotPokemon | null): string {
+    if (!p) return "";
+    return p.nickname || spriteMap[p.species_id]?.name || "Pokémon";
+  }
+
+  function invalidateRoster() {
+    qc.invalidateQueries({ queryKey: ["trainer-roster", trainerId] });
+    qc.invalidateQueries({ queryKey: ["characters", gameId] });
+  }
+
+  return (
+    <div className="flex h-full min-h-0 w-full">
+      {/* Vertical tab rail */}
+      <div className="flex w-14 shrink-0 flex-col gap-1 border-r border-border bg-muted/40 p-1.5">
+        <TabButton
+          active={active.kind === "trainer"}
+          onClick={() => setActive({ kind: "trainer" })}
+          tone="primary"
+          title="Trainer"
+        >
+          <User className="h-4 w-4" />
+        </TabButton>
+        {team.map(({ slot, pokemon }) => {
+          const isActive = active.kind === "slot" && active.slot === slot;
+          const sprite = spriteFor(pokemon);
+          return (
+            <TabButton
+              key={slot}
+              active={isActive}
+              onClick={() => setActive({ kind: "slot", slot, pokemonId: pokemon?.id ?? null })}
+              title={pokemon ? nameFor(pokemon) : `Slot ${slot}`}
+              tone={pokemon ? "team" : "empty"}
+            >
+              {sprite
+                ? <img src={sprite} alt={nameFor(pokemon)} className="h-7 w-7 object-contain" />
+                : <span className="text-[10px] font-bold text-muted-foreground">{slot}</span>}
+            </TabButton>
+          );
+        })}
+        <TabButton
+          active={active.kind === "pc" || active.kind === "pcPokemon"}
+          onClick={() => setActive({ kind: "pc" })}
+          tone="pc"
+          title="PC (Box)"
+        >
+          <Boxes className="h-4 w-4" />
+        </TabButton>
+      </div>
+
+      {/* Active panel */}
+      <div className="min-w-0 flex-1 overflow-y-auto">
+        {active.kind === "trainer" && (
+          <TrainerSheet
+            trainerId={trainerId}
+            userId={userId}
+            isNarrator={isNarrator}
+            onRoll={props.onRoll}
+            onDeleted={props.onDeleted}
+          />
+        )}
+        {active.kind === "slot" && (
+          active.pokemonId
+            ? <PokemonSheet
+                pokemonId={active.pokemonId}
+                gameId={gameId}
+                userId={userId}
+                isNarrator={isNarrator}
+                onRoll={props.onRoll}
+                onChat={props.onChat}
+                onDeleted={invalidateRoster}
+              />
+            : <EmptySlot
+                slot={active.slot}
+                gameId={gameId}
+                trainerId={trainerId}
+                userId={userId}
+                canEdit={isNarrator || true}
+                spriteMap={spriteMap}
+                onAssigned={(pid) => {
+                  invalidateRoster();
+                  setActive({ kind: "slot", slot: active.slot, pokemonId: pid });
+                }}
+              />
+        )}
+        {active.kind === "pc" && (
+          <PcGrid
+            pokemon={pcPokemon}
+            sprite={(p) => spriteFor(p)}
+            name={(p) => nameFor(p)}
+            onOpen={(pid) => setActive({ kind: "pcPokemon", pokemonId: pid })}
+          />
+        )}
+        {active.kind === "pcPokemon" && (
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-3 py-2">
+              <Button size="sm" variant="ghost" onClick={() => setActive({ kind: "pc" })}>← PC</Button>
+            </div>
+            <PokemonSheet
+              pokemonId={active.pokemonId}
+              gameId={gameId}
+              userId={userId}
+              isNarrator={isNarrator}
+              onRoll={props.onRoll}
+              onChat={props.onChat}
+              onDeleted={invalidateRoster}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TabButton({
+  active, onClick, children, title, tone,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  title: string;
+  tone: "primary" | "team" | "empty" | "pc";
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      className={cn(
+        "flex h-11 w-full items-center justify-center rounded-md border transition",
+        active
+          ? "border-primary bg-primary/15 ring-1 ring-primary"
+          : "border-border bg-card hover:bg-accent",
+        tone === "primary" && !active && "border-l-2 border-l-primary/60",
+        tone === "pc" && !active && "border-l-2 border-l-success/60",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function EmptySlot({
+  slot, gameId, trainerId, spriteMap, onAssigned,
+}: {
+  slot: number;
+  gameId: string;
+  trainerId: string;
+  userId: string;
+  canEdit: boolean;
+  spriteMap: Record<string, { sprite_url: string | null; name: string }>;
+  onAssigned: (pokemonId: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  // Pokemon in this game that aren't already in *this* trainer's team
+  const { data: candidates = [] } = useQuery({
+    queryKey: ["assignable-pokemon", gameId, trainerId, open],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pokemon")
+        .select("id, nickname, image_url, species_id, owner_trainer_id, team_slot")
+        .eq("game_id", gameId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      // Exclude pokemon currently in this trainer's active team slot
+      return (data ?? []).filter((p) =>
+        !(p.owner_trainer_id === trainerId && p.team_slot !== null)
+      );
+    },
+    enabled: open,
+  });
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return candidates.filter((p) => {
+      if (!q) return true;
+      const nm = p.nickname?.toLowerCase() ?? "";
+      const sp = spriteMap[p.species_id]?.name?.toLowerCase() ?? "";
+      return nm.includes(q) || sp.includes(q);
+    });
+  }, [candidates, search, spriteMap]);
+
+  async function assign(pokemonId: string) {
+    // Clear any previous slot for this pokemon, then assign new slot+owner
+    const { error } = await supabase
+      .from("pokemon")
+      .update({ owner_trainer_id: trainerId, team_slot: slot })
+      .eq("id", pokemonId);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Added to team");
+    setOpen(false);
+    onAssigned(pokemonId);
+  }
+
+  return (
+    <div className="flex h-full items-center justify-center p-8">
+      <div className="w-full max-w-sm rounded-lg border border-dashed border-border bg-card p-6 text-center">
+        <p className="mb-1 text-sm font-bold">Slot {slot} vazio</p>
+        <p className="mb-4 text-xs text-muted-foreground">
+          Atribua um Pokémon dos arquivos do jogo a este slot.
+        </p>
+        <Button size="sm" onClick={() => setOpen(true)}>
+          <Plus className="mr-1 h-3.5 w-3.5" /> Adicionar de Files
+        </Button>
+      </div>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[80vh] max-w-lg overflow-hidden">
+          <DialogHeader><DialogTitle>Adicionar Pokémon ao Slot {slot}</DialogTitle></DialogHeader>
+          <Input placeholder="Buscar…" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <div className="max-h-[55vh] space-y-1 overflow-y-auto">
+            {filtered.map((p) => {
+              const sp = spriteMap[p.species_id];
+              const sprite = p.image_url || sp?.sprite_url;
+              const nm = p.nickname || sp?.name || "Pokémon";
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => assign(p.id)}
+                  className="flex w-full items-center gap-2 rounded-md border border-border bg-card px-2 py-1.5 text-left hover:bg-accent"
+                >
+                  {sprite
+                    ? <img src={sprite} alt={nm} className="h-8 w-8 object-contain" />
+                    : <div className="h-8 w-8 rounded bg-muted" />}
+                  <span className="flex-1 text-sm">{nm}</span>
+                  {p.owner_trainer_id === trainerId && p.team_slot === null && (
+                    <span className="text-[10px] text-muted-foreground">(no PC)</span>
+                  )}
+                  {p.owner_trainer_id && p.owner_trainer_id !== trainerId && (
+                    <span className="text-[10px] text-muted-foreground">(de outro treinador)</span>
+                  )}
+                </button>
+              );
+            })}
+            {filtered.length === 0 && (
+              <p className="p-4 text-center text-xs text-muted-foreground">Nenhum Pokémon disponível.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function PcGrid({
+  pokemon, sprite, name, onOpen,
+}: {
+  pokemon: SlotPokemon[];
+  sprite: (p: SlotPokemon) => string | null;
+  name: (p: SlotPokemon) => string;
+  onOpen: (pokemonId: string) => void;
+}) {
+  return (
+    <div className="space-y-3 p-4">
+      <div className="flex items-center gap-2">
+        <Boxes className="h-4 w-4 text-success" />
+        <h3 className="text-sm font-bold">PC · Caixa de Pokémon</h3>
+        <span className="ml-auto text-xs text-muted-foreground">{pokemon.length} guardado(s)</span>
+      </div>
+      {pokemon.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-border bg-card p-6 text-center text-xs text-muted-foreground">
+          Sem Pokémon no PC. Pokémon capturados que não estão na equipe aparecerão aqui.
+        </p>
+      ) : (
+        <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+          {pokemon.map((p) => {
+            const s = sprite(p);
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => onOpen(p.id)}
+                title={name(p)}
+                className="flex aspect-square flex-col items-center justify-center gap-1 rounded-md border border-border bg-card p-1 hover:border-primary hover:bg-accent"
+              >
+                {s
+                  ? <img src={s} alt={name(p)} className="h-12 w-12 object-contain" />
+                  : <div className="h-12 w-12 rounded bg-muted" />}
+                <span className="line-clamp-1 text-[10px] font-medium">{name(p)}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
