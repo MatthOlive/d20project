@@ -19,7 +19,6 @@ import { ChatPanel } from "@/components/ChatPanel";
 import { KnowledgeIngest } from "@/components/KnowledgeIngest";
 import { FloatingWindow } from "@/components/FloatingWindow";
 import { PokemonSheet } from "@/components/PokemonSheet";
-import { TrainerSheet } from "@/components/TrainerSheet";
 import { SheetTabs } from "@/components/SheetTabs";
 import { MapBoard, DRAG_MIME, type DragCharacterPayload } from "@/components/MapBoard";
 import { toast } from "sonner";
