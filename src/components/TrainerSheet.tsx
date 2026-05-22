@@ -36,6 +36,7 @@ type Trainer = {
   game_id: string;
   owner_id: string;
   name: string;
+  sex: string | null;
   nature: string | null;
   age: number | null;
   concept: string | null;
@@ -44,6 +45,8 @@ type Trainer = {
   attrs: Record<string, number>;
   social_attrs: Record<string, number>;
   skills: Record<string, number>;
+  custom_skills: CustomSkill[];
+  badges: Badge[];
   notes: string;
   image_url: string | null;
   money: number;
@@ -59,6 +62,9 @@ type Trainer = {
   current_will: number | null;
   status_conditions: string[];
 };
+
+type CustomSkill = { name: string; value: number };
+type Badge = { name: string; image_url?: string | null };
 
 type InventoryItem = { name: string; qty: number };
 type Achievement = { name: string; done: boolean };
