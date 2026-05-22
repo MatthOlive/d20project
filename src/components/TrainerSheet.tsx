@@ -136,255 +136,302 @@ export function TrainerSheet({
   const allSkillsForRoll = TRAINER_SKILLS.map((s) => ({ name: s, value: trainer.skills?.[s] ?? 0 }));
   const charName = trainer.name;
 
+  const evasionPool = dex + (trainer.skills?.Evasion ?? 0);
+  const clashPool = str + (trainer.skills?.Clash ?? 0);
+
   return (
-    <div className="space-y-5 p-4">
-      <TrainerImage trainer={trainer} canEdit={canEdit} onChange={(url) => patch({ image_url: url })} />
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label>Name</Label>
-          <Input value={trainer.name} onChange={(e) => patch({ name: e.target.value })} disabled={!canEdit} />
-        </div>
-        <div className="space-y-2">
-          <Label>Concept</Label>
-          <Input value={trainer.concept ?? ""} onChange={(e) => patch({ concept: e.target.value })} disabled={!canEdit} />
-        </div>
-        <div className="space-y-2">
-          <Label>Nature</Label>
-          <NatureSelect
-            value={trainer.nature}
-            disabled={!canEdit}
-            onChange={(nature, conf) => patch({ nature, confidence: conf })}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Age</Label>
-          <Input
-            type="number" value={trainer.age ?? ""}
-            onChange={(e) => patch({ age: parseInt(e.target.value) || null })}
-            disabled={!canEdit}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Rank</Label>
+    <div className="space-y-4 p-4">
+      {/* ============ BLOCO 1 — Identidade ============ */}
+      <section className="overflow-hidden rounded-xl border border-border bg-card">
+        <div className="flex items-center gap-2 border-b-2 border-primary bg-primary/10 px-3 py-1.5">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-primary">Pokémon League · Trainer Card</span>
+          <span className="ml-auto text-[11px] uppercase text-muted-foreground">Rank</span>
           <Select value={trainer.rank} onValueChange={(v) => patch({ rank: v as Rank })} disabled={!canEdit}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-6 w-28 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               {RANKS.map((r) => <SelectItem key={r} value={r}>{RANK_LABELS[r]}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-2">
-          <Label>Confidence</Label>
-          <Input
-            type="number" value={trainer.confidence}
-            onChange={(e) => patch({ confidence: parseInt(e.target.value) || 0 })}
-            disabled={!canEdit}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Money (₽)</Label>
-          <Input
-            type="number" value={trainer.money}
-            onChange={(e) => patch({ money: parseInt(e.target.value) || 0 })}
-            disabled={!canEdit}
-          />
-        </div>
-        <div className="space-y-2 sm:col-span-2">
-          <Label>Background</Label>
-          <Textarea
-            value={trainer.background ?? ""}
-            onChange={(e) => patch({ background: e.target.value })}
-            disabled={!canEdit}
-            rows={2}
-          />
-        </div>
-      </div>
-
-      <HpAndStatusBlock
-        current={currentHp}
-        max={hp}
-        status={trainer.status_conditions ?? []}
-        painPenalty={painPenalty}
-        canEdit={canEdit}
-        onHpChange={(n) => patch({ current_hp: n })}
-        onStatusChange={(s) => patch({ status_conditions: s })}
-      />
-
-      <div className="space-y-2 rounded-lg border border-border bg-card p-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-success/15 px-3 py-1 text-sm font-bold text-success">HP {currentHp}/{hp}</span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-accent px-3 py-1 text-sm font-bold">
-            Will
-            <Input
-              type="number" min={0} max={will}
-              value={currentWill}
-              disabled={!canEdit}
-              onChange={(e) => {
-                const n = Math.max(0, Math.min(will, parseInt(e.target.value) || 0));
-                patch({ current_will: n });
-              }}
-              className="h-6 w-12 px-1 text-center text-sm"
-            />
-            <span className="opacity-70">/ {will}</span>
-          </span>
-          <span className="rounded-full bg-muted px-3 py-1 text-sm font-bold" title="Defense = Vitality">Def {vit}</span>
-          <span className="rounded-full bg-muted px-3 py-1 text-sm font-bold" title="Special Defense = Vitality">Sp.Def {vit}</span>
-          <Button size="sm" variant="outline" className="h-7"
-            onClick={() => onRoll(`${charName} · Initiative (Dex+Alert)`, initiativePool, painPenalty)}>
-            <Dices className="mr-1 h-3.5 w-3.5" /> Initiative · {initiativePool}d6
-          </Button>
-          <AttackRollButton
-            characterName={charName}
-            attrLabel="Dexterity"
-            attrValue={dex}
-            skillOptions={attackSkillOptions}
-            painPenalty={painPenalty}
-            onRoll={onRoll}
-          />
-          <GenericRollButton
-            characterName={charName}
-            attrs={allAttrsForRoll}
-            skills={allSkillsForRoll}
-            painPenalty={painPenalty}
-            onRoll={onRoll}
-          />
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold uppercase text-muted-foreground">Catch</span>
-          <Select value={ballKey} onValueChange={(v) => setBallKey(v as BallKey)}>
-            <SelectTrigger className="h-7 w-40 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {Object.entries(POKEBALLS).map(([k, v]) => (
-                <SelectItem key={k} value={k}>{v.label} · {v.pool}d6</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <label className="flex items-center gap-1 text-xs text-muted-foreground">
-            +bonus
-            <Input type="number" min={0} max={3} value={catchBonus}
-              onChange={(e) => setCatchBonus(Math.max(0, Math.min(3, parseInt(e.target.value) || 0)))}
-              className="h-7 w-12 text-xs" />
-          </label>
-          <Button size="sm" variant="outline" className="h-7"
-            disabled={ballKey === "masterball"}
-            onClick={() => onRoll(
-              `${trainer.name} · Catch (${ball.label}${catchBonus ? ` +${catchBonus}` : ""})`,
-              catchPool,
-            )}>
-            <Dices className="mr-1 h-3.5 w-3.5" />
-            {ballKey === "masterball" ? "Auto-catch" : `Catch · ${catchPool}d6${catchBonus ? ` +${catchBonus}` : ""}`}
-          </Button>
-        </div>
-        <p className="text-[11px] text-muted-foreground">
-          Bonus successes: +1 if target at half HP, +1 at 1 HP, +1 with a status ailment (max +3, lost if fainted).
-          Required successes — Starter 3 · Beginner 4 · Amateur 6 · Ace 8 · Pro 9.
-        </p>
-      </div>
-
-
-      <section>
-        <h3 className="mb-2 text-sm font-bold">Attributes <span className="text-muted-foreground font-normal">(max {HUMAN_ATTR_CAP})</span></h3>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {ATTRS.map((a) => {
-            const v = trainer.attrs[a] ?? 1;
-            return (
-              <div key={a} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
-                <span className="w-24 text-sm font-medium capitalize">{a}</span>
-                <DotEditor
-                  value={v}
-                  max={HUMAN_ATTR_CAP}
-                  onChange={(n) => patch({ attrs: { ...trainer.attrs, [a]: n } })}
+        <div className="grid gap-3 p-3 sm:grid-cols-[160px_1fr]">
+          {/* Left: image + money */}
+          <div className="space-y-2">
+            <TrainerImage trainer={trainer} canEdit={canEdit} onChange={(url) => patch({ image_url: url })} />
+            <div className="rounded-md border border-border bg-background px-2 py-1.5">
+              <Label className="text-[10px] uppercase text-muted-foreground">Money</Label>
+              <div className="flex items-center gap-1">
+                <span className="text-xs font-bold text-primary">₽</span>
+                <Input
+                  type="number" value={trainer.money}
+                  onChange={(e) => patch({ money: parseInt(e.target.value) || 0 })}
                   disabled={!canEdit}
+                  className="h-7 text-sm"
                 />
-                <Button size="sm" variant="ghost" className="ml-1 h-7 px-2" onClick={() => onRoll(`${charName} · ${a}`, v, painPenalty)}>
-
-                  <Dices className="h-3.5 w-3.5" />
+              </div>
+            </div>
+          </div>
+          {/* Right: identity + bars + actions */}
+          <div className="space-y-2">
+            <div>
+              <Label className="text-[10px] uppercase text-muted-foreground">Name</Label>
+              <Input value={trainer.name} onChange={(e) => patch({ name: e.target.value })} disabled={!canEdit} className="h-9 text-base font-bold" />
+            </div>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <div>
+                <Label className="text-[10px] uppercase text-muted-foreground">Sex</Label>
+                <Select value={trainer.sex ?? ""} onValueChange={(v) => patch({ sex: v || null })} disabled={!canEdit}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="nonbinary">Non-binary</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-[10px] uppercase text-muted-foreground">Age</Label>
+                <Input
+                  type="number" value={trainer.age ?? ""}
+                  onChange={(e) => patch({ age: parseInt(e.target.value) || null })}
+                  disabled={!canEdit}
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div>
+                <Label className="text-[10px] uppercase text-muted-foreground">Confidence</Label>
+                <Input
+                  type="number" value={trainer.confidence}
+                  onChange={(e) => patch({ confidence: parseInt(e.target.value) || 0 })}
+                  disabled={!canEdit}
+                  className="h-8 text-xs"
+                />
+              </div>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr]">
+              <div>
+                <Label className="text-[10px] uppercase text-muted-foreground">Nature</Label>
+                <NatureSelect
+                  value={trainer.nature}
+                  disabled={!canEdit}
+                  onChange={(nature, conf) => patch({ nature, confidence: conf })}
+                />
+              </div>
+              <div>
+                <Label className="text-[10px] uppercase text-muted-foreground">HP</Label>
+                <div className="flex items-center gap-1">
+                  <Input
+                    type="number" min={0} max={hp} value={currentHp}
+                    disabled={!canEdit}
+                    onChange={(e) => {
+                      const n = Math.max(0, Math.min(hp, parseInt(e.target.value) || 0));
+                      patch({ current_hp: n });
+                    }}
+                    className="h-8 text-xs"
+                  />
+                  <span className="text-[11px] text-muted-foreground">/ {hp}</span>
+                </div>
+              </div>
+              <div>
+                <Label className="text-[10px] uppercase text-muted-foreground">Will</Label>
+                <div className="flex items-center gap-1">
+                  <Input
+                    type="number" min={0} max={will} value={currentWill}
+                    disabled={!canEdit}
+                    onChange={(e) => {
+                      const n = Math.max(0, Math.min(will, parseInt(e.target.value) || 0));
+                      patch({ current_will: n });
+                    }}
+                    className="h-8 text-xs"
+                  />
+                  <span className="text-[11px] text-muted-foreground">/ {will}</span>
+                </div>
+              </div>
+            </div>
+            {/* Action row */}
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              <Button size="sm" variant="outline" className="h-7"
+                onClick={() => onRoll(`${charName} · Initiative (Dex+Alert)`, initiativePool, painPenalty)}>
+                <Dices className="mr-1 h-3.5 w-3.5" /> Initiative · {initiativePool}d6
+              </Button>
+              <AttackRollButton
+                characterName={charName}
+                attrLabel="Dexterity"
+                attrValue={dex}
+                skillOptions={attackSkillOptions}
+                painPenalty={painPenalty}
+                onRoll={onRoll}
+              />
+              <Button size="sm" variant="outline" className="h-7"
+                onClick={() => onRoll(`${charName} · Evasion (Dex+Evasion)`, evasionPool, painPenalty)}>
+                <Dices className="mr-1 h-3.5 w-3.5" /> Evasion · {evasionPool}d6
+              </Button>
+              <Button size="sm" variant="outline" className="h-7"
+                onClick={() => onRoll(`${charName} · Clash (Str+Clash)`, clashPool, painPenalty)}>
+                <Dices className="mr-1 h-3.5 w-3.5" /> Clash · {clashPool}d6
+              </Button>
+              <GenericRollButton
+                characterName={charName}
+                attrs={allAttrsForRoll}
+                skills={allSkillsForRoll}
+                painPenalty={painPenalty}
+                onRoll={onRoll}
+              />
+              <div className="flex items-center gap-1.5 rounded-md border border-border bg-background px-1.5 py-1">
+                <Select value={ballKey} onValueChange={(v) => setBallKey(v as BallKey)}>
+                  <SelectTrigger className="h-6 w-32 text-[11px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(POKEBALLS).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v.label} · {v.pool}d6</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input type="number" min={0} max={3} value={catchBonus} title="Bonus"
+                  onChange={(e) => setCatchBonus(Math.max(0, Math.min(3, parseInt(e.target.value) || 0)))}
+                  className="h-6 w-10 text-center text-xs" />
+                <Button size="sm" variant="outline" className="h-6 px-2 text-xs"
+                  disabled={ballKey === "masterball"}
+                  onClick={() => onRoll(
+                    `${trainer.name} · Catch (${ball.label}${catchBonus ? ` +${catchBonus}` : ""})`,
+                    catchPool,
+                  )}>
+                  <Dices className="mr-1 h-3 w-3" />
+                  {ballKey === "masterball" ? "Auto" : `Catch · ${catchPool}d6`}
                 </Button>
               </div>
-            );
-          })}
-          {SOCIAL_ATTRS.map((a) => {
-            const v = trainer.social_attrs?.[a] ?? 1;
-            return (
-              <div key={a} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
-                <span className="w-24 text-sm font-medium capitalize">{a}</span>
-                <DotEditor
-                  value={v}
-                  max={HUMAN_ATTR_CAP}
-                  onChange={(n) => patch({ social_attrs: { ...trainer.social_attrs, [a]: n } })}
-                  disabled={!canEdit}
-                />
-                <Button size="sm" variant="ghost" className="ml-1 h-7 px-2" onClick={() => onRoll(`${charName} · ${a}`, v, painPenalty)}>
-                  <Dices className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            );
-          })}
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Catch bonuses: +1 alvo a meio HP, +1 a 1 HP, +1 com status (máx +3). Sucessos: Starter 3 · Beginner 4 · Amateur 6 · Ace 8 · Pro 9.
+            </p>
+          </div>
         </div>
       </section>
 
-      <section>
-        <h3 className="mb-2 text-sm font-bold">Skills</h3>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {TRAINER_SKILLS.map((s) => {
-            const v = trainer.skills[s] ?? 0;
-            return (
-              <div key={s} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
-                <span className="text-sm">{s}</span>
-                <DotEditor
-                  value={v}
-                  max={5}
-                  onChange={(n) => patch({ skills: { ...trainer.skills, [s]: n } })}
-                  disabled={!canEdit}
-                />
-              </div>
-            );
-          })}
+      {/* ============ BLOCO 2 — Status + Atributos físicos + Sociais ============ */}
+      <section className="grid gap-3 lg:grid-cols-3">
+        <div className="rounded-lg border border-border bg-card p-3">
+          <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Status problems</h4>
+          <HpAndStatusBlock
+            current={currentHp}
+            max={hp}
+            status={trainer.status_conditions ?? []}
+            painPenalty={painPenalty}
+            canEdit={canEdit}
+            onHpChange={(n) => patch({ current_hp: n })}
+            onStatusChange={(s) => patch({ status_conditions: s })}
+          />
+        </div>
+        <div className="rounded-lg border border-border bg-card p-3">
+          <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-primary">Physical</h4>
+          <div className="space-y-1.5">
+            {ATTRS.map((a) => {
+              const v = trainer.attrs[a] ?? 1;
+              return (
+                <div key={a} className="flex items-center justify-between rounded-md bg-background px-2 py-1">
+                  <span className="text-xs font-medium uppercase">{a}</span>
+                  <DotEditor value={v} max={HUMAN_ATTR_CAP}
+                    onChange={(n) => patch({ attrs: { ...trainer.attrs, [a]: n } })}
+                    disabled={!canEdit} />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div className="rounded-lg border border-border bg-card p-3">
+          <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-amber-500">Social</h4>
+          <div className="space-y-1.5">
+            {SOCIAL_ATTRS.map((a) => {
+              const v = trainer.social_attrs?.[a] ?? 1;
+              return (
+                <div key={a} className="flex items-center justify-between rounded-md bg-background px-2 py-1">
+                  <span className="text-xs font-medium uppercase">{a}</span>
+                  <DotEditor value={v} max={HUMAN_ATTR_CAP}
+                    onChange={(n) => patch({ social_attrs: { ...trainer.social_attrs, [a]: n } })}
+                    disabled={!canEdit} />
+                </div>
+              );
+            })}
+          </div>
         </div>
       </section>
 
+      {/* ============ BLOCO 3 — Skills (Fight / Survival / Social / Knowledge / Custom) ============ */}
+      <section className="rounded-lg border border-border bg-card p-3">
+        <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-primary">Skills</h3>
+        <div className="grid gap-3 lg:grid-cols-5">
+          <SkillGroup title="Fight" tint="bg-primary/15 text-primary"
+            skills={["Brawl", "Throw", "Evasion", "Weapons"]}
+            values={trainer.skills} canEdit={canEdit}
+            onChange={(s) => patch({ skills: { ...trainer.skills, ...s } })} />
+          <SkillGroup title="Survival" tint="bg-emerald-500/15 text-emerald-500"
+            skills={["Alert", "Athletic", "Nature", "Stealth"]}
+            values={trainer.skills} canEdit={canEdit}
+            onChange={(s) => patch({ skills: { ...trainer.skills, ...s } })} />
+          <SkillGroup title="Social" tint="bg-pink-500/15 text-pink-500"
+            skills={["Allure", "Etiquette", "Intimidate", "Perform"]}
+            values={trainer.skills} canEdit={canEdit}
+            onChange={(s) => patch({ skills: { ...trainer.skills, ...s } })} />
+          <SkillGroup title="Knowledge" tint="bg-sky-500/15 text-sky-500"
+            skills={["Crafts", "Lore", "Medicine", "Science"]}
+            values={trainer.skills} canEdit={canEdit}
+            onChange={(s) => patch({ skills: { ...trainer.skills, ...s } })} />
+          <CustomSkillsSection
+            items={trainer.custom_skills ?? []}
+            canEdit={canEdit}
+            onChange={(items) => patch({ custom_skills: items })}
+          />
+        </div>
+      </section>
 
-      <ItemListSection
-        title="Bag (general items)"
-        items={trainer.bag_list ?? []}
-        canEdit={canEdit}
-        onChange={(items) => patch({ bag_list: items })}
-        placeholder="Item name…"
-      />
-
-      <section className="grid gap-3 lg:grid-cols-2">
-        <ItemListSection
-          title="Battle items"
-          items={trainer.battle_items_list ?? []}
-          canEdit={canEdit}
-          onChange={(items) => patch({ battle_items_list: items })}
-          placeholder="X-Attack, Guard Spec…"
-          embedded
-        />
+      {/* ============ BLOCO 4 — Inventário (Potions, Bag, Battle items) ============ */}
+      <section className="grid gap-3 lg:grid-cols-3">
         <PotionsBlock
           potions={trainer.potions ?? {}}
           canEdit={canEdit}
           onChange={(potions) => patch({ potions })}
         />
+        <ItemListSection
+          title="Bag"
+          items={trainer.bag_list ?? []}
+          canEdit={canEdit}
+          onChange={(items) => patch({ bag_list: items })}
+          placeholder="Item…"
+        />
+        <ItemListSection
+          title="Battle items"
+          items={trainer.battle_items_list ?? []}
+          canEdit={canEdit}
+          onChange={(items) => patch({ battle_items_list: items })}
+          placeholder="X-Attack…"
+        />
       </section>
 
+      {/* ============ BLOCO 5 — Badges + Achievements ============ */}
+      <section className="grid gap-3 lg:grid-cols-2">
+        <BadgesSection
+          items={trainer.badges ?? []}
+          canEdit={canEdit}
+          onChange={(items) => patch({ badges: items })}
+        />
+        <AchievementsSection
+          items={trainer.achievements ?? []}
+          canEdit={canEdit}
+          onChange={(items) => patch({ achievements: items })}
+        />
+      </section>
+
+      {/* ============ BLOCO 6 — Pokédex ============ */}
       <PokedexSection
         trainer={trainer}
         canEdit={canEdit}
         onChange={(pokedex) => patch({ pokedex })}
       />
 
-      <AchievementsSection
-        items={trainer.achievements ?? []}
-        canEdit={canEdit}
-        onChange={(items) => patch({ achievements: items })}
-      />
-
-
-
-      <section>
+      <section className="space-y-2">
+        <Label>Background</Label>
+        <Textarea value={trainer.background ?? ""} onChange={(e) => patch({ background: e.target.value })} disabled={!canEdit} rows={2} />
         <Label>Notes</Label>
-        <Textarea value={trainer.notes} onChange={(e) => patch({ notes: e.target.value })} disabled={!canEdit} rows={4} />
+        <Textarea value={trainer.notes} onChange={(e) => patch({ notes: e.target.value })} disabled={!canEdit} rows={3} />
       </section>
 
       {canEdit && (
@@ -405,6 +452,148 @@ export function TrainerSheet({
         </section>
       )}
     </div>
+  );
+}
+
+function SkillGroup({
+  title, tint, skills, values, canEdit, onChange,
+}: {
+  title: string;
+  tint: string;
+  skills: string[];
+  values: Record<string, number>;
+  canEdit: boolean;
+  onChange: (partial: Record<string, number>) => void;
+}) {
+  return (
+    <div className="rounded-md border border-border bg-background p-2">
+      <div className={`mb-2 inline-block rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${tint}`}>{title}</div>
+      <div className="space-y-1.5">
+        {skills.map((s) => {
+          const v = values?.[s] ?? 0;
+          return (
+            <div key={s} className="flex items-center justify-between gap-2">
+              <span className="text-xs">{s}</span>
+              <DotEditor value={v} max={5}
+                onChange={(n) => onChange({ [s]: n })}
+                disabled={!canEdit} />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function CustomSkillsSection({
+  items, canEdit, onChange,
+}: {
+  items: CustomSkill[];
+  canEdit: boolean;
+  onChange: (items: CustomSkill[]) => void;
+}) {
+  function add() {
+    onChange([...(items ?? []), { name: "New skill", value: 0 }]);
+  }
+  return (
+    <div className="rounded-md border border-border bg-background p-2">
+      <div className="mb-2 flex items-center justify-between">
+        <div className="inline-block rounded bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">Custom</div>
+        {canEdit && (
+          <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={add} title="Add custom skill">
+            <Plus className="h-3.5 w-3.5" />
+          </Button>
+        )}
+      </div>
+      <div className="space-y-1.5">
+        {(items ?? []).length === 0 && (
+          <p className="text-[10px] text-muted-foreground">No custom skills.</p>
+        )}
+        {(items ?? []).map((it, i) => (
+          <div key={i} className="flex items-center gap-1.5">
+            <Input
+              value={it.name}
+              disabled={!canEdit}
+              onChange={(e) => onChange(items.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}
+              className="h-6 flex-1 text-xs"
+            />
+            <DotEditor value={it.value} max={5}
+              onChange={(n) => onChange(items.map((x, j) => j === i ? { ...x, value: n } : x))}
+              disabled={!canEdit} />
+            {canEdit && (
+              <Button size="sm" variant="ghost" className="h-6 w-6 p-0"
+                onClick={() => onChange(items.filter((_, j) => j !== i))}>
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BadgesSection({
+  items, canEdit, onChange,
+}: {
+  items: Badge[];
+  canEdit: boolean;
+  onChange: (items: Badge[]) => void;
+}) {
+  function add() {
+    onChange([...(items ?? []), { name: "New badge" }]);
+  }
+  function uploadImage(idx: number, file: File) {
+    if (file.size > 1_000_000) { toast.error("Image must be under 1 MB"); return; }
+    const reader = new FileReader();
+    reader.onload = () => onChange(items.map((x, j) => j === idx ? { ...x, image_url: reader.result as string } : x));
+    reader.readAsDataURL(file);
+  }
+  return (
+    <section className="rounded-lg border border-border bg-card p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-primary">Badges</h3>
+        {canEdit && (
+          <Button size="sm" variant="outline" className="h-7" onClick={add}>
+            <Plus className="mr-1 h-3.5 w-3.5" /> Add
+          </Button>
+        )}
+      </div>
+      {(items ?? []).length === 0 ? (
+        <p className="text-xs text-muted-foreground">No badges yet.</p>
+      ) : (
+        <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
+          {(items ?? []).map((b, i) => (
+            <div key={i} className="group flex flex-col items-center gap-1 rounded-md border border-border bg-background p-1.5">
+              {b.image_url ? (
+                <img src={b.image_url} alt={b.name} className="h-10 w-10 object-contain" />
+              ) : (
+                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-dashed border-border text-[10px] text-muted-foreground">★</div>
+              )}
+              <Input
+                value={b.name}
+                disabled={!canEdit}
+                onChange={(e) => onChange(items.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}
+                className="h-5 w-full text-center text-[10px]"
+              />
+              {canEdit && (
+                <div className="flex w-full gap-0.5">
+                  <label className="flex-1 cursor-pointer rounded bg-muted px-1 py-0.5 text-center text-[9px] hover:bg-accent">
+                    img
+                    <input type="file" accept="image/*" className="hidden"
+                      onChange={(e) => e.target.files?.[0] && uploadImage(i, e.target.files[0])} />
+                  </label>
+                  <button
+                    onClick={() => onChange(items.filter((_, j) => j !== i))}
+                    className="rounded bg-muted px-1 py-0.5 text-[9px] hover:bg-destructive hover:text-destructive-foreground"
+                  >×</button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
