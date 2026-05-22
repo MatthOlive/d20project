@@ -20,6 +20,7 @@ import { KnowledgeIngest } from "@/components/KnowledgeIngest";
 import { FloatingWindow } from "@/components/FloatingWindow";
 import { PokemonSheet } from "@/components/PokemonSheet";
 import { TrainerSheet } from "@/components/TrainerSheet";
+import { SheetTabs } from "@/components/SheetTabs";
 import { MapBoard, DRAG_MIME, type DragCharacterPayload } from "@/components/MapBoard";
 import { toast } from "sonner";
 import { Copy, Crown, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Swords } from "lucide-react";
