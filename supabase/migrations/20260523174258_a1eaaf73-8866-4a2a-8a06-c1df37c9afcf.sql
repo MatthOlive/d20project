@@ -1,0 +1,1 @@
+ALTER TABLE public.pokemon ADD COLUMN IF NOT EXISTS sex TEXT;

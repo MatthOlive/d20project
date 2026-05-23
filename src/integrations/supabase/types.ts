@@ -291,6 +291,7 @@ export type Database = {
           owner_id: string
           owner_trainer_id: string | null
           rank: Database["public"]["Enums"]["pokerole_rank"]
+          sex: string | null
           skills: Json
           social_attrs: Json
           species_id: string
@@ -323,6 +324,7 @@ export type Database = {
           owner_id: string
           owner_trainer_id?: string | null
           rank?: Database["public"]["Enums"]["pokerole_rank"]
+          sex?: string | null
           skills?: Json
           social_attrs?: Json
           species_id: string
@@ -355,6 +357,7 @@ export type Database = {
           owner_id?: string
           owner_trainer_id?: string | null
           rank?: Database["public"]["Enums"]["pokerole_rank"]
+          sex?: string | null
           skills?: Json
           social_attrs?: Json
           species_id?: string
