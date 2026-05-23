@@ -19,7 +19,7 @@ import {
 } from "@/lib/pokerole";
 import { useDebouncedPatch } from "@/lib/use-debounced-patch";
 import { toast } from "sonner";
-import { Plus, Dices, Trash2, ImagePlus, RotateCcw, Sparkles, Zap, Maximize2 } from "lucide-react";
+import { Plus, Dices, Trash2, ImagePlus, RotateCcw, Sparkles, Zap, Maximize2, X as XIcon } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   HpAndStatusBlock, AttackRollButton, GenericRollButton, painPenaltyFor,
@@ -35,7 +35,6 @@ const Z_MOVE_NAMES: Record<string, string> = {
   dark: "Black Hole Eclipse", steel: "Corkscrew Crash", fairy: "Twinkle Tackle",
   typeless: "Breakneck Blitz",
 };
-// Z-Move power bumps per base power bracket (Pokérole 2.0)
 function zMovePower(p: number): number {
   if (p <= 0) return 0;
   if (p <= 3) return p + 5;
@@ -45,73 +44,35 @@ function zMovePower(p: number): number {
 }
 
 type Species = {
-  id: string;
-  name: string;
-  types: string[];
-  base_hp: number;
-  base_attrs: Record<string, number>;
-  attr_limits: Record<string, number>;
-  abilities: string[];
-  hidden_ability: string | null;
-  suggested_rank: Rank | null;
-  sprite_url: string | null;
-  evolutions: string[];
+  id: string; name: string; types: string[]; base_hp: number;
+  base_attrs: Record<string, number>; attr_limits: Record<string, number>;
+  abilities: string[]; hidden_ability: string | null;
+  suggested_rank: Rank | null; sprite_url: string | null; evolutions: string[];
 };
 
 type Move = {
-  id: string;
-  name: string;
-  type: keyof typeof TYPE_COLORS;
-  power: number;
-  accuracy_stat: string | null;
-  accuracy_skill: string | null;
-  damage_stat: string | null;
-  effect: string;
-  category: string;
+  id: string; name: string; type: keyof typeof TYPE_COLORS; power: number;
+  accuracy_stat: string | null; accuracy_skill: string | null;
+  damage_stat: string | null; effect: string; category: string;
 };
 
 type Pokemon = {
-  id: string;
-  game_id: string;
-  owner_id: string;
-  species_id: string;
-  nickname: string | null;
-  rank: Rank;
-  current_attrs: Record<string, number>;
-  social_attrs: Record<string, number>;
-  skills: Record<string, number>;
-  modifiers: Record<string, number>;
-  hp: number;
-  current_hp: number | null;
-  will: number;
-  status: string[];
-  notes: string;
-  image_url: string | null;
-  nature: string | null;
-  held_item: string | null;
-  happiness: number;
-  loyalty: number;
-  confidence: number;
-  battles: number;
-  victories: number;
+  id: string; game_id: string; owner_id: string; species_id: string;
+  nickname: string | null; rank: Rank; current_attrs: Record<string, number>;
+  social_attrs: Record<string, number>; skills: Record<string, number>;
+  modifiers: Record<string, number>; hp: number; current_hp: number | null;
+  will: number; status: string[]; notes: string; image_url: string | null;
+  nature: string | null; held_item: string | null; happiness: number;
+  loyalty: number; confidence: number; battles: number; victories: number;
+  sex: string | null;
 };
 
 export function PokemonSheet({
-  pokemonId,
-  gameId: _gameId,
-  userId,
-  isNarrator,
-  onRoll,
-  onChat,
-  onDeleted,
+  pokemonId, gameId: _gameId, userId, isNarrator, onRoll, onChat, onDeleted,
 }: {
-  pokemonId: string;
-  gameId: string;
-  userId: string;
-  isNarrator: boolean;
+  pokemonId: string; gameId: string; userId: string; isNarrator: boolean;
   onRoll: (label: string, n: number, penalty?: number) => void;
-  onChat: (body: string) => void;
-  onDeleted?: () => void;
+  onChat: (body: string) => void; onDeleted?: () => void;
 }) {
   const qc = useQueryClient();
   const [zMode, setZMode] = useState(false);
@@ -120,78 +81,52 @@ export function PokemonSheet({
 
   const queryKey = useMemo(() => ["pokemon", pokemonId], [pokemonId]);
   const { data: pokemon } = useQuery({
-    queryKey,
-    queryFn: async () => {
+    queryKey, queryFn: async () => {
       const { data, error } = await supabase.from("pokemon").select("*").eq("id", pokemonId).single();
-      if (error) throw error;
-      return data as Pokemon;
+      if (error) throw error; return data as Pokemon;
     },
   });
-
   const { data: species } = useQuery({
-    queryKey: ["species", pokemon?.species_id],
-    enabled: !!pokemon?.species_id,
+    queryKey: ["species", pokemon?.species_id], enabled: !!pokemon?.species_id,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("species").select("*").eq("id", pokemon!.species_id).single();
-      if (error) throw error;
-      return data as Species;
+      const { data, error } = await supabase.from("species").select("*").eq("id", pokemon!.species_id).single();
+      if (error) throw error; return data as Species;
     },
   });
-
   const { data: learnable = [] } = useQuery({
-    queryKey: ["species-moves", pokemon?.species_id],
-    enabled: !!pokemon?.species_id,
+    queryKey: ["species-moves", pokemon?.species_id], enabled: !!pokemon?.species_id,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("species_moves")
-        .select("min_rank, moves(*)")
-        .eq("species_id", pokemon!.species_id);
-      if (error) throw error;
-      return (data ?? []) as { min_rank: Rank; moves: Move }[];
+      const { data, error } = await supabase.from("species_moves").select("min_rank, moves(*)").eq("species_id", pokemon!.species_id);
+      if (error) throw error; return (data ?? []) as { min_rank: Rank; moves: Move }[];
     },
   });
-
   const { data: knownMoves = [] } = useQuery({
     queryKey: ["pokemon-moves", pokemonId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("pokemon_moves")
-        .select("moves(*)")
-        .eq("pokemon_id", pokemonId);
-      if (error) throw error;
-      return (data ?? []).map((r: { moves: Move }) => r.moves);
+      const { data, error } = await supabase.from("pokemon_moves").select("moves(*)").eq("pokemon_id", pokemonId);
+      if (error) throw error; return (data ?? []).map((r: { moves: Move }) => r.moves);
     },
   });
-
   const speciesAbilityNames = species?.abilities ?? [];
   const { data: abilityDetails = [] } = useQuery({
-    queryKey: ["abilities", speciesAbilityNames],
-    enabled: speciesAbilityNames.length > 0,
+    queryKey: ["abilities", speciesAbilityNames], enabled: speciesAbilityNames.length > 0,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("abilities")
-        .select("name, effect")
-        .in("name", speciesAbilityNames);
-      if (error) throw error;
-      return (data ?? []) as { name: string; effect: string }[];
+      const { data, error } = await supabase.from("abilities").select("name, effect").in("name", speciesAbilityNames);
+      if (error) throw error; return (data ?? []) as { name: string; effect: string }[];
     },
   });
 
   const canEdit = !!pokemon && (pokemon.owner_id === userId || isNarrator);
-
   const commit = useCallback(async (p: Partial<Pokemon>) => {
     const { error } = await supabase.from("pokemon").update(p).eq("id", pokemonId);
     if (error) toast.error(error.message);
   }, [pokemonId]);
   const { patch } = useDebouncedPatch<Pokemon>(queryKey, commit);
 
-  // Auto-init current_attrs from species base if empty
   useEffect(() => {
     if (pokemon && species && Object.keys(pokemon.current_attrs).length === 0) {
       void supabase.from("pokemon").update({
-        current_attrs: species.base_attrs,
-        hp: species.base_hp + (species.base_attrs.vitality ?? 1),
+        current_attrs: species.base_attrs, hp: species.base_hp + (species.base_attrs.vitality ?? 1),
       }).eq("id", pokemonId).then(() => qc.invalidateQueries({ queryKey: ["pokemon", pokemonId] }));
     }
   }, [pokemon, species, pokemonId, qc]);
@@ -201,16 +136,16 @@ export function PokemonSheet({
 
   const filteredLearnable = useMemo(() => {
     if (!pokemon) return [];
-    return learnable
-      .filter(({ min_rank }) => rankAtLeast(min_rank, pokemon.rank))
+    return learnable.filter(({ min_rank }) => rankAtLeast(min_rank, pokemon.rank))
       .filter(({ moves: m }) => !knownMoves.some((km) => km.id === m.id));
   }, [learnable, knownMoves, pokemon]);
 
   if (!pokemon) return <div className="p-4 text-sm text-muted-foreground">Loading…</div>;
   if (!species) return <div className="p-4 text-sm text-muted-foreground">Loading species…</div>;
 
-  const maxHpEff = pokemon.hp;
-  const painPen = painPenaltyFor(pokemon.current_hp ?? maxHpEff, maxHpEff);
+  const maxHpEff = dynaMode ? pokemon.hp * 2 : pokemon.hp;
+  const curHp = pokemon.current_hp ?? maxHpEff;
+  const painPen = painPenaltyFor(curHp, maxHpEff);
   const boundRoll = (label: string, n: number, p?: number) => onRoll(label, n, p ?? painPen);
 
   async function setAttr(key: string, val: number) {
@@ -220,25 +155,15 @@ export function PokemonSheet({
     const newAttrs = { ...pokemon!.current_attrs, [key]: clamped };
     const vit = key === "vitality" ? clamped : (newAttrs.vitality ?? 1);
     const ins = key === "insight" ? clamped : (newAttrs.insight ?? 1);
-    patch({
-      current_attrs: newAttrs,
-      hp: species!.base_hp + vit,
-      will: ins + 2,
-    });
+    patch({ current_attrs: newAttrs, hp: species!.base_hp + vit, will: ins + 2 });
   }
 
   async function addMove(moveId: string) {
     const { error } = await supabase.from("pokemon_moves").insert({ pokemon_id: pokemonId, move_id: moveId });
-    if (error) {
-      toast.error(error.message);
-    } else {
-      qc.invalidateQueries({ queryKey: ["pokemon-moves", pokemonId] });
-    }
+    if (error) toast.error(error.message); else qc.invalidateQueries({ queryKey: ["pokemon-moves", pokemonId] });
   }
-
   async function removeMove(moveId: string) {
-    await supabase.from("pokemon_moves").delete()
-      .eq("pokemon_id", pokemonId).eq("move_id", moveId);
+    await supabase.from("pokemon_moves").delete().eq("pokemon_id", pokemonId).eq("move_id", moveId);
     qc.invalidateQueries({ queryKey: ["pokemon-moves", pokemonId] });
   }
 
@@ -251,257 +176,181 @@ export function PokemonSheet({
   }
 
   const displayImage = pokemon.image_url ?? species.sprite_url;
+  const name = pokemon.nickname || species.name;
+  const vit = pokemon.current_attrs.vitality ?? 1;
+  const ins = pokemon.current_attrs.insight ?? 1;
+  const dex = pokemon.current_attrs.dexterity ?? 1;
+  const str = pokemon.current_attrs.strength ?? 1;
+  const alert = pokemon.skills?.Alert ?? 1;
+  const init = dex + alert;
+  const clash = str + (pokemon.skills?.Clash ?? 0);
+  const evasion = dex + (pokemon.skills?.Evasion ?? 1);
+  const attackSkills = [
+    { name: "Brawl", value: pokemon.skills?.Brawl ?? 0 },
+    { name: "Channel", value: pokemon.skills?.Channel ?? 0 },
+  ];
+  const allAttrs = POKEMON_ATTRS.map((a) => ({ name: a, value: pokemon.current_attrs[a] ?? 1 }));
+  const allSocial = SOCIAL_ATTRS.map((a) => ({ name: a, value: pokemon.social_attrs?.[a] ?? 1 }));
+  const allSkills = SKILLS.map((s) => ({ name: s, value: pokemon.skills?.[s] ?? 0 }));
 
   return (
-    <div className="space-y-5 p-4">
-      {/* Header */}
-      <div className="flex gap-4">
-        <div className="group relative">
-          {displayImage ? (
-            <img src={displayImage} alt={species.name} className="h-24 w-24 rounded-xl bg-muted object-contain" />
-          ) : (
-            <div className="flex h-24 w-24 items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground">No image</div>
-          )}
-          {canEdit && (
-            <div className="absolute inset-0 flex items-end justify-center gap-1 rounded-xl bg-black/40 p-1 opacity-0 transition group-hover:opacity-100">
-              <label className="cursor-pointer rounded bg-card px-2 py-0.5 text-[10px] font-semibold hover:bg-accent">
-                <ImagePlus className="inline h-3 w-3" />
-                <input type="file" accept="image/*" className="hidden"
-                  onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0])} />
-              </label>
-              {pokemon.image_url && (
-                <button
-                  onClick={() => patch({ image_url: null })}
-                  className="cursor-pointer rounded bg-card px-2 py-0.5 text-[10px] font-semibold hover:bg-accent"
-                  title="Reset to sprite"
-                ><RotateCcw className="inline h-3 w-3" /></button>
-              )}
-            </div>
-          )}
+    <div className="space-y-4 p-4">
+      {/* ============ BLOCO 1 — Identidade ============ */}
+      <section className="overflow-hidden rounded-xl border border-border bg-card">
+        <div className="flex items-center gap-2 border-b-2 border-primary bg-primary/10 px-3 py-1.5">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-primary">Pokémon · Sheet</span>
+          <span className="ml-auto text-[11px] uppercase text-muted-foreground">Rank</span>
+          <Select value={pokemon.rank} onValueChange={(v) => canEdit && patch({ rank: v as Rank })} disabled={!canEdit}>
+            <SelectTrigger className="h-6 w-28 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>{RANKS.map((r) => <SelectItem key={r} value={r}>{RANK_LABELS[r]}</SelectItem>)}</SelectContent>
+          </Select>
         </div>
-        <div className="flex-1 space-y-2">
-          <div className="flex items-start gap-2">
-            <Input
-              disabled={!canEdit}
-              value={pokemon.nickname ?? ""}
-              placeholder={species.name}
-              onChange={(e) => patch({ nickname: e.target.value })}
-              className="text-lg font-bold"
-            />
-            {canEdit && (
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-9 w-9 text-destructive hover:bg-destructive/10"
-                title="Delete sheet"
-                onClick={async () => {
+        <div className="grid gap-3 p-3 sm:grid-cols-[160px_1fr]">
+          {/* Left: image + types */}
+          <div className="space-y-2">
+            <PokemonImage pokemon={pokemon} species={species} canEdit={canEdit} onChange={(url) => patch({ image_url: url })} />
+            <div className="flex flex-wrap gap-1">
+              {species.types.map((t) => (
+                <Badge key={t} style={{ backgroundColor: TYPE_COLORS[t as keyof typeof TYPE_COLORS]?.bg, color: TYPE_COLORS[t as keyof typeof TYPE_COLORS]?.fg }} className="border-none capitalize">{t}</Badge>
+              ))}
+              <span className="text-xs text-muted-foreground">{species.name}</span>
+            </div>
+          </div>
+          {/* Right: identity + stats + actions */}
+          <div className="space-y-2">
+            <div className="flex items-start gap-2">
+              <Input disabled={!canEdit} value={pokemon.nickname ?? ""} placeholder={species.name} onChange={(e) => patch({ nickname: e.target.value })} className="h-9 text-base font-bold" />
+              {canEdit && (
+                <Button size="icon" variant="ghost" className="h-9 w-9 text-destructive hover:bg-destructive/10" title="Delete sheet" onClick={async () => {
                   if (!confirm("Delete this Pokémon sheet? This cannot be undone.")) return;
                   const { error } = await supabase.from("pokemon").delete().eq("id", pokemonId);
                   if (error) { toast.error(error.message); return; }
-                  toast.success("Pokémon deleted");
-                  onDeleted?.();
-                }}
-              ><Trash2 className="h-4 w-4" /></Button>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {species.types.map((t) => (
-              <Badge
-                key={t}
-                style={{ backgroundColor: TYPE_COLORS[t as keyof typeof TYPE_COLORS]?.bg, color: TYPE_COLORS[t as keyof typeof TYPE_COLORS]?.fg }}
-                className="border-none capitalize"
-              >{t}</Badge>
-            ))}
-            <span className="text-xs text-muted-foreground">{species.name}</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <Label className="text-xs">Rank</Label>
-            <Select
-              value={pokemon.rank}
-              onValueChange={(v) => canEdit && patch({ rank: v as Rank })}
-              disabled={!canEdit}
-            >
-              <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {RANKS.map((r) => (
-                  <SelectItem key={r} value={r}>{RANK_LABELS[r]}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {canEdit && (
-              <EvolveButton
-                pokemonId={pokemonId}
-                fromSprite={species.sprite_url}
-                fromSpeciesId={species.id}
-                currentName={species.name}
-                evolutions={species.evolutions}
-                baseSpeciesId={(pokemon.modifiers as Record<string, unknown>)?._base_species as string | undefined}
-              />
-            )}
-            {canEdit && (
-              <DynamaxToggle mode={dynaMode} onChange={setDynaMode} />
-            )}
-            <div className="ml-auto flex flex-wrap items-center gap-1.5 text-sm">
-              <span className="rounded-full bg-success/15 px-2.5 py-0.5 font-bold text-success">
-                HP {pokemon.current_hp ?? (dynaMode ? pokemon.hp * 2 : pokemon.hp)}/{dynaMode ? pokemon.hp * 2 : pokemon.hp}{dynaMode ? " ×2" : ""}
-              </span>
-              <span className="rounded-full bg-accent px-2.5 py-0.5 font-bold">Will {pokemon.will}</span>
-              <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-bold text-primary">Def {pokemon.current_attrs.vitality ?? 1}</span>
-              <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-bold text-primary">SpDef {pokemon.current_attrs.vitality ?? 1}</span>
-              {dynaMode && (
-                <span className="rounded-full bg-red-500/20 px-2.5 py-0.5 text-xs font-bold uppercase text-red-500">
-                  {dynaMode === "gigantamax" ? "G-Max" : "Dynamax"}
-                </span>
+                  toast.success("Pokémon deleted"); onDeleted?.();
+                }}><Trash2 className="h-4 w-4" /></Button>
               )}
             </div>
-
-          </div>
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {(() => {
-              const dex = pokemon.current_attrs.dexterity ?? 1;
-              const str = pokemon.current_attrs.strength ?? 1;
-              const alert = pokemon.skills?.Alert ?? 0;
-              const clashSkill = pokemon.skills?.Clash ?? 0;
-              const evasionSkill = pokemon.skills?.Evasion ?? 0;
-              const init = dex + alert;
-              const clash = str + clashSkill;
-              const evasion = dex + evasionSkill;
-              const name = pokemon.nickname || species.name;
-              const maxHp = dynaMode ? pokemon.hp * 2 : pokemon.hp;
-              const curHp = pokemon.current_hp ?? maxHp;
-              const pen = painPenaltyFor(curHp, maxHp);
-              const attackSkills = [
-                { name: "Brawl", value: pokemon.skills?.Brawl ?? 0 },
-                { name: "Channel", value: pokemon.skills?.Channel ?? 0 },
-              ];
-              const allAttrs = POKEMON_ATTRS.map((a) => ({ name: a, value: pokemon.current_attrs[a] ?? 1 }));
-              const allSocial = SOCIAL_ATTRS.map((a) => ({ name: a, value: pokemon.social_attrs?.[a] ?? 1 }));
-              const allSkills = SKILLS.map((s) => ({ name: s, value: pokemon.skills?.[s] ?? 0 }));
-              return (
-                <>
-                  <Button size="sm" variant="outline" className="h-7"
-                    onClick={() => onRoll(`${name} · Initiative (Dex+Alert)`, init, pen)}>
-                    <Dices className="mr-1 h-3.5 w-3.5" /> Initiative · {init}d6
-                  </Button>
-                  <Button size="sm" variant="outline" className="h-7"
-                    onClick={() => onRoll(`${name} · Clash (Str+Clash)`, clash, pen)}>
-                    <Dices className="mr-1 h-3.5 w-3.5" /> Clash · {clash}d6
-                  </Button>
-                  <Button size="sm" variant="outline" className="h-7"
-                    onClick={() => onRoll(`${name} · Evasion (Dex+Evasion)`, evasion, pen)}>
-                    <Dices className="mr-1 h-3.5 w-3.5" /> Evasion · {evasion}d6
-                  </Button>
-                  <AttackRollButton
-                    characterName={name}
-                    attrLabel="Dexterity"
-                    attrValue={dex}
-                    skillOptions={attackSkills}
-                    painPenalty={pen}
-                    onRoll={boundRoll}
-                  />
-                  <GenericRollButton
-                    characterName={name}
-                    attrs={[...allAttrs, ...allSocial]}
-                    skills={allSkills}
-                    painPenalty={pen}
-                    onRoll={boundRoll}
-                  />
-                </>
-              );
-            })()}
+            <div className="grid gap-2 sm:grid-cols-3">
+              <div>
+                <Label className="text-[10px] uppercase text-muted-foreground">Sex</Label>
+                <Select value={pokemon.sex ?? ""} onValueChange={(v) => patch({ sex: v || null })} disabled={!canEdit}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="nonbinary">Non-binary</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-[10px] uppercase text-muted-foreground">Nature</Label>
+                <NatureSelect value={pokemon.nature} disabled={!canEdit} onChange={(nature, conf) => patch({ nature, confidence: conf })} />
+              </div>
+              <div>
+                <Label className="text-[10px] uppercase text-muted-foreground">Confidence</Label>
+                <Input type="number" value={pokemon.confidence} onChange={(e) => patch({ confidence: parseInt(e.target.value) || 0 })} disabled={!canEdit} className="h-8 text-xs" />
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5 text-sm">
+              <span className="rounded-full bg-accent px-2.5 py-0.5 font-bold">Will {pokemon.will}</span>
+              <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-bold text-primary">Def {vit}</span>
+              <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-bold text-primary">SpDef {ins}</span>
+              {canEdit && <EvolveButton pokemonId={pokemonId} fromSprite={species.sprite_url} fromSpeciesId={species.id} currentName={species.name} evolutions={species.evolutions} baseSpeciesId={(pokemon.modifiers as Record<string, unknown>)?._base_species as string | undefined} />}
+              {canEdit && <DynamaxToggle mode={dynaMode} onChange={setDynaMode} />}
+              {dynaMode && <span className="rounded-full bg-red-500/20 px-2.5 py-0.5 text-xs font-bold uppercase text-red-500">{dynaMode === "gigantamax" ? "G-Max" : "Dynamax"}</span>}
+            </div>
+            {/* Action row */}
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              <Button size="sm" variant="outline" className="h-7" onClick={() => onRoll(`${name} · Initiative (Dex+Alert)`, init, painPen)}>
+                <Dices className="mr-1 h-3.5 w-3.5" /> Initiative · {init}d6
+              </Button>
+              <AttackRollButton characterName={name} attrLabel="Dexterity" attrValue={dex} skillOptions={attackSkills} painPenalty={painPen} onRoll={onRoll} />
+              <Button size="sm" variant="outline" className="h-7" onClick={() => onRoll(`${name} · Clash (Str+Clash)`, clash, painPen)}>
+                <Dices className="mr-1 h-3.5 w-3.5" /> Clash · {clash}d6
+              </Button>
+              <Button size="sm" variant="outline" className="h-7" onClick={() => onRoll(`${name} · Evasion (Dex+Evasion)`, evasion, painPen)}>
+                <Dices className="mr-1 h-3.5 w-3.5" /> Evasion · {evasion}d6
+              </Button>
+              <GenericRollButton characterName={name} attrs={[...allAttrs, ...allSocial]} skills={allSkills} painPenalty={painPen} onRoll={boundRoll} />
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <HpAndStatusBlock
-        current={pokemon.current_hp ?? (dynaMode ? pokemon.hp * 2 : pokemon.hp)}
-        max={dynaMode ? pokemon.hp * 2 : pokemon.hp}
-        status={pokemon.status ?? []}
-        painPenalty={painPenaltyFor(pokemon.current_hp ?? pokemon.hp, dynaMode ? pokemon.hp * 2 : pokemon.hp)}
-        canEdit={canEdit}
-        onHpChange={(n) => patch({ current_hp: n })}
-        onStatusChange={(s) => patch({ status: s })}
-      />
-
-      {/* Details */}
-      <section className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1">
-          <Label className="text-xs">Nature</Label>
-          <NatureSelect
-            value={pokemon.nature}
-            disabled={!canEdit}
-            onChange={(nature, conf) => patch({ nature, confidence: conf })}
+      {/* ============ BLOCO 2 — Status + Physical + Social ============ */}
+      <section className="grid gap-3 lg:grid-cols-3">
+        <div className="rounded-lg border border-border bg-card p-3">
+          <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Status problems</h4>
+          <HpAndStatusBlock
+            current={curHp} max={maxHpEff} status={pokemon.status ?? []}
+            painPenalty={painPen} canEdit={canEdit}
+            onHpChange={(n) => patch({ current_hp: n })}
+            onStatusChange={(s) => patch({ status: s })}
           />
         </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Held item</Label>
-          <Input value={pokemon.held_item ?? ""} onChange={(e) => patch({ held_item: e.target.value })} disabled={!canEdit} />
+        <div className="rounded-lg border border-border bg-card p-3">
+          <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-primary">Physical</h4>
+          <div className="space-y-1.5">
+            {POKEMON_ATTRS.map((a) => {
+              const val = pokemon.current_attrs[a] ?? species.base_attrs[a] ?? 1;
+              const limit = species.attr_limits[a] ?? 5;
+              return (
+                <div key={a} className="flex items-center justify-between rounded-md bg-background px-2 py-1">
+                  <span className="text-xs font-medium uppercase">{a}</span>
+                  <DotEditor value={val} max={Math.max(10, limit)} cap={limit}
+                    onChange={(n) => setAttr(a, n)} disabled={!canEdit} />
+                </div>
+              );
+            })}
+          </div>
         </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Confidence</Label>
-          <Input type="number" value={pokemon.confidence}
-            onChange={(e) => patch({ confidence: parseInt(e.target.value) || 0 })} disabled={!canEdit} />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Happiness</Label>
-          <Input type="number" value={pokemon.happiness}
-            onChange={(e) => patch({ happiness: parseInt(e.target.value) || 0 })} disabled={!canEdit} />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Loyalty</Label>
-          <Input type="number" value={pokemon.loyalty}
-            onChange={(e) => patch({ loyalty: parseInt(e.target.value) || 0 })} disabled={!canEdit} />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Battles</Label>
-          <Input type="number" value={pokemon.battles}
-            onChange={(e) => patch({ battles: parseInt(e.target.value) || 0 })} disabled={!canEdit} />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Victories</Label>
-          <Input type="number" value={pokemon.victories}
-            onChange={(e) => patch({ victories: parseInt(e.target.value) || 0 })} disabled={!canEdit} />
-        </div>
-      </section>
-
-      {/* Attributes */}
-      <section>
-        <h3 className="mb-2 text-sm font-bold">Attributes</h3>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {POKEMON_ATTRS.map((a) => {
-            const val = pokemon.current_attrs[a] ?? species.base_attrs[a] ?? 1;
-            const limit = species.attr_limits[a] ?? 5;
-            const mod = pokemon.modifiers[a] ?? 0;
-            return (
-              <div key={a} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
-                <span className="w-24 text-sm font-medium capitalize">{a}</span>
-                <DotEditor
-                  value={val}
-                  max={Math.max(10, limit)}
-                  cap={limit}
-                  onChange={(n) => setAttr(a, n)}
-                  disabled={!canEdit}
-                />
-                <Input
-                  type="number"
-                  value={mod}
-                  onChange={(e) => patch({ modifiers: { ...pokemon.modifiers, [a]: parseInt(e.target.value) || 0 } })}
-                  disabled={!canEdit}
-                  className="ml-2 h-7 w-14 text-xs"
-                />
-                <Button
-                  size="sm" variant="ghost" className="ml-1 h-7 px-2"
-                  onClick={() => boundRoll(`${a} check`, val + mod)}
-                ><Dices className="h-3.5 w-3.5" /></Button>
-              </div>
-            );
-          })}
+        <div className="rounded-lg border border-border bg-card p-3">
+          <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-amber-500">Social</h4>
+          <div className="space-y-1.5">
+            {SOCIAL_ATTRS.map((a) => {
+              const v = pokemon.social_attrs?.[a] ?? 1;
+              return (
+                <div key={a} className="flex items-center justify-between rounded-md bg-background px-2 py-1">
+                  <span className="text-xs font-medium uppercase">{a}</span>
+                  <DotEditor value={v} max={5}
+                    onChange={(n) => patch({ social_attrs: { ...pokemon.social_attrs, [a]: n } })} disabled={!canEdit} />
+                </div>
+              );
+            })}
+          </div>
         </div>
       </section>
 
-      {/* Abilities */}
-      <section>
-        <h3 className="mb-2 text-sm font-bold">Abilities</h3>
+      {/* ============ BLOCO 3 — Skills ============ */}
+      <section className="rounded-lg border border-border bg-card p-3">
+        <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-primary">Skills</h3>
+        <div className="grid gap-3 lg:grid-cols-5">
+          <SkillGroup title="Fight" tint="bg-primary/15 text-primary"
+            skills={["Brawl", "Channel", "Clash", "Evasion"]}
+            values={pokemon.skills} canEdit={canEdit}
+            onChange={(s) => patch({ skills: { ...pokemon.skills, ...s } })} />
+          <SkillGroup title="Survival" tint="bg-emerald-500/15 text-emerald-500"
+            skills={["Alert", "Athletic", "Nature", "Stealth"]}
+            values={pokemon.skills} canEdit={canEdit}
+            onChange={(s) => patch({ skills: { ...pokemon.skills, ...s } })} />
+          <SkillGroup title="Social" tint="bg-pink-500/15 text-pink-500"
+            skills={["Allure", "Etiquette", "Intimidate", "Perform"]}
+            values={pokemon.skills} canEdit={canEdit}
+            onChange={(s) => patch({ skills: { ...pokemon.skills, ...s } })} />
+          <SkillGroup title="Knowledge" tint="bg-sky-500/15 text-sky-500"
+            skills={["Crafts", "Lore", "Medicine", "Science"]}
+            values={pokemon.skills} canEdit={canEdit}
+            onChange={(s) => patch({ skills: { ...pokemon.skills, ...s } })} />
+          <SkillGroup title="Other" tint="bg-muted text-muted-foreground"
+            skills={["Empathy"]}
+            values={pokemon.skills} canEdit={canEdit}
+            onChange={(s) => patch({ skills: { ...pokemon.skills, ...s } })} />
+        </div>
+      </section>
+
+      {/* ============ BLOCO 4 — Abilities ============ */}
+      <section className="rounded-lg border border-border bg-card p-3">
+        <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-primary">Abilities</h3>
         <div className="space-y-2">
           {species.abilities.map((a) => {
             const detail = abilityDetails.find((d) => d.name === a);
@@ -512,106 +361,35 @@ export function PokemonSheet({
             return (
               <div key={a} className="flex items-start justify-between gap-2 rounded-md border border-border bg-card px-3 py-2">
                 {hasChoice && (
-                  <button
-                    type="button"
-                    disabled={!canEdit}
-                    onClick={() => canEdit && patch({ modifiers: { ...(pokemon.modifiers as Record<string, number>), _selected_ability: a as unknown as number } })}
+                  <button type="button" disabled={!canEdit} onClick={() => canEdit && patch({ modifiers: { ...(pokemon.modifiers as Record<string, number>), _selected_ability: a as unknown as number } })}
                     title={isSelected ? "Active ability" : "Set as active ability"}
-                    className={`mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 transition ${
-                      isSelected ? "border-primary bg-primary" : "border-border bg-transparent hover:border-primary"
-                    } ${canEdit ? "cursor-pointer" : "cursor-default"}`}
-                    aria-label={isSelected ? `${a} selected` : `Select ${a}`}
-                  />
+                    className={`mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 transition ${isSelected ? "border-primary bg-primary" : "border-border bg-transparent hover:border-primary"} ${canEdit ? "cursor-pointer" : "cursor-default"}`} aria-label={isSelected ? `${a} selected` : `Select ${a}`} />
                 )}
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-semibold">{a}{hasChoice && isSelected && <span className="ml-2 text-[10px] uppercase tracking-wide text-primary">active</span>}</div>
-                  {detail?.effect && (
-                    <div className="mt-1 text-xs text-muted-foreground whitespace-pre-wrap">{detail.effect}</div>
-                  )}
+                  {detail?.effect && <div className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">{detail.effect}</div>}
                 </div>
-                <AbilityRollDialog
-                  name={a}
-                  effect={detail?.effect ?? ""}
-                  pokemonName={pokemon.nickname || species.name}
-                  onRoll={boundRoll}
-                  onChat={onChat}
-                />
+                <AbilityRollDialog name={a} effect={detail?.effect ?? ""} pokemonName={name} onRoll={boundRoll} onChat={onChat} />
               </div>
             );
           })}
-          {species.abilities.length === 0 && (
-            <div className="text-xs text-muted-foreground">No abilities listed for this species.</div>
-          )}
+          {species.abilities.length === 0 && <div className="text-xs text-muted-foreground">No abilities listed for this species.</div>}
         </div>
       </section>
 
-
-      {/* Social attributes */}
-      <section>
-        <h3 className="mb-2 text-sm font-bold">Social Attributes</h3>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {SOCIAL_ATTRS.map((a) => {
-            const v = pokemon.social_attrs?.[a] ?? 1;
-            return (
-              <div key={a} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
-                <span className="w-24 text-sm font-medium capitalize">{a}</span>
-                <DotEditor
-                  value={v}
-                  max={5}
-                  onChange={(n) => patch({ social_attrs: { ...pokemon.social_attrs, [a]: n } })}
-                  disabled={!canEdit}
-                />
-                <Button size="sm" variant="ghost" className="ml-1 h-7 px-2"
-                  onClick={() => boundRoll(`${a} check`, v)}>
-                  <Dices className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Skills */}
-      <section>
-        <h3 className="mb-2 text-sm font-bold">Skills</h3>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {SKILLS.map((s) => {
-            const v = pokemon.skills?.[s] ?? 0;
-            return (
-              <div key={s} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
-                <span className="text-sm">{s}</span>
-                <DotEditor
-                  value={v}
-                  max={5}
-                  onChange={(n) => patch({ skills: { ...pokemon.skills, [s]: n } })}
-                  disabled={!canEdit}
-                />
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-
-
-      {/* Moves */}
-      <section>
+      {/* ============ BLOCO 5 — Moves ============ */}
+      <section className="rounded-lg border border-border bg-card p-3">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-bold">Moves <span className="font-normal text-muted-foreground">({knownMoves.length} / {moveCap})</span></h3>
+          <h3 className="text-sm font-bold uppercase tracking-wider text-primary">Moves <span className="font-normal text-muted-foreground">({knownMoves.length} / {moveCap})</span></h3>
           <div className="flex items-center gap-3">
-            <label className="flex items-center gap-1.5 text-xs font-medium cursor-pointer">
+            <label className="flex cursor-pointer items-center gap-1.5 text-xs font-medium">
               <Checkbox checked={zMode} onCheckedChange={(v) => { setZMode(!!v); if (v) setGMaxMode(false); }} /> Z-Move
             </label>
-            <label className="flex items-center gap-1.5 text-xs font-medium cursor-pointer">
+            <label className="flex cursor-pointer items-center gap-1.5 text-xs font-medium">
               <Checkbox checked={gMaxMode} onCheckedChange={(v) => { setGMaxMode(!!v); if (v) setZMode(false); }} /> G-Max
             </label>
             {canEdit && (
-              <AddMoveDialog
-                available={filteredLearnable.map((l) => l.moves)}
-                onAdd={addMove}
-                atCap={knownMoves.length >= moveCap}
-                moveCap={moveCap}
-              />
+              <AddMoveDialog available={filteredLearnable.map((l) => l.moves)} onAdd={addMove} atCap={knownMoves.length >= moveCap} moveCap={moveCap} />
             )}
           </div>
         </div>
@@ -632,12 +410,10 @@ export function PokemonSheet({
             const isStatus = cat === "support" || cat === "status" || m.power <= 0 || !m.damage_stat;
             const dmgStat = m.damage_stat ?? "strength";
             const dmgAttrVal = pokemon.current_attrs[dmgStat] ?? 1;
-            // STAB: +1 die if move type matches any species type
             const hasStab = !isStatus && (species.types ?? []).some((t) => String(t).toLowerCase() === String(m.type).toLowerCase());
             const stabBonus = hasStab ? 1 : 0;
             const dmgPool = isStatus ? 0 : m.power + dmgAttrVal + stabBonus;
             const isSpecial = cat === "special";
-            const name = pokemon.nickname || species.name;
             return (
               <div key={m.id} className="overflow-hidden rounded-lg border border-border">
                 <div className="flex items-center justify-between px-3 py-1.5" style={{ backgroundColor: tcol.bg, color: tcol.fg }}>
@@ -651,22 +427,8 @@ export function PokemonSheet({
                   </div>
                   {m.effect && <p className="text-xs">{m.effect}</p>}
                   <div className="flex items-center justify-between">
-                    <MoveRollDialog
-                      move={m}
-                      pokemonName={name}
-                      accPool={accPool}
-                      dmgPool={dmgPool}
-                      isStatus={isStatus}
-                      isSpecial={isSpecial}
-                      hasStab={hasStab}
-                      onRoll={boundRoll}
-                      onChat={onChat}
-                    />
-                    {canEdit && (
-                      <Button size="icon" variant="ghost" onClick={() => removeMove(m.id)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
+                    <MoveRollDialog move={m} pokemonName={name} accPool={accPool} dmgPool={dmgPool} isStatus={isStatus} isSpecial={isSpecial} hasStab={hasStab} onRoll={boundRoll} onChat={onChat} />
+                    {canEdit && <Button size="icon" variant="ghost" onClick={() => removeMove(m.id)}><Trash2 className="h-3.5 w-3.5" /></Button>}
                   </div>
                 </div>
               </div>
@@ -675,19 +437,113 @@ export function PokemonSheet({
         </div>
       </section>
 
-
-
-      <section>
-        <Label className="text-xs">Notes</Label>
-        <Textarea value={pokemon.notes} onChange={(e) => patch({ notes: e.target.value })} disabled={!canEdit} rows={3} />
+      {/* ============ BLOCO 6 — Extras + Notes ============ */}
+      <section className="space-y-3 rounded-lg border border-border bg-card p-3">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-primary">Details</h3>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="space-y-1">
+            <Label className="text-[10px] uppercase text-muted-foreground">Held item</Label>
+            <Input value={pokemon.held_item ?? ""} onChange={(e) => patch({ held_item: e.target.value })} disabled={!canEdit} className="h-8 text-xs" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[10px] uppercase text-muted-foreground">Happiness</Label>
+            <Input type="number" value={pokemon.happiness} onChange={(e) => patch({ happiness: parseInt(e.target.value) || 0 })} disabled={!canEdit} className="h-8 text-xs" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[10px] uppercase text-muted-foreground">Loyalty</Label>
+            <Input type="number" value={pokemon.loyalty} onChange={(e) => patch({ loyalty: parseInt(e.target.value) || 0 })} disabled={!canEdit} className="h-8 text-xs" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[10px] uppercase text-muted-foreground">Battles</Label>
+            <Input type="number" value={pokemon.battles} onChange={(e) => patch({ battles: parseInt(e.target.value) || 0 })} disabled={!canEdit} className="h-8 text-xs" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[10px] uppercase text-muted-foreground">Victories</Label>
+            <Input type="number" value={pokemon.victories} onChange={(e) => patch({ victories: parseInt(e.target.value) || 0 })} disabled={!canEdit} className="h-8 text-xs" />
+          </div>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-[10px] uppercase text-muted-foreground">Notes</Label>
+          <Textarea value={pokemon.notes} onChange={(e) => patch({ notes: e.target.value })} disabled={!canEdit} rows={3} />
+        </div>
       </section>
+
+      {canEdit && (
+        <section className="flex justify-end border-t border-border pt-3">
+          <Button variant="destructive" size="sm" onClick={async () => {
+            if (!confirm(`Delete Pokémon "${name}"? This cannot be undone.`)) return;
+            const { error } = await supabase.from("pokemon").delete().eq("id", pokemonId);
+            if (error) { toast.error(error.message); return; }
+            toast.success("Pokémon deleted"); onDeleted?.();
+          }}>
+            <XIcon className="mr-1 h-3.5 w-3.5" /> Delete Pokémon
+          </Button>
+        </section>
+      )}
     </div>
   );
 }
 
-function AddMoveDialog({
-  available, onAdd, atCap, moveCap,
-}: {
+/* ============ Shared sub-components ============ */
+
+function SkillGroup({ title, tint, skills, values, canEdit, onChange }: {
+  title: string; tint: string; skills: string[];
+  values: Record<string, number>; canEdit: boolean;
+  onChange: (partial: Record<string, number>) => void;
+}) {
+  return (
+    <div className="rounded-md border border-border bg-background p-2">
+      <div className={`mb-2 inline-block rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${tint}`}>{title}</div>
+      <div className="space-y-1.5">
+        {skills.map((s) => {
+          const v = values?.[s] ?? 0;
+          return (
+            <div key={s} className="flex items-center justify-between gap-2">
+              <span className="text-xs">{s}</span>
+              <DotEditor value={v} max={5} onChange={(n) => onChange({ [s]: n })} disabled={!canEdit} />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function PokemonImage({ pokemon, species, canEdit, onChange }: {
+  pokemon: Pokemon; species: Species; canEdit: boolean; onChange: (url: string | null) => void;
+}) {
+  const displayImage = pokemon.image_url ?? species.sprite_url;
+  function upload(file: File) {
+    if (file.size > 2_000_000) { toast.error("Image must be under 2 MB"); return; }
+    const reader = new FileReader();
+    reader.onload = () => onChange(reader.result as string);
+    reader.readAsDataURL(file);
+  }
+  return (
+    <div className="flex items-center gap-4">
+      {displayImage ? (
+        <img src={displayImage} alt={species.name} className="h-24 w-24 rounded-xl border border-border bg-muted object-contain" />
+      ) : (
+        <div className="flex h-24 w-24 items-center justify-center rounded-xl border border-dashed border-border bg-muted text-xs text-muted-foreground">No image</div>
+      )}
+      {canEdit && (
+        <div className="flex flex-col gap-1.5">
+          <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:bg-accent">
+            <ImagePlus className="h-3.5 w-3.5" /> {pokemon.image_url ? "Replace" : "Upload"} image
+            <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
+          </label>
+          {pokemon.image_url && (
+            <button onClick={() => onChange(null)} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:bg-accent"><RotateCcw className="h-3.5 w-3.5" /> Reset to sprite</button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ============ Dialogs & helpers (kept from original) ============ */
+
+function AddMoveDialog({ available, onAdd, atCap, moveCap }: {
   available: Move[]; onAdd: (id: string) => void; atCap: boolean; moveCap: number;
 }) {
   const [open, setOpen] = useState(false);
@@ -696,9 +552,7 @@ function AddMoveDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline" onClick={() => {
-          if (atCap) { toast.error(`This Pokémon has reached the maximum number of moves (${moveCap}).`); }
-        }} disabled={atCap}>
+        <Button size="sm" variant="outline" onClick={() => { if (atCap) toast.error(`This Pokémon has reached the maximum number of moves (${moveCap}).`); }} disabled={atCap}>
           <Plus className="mr-1 h-3.5 w-3.5" /> Add Move
         </Button>
       </DialogTrigger>
@@ -707,15 +561,8 @@ function AddMoveDialog({
         <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search…" />
         <div className="max-h-[50vh] space-y-1 overflow-y-auto">
           {filtered.map((m) => (
-            <button
-              key={m.id}
-              onClick={() => { onAdd(m.id); setOpen(false); }}
-              className="flex w-full items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-left hover:border-primary"
-            >
-              <div>
-                <div className="text-sm font-semibold">{m.name}</div>
-                <div className="text-xs text-muted-foreground">Power {m.power} · {m.category}</div>
-              </div>
+            <button key={m.id} onClick={() => { onAdd(m.id); setOpen(false); }} className="flex w-full items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-left hover:border-primary">
+              <div><div className="text-sm font-semibold">{m.name}</div><div className="text-xs text-muted-foreground">Power {m.power} · {m.category}</div></div>
               <Badge style={{ backgroundColor: TYPE_COLORS[m.type]?.bg, color: TYPE_COLORS[m.type]?.fg }} className="border-none capitalize">{m.type}</Badge>
             </button>
           ))}
@@ -726,18 +573,10 @@ function AddMoveDialog({
   );
 }
 
-function MoveRollDialog({
-  move, pokemonName, accPool, dmgPool, isStatus, isSpecial, hasStab, onRoll, onChat,
-}: {
-  move: Move;
-  pokemonName: string;
-  accPool: number;
-  dmgPool: number;
-  isStatus?: boolean;
-  isSpecial?: boolean;
-  hasStab?: boolean;
-  onRoll: (label: string, n: number) => void;
-  onChat: (body: string) => void;
+function MoveRollDialog({ move, pokemonName, accPool, dmgPool, isStatus, isSpecial, hasStab, onRoll, onChat }: {
+  move: Move; pokemonName: string; accPool: number; dmgPool: number;
+  isStatus?: boolean; isSpecial?: boolean; hasStab?: boolean;
+  onRoll: (label: string, n: number) => void; onChat: (body: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [accBonus, setAccBonus] = useState(0);
@@ -750,21 +589,14 @@ function MoveRollDialog({
     const defNote = targetDef > 0 ? ` −${defLabel} ${targetDef}` : "";
     const desc = `**${pokemonName}** uses **${move.name}** (${move.type}${stab})${move.effect ? ` — ${move.effect}` : ""}`;
     onChat(desc);
-    // Step 1: Accuracy
     onRoll(`${pokemonName} · ${move.name} · Accuracy`, Math.max(0, accPool + accBonus));
-    // Step 2: Damage (computed after subtracting target defense)
-    if (!isStatus && finalDmg > 0) {
-      onRoll(`${pokemonName} · ${move.name} · Damage${stab}${defNote}`, finalDmg);
-    }
-    setOpen(false);
-    setAccBonus(0); setDmgBonus(0); setTargetDef(0);
+    if (!isStatus && finalDmg > 0) onRoll(`${pokemonName} · ${move.name} · Damage${stab}${defNote}`, finalDmg);
+    setOpen(false); setAccBonus(0); setDmgBonus(0); setTargetDef(0);
   }
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm">
-          <Dices className="mr-1.5 h-3.5 w-3.5" /> Roll {accPool}d6{isStatus ? "" : ` / ${dmgPool}d6`}
-        </Button>
+        <Button size="sm"><Dices className="mr-1.5 h-3.5 w-3.5" /> Roll {accPool}d6{isStatus ? "" : ` / ${dmgPool}d6`}</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader><DialogTitle>{move.name}{hasStab ? <span className="ml-2 rounded bg-success/20 px-1.5 py-0.5 text-xs font-bold text-success">STAB +1</span> : null}</DialogTitle></DialogHeader>
@@ -772,89 +604,45 @@ function MoveRollDialog({
         <p className="text-[11px] text-muted-foreground italic">Order: 1) Accuracy roll → 2) if it hits, Damage roll.</p>
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
-            <div>
-              <Label className="text-xs">Accuracy bonus dice</Label>
-              <p className="text-[11px] text-muted-foreground">Pool: {accPool}d6 → rolling {Math.max(0, accPool + accBonus)}d6</p>
-            </div>
+            <div><Label className="text-xs">Accuracy bonus dice</Label><p className="text-[11px] text-muted-foreground">Pool: {accPool}d6 → rolling {Math.max(0, accPool + accBonus)}d6</p></div>
             <Input type="number" value={accBonus} onChange={(e) => setAccBonus(parseInt(e.target.value) || 0)} className="h-9 w-20" />
           </div>
           {!isStatus && dmgPool > 0 && (
             <>
               <div className="flex items-center justify-between gap-3">
-                <div>
-                  <Label className="text-xs">Damage bonus dice</Label>
-                  <p className="text-[11px] text-muted-foreground">Base: {dmgPool}d6{hasStab ? " (incl. STAB)" : ""}</p>
-                </div>
+                <div><Label className="text-xs">Damage bonus dice</Label><p className="text-[11px] text-muted-foreground">Base: {dmgPool}d6{hasStab ? " (incl. STAB)" : ""}</p></div>
                 <Input type="number" value={dmgBonus} onChange={(e) => setDmgBonus(parseInt(e.target.value) || 0)} className="h-9 w-20" />
               </div>
               <div className="flex items-center justify-between gap-3">
-                <div>
-                  <Label className="text-xs">{defLabel} (subtracted from damage pool)</Label>
-                  <p className="text-[11px] text-muted-foreground">Final damage pool: <b>{finalDmg}d6</b></p>
-                </div>
+                <div><Label className="text-xs">{defLabel} (subtracted from damage pool)</Label><p className="text-[11px] text-muted-foreground">Final damage pool: <b>{finalDmg}d6</b></p></div>
                 <Input type="number" min={0} value={targetDef} onChange={(e) => setTargetDef(Math.max(0, parseInt(e.target.value) || 0))} className="h-9 w-20" />
               </div>
             </>
           )}
-          <Button onClick={confirm} className="w-full">
-            <Dices className="mr-1.5 h-4 w-4" /> Roll
-          </Button>
+          <Button onClick={confirm} className="w-full"><Dices className="mr-1.5 h-4 w-4" /> Roll</Button>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
 
+type Nature = { id: string; name: string; keywords: string; description: string; confidence: number; };
 
-type Nature = {
-  id: string;
-  name: string;
-  keywords: string;
-  description: string;
-  confidence: number;
-};
-
-function NatureSelect({
-  value,
-  disabled,
-  onChange,
-}: {
-  value: string | null;
-  disabled?: boolean;
-  onChange: (nature: string, confidence: number) => void;
-}) {
+function NatureSelect({ value, disabled, onChange }: { value: string | null; disabled?: boolean; onChange: (nature: string, confidence: number) => void; }) {
   const { data: natures = [] } = useQuery({
     queryKey: ["natures"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("natures").select("*").order("sort_order");
-      if (error) throw error;
-      return (data ?? []) as Nature[];
+      const { data, error } = await supabase.from("natures").select("*").order("sort_order");
+      if (error) throw error; return (data ?? []) as Nature[];
     },
   });
-
   const current = natures.find((n) => n.name === value);
-
   return (
     <div className="space-y-1">
-      <Select
-        value={value ?? ""}
-        onValueChange={(name) => {
-          const n = natures.find((x) => x.name === name);
-          if (n) onChange(n.name, n.confidence);
-        }}
-        disabled={disabled}
-      >
-        <SelectTrigger>
-          <SelectValue placeholder="Choose a nature…" />
-        </SelectTrigger>
+      <Select value={value ?? ""} onValueChange={(name) => { const n = natures.find((x) => x.name === name); if (n) onChange(n.name, n.confidence); }} disabled={disabled}>
+        <SelectTrigger><SelectValue placeholder="Choose a nature…" /></SelectTrigger>
         <SelectContent>
-          {natures.map((n) => (
-            <SelectItem key={n.id} value={n.name}>
-              <span className="font-medium">{n.name}</span>
-              <span className="ml-2 text-xs text-muted-foreground">{n.keywords}</span>
-            </SelectItem>
-          ))}
+          {natures.map((n) => <SelectItem key={n.id} value={n.name}><span className="font-medium">{n.name}</span><span className="ml-2 text-xs text-muted-foreground">{n.keywords}</span></SelectItem>)}
         </SelectContent>
       </Select>
       {current && <p className="text-xs text-muted-foreground">{current.description}</p>}
@@ -862,152 +650,67 @@ function NatureSelect({
   );
 }
 
-function EvolveButton({
-  pokemonId,
-  fromSprite,
-  fromSpeciesId,
-  currentName,
-  evolutions,
-  baseSpeciesId,
-}: {
-  pokemonId: string;
-  fromSprite: string | null;
-  fromSpeciesId: string;
-  currentName: string;
-  evolutions: string[];
-  baseSpeciesId?: string;
+function EvolveButton({ pokemonId, fromSprite, fromSpeciesId, currentName, evolutions, baseSpeciesId }: {
+  pokemonId: string; fromSprite: string | null; fromSpeciesId: string; currentName: string;
+  evolutions: string[]; baseSpeciesId?: string;
 }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [animating, setAnimating] = useState(false);
   const [showEvolved, setShowEvolved] = useState(false);
   const [toggle, setToggle] = useState(false);
-
-  // Detect mode: revert > mega > normal
   const isMegaForm = !!baseSpeciesId;
   const isFinalStage = evolutions.length === 0 && !isMegaForm;
   const megaName = `Mega ${currentName}`;
-
-  // Look up mega species if at final stage
   const { data: megaSpecies } = useQuery({
-    queryKey: ["species-by-name", megaName],
-    enabled: isFinalStage && open,
-    queryFn: async () => {
-      const { data } = await supabase.from("species").select("*").eq("name", megaName).maybeSingle();
-      return data as Species | null;
-    },
+    queryKey: ["species-by-name", megaName], enabled: isFinalStage && open,
+    queryFn: async () => { const { data } = await supabase.from("species").select("*").eq("name", megaName).maybeSingle(); return data as Species | null; },
   });
-
   const [target, setTarget] = useState<string>(evolutions[0] ?? "");
   const { data: targetSpecies } = useQuery({
-    queryKey: ["species-by-name", target],
-    enabled: !!target && open && !isMegaForm && !isFinalStage,
-    queryFn: async () => {
-      const { data } = await supabase.from("species").select("*").eq("name", target).maybeSingle();
-      return data as Species | null;
-    },
+    queryKey: ["species-by-name", target], enabled: !!target && open && !isMegaForm && !isFinalStage,
+    queryFn: async () => { const { data } = await supabase.from("species").select("*").eq("name", target).maybeSingle(); return data as Species | null; },
   });
-
-  // Look up base species when reverting
   const { data: baseSpecies } = useQuery({
-    queryKey: ["species-by-id", baseSpeciesId],
-    enabled: !!baseSpeciesId && open,
-    queryFn: async () => {
-      const { data } = await supabase.from("species").select("*").eq("id", baseSpeciesId!).maybeSingle();
-      return data as Species | null;
-    },
+    queryKey: ["species-by-id", baseSpeciesId], enabled: !!baseSpeciesId && open,
+    queryFn: async () => { const { data } = await supabase.from("species").select("*").eq("id", baseSpeciesId!).maybeSingle(); return data as Species | null; },
   });
-
   const mode: "revert" | "mega" | "evolve" = isMegaForm ? "revert" : isFinalStage ? "mega" : "evolve";
   const label = mode === "revert" ? "Revert" : mode === "mega" ? "Mega Evolve" : "Evolve";
   const Icon = mode === "mega" ? Zap : Sparkles;
-
   async function transform() {
-    let next: Species | null = null;
-    let newBaseSpecies: string | null | undefined = baseSpeciesId;
-    if (mode === "evolve") {
-      next = targetSpecies ?? null;
-      if (!next) { toast.error(`Evolution "${target}" not found.`); return; }
-    } else if (mode === "mega") {
-      next = megaSpecies ?? null;
-      if (!next) { toast.error(`${megaName} not found in dex.`); return; }
-      newBaseSpecies = fromSpeciesId;
-    } else {
-      next = baseSpecies ?? null;
-      if (!next) { toast.error("Base form not found."); return; }
-      newBaseSpecies = null;
-    }
-    setAnimating(true);
-    setShowEvolved(false);
+    let next: Species | null = null; let newBaseSpecies: string | null | undefined = baseSpeciesId;
+    if (mode === "evolve") { next = targetSpecies ?? null; if (!next) { toast.error(`Evolution "${target}" not found.`); return; } }
+    else if (mode === "mega") { next = megaSpecies ?? null; if (!next) { toast.error(`${megaName} not found in dex.`); return; } newBaseSpecies = fromSpeciesId; }
+    else { next = baseSpecies ?? null; if (!next) { toast.error("Base form not found."); return; } newBaseSpecies = null; }
+    setAnimating(true); setShowEvolved(false);
     const iv = setInterval(() => setToggle((t) => !t), 250);
-    await new Promise((r) => setTimeout(r, 3000));
-    clearInterval(iv);
-    setShowEvolved(true);
-
+    await new Promise((r) => setTimeout(r, 3000)); clearInterval(iv); setShowEvolved(true);
     const newMods: Record<string, string> = { ...(((await supabase.from("pokemon").select("modifiers").eq("id", pokemonId).single()).data?.modifiers) as Record<string, string> ?? {}) };
-    if (newBaseSpecies === null) delete newMods._base_species;
-    else if (newBaseSpecies) newMods._base_species = newBaseSpecies;
-
-    const { error } = await supabase.from("pokemon").update({
-      species_id: next.id,
-      current_attrs: next.base_attrs,
-      hp: next.base_hp + (next.base_attrs.vitality ?? 1),
-      modifiers: newMods,
-    }).eq("id", pokemonId);
+    if (newBaseSpecies === null) delete newMods._base_species; else if (newBaseSpecies) newMods._base_species = newBaseSpecies;
+    const { error } = await supabase.from("pokemon").update({ species_id: next.id, current_attrs: next.base_attrs, hp: next.base_hp + (next.base_attrs.vitality ?? 1), modifiers: newMods }).eq("id", pokemonId);
     if (error) { toast.error(error.message); setAnimating(false); return; }
-    qc.invalidateQueries({ queryKey: ["pokemon", pokemonId] });
-    qc.invalidateQueries({ queryKey: ["species", next.id] });
+    qc.invalidateQueries({ queryKey: ["pokemon", pokemonId] }); qc.invalidateQueries({ queryKey: ["species", next.id] });
   }
-
-  const nextSprite = mode === "evolve" ? targetSpecies?.sprite_url
-    : mode === "mega" ? megaSpecies?.sprite_url
-    : baseSpecies?.sprite_url;
+  const nextSprite = mode === "evolve" ? targetSpecies?.sprite_url : mode === "mega" ? megaSpecies?.sprite_url : baseSpecies?.sprite_url;
   const nextName = mode === "evolve" ? target : mode === "mega" ? megaName : baseSpecies?.name ?? "base form";
   const displayedSprite = showEvolved ? nextSprite : (toggle ? nextSprite : fromSprite);
-
   return (
-    <Dialog open={open} onOpenChange={(o) => {
-      setOpen(o);
-      if (!o) { setAnimating(false); setShowEvolved(false); setToggle(false); }
-    }}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="secondary" className="h-8">
-          <Icon className="mr-1 h-3.5 w-3.5" /> {label}
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setAnimating(false); setShowEvolved(false); setToggle(false); } }}>
+      <DialogTrigger asChild><Button size="sm" variant="secondary" className="h-8"><Icon className="mr-1 h-3.5 w-3.5" /> {label}</Button></DialogTrigger>
       <DialogContent>
         <DialogHeader><DialogTitle>{showEvolved ? `Transformed into ${nextName}!` : label}</DialogTitle></DialogHeader>
         {!animating && (
           <div className="space-y-3">
-            {mode === "evolve" && (
-              <>
-                <Label className="text-xs">Evolves into</Label>
-                <Select value={target} onValueChange={setTarget}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {evolutions.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </>
-            )}
+            {mode === "evolve" && <><Label className="text-xs">Evolves into</Label><Select value={target} onValueChange={setTarget}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{evolutions.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}</SelectContent></Select></>}
             {mode === "mega" && <p className="text-sm">Trigger Mega Evolution into <strong>{megaName}</strong>?</p>}
             {mode === "revert" && <p className="text-sm">Revert to <strong>{baseSpecies?.name ?? "base form"}</strong>?</p>}
-            <Button onClick={transform} className="w-full">
-              <Icon className="mr-1.5 h-4 w-4" /> {label}
-            </Button>
+            <Button onClick={transform} className="w-full"><Icon className="mr-1.5 h-4 w-4" /> {label}</Button>
           </div>
         )}
         {animating && (
           <div className="flex flex-col items-center justify-center gap-4 py-6">
-            {displayedSprite ? (
-              <img
-                src={displayedSprite}
-                alt=""
-                className={`h-48 w-48 object-contain transition-all duration-200 ${showEvolved ? "drop-shadow-[0_0_30px_hsl(var(--primary))]" : "brightness-200 contrast-150"}`}
-              />
-            ) : (
-              <div className="flex h-48 w-48 items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground">No sprite</div>
-            )}
+            {displayedSprite ? <img src={displayedSprite} alt="" className={`h-48 w-48 object-contain transition-all duration-200 ${showEvolved ? "drop-shadow-[0_0_30px_hsl(var(--primary))]" : "brightness-200 contrast-150"}`} /> : <div className="flex h-48 w-48 items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground">No sprite</div>}
             <p className="text-sm font-bold">{showEvolved ? `Now ${nextName}!` : `${label}ing…`}</p>
             {showEvolved && <Button onClick={() => setOpen(false)} className="w-full">Done</Button>}
           </div>
@@ -1017,91 +720,36 @@ function EvolveButton({
   );
 }
 
-function DynamaxToggle({
-  mode,
-  onChange,
-}: {
-  mode: null | "dynamax" | "gigantamax";
-  onChange: (m: null | "dynamax" | "gigantamax") => void;
-}) {
+function DynamaxToggle({ mode, onChange }: { mode: null | "dynamax" | "gigantamax"; onChange: (m: null | "dynamax" | "gigantamax") => void; }) {
   return (
     <div className="flex items-center gap-1">
-      <Button
-        size="sm"
-        variant={mode === "dynamax" ? "default" : "outline"}
-        className="h-8"
-        onClick={() => onChange(mode === "dynamax" ? null : "dynamax")}
-      >
-        <Maximize2 className="mr-1 h-3.5 w-3.5" /> Dynamax
-      </Button>
-      <Button
-        size="sm"
-        variant={mode === "gigantamax" ? "default" : "outline"}
-        className="h-8"
-        onClick={() => onChange(mode === "gigantamax" ? null : "gigantamax")}
-      >
-        <Maximize2 className="mr-1 h-3.5 w-3.5" /> G-Max
-      </Button>
+      <Button size="sm" variant={mode === "dynamax" ? "default" : "outline"} className="h-8" onClick={() => onChange(mode === "dynamax" ? null : "dynamax")}><Maximize2 className="mr-1 h-3.5 w-3.5" /> Dynamax</Button>
+      <Button size="sm" variant={mode === "gigantamax" ? "default" : "outline"} className="h-8" onClick={() => onChange(mode === "gigantamax" ? null : "gigantamax")}><Maximize2 className="mr-1 h-3.5 w-3.5" /> G-Max</Button>
     </div>
   );
 }
 
-function AbilityRollDialog({
-  name,
-  effect,
-  pokemonName,
-  onRoll,
-  onChat,
-}: {
-  name: string;
-  effect: string;
-  pokemonName: string;
-  onRoll: (label: string, n: number) => void;
-  onChat: (body: string) => void;
+function AbilityRollDialog({ name, effect, pokemonName, onRoll, onChat }: {
+  name: string; effect: string; pokemonName: string; onRoll: (label: string, n: number) => void; onChat: (body: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  // Try to detect a default dice count from the effect text (e.g. "roll 4d6" or "chance 3d6")
-  const detected = useMemo(() => {
-    const m = effect.match(/(\d+)\s*d6/i);
-    return m ? parseInt(m[1], 10) : 0;
-  }, [effect]);
+  const detected = useMemo(() => { const m = effect.match(/(\d+)\s*d6/i); return m ? parseInt(m[1], 10) : 0; }, [effect]);
   const [dice, setDice] = useState(detected);
   useEffect(() => { setDice(detected); }, [detected]);
-
-  const hasChance = /chance|may|attempt|roll/i.test(effect);
-
-  function activate() {
-    onChat(`**${pokemonName}** activates **${name}**${effect ? ` — ${effect}` : ""}`);
+  function fire() {
+    onChat(`**${pokemonName}** uses **${name}**${effect ? ` — ${effect}` : ""}`);
     if (dice > 0) onRoll(`${pokemonName} · ${name}`, dice);
     setOpen(false);
   }
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="ghost" className="h-7 shrink-0">
-          <Dices className="h-3.5 w-3.5" />
-        </Button>
-      </DialogTrigger>
+      <DialogTrigger asChild><Button size="sm" variant="ghost"><Dices className="h-3.5 w-3.5" /></Button></DialogTrigger>
       <DialogContent>
         <DialogHeader><DialogTitle>{name}</DialogTitle></DialogHeader>
-        {effect ? (
-          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{effect}</p>
-        ) : (
-          <p className="text-xs text-muted-foreground italic">No description available.</p>
-        )}
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <Label className="text-xs">Dice pool {hasChance && <span className="text-muted-foreground">(chance-based)</span>}</Label>
-            <p className="text-[11px] text-muted-foreground">Rolling {Math.max(0, dice)}d6</p>
-          </div>
-          <Input type="number" value={dice} onChange={(e) => setDice(parseInt(e.target.value) || 0)} className="h-9 w-20" />
-        </div>
-        <Button onClick={activate} className="w-full">
-          <Dices className="mr-1.5 h-4 w-4" /> Activate {dice > 0 ? `· ${dice}d6` : ""}
-        </Button>
+        {effect && <p className="text-sm text-muted-foreground">{effect}</p>}
+        <div className="flex items-center gap-3"><Label className="text-xs">Dice</Label><Input type="number" value={dice} onChange={(e) => setDice(parseInt(e.target.value) || 1)} className="h-8 w-20" /></div>
+        <Button onClick={fire} className="w-full"><Dices className="mr-1.5 h-4 w-4" /> Roll{dice > 0 ? ` ${dice}d6` : ""}</Button>
       </DialogContent>
     </Dialog>
   );
 }
-
-
