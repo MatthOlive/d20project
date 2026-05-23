@@ -208,45 +208,13 @@ export function TrainerSheet({
                 />
               </div>
             </div>
-            <div className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr]">
-              <div>
-                <Label className="text-[10px] uppercase text-muted-foreground">Nature</Label>
-                <NatureSelect
-                  value={trainer.nature}
-                  disabled={!canEdit}
-                  onChange={(nature, conf) => patch({ nature, confidence: conf })}
-                />
-              </div>
-              <div>
-                <Label className="text-[10px] uppercase text-muted-foreground">HP</Label>
-                <div className="flex items-center gap-1">
-                  <Input
-                    type="number" min={0} max={hp} value={currentHp}
-                    disabled={!canEdit}
-                    onChange={(e) => {
-                      const n = Math.max(0, Math.min(hp, parseInt(e.target.value) || 0));
-                      patch({ current_hp: n });
-                    }}
-                    className="h-8 text-xs"
-                  />
-                  <span className="text-[11px] text-muted-foreground">/ {hp}</span>
-                </div>
-              </div>
-              <div>
-                <Label className="text-[10px] uppercase text-muted-foreground">Will</Label>
-                <div className="flex items-center gap-1">
-                  <Input
-                    type="number" min={0} max={will} value={currentWill}
-                    disabled={!canEdit}
-                    onChange={(e) => {
-                      const n = Math.max(0, Math.min(will, parseInt(e.target.value) || 0));
-                      patch({ current_will: n });
-                    }}
-                    className="h-8 text-xs"
-                  />
-                  <span className="text-[11px] text-muted-foreground">/ {will}</span>
-                </div>
-              </div>
+            <div>
+              <Label className="text-[10px] uppercase text-muted-foreground">Nature</Label>
+              <NatureSelect
+                value={trainer.nature}
+                disabled={!canEdit}
+                onChange={(nature, conf) => patch({ nature, confidence: conf })}
+              />
             </div>
             {/* Action row */}
             <div className="flex flex-wrap items-center gap-1.5 pt-1">
