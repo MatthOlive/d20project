@@ -162,8 +162,10 @@ export function PokemonSheet({
     const newAttrs = { ...pokemon!.current_attrs, [key]: clamped };
     const vit = key === "vitality" ? clamped : (newAttrs.vitality ?? 1);
     const ins = key === "insight" ? clamped : (newAttrs.insight ?? 1);
-    patch({ current_attrs: newAttrs, hp: species!.base_hp + vit, will: ins + 2 });
+    const baseHp = species!.base_hp + (pokemon!.is_overgrown ? 1 : 0);
+    patch({ current_attrs: newAttrs, hp: baseHp + vit, will: ins + 2 });
   }
+
 
   async function addMove(moveId: string) {
     const { error } = await supabase.from("pokemon_moves").insert({ pokemon_id: pokemonId, move_id: moveId });
