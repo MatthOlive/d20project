@@ -219,12 +219,15 @@ const FOLDER_MIME = "application/x-pokerole-sheet";
 function FilesPanel({
   gameId,
   userId,
+  isNarrator,
   onOpen,
 }: {
   gameId: string;
   userId: string;
+  isNarrator: boolean;
   onOpen: (w: OpenWindow) => void;
 }) {
+
   const qc = useQueryClient();
   const [pkmDialogOpen, setPkmDialogOpen] = useState(false);
   const [newPkmSpecies, setNewPkmSpecies] = useState<string>("");
