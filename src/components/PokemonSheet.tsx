@@ -247,9 +247,8 @@ export function PokemonSheet({
                 </div>
               )}
             </div>
-
-            </div>
           </div>
+
           {/* Right: identity + stats + actions */}
           <div className="space-y-2">
             <div className="flex items-start gap-2">
