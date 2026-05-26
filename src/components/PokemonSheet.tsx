@@ -15,8 +15,9 @@ import { DotEditor } from "@/components/DotEditor";
 import { Textarea } from "@/components/ui/textarea";
 import {
   POKEMON_ATTRS, SOCIAL_ATTRS, RANKS, RANK_LABELS, RANK_BONUS, TYPE_COLORS, SKILLS, type Rank,
-  rankAtLeast, resolveSkillValue,
+  rankAtLeast, resolveSkillValue, shinyize,
 } from "@/lib/pokerole";
+
 import { useDebouncedPatch } from "@/lib/use-debounced-patch";
 import { toast } from "sonner";
 import { Plus, Dices, Trash2, ImagePlus, RotateCcw, Sparkles, Zap, Maximize2, X as XIcon } from "lucide-react";
@@ -65,7 +66,10 @@ type Pokemon = {
   nature: string | null; held_item: string | null; happiness: number;
   loyalty: number; confidence: number; battles: number; victories: number;
   sex: string | null;
+  is_shiny: boolean;
+  is_overgrown: boolean;
 };
+
 
 export function PokemonSheet({
   pokemonId, gameId: _gameId, userId, isNarrator, onRoll, onChat, onDeleted,
@@ -125,8 +129,9 @@ export function PokemonSheet({
 
   useEffect(() => {
     if (pokemon && species && Object.keys(pokemon.current_attrs).length === 0) {
+      const baseHp = species.base_hp + (pokemon.is_overgrown ? 1 : 0);
       void supabase.from("pokemon").update({
-        current_attrs: species.base_attrs, hp: species.base_hp + (species.base_attrs.vitality ?? 1),
+        current_attrs: species.base_attrs, hp: baseHp + (species.base_attrs.vitality ?? 1),
       }).eq("id", pokemonId).then(() => qc.invalidateQueries({ queryKey: ["pokemon", pokemonId] }));
     }
   }, [pokemon, species, pokemonId, qc]);
@@ -143,10 +148,12 @@ export function PokemonSheet({
   if (!pokemon) return <div className="p-4 text-sm text-muted-foreground">Loading…</div>;
   if (!species) return <div className="p-4 text-sm text-muted-foreground">Loading species…</div>;
 
-  const maxHpEff = dynaMode ? pokemon.hp * 2 : pokemon.hp;
+  const overgrownBonus = pokemon.is_overgrown ? 1 : 0;
+  const maxHpEff = (dynaMode ? pokemon.hp * 2 : pokemon.hp);
   const curHp = pokemon.current_hp ?? maxHpEff;
   const painPen = painPenaltyFor(curHp, maxHpEff);
   const boundRoll = (label: string, n: number, p?: number) => onRoll(label, n, p ?? painPen);
+
 
   async function setAttr(key: string, val: number) {
     if (!canEdit) return;
@@ -155,8 +162,10 @@ export function PokemonSheet({
     const newAttrs = { ...pokemon!.current_attrs, [key]: clamped };
     const vit = key === "vitality" ? clamped : (newAttrs.vitality ?? 1);
     const ins = key === "insight" ? clamped : (newAttrs.insight ?? 1);
-    patch({ current_attrs: newAttrs, hp: species!.base_hp + vit, will: ins + 2 });
+    const baseHp = species!.base_hp + (pokemon!.is_overgrown ? 1 : 0);
+    patch({ current_attrs: newAttrs, hp: baseHp + vit, will: ins + 2 });
   }
+
 
   async function addMove(moveId: string) {
     const { error } = await supabase.from("pokemon_moves").insert({ pokemon_id: pokemonId, move_id: moveId });
@@ -215,7 +224,31 @@ export function PokemonSheet({
               ))}
               <span className="text-xs text-muted-foreground">{species.name}</span>
             </div>
+            <div className="flex flex-wrap gap-1">
+              {pokemon.is_shiny && (
+                <Badge className="border-none bg-yellow-400 text-yellow-950 hover:bg-yellow-400">✨ Shiny</Badge>
+              )}
+              {pokemon.is_overgrown && (
+                <Badge className="border-none bg-emerald-500 text-white hover:bg-emerald-500">Overgrown · +1 HP</Badge>
+              )}
+              {isNarrator && (
+                <div className="mt-1 flex w-full flex-wrap gap-1.5 rounded-md border border-dashed border-border bg-background/50 p-1.5">
+                  <label className="flex cursor-pointer items-center gap-1 text-[10px]">
+                    <Checkbox checked={pokemon.is_shiny} onCheckedChange={(v) => patch({ is_shiny: !!v })} /> Shiny
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-1 text-[10px]">
+                    <Checkbox checked={pokemon.is_overgrown} onCheckedChange={(v) => {
+                      const newOver = !!v;
+                      const baseHp = species!.base_hp + (newOver ? 1 : 0);
+                      const vit = pokemon.current_attrs.vitality ?? 1;
+                      patch({ is_overgrown: newOver, hp: baseHp + vit });
+                    }} /> Overgrown
+                  </label>
+                </div>
+              )}
+            </div>
           </div>
+
           {/* Right: identity + stats + actions */}
           <div className="space-y-2">
             <div className="flex items-start gap-2">
@@ -512,7 +545,9 @@ function SkillGroup({ title, tint, skills, values, canEdit, onChange }: {
 function PokemonImage({ pokemon, species, canEdit, onChange }: {
   pokemon: Pokemon; species: Species; canEdit: boolean; onChange: (url: string | null) => void;
 }) {
-  const displayImage = pokemon.image_url ?? species.sprite_url;
+  const baseSprite = pokemon.image_url ?? species.sprite_url;
+  const displayImage = pokemon.image_url ? baseSprite : (pokemon.is_shiny ? shinyize(species.sprite_url) ?? species.sprite_url : species.sprite_url);
+
   function upload(file: File) {
     if (file.size > 2_000_000) { toast.error("Image must be under 2 MB"); return; }
     const reader = new FileReader();

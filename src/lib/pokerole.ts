@@ -134,3 +134,17 @@ export function resolveSkillValue(
   return best ?? { value: 0, label: skillNameFromDb };
 }
 
+// Shiny helpers — 10% chance (roll 1d100, 1–10 = shiny).
+export const SHINY_CHANCE_PERCENT = 10;
+export function rollShiny(): boolean {
+  return Math.floor(Math.random() * 100) + 1 <= SHINY_CHANCE_PERCENT;
+}
+// Convert a PokeAPI sprite URL to its shiny variant.
+// e.g. .../sprites/pokemon/25.png -> .../sprites/pokemon/shiny/25.png
+export function shinyize(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (url.includes("/pokemon/shiny/")) return url;
+  return url.replace("/sprites/pokemon/", "/sprites/pokemon/shiny/");
+}
+
+

@@ -23,7 +23,7 @@ import { SheetTabs } from "@/components/SheetTabs";
 import { MapBoard, DRAG_MIME, type DragCharacterPayload } from "@/components/MapBoard";
 import { toast } from "sonner";
 import { Copy, Crown, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Swords } from "lucide-react";
-import { rollD6, POKEMON_TYPES, TYPE_COLORS, type PokemonType } from "@/lib/pokerole";
+import { rollD6, rollShiny, POKEMON_TYPES, TYPE_COLORS, type PokemonType } from "@/lib/pokerole";
 
 export const Route = createFileRoute("/_app/games/$gameId")({
   component: GameRoom,
@@ -159,7 +159,7 @@ function GameRoom() {
             <CompendiumPanel />
           </TabsContent>
           <TabsContent value="files" className="flex-1 overflow-auto p-3">
-            <FilesPanel gameId={gameId} userId={user.id} onOpen={openWindow} />
+            <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindow} />
           </TabsContent>
         </Tabs>
       </Card>
@@ -219,15 +219,20 @@ const FOLDER_MIME = "application/x-pokerole-sheet";
 function FilesPanel({
   gameId,
   userId,
+  isNarrator,
   onOpen,
 }: {
   gameId: string;
   userId: string;
+  isNarrator: boolean;
   onOpen: (w: OpenWindow) => void;
 }) {
+
   const qc = useQueryClient();
   const [pkmDialogOpen, setPkmDialogOpen] = useState(false);
   const [newPkmSpecies, setNewPkmSpecies] = useState<string>("");
+  const [newPkmOvergrown, setNewPkmOvergrown] = useState(false);
+
   const [newFolder, setNewFolder] = useState("");
   const [extraFolders, setExtraFolders] = useState<string[]>([]);
   const [dropHover, setDropHover] = useState<string | null>(null);
