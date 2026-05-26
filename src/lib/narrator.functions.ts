@@ -175,7 +175,10 @@ async function spawnWildPokemon(
     () => tbl.skillCap, importance, params.preferred_skills,
   );
 
-  const hp = sp.base_hp + (attrs.vitality ?? 1);
+  const isShiny = Math.floor(Math.random() * 100) + 1 <= 10; // 10%
+  const isOvergrown = Math.random() < 0.10; // AI decides; ~10% chance
+  const overgrownBonus = isOvergrown ? 1 : 0;
+  const hp = sp.base_hp + overgrownBonus + (attrs.vitality ?? 1);
   const will = (attrs.insight ?? 1) + 2;
 
   const { data: ins1, error: iErr } = await supabase
@@ -186,13 +189,16 @@ async function spawnWildPokemon(
       hp, will, current_hp: hp, current_will: will,
       image_url: sp.sprite_url, folder: "AI Encounters",
       ai_spawned: true,
+      is_shiny: isShiny,
+      is_overgrown: isOvergrown,
     }).select().single();
   if (iErr || !ins1) return { ok: false, message: `Failed to create Pokémon: ${String(iErr?.message ?? "unknown")}` };
   return {
     ok: true, pokemon_id: ins1.id,
-    message: `Spawned ${sp.name} (${rank}) — HP ${hp}, Will ${will}. Use THIS sheet for the entire combat — do not spawn another.`,
-    summary: { species: sp.name, rank, attrs, skills, social, hp, will, abilities: sp.abilities },
+    message: `Spawned ${sp.name}${isShiny ? " ✨SHINY✨" : ""}${isOvergrown ? " (Overgrown)" : ""} (${rank}) — HP ${hp}, Will ${will}. Use THIS sheet for the entire combat — do not spawn another.`,
+    summary: { species: sp.name, rank, attrs, skills, social, hp, will, abilities: sp.abilities, is_shiny: isShiny, is_overgrown: isOvergrown },
   };
+
 }
 
 async function spawnTrainer(
