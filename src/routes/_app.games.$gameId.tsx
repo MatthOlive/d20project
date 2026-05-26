@@ -231,6 +231,8 @@ function FilesPanel({
   const qc = useQueryClient();
   const [pkmDialogOpen, setPkmDialogOpen] = useState(false);
   const [newPkmSpecies, setNewPkmSpecies] = useState<string>("");
+  const [newPkmOvergrown, setNewPkmOvergrown] = useState(false);
+
   const [newFolder, setNewFolder] = useState("");
   const [extraFolders, setExtraFolders] = useState<string[]>([]);
   const [dropHover, setDropHover] = useState<string | null>(null);
