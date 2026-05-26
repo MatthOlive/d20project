@@ -545,7 +545,9 @@ function SkillGroup({ title, tint, skills, values, canEdit, onChange }: {
 function PokemonImage({ pokemon, species, canEdit, onChange }: {
   pokemon: Pokemon; species: Species; canEdit: boolean; onChange: (url: string | null) => void;
 }) {
-  const displayImage = pokemon.image_url ?? species.sprite_url;
+  const baseSprite = pokemon.image_url ?? species.sprite_url;
+  const displayImage = pokemon.image_url ? baseSprite : (pokemon.is_shiny ? shinyize(species.sprite_url) ?? species.sprite_url : species.sprite_url);
+
   function upload(file: File) {
     if (file.size > 2_000_000) { toast.error("Image must be under 2 MB"); return; }
     const reader = new FileReader();
