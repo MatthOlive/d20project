@@ -66,7 +66,10 @@ type Pokemon = {
   nature: string | null; held_item: string | null; happiness: number;
   loyalty: number; confidence: number; battles: number; victories: number;
   sex: string | null;
+  is_shiny: boolean;
+  is_overgrown: boolean;
 };
+
 
 export function PokemonSheet({
   pokemonId, gameId: _gameId, userId, isNarrator, onRoll, onChat, onDeleted,
