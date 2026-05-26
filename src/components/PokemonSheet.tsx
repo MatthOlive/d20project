@@ -15,8 +15,9 @@ import { DotEditor } from "@/components/DotEditor";
 import { Textarea } from "@/components/ui/textarea";
 import {
   POKEMON_ATTRS, SOCIAL_ATTRS, RANKS, RANK_LABELS, RANK_BONUS, TYPE_COLORS, SKILLS, type Rank,
-  rankAtLeast, resolveSkillValue,
+  rankAtLeast, resolveSkillValue, shinyize,
 } from "@/lib/pokerole";
+
 import { useDebouncedPatch } from "@/lib/use-debounced-patch";
 import { toast } from "sonner";
 import { Plus, Dices, Trash2, ImagePlus, RotateCcw, Sparkles, Zap, Maximize2, X as XIcon } from "lucide-react";
