@@ -224,6 +224,31 @@ export function PokemonSheet({
               ))}
               <span className="text-xs text-muted-foreground">{species.name}</span>
             </div>
+            <div className="flex flex-wrap gap-1">
+              {pokemon.is_shiny && (
+                <Badge className="border-none bg-yellow-400 text-yellow-950 hover:bg-yellow-400">✨ Shiny</Badge>
+              )}
+              {pokemon.is_overgrown && (
+                <Badge className="border-none bg-emerald-500 text-white hover:bg-emerald-500">Overgrown · +1 HP</Badge>
+              )}
+              {isNarrator && (
+                <div className="mt-1 flex w-full flex-wrap gap-1.5 rounded-md border border-dashed border-border bg-background/50 p-1.5">
+                  <label className="flex cursor-pointer items-center gap-1 text-[10px]">
+                    <Checkbox checked={pokemon.is_shiny} onCheckedChange={(v) => patch({ is_shiny: !!v })} /> Shiny
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-1 text-[10px]">
+                    <Checkbox checked={pokemon.is_overgrown} onCheckedChange={(v) => {
+                      const newOver = !!v;
+                      const baseHp = species!.base_hp + (newOver ? 1 : 0);
+                      const vit = pokemon.current_attrs.vitality ?? 1;
+                      patch({ is_overgrown: newOver, hp: baseHp + vit });
+                    }} /> Overgrown
+                  </label>
+                </div>
+              )}
+            </div>
+
+            </div>
           </div>
           {/* Right: identity + stats + actions */}
           <div className="space-y-2">
