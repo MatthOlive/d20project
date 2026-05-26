@@ -129,8 +129,9 @@ export function PokemonSheet({
 
   useEffect(() => {
     if (pokemon && species && Object.keys(pokemon.current_attrs).length === 0) {
+      const baseHp = species.base_hp + (pokemon.is_overgrown ? 1 : 0);
       void supabase.from("pokemon").update({
-        current_attrs: species.base_attrs, hp: species.base_hp + (species.base_attrs.vitality ?? 1),
+        current_attrs: species.base_attrs, hp: baseHp + (species.base_attrs.vitality ?? 1),
       }).eq("id", pokemonId).then(() => qc.invalidateQueries({ queryKey: ["pokemon", pokemonId] }));
     }
   }, [pokemon, species, pokemonId, qc]);
@@ -147,10 +148,12 @@ export function PokemonSheet({
   if (!pokemon) return <div className="p-4 text-sm text-muted-foreground">Loading…</div>;
   if (!species) return <div className="p-4 text-sm text-muted-foreground">Loading species…</div>;
 
-  const maxHpEff = dynaMode ? pokemon.hp * 2 : pokemon.hp;
+  const overgrownBonus = pokemon.is_overgrown ? 1 : 0;
+  const maxHpEff = (dynaMode ? pokemon.hp * 2 : pokemon.hp);
   const curHp = pokemon.current_hp ?? maxHpEff;
   const painPen = painPenaltyFor(curHp, maxHpEff);
   const boundRoll = (label: string, n: number, p?: number) => onRoll(label, n, p ?? painPen);
+
 
   async function setAttr(key: string, val: number) {
     if (!canEdit) return;
