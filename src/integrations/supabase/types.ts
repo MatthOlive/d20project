@@ -283,6 +283,8 @@ export type Database = {
           hp: number
           id: string
           image_url: string | null
+          is_overgrown: boolean
+          is_shiny: boolean
           loyalty: number
           modifiers: Json
           nature: string | null
@@ -316,6 +318,8 @@ export type Database = {
           hp?: number
           id?: string
           image_url?: string | null
+          is_overgrown?: boolean
+          is_shiny?: boolean
           loyalty?: number
           modifiers?: Json
           nature?: string | null
@@ -349,6 +353,8 @@ export type Database = {
           hp?: number
           id?: string
           image_url?: string | null
+          is_overgrown?: boolean
+          is_shiny?: boolean
           loyalty?: number
           modifiers?: Json
           nature?: string | null
