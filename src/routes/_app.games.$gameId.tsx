@@ -159,7 +159,7 @@ function GameRoom() {
             <CompendiumPanel />
           </TabsContent>
           <TabsContent value="files" className="flex-1 overflow-auto p-3">
-            <FilesPanel gameId={gameId} userId={user.id} onOpen={openWindow} />
+            <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindow} />
           </TabsContent>
         </Tabs>
       </Card>
