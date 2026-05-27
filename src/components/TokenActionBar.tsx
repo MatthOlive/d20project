@@ -13,7 +13,7 @@ type Props = {
   kind: "trainer" | "pokemon";
   id: string;
   label: string;
-  onRoll: (label: string, n: number, penalty?: number) => void;
+  onRoll: (label: string, n: number, penalty?: number, meta?: { characterKind: "trainer" | "pokemon"; characterId: string; imageUrl?: string | null }) => void;
   onClose: () => void;
   onOpenSheet: () => void;
 };
