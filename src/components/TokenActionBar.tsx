@@ -29,7 +29,7 @@ function TrainerBar({ id, label, onRoll, onClose, onOpenSheet }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("trainers")
-        .select("attrs, social_attrs, skills, rank, confidence, current_hp, status_conditions")
+        .select("attrs, social_attrs, skills, rank, confidence, current_hp, status_conditions, image_url")
         .eq("id", id)
         .single();
       if (error) throw error;
@@ -41,6 +41,7 @@ function TrainerBar({ id, label, onRoll, onClose, onOpenSheet }: Props) {
         confidence: number;
         current_hp: number | null;
         status_conditions: string[];
+        image_url: string | null;
       };
     },
   });
