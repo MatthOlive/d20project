@@ -214,7 +214,7 @@ export function PokemonSheet({
       {/* ============ BLOCO 1 — Identidade ============ */}
       <section className="overflow-hidden rounded-xl border border-border bg-card">
         <div className="flex items-center gap-2 border-b-2 border-primary bg-primary/10 px-3 py-1.5">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-primary">Pokémon · Sheet</span>
+          <span className="truncate text-[12px] font-bold uppercase tracking-wider text-primary">{name}</span>
           <span className="ml-auto text-[11px] uppercase text-muted-foreground">Rank</span>
           <Select value={pokemon.rank} onValueChange={(v) => canEdit && patch({ rank: v as Rank })} disabled={!canEdit}>
             <SelectTrigger className="h-6 w-28 text-xs"><SelectValue /></SelectTrigger>
@@ -292,7 +292,6 @@ export function PokemonSheet({
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-1.5 text-sm">
-              <span className="rounded-full bg-accent px-2.5 py-0.5 font-bold">Will {pokemon.will}</span>
               <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-bold text-primary">Def {vit}</span>
               <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-bold text-primary">
                 SpDef {spDef} <span className="ml-1 text-[9px] uppercase opacity-70">({spDefUsesInsight ? "Ins" : "Vit"})</span>
@@ -339,6 +338,8 @@ export function PokemonSheet({
             painPenalty={painPen} canEdit={canEdit}
             onHpChange={(n) => patch({ current_hp: n })}
             onStatusChange={(s) => patch({ status: s })}
+            will={pokemon.will} willMax={ins + 2}
+            onWillChange={(n) => patch({ will: n })}
           />
         </div>
         <div className="rounded-lg border border-border bg-card p-3">

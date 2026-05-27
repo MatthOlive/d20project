@@ -26,6 +26,7 @@ export function painPenaltyFor(current: number, max: number): number {
 export function HpAndStatusBlock({
   current, max, status, painPenalty, canEdit,
   onHpChange, onStatusChange,
+  will, willMax, onWillChange,
 }: {
   current: number;
   max: number;
@@ -34,12 +35,16 @@ export function HpAndStatusBlock({
   canEdit: boolean;
   onHpChange: (n: number) => void;
   onStatusChange: (next: string[]) => void;
+  will?: number;
+  willMax?: number;
+  onWillChange?: (n: number) => void;
 }) {
   function toggle(name: string, on: boolean) {
     const set = new Set(status);
     if (on) set.add(name); else set.delete(name);
     onStatusChange(Array.from(set));
   }
+  const showWill = typeof will === "number" && typeof willMax === "number";
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-end gap-3">
@@ -60,6 +65,26 @@ export function HpAndStatusBlock({
             />
             <span className="text-xs text-muted-foreground">/ {max}</span>
           </div>
+          {showWill && (
+            <div className="mt-2">
+              <Label className="text-xs">Will</Label>
+              <div className="flex items-center gap-1.5">
+                <Input
+                  type="number"
+                  min={0}
+                  max={willMax}
+                  value={will}
+                  disabled={!canEdit || !onWillChange}
+                  onChange={(e) => {
+                    const n = Math.max(0, Math.min(willMax!, parseInt(e.target.value) || 0));
+                    onWillChange?.(n);
+                  }}
+                  className="h-8 w-20"
+                />
+                <span className="text-xs text-muted-foreground">/ {willMax}</span>
+              </div>
+            </div>
+          )}
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className={`inline-block w-fit rounded-full px-3 py-1 text-xs font-bold ${
