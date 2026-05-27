@@ -9,6 +9,7 @@ import {
 import { TrainerSheet } from "@/components/TrainerSheet";
 import { PokemonSheet } from "@/components/PokemonSheet";
 import { Shop } from "@/components/Shop";
+import { DRAG_MIME, type DragCharacterPayload } from "@/components/MapBoard";
 import { User, Boxes, Plus, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
