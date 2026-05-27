@@ -6,7 +6,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Swords, Zap, Sparkles, Dices, X } from "lucide-react";
-import { GenericRollButton, painPenaltyFor } from "@/components/SheetRolls";
+import { GenericRollButton } from "@/components/SheetRolls";
 import { POKEMON_ATTRS, ATTRS, SOCIAL_ATTRS, TRAINER_SKILLS, SKILLS, RANK_BONUS } from "@/lib/pokerole";
 
 type Props = {
