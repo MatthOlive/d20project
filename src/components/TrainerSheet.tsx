@@ -287,6 +287,9 @@ export function TrainerSheet({
             canEdit={canEdit}
             onHpChange={(n) => patch({ current_hp: n })}
             onStatusChange={(s) => patch({ status_conditions: s })}
+            will={currentWill}
+            willMax={will}
+            onWillChange={(n) => patch({ current_will: n })}
           />
         </div>
         <div className="rounded-lg border border-border bg-card p-3">

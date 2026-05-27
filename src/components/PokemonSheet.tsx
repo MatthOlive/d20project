@@ -214,7 +214,7 @@ export function PokemonSheet({
       {/* ============ BLOCO 1 — Identidade ============ */}
       <section className="overflow-hidden rounded-xl border border-border bg-card">
         <div className="flex items-center gap-2 border-b-2 border-primary bg-primary/10 px-3 py-1.5">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-primary">Pokémon · Sheet</span>
+          <span className="truncate text-[12px] font-bold uppercase tracking-wider text-primary">{name}</span>
           <span className="ml-auto text-[11px] uppercase text-muted-foreground">Rank</span>
           <Select value={pokemon.rank} onValueChange={(v) => canEdit && patch({ rank: v as Rank })} disabled={!canEdit}>
             <SelectTrigger className="h-6 w-28 text-xs"><SelectValue /></SelectTrigger>
@@ -292,7 +292,6 @@ export function PokemonSheet({
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-1.5 text-sm">
-              <span className="rounded-full bg-accent px-2.5 py-0.5 font-bold">Will {pokemon.will}</span>
               <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-bold text-primary">Def {vit}</span>
               <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-bold text-primary">
                 SpDef {spDef} <span className="ml-1 text-[9px] uppercase opacity-70">({spDefUsesInsight ? "Ins" : "Vit"})</span>
@@ -339,6 +338,8 @@ export function PokemonSheet({
             painPenalty={painPen} canEdit={canEdit}
             onHpChange={(n) => patch({ current_hp: n })}
             onStatusChange={(s) => patch({ status: s })}
+            will={pokemon.will} willMax={ins + 2}
+            onWillChange={(n) => patch({ will: n })}
           />
         </div>
         <div className="rounded-lg border border-border bg-card p-3">
@@ -707,29 +708,43 @@ function EvolveButton({ pokemonId, fromSprite, fromSpeciesId, currentName, evolu
   const [showEvolved, setShowEvolved] = useState(false);
   const [toggle, setToggle] = useState(false);
   const isMegaForm = !!baseSpeciesId;
-  const isFinalStage = evolutions.length === 0 && !isMegaForm;
-  const megaName = `Mega ${currentName}`;
-  const { data: megaSpecies } = useQuery({
-    queryKey: ["species-by-name", megaName], enabled: isFinalStage && open,
-    queryFn: async () => { const { data } = await supabase.from("species").select("*").eq("name", megaName).maybeSingle(); return data as Species | null; },
-  });
-  const [target, setTarget] = useState<string>(evolutions[0] ?? "");
+  // Split: names containing "mega" (before or after the name) are mega forms.
+  const isMegaName = (n: string) => /\bmega\b/i.test(n);
+  const normalEvos = useMemo(() => evolutions.filter((e) => !isMegaName(e)), [evolutions]);
+  const megaEvos = useMemo(() => evolutions.filter((e) => isMegaName(e)), [evolutions]);
+  const hasNormal = normalEvos.length > 0;
+  const hasMega = megaEvos.length > 0;
+  // Mode priority: revert if mega form; otherwise normal evolve if available; otherwise mega.
+  // When both exist, default to evolve; user can also pick a mega form from the dropdown.
+  const mode: "revert" | "mega" | "evolve" = isMegaForm ? "revert" : hasNormal ? "evolve" : "mega";
+  const [target, setTarget] = useState<string>(mode === "evolve" ? (normalEvos[0] ?? "") : (megaEvos[0] ?? ""));
+  useEffect(() => {
+    if (mode === "evolve") setTarget(normalEvos[0] ?? "");
+    else if (mode === "mega") setTarget(megaEvos[0] ?? "");
+  }, [mode, normalEvos, megaEvos]);
   const { data: targetSpecies } = useQuery({
-    queryKey: ["species-by-name", target], enabled: !!target && open && !isMegaForm && !isFinalStage,
+    queryKey: ["species-by-name", target], enabled: !!target && open && !isMegaForm,
     queryFn: async () => { const { data } = await supabase.from("species").select("*").eq("name", target).maybeSingle(); return data as Species | null; },
   });
   const { data: baseSpecies } = useQuery({
     queryKey: ["species-by-id", baseSpeciesId], enabled: !!baseSpeciesId && open,
     queryFn: async () => { const { data } = await supabase.from("species").select("*").eq("id", baseSpeciesId!).maybeSingle(); return data as Species | null; },
   });
-  const mode: "revert" | "mega" | "evolve" = isMegaForm ? "revert" : isFinalStage ? "mega" : "evolve";
   const label = mode === "revert" ? "Revert" : mode === "mega" ? "Mega Evolve" : "Evolve";
   const Icon = mode === "mega" ? Zap : Sparkles;
-  async function transform() {
-    let next: Species | null = null; let newBaseSpecies: string | null | undefined = baseSpeciesId;
-    if (mode === "evolve") { next = targetSpecies ?? null; if (!next) { toast.error(`Evolution "${target}" not found.`); return; } }
-    else if (mode === "mega") { next = megaSpecies ?? null; if (!next) { toast.error(`${megaName} not found in dex.`); return; } newBaseSpecies = fromSpeciesId; }
-    else { next = baseSpecies ?? null; if (!next) { toast.error("Base form not found."); return; } newBaseSpecies = null; }
+  async function transform(forceMega: boolean = false) {
+    let next: Species | null = null;
+    let newBaseSpecies: string | null | undefined = baseSpeciesId;
+    const effectiveMode = forceMega ? "mega" : mode;
+    if (effectiveMode === "evolve" || effectiveMode === "mega") {
+      next = targetSpecies ?? null;
+      if (!next) { toast.error(`"${target}" not found.`); return; }
+      if (effectiveMode === "mega") newBaseSpecies = fromSpeciesId;
+    } else {
+      next = baseSpecies ?? null;
+      if (!next) { toast.error("Base form not found."); return; }
+      newBaseSpecies = null;
+    }
     setAnimating(true); setShowEvolved(false);
     const iv = setInterval(() => setToggle((t) => !t), 250);
     await new Promise((r) => setTimeout(r, 3000)); clearInterval(iv); setShowEvolved(true);
@@ -739,26 +754,117 @@ function EvolveButton({ pokemonId, fromSprite, fromSpeciesId, currentName, evolu
     if (error) { toast.error(error.message); setAnimating(false); return; }
     qc.invalidateQueries({ queryKey: ["pokemon", pokemonId] }); qc.invalidateQueries({ queryKey: ["species", next.id] });
   }
-  const nextSprite = mode === "evolve" ? targetSpecies?.sprite_url : mode === "mega" ? megaSpecies?.sprite_url : baseSpecies?.sprite_url;
-  const nextName = mode === "evolve" ? target : mode === "mega" ? megaName : baseSpecies?.name ?? "base form";
+  const nextSprite = mode === "revert" ? baseSpecies?.sprite_url : targetSpecies?.sprite_url;
+  const nextName = mode === "revert" ? (baseSpecies?.name ?? "base form") : target;
   const displayedSprite = showEvolved ? nextSprite : (toggle ? nextSprite : fromSprite);
+  // Hide the button entirely if there's nothing to do.
+  if (!isMegaForm && !hasNormal && !hasMega) return null;
+  return (
+    <>
+      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setAnimating(false); setShowEvolved(false); setToggle(false); } }}>
+        <DialogTrigger asChild><Button size="sm" variant="secondary" className="h-8"><Icon className="mr-1 h-3.5 w-3.5" /> {label}</Button></DialogTrigger>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{showEvolved ? `Transformed into ${nextName}!` : label}</DialogTitle></DialogHeader>
+          {!animating && (
+            <div className="space-y-3">
+              {mode === "evolve" && (
+                <>
+                  <Label className="text-xs">Evolves into</Label>
+                  <Select value={target} onValueChange={setTarget}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{normalEvos.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}</SelectContent>
+                  </Select>
+                </>
+              )}
+              {mode === "mega" && (
+                megaEvos.length > 1 ? (
+                  <>
+                    <Label className="text-xs">Mega form</Label>
+                    <Select value={target} onValueChange={setTarget}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{megaEvos.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </>
+                ) : (
+                  <p className="text-sm">Trigger Mega Evolution into <strong>{target}</strong>?</p>
+                )
+              )}
+              {mode === "revert" && <p className="text-sm">Revert to <strong>{baseSpecies?.name ?? "base form"}</strong>?</p>}
+              <Button onClick={() => transform(false)} className="w-full"><Icon className="mr-1.5 h-4 w-4" /> {label}</Button>
+            </div>
+          )}
+          {animating && (
+            <div className="flex flex-col items-center justify-center gap-4 py-6">
+              {displayedSprite ? <img src={displayedSprite} alt="" className={`h-48 w-48 object-contain transition-all duration-200 ${showEvolved ? "drop-shadow-[0_0_30px_hsl(var(--primary))]" : "brightness-200 contrast-150"}`} /> : <div className="flex h-48 w-48 items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground">No sprite</div>}
+              <p className="text-sm font-bold">{showEvolved ? `Now ${nextName}!` : `${label}ing…`}</p>
+              {showEvolved && <Button onClick={() => setOpen(false)} className="w-full">Done</Button>}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+      {/* Extra dedicated Mega Evolve button when normal evolutions are available alongside mega forms */}
+      {!isMegaForm && hasNormal && hasMega && (
+        <MegaEvolveSubButton
+          pokemonId={pokemonId}
+          fromSprite={fromSprite}
+          fromSpeciesId={fromSpeciesId}
+          megaEvos={megaEvos}
+        />
+      )}
+    </>
+  );
+}
+
+function MegaEvolveSubButton({ pokemonId, fromSprite, fromSpeciesId, megaEvos }: {
+  pokemonId: string; fromSprite: string | null; fromSpeciesId: string; megaEvos: string[];
+}) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [target, setTarget] = useState<string>(megaEvos[0] ?? "");
+  const [animating, setAnimating] = useState(false);
+  const [showEvolved, setShowEvolved] = useState(false);
+  const [toggle, setToggle] = useState(false);
+  const { data: megaSpecies } = useQuery({
+    queryKey: ["species-by-name", target], enabled: !!target && open,
+    queryFn: async () => { const { data } = await supabase.from("species").select("*").eq("name", target).maybeSingle(); return data as Species | null; },
+  });
+  async function go() {
+    if (!megaSpecies) { toast.error(`${target} not found.`); return; }
+    setAnimating(true); setShowEvolved(false);
+    const iv = setInterval(() => setToggle((t) => !t), 250);
+    await new Promise((r) => setTimeout(r, 3000)); clearInterval(iv); setShowEvolved(true);
+    const newMods: Record<string, string> = { ...(((await supabase.from("pokemon").select("modifiers").eq("id", pokemonId).single()).data?.modifiers) as Record<string, string> ?? {}) };
+    newMods._base_species = fromSpeciesId;
+    const { error } = await supabase.from("pokemon").update({ species_id: megaSpecies.id, current_attrs: megaSpecies.base_attrs, hp: megaSpecies.base_hp + (megaSpecies.base_attrs.vitality ?? 1), modifiers: newMods }).eq("id", pokemonId);
+    if (error) { toast.error(error.message); setAnimating(false); return; }
+    qc.invalidateQueries({ queryKey: ["pokemon", pokemonId] }); qc.invalidateQueries({ queryKey: ["species", megaSpecies.id] });
+  }
+  const sprite = showEvolved ? megaSpecies?.sprite_url : (toggle ? megaSpecies?.sprite_url : fromSprite);
   return (
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setAnimating(false); setShowEvolved(false); setToggle(false); } }}>
-      <DialogTrigger asChild><Button size="sm" variant="secondary" className="h-8"><Icon className="mr-1 h-3.5 w-3.5" /> {label}</Button></DialogTrigger>
+      <DialogTrigger asChild><Button size="sm" variant="secondary" className="h-8"><Zap className="mr-1 h-3.5 w-3.5" /> Mega</Button></DialogTrigger>
       <DialogContent>
-        <DialogHeader><DialogTitle>{showEvolved ? `Transformed into ${nextName}!` : label}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{showEvolved ? `Mega Evolved into ${target}!` : "Mega Evolve"}</DialogTitle></DialogHeader>
         {!animating && (
           <div className="space-y-3">
-            {mode === "evolve" && <><Label className="text-xs">Evolves into</Label><Select value={target} onValueChange={setTarget}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{evolutions.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}</SelectContent></Select></>}
-            {mode === "mega" && <p className="text-sm">Trigger Mega Evolution into <strong>{megaName}</strong>?</p>}
-            {mode === "revert" && <p className="text-sm">Revert to <strong>{baseSpecies?.name ?? "base form"}</strong>?</p>}
-            <Button onClick={transform} className="w-full"><Icon className="mr-1.5 h-4 w-4" /> {label}</Button>
+            {megaEvos.length > 1 ? (
+              <>
+                <Label className="text-xs">Mega form</Label>
+                <Select value={target} onValueChange={setTarget}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{megaEvos.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}</SelectContent>
+                </Select>
+              </>
+            ) : (
+              <p className="text-sm">Trigger Mega Evolution into <strong>{target}</strong>?</p>
+            )}
+            <Button onClick={go} className="w-full"><Zap className="mr-1.5 h-4 w-4" /> Mega Evolve</Button>
           </div>
         )}
         {animating && (
           <div className="flex flex-col items-center justify-center gap-4 py-6">
-            {displayedSprite ? <img src={displayedSprite} alt="" className={`h-48 w-48 object-contain transition-all duration-200 ${showEvolved ? "drop-shadow-[0_0_30px_hsl(var(--primary))]" : "brightness-200 contrast-150"}`} /> : <div className="flex h-48 w-48 items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground">No sprite</div>}
-            <p className="text-sm font-bold">{showEvolved ? `Now ${nextName}!` : `${label}ing…`}</p>
+            {sprite ? <img src={sprite} alt="" className={`h-48 w-48 object-contain transition-all duration-200 ${showEvolved ? "drop-shadow-[0_0_30px_hsl(var(--primary))]" : "brightness-200 contrast-150"}`} /> : <div className="flex h-48 w-48 items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground">No sprite</div>}
+            <p className="text-sm font-bold">{showEvolved ? `Now ${target}!` : "Mega Evolving…"}</p>
             {showEvolved && <Button onClick={() => setOpen(false)} className="w-full">Done</Button>}
           </div>
         )}

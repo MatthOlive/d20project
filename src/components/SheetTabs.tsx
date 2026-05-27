@@ -9,6 +9,7 @@ import {
 import { TrainerSheet } from "@/components/TrainerSheet";
 import { PokemonSheet } from "@/components/PokemonSheet";
 import { Shop } from "@/components/Shop";
+import { DRAG_MIME, type DragCharacterPayload } from "@/components/MapBoard";
 import { User, Boxes, Plus, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -127,7 +128,29 @@ export function SheetTabs(props: {
           active={active.kind === "pc" || active.kind === "pcPokemon"}
           onClick={() => setActive({ kind: "pc" })}
           tone="pc"
-          title="PC (Box)"
+          title="PC (Box) — arraste um Pokémon dos Files aqui para guardar"
+          onDragOver={(e) => {
+            if (e.dataTransfer.types.includes(DRAG_MIME)) {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+            }
+          }}
+          onDrop={async (e) => {
+            const raw = e.dataTransfer.getData(DRAG_MIME);
+            if (!raw) return;
+            e.preventDefault();
+            try {
+              const p = JSON.parse(raw) as DragCharacterPayload;
+              if (p.kind !== "pokemon") { toast.error("Apenas Pokémon podem ir para o PC."); return; }
+              const { error } = await supabase.from("pokemon")
+                .update({ owner_trainer_id: trainerId, team_slot: null })
+                .eq("id", p.id);
+              if (error) { toast.error(error.message); return; }
+              toast.success(`${p.label} guardado no PC`);
+              invalidateRoster();
+              setActive({ kind: "pc" });
+            } catch { /* ignore */ }
+          }}
         >
           <Boxes className="h-4 w-4" />
         </TabButton>
@@ -209,19 +232,23 @@ export function SheetTabs(props: {
 }
 
 function TabButton({
-  active, onClick, children, title, tone,
+  active, onClick, children, title, tone, onDragOver, onDrop,
 }: {
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
   title: string;
   tone: "primary" | "team" | "empty" | "pc";
+  onDragOver?: React.DragEventHandler<HTMLButtonElement>;
+  onDrop?: React.DragEventHandler<HTMLButtonElement>;
 }) {
   return (
     <button
       type="button"
       title={title}
       onClick={onClick}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
       className={cn(
         "flex h-11 w-full items-center justify-center rounded-md border transition",
         active
