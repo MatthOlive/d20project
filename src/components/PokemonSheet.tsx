@@ -377,7 +377,7 @@ export function PokemonSheet({
       {/* ============ BLOCO 3 — Skills ============ */}
       <section className="rounded-lg border border-border bg-card p-3">
         <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-primary">Skills</h3>
-        <div className="grid gap-3 lg:grid-cols-5">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <SkillGroup title="Fight" tint="bg-primary/15 text-primary"
             skills={["Brawl", "Channel", "Clash", "Evasion"]}
             values={pokemon.skills} canEdit={canEdit}
@@ -388,14 +388,6 @@ export function PokemonSheet({
             onChange={(s) => patch({ skills: { ...pokemon.skills, ...s } })} />
           <SkillGroup title="Social" tint="bg-pink-500/15 text-pink-500"
             skills={["Allure", "Etiquette", "Intimidate", "Perform"]}
-            values={pokemon.skills} canEdit={canEdit}
-            onChange={(s) => patch({ skills: { ...pokemon.skills, ...s } })} />
-          <SkillGroup title="Knowledge" tint="bg-sky-500/15 text-sky-500"
-            skills={["Crafts", "Lore", "Medicine", "Science"]}
-            values={pokemon.skills} canEdit={canEdit}
-            onChange={(s) => patch({ skills: { ...pokemon.skills, ...s } })} />
-          <SkillGroup title="Other" tint="bg-muted text-muted-foreground"
-            skills={["Empathy"]}
             values={pokemon.skills} canEdit={canEdit}
             onChange={(s) => patch({ skills: { ...pokemon.skills, ...s } })} />
         </div>
