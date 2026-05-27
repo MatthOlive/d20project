@@ -12,89 +12,95 @@ type ShopItem = {
   key: string;
   name: string;
   price: number;
-  category: "balls" | "potions" | "berries" | "battle" | "evolution" | "tm" | "misc";
+  category: "balls" | "potions" | "heals" | "revives" | "berries" | "herbal" | "drinks" | "protection" | "travel" | "gear";
   battle?: boolean;
   desc?: string;
+  effect?: string;
 };
 
 const ITEMS: ShopItem[] = [
-  // Pokéballs
-  { key: "pokeball",     name: "Pokéball",        price: 200,  category: "balls", desc: "Standard ball (pool 4)" },
-  { key: "greatball",    name: "Greatball",       price: 600,  category: "balls", desc: "Pool 6" },
-  { key: "ultraball",    name: "Ultraball",       price: 1200, category: "balls", desc: "Pool 8" },
-  { key: "premier",      name: "Premier Ball",    price: 200,  category: "balls" },
-  { key: "netball",      name: "Net Ball",        price: 1000, category: "balls", desc: "+2 vs Water/Bug" },
-  { key: "diveball",     name: "Dive Ball",       price: 1000, category: "balls", desc: "+2 underwater" },
-  { key: "nestball",     name: "Nest Ball",       price: 1000, category: "balls", desc: "+2 vs weaker pokémon" },
-  { key: "repeatball",   name: "Repeat Ball",     price: 1000, category: "balls", desc: "+2 vs already-caught species" },
-  { key: "timerball",    name: "Timer Ball",      price: 1000, category: "balls", desc: "+1 per round (max +3)" },
-  { key: "luxuryball",   name: "Luxury Ball",     price: 1000, category: "balls", desc: "+1 happiness on capture" },
-  { key: "duskball",     name: "Dusk Ball",       price: 1000, category: "balls", desc: "+2 at night / in caves" },
-  { key: "healball",     name: "Heal Ball",       price: 300,  category: "balls", desc: "Full heal on capture" },
-  { key: "quickball",    name: "Quick Ball",      price: 1000, category: "balls", desc: "+3 on first round" },
+  // Pokéballs (battle items)
+  { key: "pokeball",   name: "Pokéball",   price: 200,  category: "balls", battle: true, desc: "A basic ball for catching Pokémon and carrying heavy items.", effect: "Seal potency: 4 dice" },
+  { key: "greatball",  name: "Greatball",  price: 600,  category: "balls", battle: true, desc: "A sturdier barrier protects the seal allowing an easier catch.", effect: "Seal potency: 6 dice" },
+  { key: "ultraball",  name: "Ultraball",  price: 1200, category: "balls", battle: true, desc: "The best seal in the market to ensure the catch of stronger Pokémon.", effect: "Seal potency: 8 dice" },
 
   // Potions
-  { key: "potion",       name: "Potion",          price: 300,  category: "potions", desc: "Heals 2 HP" },
-  { key: "superpotion",  name: "Super Potion",    price: 700,  category: "potions", desc: "Heals 4 HP" },
-  { key: "hyperpotion",  name: "Hyper Potion",    price: 1500, category: "potions", desc: "Full heal" },
-  { key: "maxpotion",    name: "Max Potion",      price: 2500, category: "potions", desc: "Full HP & Will" },
-  { key: "revive",       name: "Revive",          price: 1500, category: "potions", desc: "Revives fainted pokémon at ½ HP" },
-  { key: "maxrevive",    name: "Max Revive",      price: 4000, category: "potions", desc: "Full revive" },
-  { key: "antidote",     name: "Antidote",        price: 100,  category: "potions", desc: "Cures Poison" },
-  { key: "burnheal",     name: "Burn Heal",       price: 250,  category: "potions", desc: "Cures Burn" },
-  { key: "iceheal",      name: "Ice Heal",        price: 250,  category: "potions", desc: "Cures Frozen" },
-  { key: "awakening",    name: "Awakening",       price: 250,  category: "potions", desc: "Cures Sleep" },
-  { key: "paralyzeheal", name: "Paralyze Heal",   price: 200,  category: "potions", desc: "Cures Paralysis" },
-  { key: "fullheal",     name: "Full Heal",       price: 600,  category: "potions", desc: "Cures all status" },
+  { key: "potion",      name: "Potion",       price: 400,  category: "potions", battle: true, desc: "Pocket sized spray potion to relieve pain and heal bruises.", effect: "2 units" },
+  { key: "superpotion", name: "Super Potion", price: 700,  category: "potions", battle: true, desc: "Concentrated formula. Closes wounds and heals cracked bones.", effect: "4 units" },
+  { key: "hyperpotion", name: "Hyper Potion", price: 1200, category: "potions", battle: true, desc: "Best value pack. Can be rationed or used all at once.", effect: "14 units" },
+  { key: "maxpotion",   name: "Max Potion",   price: 1700, category: "potions", desc: "Single-use capsule. Pokémon won't restore until next day.", effect: "Recover full HP" },
+  { key: "fullrestore", name: "Full Restore", price: 2000, category: "potions", desc: "Deluxe single-use capsule. Pokémon won't restore until next day.", effect: "Recover full HP & heal status" },
 
-  // Berries (battle items)
-  { key: "oranberry",    name: "Oran Berry",      price: 200,  category: "berries", battle: true, desc: "Heals 2 HP when held & low" },
-  { key: "sitrusberry",  name: "Sitrus Berry",    price: 600,  category: "berries", battle: true, desc: "Heals 4 HP" },
-  { key: "lumberry",     name: "Lum Berry",       price: 600,  category: "berries", battle: true, desc: "Cures any status" },
-  { key: "chestoberry",  name: "Chesto Berry",    price: 250,  category: "berries", battle: true, desc: "Cures Sleep" },
-  { key: "pechaberry",   name: "Pecha Berry",     price: 250,  category: "berries", battle: true, desc: "Cures Poison" },
-  { key: "rawstberry",   name: "Rawst Berry",     price: 250,  category: "berries", battle: true, desc: "Cures Burn" },
-  { key: "cheriberry",   name: "Cheri Berry",     price: 250,  category: "berries", battle: true, desc: "Cures Paralysis" },
-  { key: "aspearberry",  name: "Aspear Berry",    price: 250,  category: "berries", battle: true, desc: "Cures Frozen" },
-  { key: "leppaberry",   name: "Leppa Berry",     price: 800,  category: "berries", battle: true, desc: "Restores Will" },
+  // Heals
+  { key: "antidote",     name: "Antidote",      price: 100, category: "heals", battle: true, desc: "Quickly reduces the fever and relieves the pain.", effect: "Heals Poison / Poison+" },
+  { key: "awakening",    name: "Awakening",     price: 250, category: "heals", battle: true, desc: "Water-based solution to awake a drowsy Pokémon.", effect: "Heals Sleep" },
+  { key: "burnheal",     name: "Burn Heal",     price: 250, category: "heals", battle: true, desc: "Powder that douses the fire and aids healing.", effect: "Heals Burn 1/2/3" },
+  { key: "iceheal",      name: "Ice Heal",      price: 250, category: "heals", battle: true, desc: "Recovers normal temperature and heals frost biting.", effect: "Heals Frozen Solid" },
+  { key: "paralyzeheal", name: "Paralyze Heal", price: 200, category: "heals", battle: true, desc: "Relaxes the muscles and stops cramping.", effect: "Heals Paralysis" },
+  { key: "fullheal",     name: "Full Heal",     price: 600, category: "heals", battle: true, desc: "Superior spray formula that cures any status in a second.", effect: "Heals all status ailments" },
 
-  // Battle items
-  { key: "xattack",      name: "X Attack",        price: 500,  category: "battle", battle: true, desc: "+1 Strength die" },
-  { key: "xdefense",     name: "X Defense",       price: 550,  category: "battle", battle: true, desc: "+1 Defense" },
-  { key: "xspatk",       name: "X Sp. Atk",       price: 500,  category: "battle", battle: true, desc: "+1 Special die" },
-  { key: "xspdef",       name: "X Sp. Def",       price: 350,  category: "battle", battle: true, desc: "+1 Sp. Defense" },
-  { key: "xspeed",       name: "X Speed",         price: 350,  category: "battle", battle: true, desc: "+1 Dexterity die" },
-  { key: "xaccuracy",    name: "X Accuracy",      price: 950,  category: "battle", battle: true, desc: "+1 to accuracy rolls" },
-  { key: "dirisle",      name: "Dire Hit",        price: 650,  category: "battle", battle: true, desc: "+1 crit chance" },
-  { key: "guardspec",    name: "Guard Spec.",     price: 700,  category: "battle", battle: true, desc: "Prevents stat drops" },
+  // Revives
+  { key: "revive", name: "Revive", price: 1500, category: "revives", desc: "Small energy shard that brings a fainted Human or Pokémon back to consciousness.", effect: "Recover 1 HP & restore awareness" },
 
-  // Evolution / hold items
-  { key: "firestone",    name: "Fire Stone",      price: 3000, category: "evolution" },
-  { key: "waterstone",   name: "Water Stone",     price: 3000, category: "evolution" },
-  { key: "thunderstone", name: "Thunder Stone",   price: 3000, category: "evolution" },
-  { key: "leafstone",    name: "Leaf Stone",      price: 3000, category: "evolution" },
-  { key: "moonstone",    name: "Moon Stone",      price: 3000, category: "evolution" },
-  { key: "sunstone",     name: "Sun Stone",       price: 3000, category: "evolution" },
-  { key: "dawnstone",    name: "Dawn Stone",      price: 3000, category: "evolution" },
-  { key: "duskstone",    name: "Dusk Stone",      price: 3000, category: "evolution" },
-  { key: "shinystone",   name: "Shiny Stone",     price: 3000, category: "evolution" },
-  { key: "iceiston",     name: "Ice Stone",       price: 3000, category: "evolution" },
+  // Berries (battle)
+  { key: "aspearberry", name: "Aspear Berry", price: 0, category: "berries", battle: true, desc: "Rare. Rises body temperature, thawing ice.", effect: "Heals Frozen Solid" },
+  { key: "cheriberry",  name: "Cheri Berry",  price: 0, category: "berries", battle: true, desc: "Uncommon. Spicy flavor reinvigorates the muscles.", effect: "Heals Paralysis" },
+  { key: "chestoberry", name: "Chesto Berry", price: 0, category: "berries", battle: true, desc: "Common. Tough and dry, heals drowsiness.", effect: "Heals Sleep" },
+  { key: "oranberry",   name: "Oran Berry",   price: 0, category: "berries", battle: true, desc: "Uncommon. Delicious citric berry that numbs pain.", effect: "Heals 1 damage" },
+  { key: "pechaberry",  name: "Pecha Berry",  price: 0, category: "berries", battle: true, desc: "Uncommon. Sweet pulp absorbs simple poison.", effect: "Heals Poison" },
+  { key: "persimberry", name: "Persim Berry", price: 0, category: "berries", battle: true, desc: "Common. Strong flavored berry to snap out of confusion.", effect: "Heals Confusion" },
+  { key: "rawstberry",  name: "Rawst Berry",  price: 0, category: "berries", battle: true, desc: "Uncommon. Liquid pulp stops fire from spreading.", effect: "Heals Burn 1/2" },
+  { key: "sitrusberry", name: "Sitrus Berry", price: 0, category: "berries", battle: true, desc: "Rare. Bigger, sweeter Oran family berry.", effect: "Heals 3 damage or 1 lethal" },
+  { key: "lumberry",    name: "Lum Berry",    price: 0, category: "berries", battle: true, desc: "Rare. Said to cure everything.", effect: "Heals all status ailments" },
 
-  // Misc
-  { key: "escaperope",   name: "Escape Rope",     price: 550,  category: "misc" },
-  { key: "repel",        name: "Repel",           price: 350,  category: "misc" },
-  { key: "superrepel",   name: "Super Repel",     price: 500,  category: "misc" },
-  { key: "maxrepel",     name: "Max Repel",       price: 700,  category: "misc" },
+  // Herbal medicine
+  { key: "energyroot",   name: "Energy Root",   price: 800,  category: "herbal", desc: "Nasty tasting mystical root. Eaten whole or turned into powder.", effect: "Equals 14 units of potion" },
+  { key: "energypowder", name: "Energy Powder", price: 450,  category: "herbal", desc: "Horrid aftertaste, but stops the pain.", effect: "Equals 4 units of potion" },
+  { key: "healpowder",   name: "Heal Powder",   price: 500,  category: "herbal", desc: "Mix of foul herbs makes a cure-all powder.", effect: "Heals any status ailment" },
+  { key: "revivalherb",  name: "Revival Herb",  price: 2800, category: "herbal", desc: "Awful flavor but gets you back to consciousness. Extremely rare.", effect: "Recover full HP & restore awareness" },
+
+  // Energy drinks
+  { key: "berryjuice", name: "Berry Juice", price: 100, category: "drinks", desc: "Mixed drink of various berries, quite refreshing.", effect: "Restores up to 2 HP" },
+  { key: "freshwater", name: "Fresh Water", price: 200, category: "drinks", desc: "Full of electrolytes, restores vitality.", effect: "Restores up to 4 HP" },
+  { key: "sodapop",    name: "Sodapop",     price: 250, category: "drinks", desc: "Sugary drink gives a quick shot of energy.", effect: "Restores up to 5 HP" },
+  { key: "lemonade",   name: "Lemonade",    price: 300, category: "drinks", desc: "Citric boost and vitamins. Favorite after exercise.", effect: "Restores up to 6 HP" },
+  { key: "moomoomilk", name: "MooMoo Milk", price: 350, category: "drinks", desc: "Organic farm milk full of calcium, right out of the Miltank.", effect: "Restores up to 7 HP" },
+
+  // Protection
+  { key: "pokedoll",     name: "Pokédoll",         price: 1000, category: "protection", desc: "Life-size decoy used to escape wild Pokémon." },
+  { key: "pokemonrepel", name: "Pokémon Repel",    price: 350,  category: "protection", desc: "Pokémon won't come near you for a whole day. Machine-washable." },
+  { key: "pepperspray",  name: "Pepper Spray Can", price: 50,   category: "protection", desc: "Scares small Pokémon, may enrage bigger ones. 5 uses." },
+
+  // Travel
+  { key: "mountainbike",   name: "Mountain Bike",   price: 1500, category: "travel", desc: "Travel twice as fast with this awesome all-terrain bike." },
+  { key: "inflatableboat", name: "Inflatable Boat", price: 1000, category: "travel", desc: "Small boat for one person. Pokémon may pull you through water." },
+  { key: "fishingrod",     name: "Fishing Rod",     price: 300,  category: "travel", desc: "Catch Pokémon living underwater." },
+  { key: "saddle",         name: "Saddle",          price: 500,  category: "travel", desc: "Never worry about falling from your Pokémon again." },
+  { key: "sled",           name: "Sled",            price: 400,  category: "travel", desc: "Pulls you through snow, sand or smooth surfaces." },
+
+  // Trainer gear
+  { key: "bigtent",        name: "Big Camping Tent",        price: 2500, category: "gear", desc: "Spacious tent for a cozy night. Sprayed with Wild Pokémon repellent." },
+  { key: "smalltent",      name: "Small Camping Tent",      price: 800,  category: "gear", desc: "Comfortable space for 1 person, or 2 if squeezing." },
+  { key: "sleepingbag",    name: "Sleeping Bag",            price: 500,  category: "gear", desc: "Not too comfortable. After a few nights your back may hurt." },
+  { key: "stovecookware",  name: "Camping Stove & Cookware",price: 2000, category: "gear", desc: "Always have a warm meal on the road." },
+  { key: "cannedmeal",     name: "Canned Meal",             price: 15,   category: "gear", desc: "Enough to travel on. One can per day." },
+  { key: "regionalmap",    name: "Regional Map",            price: 50,   category: "gear", desc: "Marked routes, cities and Pokémon Centers of the region." },
+  { key: "compass",        name: "Compass",                 price: 100,  category: "gear", desc: "Points you in the right direction. Keep away from magnets." },
+  { key: "pokedex",        name: "Pokédex",                 price: 5000, category: "gear", desc: "Digital encyclopedia with regional Pokémon info." },
+  { key: "pokedexupgrade", name: "Pokédex Upgrade",         price: 2500, category: "gear", desc: "Add another region's Pokémon to your Pokédex." },
 ];
 
 const CAT_LABEL: Record<ShopItem["category"], string> = {
   balls: "Pokéballs",
-  potions: "Potions & Medicine",
+  potions: "Potions",
+  heals: "Heals",
+  revives: "Revives",
   berries: "Berries",
-  battle: "Battle items",
-  evolution: "Evolution stones",
-  tm: "TMs",
-  misc: "Misc",
+  herbal: "Herbal Medicine",
+  drinks: "Energy Drinks",
+  protection: "Protection Items",
+  travel: "Items for Traveling",
+  gear: "Trainer Gear",
 };
 
 type InventoryItem = { name: string; qty: number };
