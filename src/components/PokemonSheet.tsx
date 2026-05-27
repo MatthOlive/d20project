@@ -294,7 +294,20 @@ export function PokemonSheet({
             <div className="flex flex-wrap items-center gap-1.5 text-sm">
               <span className="rounded-full bg-accent px-2.5 py-0.5 font-bold">Will {pokemon.will}</span>
               <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-bold text-primary">Def {vit}</span>
-              <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-bold text-primary">SpDef {ins}</span>
+              <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-bold text-primary">
+                SpDef {spDef} <span className="ml-1 text-[9px] uppercase opacity-70">({spDefUsesInsight ? "Ins" : "Vit"})</span>
+              </span>
+              {isNarrator && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-2 text-[10px]"
+                  title="Toggle SpDef rule (Vitality default / Insight house rule)"
+                  onClick={() => patch({ modifiers: { ...(pokemon.modifiers as Record<string, number>), _spdef_uses_insight: (!spDefUsesInsight) as unknown as number } })}
+                >
+                  Use {spDefUsesInsight ? "Vit" : "Ins"}
+                </Button>
+              )}
               {canEdit && <EvolveButton pokemonId={pokemonId} fromSprite={species.sprite_url} fromSpeciesId={species.id} currentName={species.name} evolutions={species.evolutions} baseSpeciesId={(pokemon.modifiers as Record<string, unknown>)?._base_species as string | undefined} />}
               {canEdit && <DynamaxToggle mode={dynaMode} onChange={setDynaMode} />}
               {dynaMode && <span className="rounded-full bg-red-500/20 px-2.5 py-0.5 text-xs font-bold uppercase text-red-500">{dynaMode === "gigantamax" ? "G-Max" : "Dynamax"}</span>}
