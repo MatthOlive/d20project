@@ -190,6 +190,8 @@ export function PokemonSheet({
   const ins = pokemon.current_attrs.insight ?? 1;
   const dex = pokemon.current_attrs.dexterity ?? 1;
   const str = pokemon.current_attrs.strength ?? 1;
+  const spDefUsesInsight = Boolean((pokemon.modifiers as Record<string, unknown>)?._spdef_uses_insight);
+  const spDef = spDefUsesInsight ? ins : vit;
   const alert = pokemon.skills?.Alert ?? 1;
   const init = dex + alert;
   const clash = str + (pokemon.skills?.Clash ?? 0);
@@ -198,9 +200,14 @@ export function PokemonSheet({
     { name: "Brawl", value: pokemon.skills?.Brawl ?? 0 },
     { name: "Channel", value: pokemon.skills?.Channel ?? 0 },
   ];
+  const POKEMON_SKILL_LIST = [
+    "Brawl", "Channel", "Clash", "Evasion",
+    "Alert", "Athletic", "Nature", "Stealth",
+    "Allure", "Etiquette", "Intimidate", "Perform",
+  ];
   const allAttrs = POKEMON_ATTRS.map((a) => ({ name: a, value: pokemon.current_attrs[a] ?? 1 }));
   const allSocial = SOCIAL_ATTRS.map((a) => ({ name: a, value: pokemon.social_attrs?.[a] ?? 1 }));
-  const allSkills = SKILLS.map((s) => ({ name: s, value: pokemon.skills?.[s] ?? 0 }));
+  const allSkills = POKEMON_SKILL_LIST.map((s) => ({ name: s, value: pokemon.skills?.[s] ?? 0 }));
 
   return (
     <div className="space-y-4 p-4">
