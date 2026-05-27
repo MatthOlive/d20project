@@ -8,7 +8,8 @@ import {
 } from "@/components/ui/dialog";
 import { TrainerSheet } from "@/components/TrainerSheet";
 import { PokemonSheet } from "@/components/PokemonSheet";
-import { User, Boxes, Plus } from "lucide-react";
+import { Shop } from "@/components/Shop";
+import { User, Boxes, Plus, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -24,7 +25,8 @@ type Tab =
   | { kind: "trainer" }
   | { kind: "slot"; slot: number; pokemonId: string | null }
   | { kind: "pc" }
-  | { kind: "pcPokemon"; pokemonId: string };
+  | { kind: "pcPokemon"; pokemonId: string }
+  | { kind: "shop" };
 
 const SLOTS = [1, 2, 3, 4, 5, 6] as const;
 
@@ -128,6 +130,14 @@ export function SheetTabs(props: {
           title="PC (Box)"
         >
           <Boxes className="h-4 w-4" />
+        </TabButton>
+        <TabButton
+          active={active.kind === "shop"}
+          onClick={() => setActive({ kind: "shop" })}
+          tone="primary"
+          title="Pokémart"
+        >
+          <ShoppingCart className="h-4 w-4" />
         </TabButton>
       </div>
 
