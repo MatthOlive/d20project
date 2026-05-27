@@ -332,7 +332,7 @@ export function PokemonSheet({
 
       {/* ============ BLOCO 2 — Status + Physical + Social ============ */}
       <section className="grid gap-3 lg:grid-cols-3">
-        <div className="rounded-lg border border-border bg-card p-3">
+        <div className="rounded-lg border border-border bg-card p-3 min-w-0">
           <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Status problems</h4>
           <HpAndStatusBlock
             current={curHp} max={maxHpEff} status={pokemon.status ?? []}
