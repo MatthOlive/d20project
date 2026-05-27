@@ -220,5 +220,6 @@ export function MapBoard({
         );
       })}
     </div>
+    </div>
   );
 }
