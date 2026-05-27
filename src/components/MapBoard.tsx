@@ -51,6 +51,14 @@ export function MapBoard({
   const boardRef = useRef<HTMLDivElement>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
+  const [bgAspect, setBgAspect] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!backgroundUrl) { setBgAspect(null); return; }
+    const img = new Image();
+    img.onload = () => setBgAspect(img.naturalWidth / img.naturalHeight);
+    img.src = backgroundUrl;
+  }, [backgroundUrl]);
 
   const { data: tokens = [] } = useQuery({
     queryKey: ["tokens", gameId],
