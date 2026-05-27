@@ -142,29 +142,33 @@ function GameRoom() {
             isNarrator={isNarrator}
             onRoll={rollFromSheet}
             onOpenSheet={(kind, id, label) => openWindow({ kind, id, title: label })}
-            topLeftSlot={
-              <>
-                <span className="rounded-full bg-card/90 px-3 py-1 text-sm font-bold backdrop-blur">{game.name}</span>
-                {isNarrator && (
-                  <>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-0.5 text-xs font-bold text-primary-foreground">
-                      <Crown className="h-3 w-3" /> Narrator
-                    </span>
-                    <InviteButton url={inviteUrl} />
-                    <label className="cursor-pointer rounded-full bg-card/90 px-3 py-1 text-xs font-semibold backdrop-blur hover:bg-card">
-                      Set background
-                      <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadBackground(e.target.files[0])} />
-                    </label>
-                    <ScenarioButtons gameId={gameId} currentBg={game.background_url} />
-                    <Button size="sm" variant="secondary" className="h-7" onClick={() => setTurnOrderOpen((v) => !v)}>
-                      <Swords className="mr-1 h-3.5 w-3.5" /> Turn Order
-                    </Button>
-                    {game.narrator_type === "ai" && <KnowledgeIngest />}
-                  </>
-                )}
-              </>
-            }
           />
+          {/* Left side menu */}
+          <div className="pointer-events-auto absolute left-3 top-3 z-10 flex flex-col gap-2">
+            {isNarrator && (
+              <span className="inline-flex items-center justify-center gap-1 rounded-full bg-primary px-2.5 py-1 text-[10px] font-bold uppercase text-primary-foreground shadow">
+                <Crown className="h-3 w-3" /> Narrator
+              </span>
+            )}
+            {isNarrator && <InviteButton url={inviteUrl} />}
+            <Button
+              size="sm"
+              variant="secondary"
+              className="h-8 justify-start"
+              onClick={() => setTurnOrderOpen((v) => !v)}
+            >
+              <Swords className="mr-1 h-3.5 w-3.5" /> Turn Order
+            </Button>
+            {isNarrator && game.narrator_type === "ai" && <KnowledgeIngest />}
+          </div>
+          {/* Top "lingueta" disclosure (narrator only) */}
+          {isNarrator && (
+            <MapTopDisclosure
+              gameId={gameId}
+              currentBg={game.background_url}
+              uploadBackground={uploadBackground}
+            />
+          )}
           <InitiativePanel gameId={gameId} isNarrator={isNarrator} open={turnOrderOpen} onClose={() => setTurnOrderOpen(false)} />
         </div>
       </div>
