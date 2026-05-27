@@ -18,6 +18,7 @@ import { Plus, Users, Crown, Sparkles, Trash2, CheckSquare, X } from "lucide-rea
 import { useAuth } from "@/hooks/use-auth";
 import { useT, LANGS, type Lang } from "@/lib/i18n";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { KnowledgeIngest } from "@/components/KnowledgeIngest";
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: Dashboard,
