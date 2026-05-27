@@ -89,18 +89,20 @@ function GameRoom() {
     // Auto-populate Turn Order whenever an initiative roll is made
     if (meta && /initiative/i.test(label)) {
       const name = label.split("·")[0]?.trim() || label;
-      await supabase.from("initiative").upsert(
-        {
-          game_id: gameId,
-          character_kind: meta.characterKind,
-          character_ref: meta.characterId,
-          character_name: name,
-          image_url: meta.imageUrl ?? null,
-          successes: adjusted,
-          position: 0,
-        },
-        { onConflict: "game_id,character_ref" },
-      );
+      await supabase
+        .from("initiative")
+        .delete()
+        .eq("game_id", gameId)
+        .eq("character_ref", meta.characterId);
+      await supabase.from("initiative").insert({
+        game_id: gameId,
+        character_kind: meta.characterKind,
+        character_ref: meta.characterId,
+        character_name: name,
+        image_url: meta.imageUrl ?? null,
+        successes: adjusted,
+        position: 0,
+      });
     }
   }
   async function sendChatFromSheet(body: string) {
