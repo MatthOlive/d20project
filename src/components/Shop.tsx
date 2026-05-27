@@ -12,7 +12,7 @@ type ShopItem = {
   key: string;
   name: string;
   price: number;
-  category: "balls" | "potions" | "heals" | "revives" | "berries" | "herbal" | "drinks" | "protection" | "travel" | "gear";
+  category: "balls" | "potions" | "heals" | "revives" | "berries" | "herbal" | "drinks" | "food" | "vitamins" | "grooming" | "stones" | "protection" | "travel" | "gear";
   battle?: boolean;
   desc?: string;
   effect?: string;
