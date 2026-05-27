@@ -117,6 +117,8 @@ function GameRoom() {
             backgroundUrl={game.background_url}
             userId={user.id}
             isNarrator={isNarrator}
+            onRoll={rollFromSheet}
+            onOpenSheet={(kind, id, label) => openWindow({ kind, id, title: label })}
             topLeftSlot={
               <>
                 <span className="rounded-full bg-card/90 px-3 py-1 text-sm font-bold backdrop-blur">{game.name}</span>
@@ -307,17 +309,28 @@ function FilesPanel({
   const createPokemon = useMutation({
     mutationFn: async () => {
       if (!newPkmSpecies) throw new Error("Pick a species");
+      // Roll 1d100; 1–10 = shiny (10%)
+      const isShiny = Math.floor(Math.random() * 100) + 1 <= 10;
       const { data, error } = await supabase
         .from("pokemon")
-        .insert({ game_id: gameId, owner_id: userId, species_id: newPkmSpecies, rank: "starter" })
+        .insert({
+          game_id: gameId,
+          owner_id: userId,
+          species_id: newPkmSpecies,
+          rank: "starter",
+          is_shiny: isShiny,
+          is_overgrown: newPkmOvergrown,
+        })
         .select().single();
       if (error) throw error;
+      if (isShiny) toast.success("✨ Shiny rolled!");
       return data;
     },
     onSuccess: (p) => {
       qc.invalidateQueries({ queryKey: ["characters", gameId] });
       setPkmDialogOpen(false);
       setNewPkmSpecies("");
+      setNewPkmOvergrown(false);
       onOpen({ kind: "pokemon", id: p.id, title: "Pokémon" });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -460,6 +473,22 @@ function FilesPanel({
                   {speciesList?.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                 </SelectContent>
               </Select>
+              <label className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-2.5 text-sm">
+                <Checkbox
+                  checked={newPkmOvergrown}
+                  onCheckedChange={(v) => setNewPkmOvergrown(!!v)}
+                  className="mt-0.5"
+                />
+                <span>
+                  <span className="font-semibold">Overgrown</span>
+                  <span className="block text-xs text-muted-foreground">
+                    Pokémon raro com vitalidade superior. HP base +1.
+                  </span>
+                </span>
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Chance de shiny: 10% (rolada automaticamente).
+              </p>
               <DialogFooter>
                 <Button onClick={() => createPokemon.mutate()} disabled={createPokemon.isPending}>Create</Button>
               </DialogFooter>

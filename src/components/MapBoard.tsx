@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { X } from "lucide-react";
+import { TokenActionBar } from "@/components/TokenActionBar";
 
 export type DragCharacterPayload = {
   kind: "pokemon" | "trainer";
@@ -35,16 +36,21 @@ export function MapBoard({
   userId,
   isNarrator,
   topLeftSlot,
+  onRoll,
+  onOpenSheet,
 }: {
   gameId: string;
   backgroundUrl: string | null;
   userId: string;
   isNarrator: boolean;
   topLeftSlot?: React.ReactNode;
+  onRoll?: (label: string, n: number, penalty?: number) => void;
+  onOpenSheet?: (kind: "trainer" | "pokemon", id: string, label: string) => void;
 }) {
   const qc = useQueryClient();
   const boardRef = useRef<HTMLDivElement>(null);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
 
   const { data: tokens = [] } = useQuery({
     queryKey: ["tokens", gameId],
@@ -141,6 +147,7 @@ export function MapBoard({
 
       {tokens.map((t) => {
         const canMove = isNarrator || t.owner_id === userId;
+        const isSelected = selectedTokenId === t.id;
         return (
           <div
             key={t.id}
@@ -149,9 +156,12 @@ export function MapBoard({
               if (!canMove) return;
               setDragId(t.id);
               e.dataTransfer.effectAllowed = "move";
-              // empty drag image so the live token follows
               const img = new Image();
               e.dataTransfer.setDragImage(img, 0, 0);
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedTokenId((cur) => (cur === t.id ? null : t.id));
             }}
             className="group absolute -translate-x-1/2 -translate-y-1/2 select-none"
             style={{
@@ -159,11 +169,12 @@ export function MapBoard({
               top: `${t.y * 100}%`,
               width: t.size,
               height: t.size,
-              cursor: canMove ? "grab" : "default",
+              cursor: canMove ? "grab" : "pointer",
+              zIndex: isSelected ? 20 : 1,
             }}
             title={t.label}
           >
-            <div className="relative flex h-full w-full items-center justify-center rounded-full border-2 border-primary bg-card shadow-md ring-2 ring-background">
+            <div className={`relative flex h-full w-full items-center justify-center rounded-full border-2 ${isSelected ? "border-amber-400 ring-2 ring-amber-400/50" : "border-primary ring-2 ring-background"} bg-card shadow-md`}>
               {t.image_url ? (
                 <img src={t.image_url} alt={t.label} className="h-full w-full rounded-full object-cover" draggable={false} />
               ) : (
@@ -180,6 +191,21 @@ export function MapBoard({
             <div className="pointer-events-none absolute left-1/2 top-full mt-0.5 -translate-x-1/2 whitespace-nowrap rounded bg-background/90 px-1.5 py-0.5 text-[10px] font-semibold shadow">
               {t.label}
             </div>
+            {isSelected && onRoll && (
+              <div
+                className="absolute left-1/2 top-full mt-6 -translate-x-1/2"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <TokenActionBar
+                  kind={t.character_kind}
+                  id={t.character_id}
+                  label={t.label}
+                  onRoll={onRoll}
+                  onClose={() => setSelectedTokenId(null)}
+                  onOpenSheet={() => onOpenSheet?.(t.character_kind, t.character_id, t.label)}
+                />
+              </div>
+            )}
           </div>
         );
       })}
