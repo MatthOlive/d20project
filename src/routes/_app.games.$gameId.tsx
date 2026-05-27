@@ -117,6 +117,8 @@ function GameRoom() {
             backgroundUrl={game.background_url}
             userId={user.id}
             isNarrator={isNarrator}
+            onRoll={rollFromSheet}
+            onOpenSheet={(kind, id, label) => openWindow({ kind, id, title: label })}
             topLeftSlot={
               <>
                 <span className="rounded-full bg-card/90 px-3 py-1 text-sm font-bold backdrop-blur">{game.name}</span>
