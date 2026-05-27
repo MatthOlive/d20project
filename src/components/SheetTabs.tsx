@@ -232,19 +232,23 @@ export function SheetTabs(props: {
 }
 
 function TabButton({
-  active, onClick, children, title, tone,
+  active, onClick, children, title, tone, onDragOver, onDrop,
 }: {
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
   title: string;
   tone: "primary" | "team" | "empty" | "pc";
+  onDragOver?: React.DragEventHandler<HTMLButtonElement>;
+  onDrop?: React.DragEventHandler<HTMLButtonElement>;
 }) {
   return (
     <button
       type="button"
       title={title}
       onClick={onClick}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
       className={cn(
         "flex h-11 w-full items-center justify-center rounded-md border transition",
         active
