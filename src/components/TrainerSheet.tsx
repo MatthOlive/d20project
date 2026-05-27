@@ -219,7 +219,7 @@ export function TrainerSheet({
             {/* Action row */}
             <div className="flex flex-wrap items-center gap-1.5 pt-1">
               <Button size="sm" variant="outline" className="h-7"
-                onClick={() => onRoll(`${charName} · Initiative (Dex+Alert)`, initiativePool, painPenalty)}>
+                onClick={() => onRoll(`${charName} · Initiative (Dex+Alert)`, initiativePool, painPenalty, { characterKind: "trainer", characterId: trainerId, imageUrl: trainer.image_url })}>
                 <Dices className="mr-1 h-3.5 w-3.5" /> Initiative · {initiativePool}d6
               </Button>
               <AttackRollButton
