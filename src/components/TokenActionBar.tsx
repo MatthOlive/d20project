@@ -65,7 +65,7 @@ function TrainerBar({ id, label, onRoll, onClose, onOpenSheet }: Props) {
   return (
     <Shell onClose={onClose} title={label} onOpenSheet={onOpenSheet}>
       <ActionBtn icon={<Zap className="h-3.5 w-3.5" />} label="Initiative"
-        onClick={() => onRoll(`${label} · Initiative (Dex+Alert)`, dex + alert, pen)} />
+        onClick={() => onRoll(`${label} · Initiative (Dex+Alert)`, dex + alert, pen, { characterKind: "trainer", characterId: id, imageUrl: t.image_url })} />
       <CatchButton label={label} dex={dex} throwSk={throwSk} pen={pen} onRoll={onRoll} />
       <ActionBtn icon={<Swords className="h-3.5 w-3.5" />} label="Evasion"
         onClick={() => onRoll(`${label} · Evasion (Dex+Evasion)`, dex + evasion, pen)} />
