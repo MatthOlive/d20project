@@ -44,7 +44,7 @@ export function MapBoard({
   userId: string;
   isNarrator: boolean;
   topLeftSlot?: React.ReactNode;
-  onRoll?: (label: string, n: number, penalty?: number) => void;
+  onRoll?: (label: string, n: number, penalty?: number, meta?: { characterKind: "trainer" | "pokemon"; characterId: string; imageUrl?: string | null }) => void;
   onOpenSheet?: (kind: "trainer" | "pokemon", id: string, label: string) => void;
 }) {
   const qc = useQueryClient();
