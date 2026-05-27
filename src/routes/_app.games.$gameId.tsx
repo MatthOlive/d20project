@@ -159,7 +159,6 @@ function GameRoom() {
             >
               <Swords className="mr-1 h-3.5 w-3.5" /> Turn Order
             </Button>
-            {isNarrator && game.narrator_type === "ai" && <KnowledgeIngest />}
           </div>
           {/* Top "lingueta" disclosure (narrator only) */}
           {isNarrator && (
