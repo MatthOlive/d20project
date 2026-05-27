@@ -14,7 +14,7 @@ import {
 import { DotEditor } from "@/components/DotEditor";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  POKEMON_ATTRS, SOCIAL_ATTRS, RANKS, RANK_LABELS, RANK_BONUS, TYPE_COLORS, SKILLS, type Rank,
+  POKEMON_ATTRS, SOCIAL_ATTRS, RANKS, RANK_LABELS, RANK_BONUS, TYPE_COLORS, type Rank,
   rankAtLeast, resolveSkillValue, shinyize,
 } from "@/lib/pokerole";
 
@@ -190,6 +190,8 @@ export function PokemonSheet({
   const ins = pokemon.current_attrs.insight ?? 1;
   const dex = pokemon.current_attrs.dexterity ?? 1;
   const str = pokemon.current_attrs.strength ?? 1;
+  const spDefUsesInsight = Boolean((pokemon.modifiers as Record<string, unknown>)?._spdef_uses_insight);
+  const spDef = spDefUsesInsight ? ins : vit;
   const alert = pokemon.skills?.Alert ?? 1;
   const init = dex + alert;
   const clash = str + (pokemon.skills?.Clash ?? 0);
@@ -198,9 +200,14 @@ export function PokemonSheet({
     { name: "Brawl", value: pokemon.skills?.Brawl ?? 0 },
     { name: "Channel", value: pokemon.skills?.Channel ?? 0 },
   ];
+  const POKEMON_SKILL_LIST = [
+    "Brawl", "Channel", "Clash", "Evasion",
+    "Alert", "Athletic", "Nature", "Stealth",
+    "Allure", "Etiquette", "Intimidate", "Perform",
+  ];
   const allAttrs = POKEMON_ATTRS.map((a) => ({ name: a, value: pokemon.current_attrs[a] ?? 1 }));
   const allSocial = SOCIAL_ATTRS.map((a) => ({ name: a, value: pokemon.social_attrs?.[a] ?? 1 }));
-  const allSkills = SKILLS.map((s) => ({ name: s, value: pokemon.skills?.[s] ?? 0 }));
+  const allSkills = POKEMON_SKILL_LIST.map((s) => ({ name: s, value: pokemon.skills?.[s] ?? 0 }));
 
   return (
     <div className="space-y-4 p-4">
@@ -287,7 +294,20 @@ export function PokemonSheet({
             <div className="flex flex-wrap items-center gap-1.5 text-sm">
               <span className="rounded-full bg-accent px-2.5 py-0.5 font-bold">Will {pokemon.will}</span>
               <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-bold text-primary">Def {vit}</span>
-              <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-bold text-primary">SpDef {ins}</span>
+              <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-bold text-primary">
+                SpDef {spDef} <span className="ml-1 text-[9px] uppercase opacity-70">({spDefUsesInsight ? "Ins" : "Vit"})</span>
+              </span>
+              {isNarrator && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-2 text-[10px]"
+                  title="Toggle SpDef rule (Vitality default / Insight house rule)"
+                  onClick={() => patch({ modifiers: { ...(pokemon.modifiers as Record<string, number>), _spdef_uses_insight: (!spDefUsesInsight) as unknown as number } })}
+                >
+                  Use {spDefUsesInsight ? "Vit" : "Ins"}
+                </Button>
+              )}
               {canEdit && <EvolveButton pokemonId={pokemonId} fromSprite={species.sprite_url} fromSpeciesId={species.id} currentName={species.name} evolutions={species.evolutions} baseSpeciesId={(pokemon.modifiers as Record<string, unknown>)?._base_species as string | undefined} />}
               {canEdit && <DynamaxToggle mode={dynaMode} onChange={setDynaMode} />}
               {dynaMode && <span className="rounded-full bg-red-500/20 px-2.5 py-0.5 text-xs font-bold uppercase text-red-500">{dynaMode === "gigantamax" ? "G-Max" : "Dynamax"}</span>}
@@ -312,7 +332,7 @@ export function PokemonSheet({
 
       {/* ============ BLOCO 2 — Status + Physical + Social ============ */}
       <section className="grid gap-3 lg:grid-cols-3">
-        <div className="rounded-lg border border-border bg-card p-3">
+        <div className="rounded-lg border border-border bg-card p-3 min-w-0">
           <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Status problems</h4>
           <HpAndStatusBlock
             current={curHp} max={maxHpEff} status={pokemon.status ?? []}
@@ -357,7 +377,7 @@ export function PokemonSheet({
       {/* ============ BLOCO 3 — Skills ============ */}
       <section className="rounded-lg border border-border bg-card p-3">
         <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-primary">Skills</h3>
-        <div className="grid gap-3 lg:grid-cols-5">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <SkillGroup title="Fight" tint="bg-primary/15 text-primary"
             skills={["Brawl", "Channel", "Clash", "Evasion"]}
             values={pokemon.skills} canEdit={canEdit}
@@ -368,14 +388,6 @@ export function PokemonSheet({
             onChange={(s) => patch({ skills: { ...pokemon.skills, ...s } })} />
           <SkillGroup title="Social" tint="bg-pink-500/15 text-pink-500"
             skills={["Allure", "Etiquette", "Intimidate", "Perform"]}
-            values={pokemon.skills} canEdit={canEdit}
-            onChange={(s) => patch({ skills: { ...pokemon.skills, ...s } })} />
-          <SkillGroup title="Knowledge" tint="bg-sky-500/15 text-sky-500"
-            skills={["Crafts", "Lore", "Medicine", "Science"]}
-            values={pokemon.skills} canEdit={canEdit}
-            onChange={(s) => patch({ skills: { ...pokemon.skills, ...s } })} />
-          <SkillGroup title="Other" tint="bg-muted text-muted-foreground"
-            skills={["Empathy"]}
             values={pokemon.skills} canEdit={canEdit}
             onChange={(s) => patch({ skills: { ...pokemon.skills, ...s } })} />
         </div>

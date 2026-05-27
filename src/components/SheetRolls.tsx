@@ -41,7 +41,7 @@ export function HpAndStatusBlock({
     onStatusChange(Array.from(set));
   }
   return (
-    <div className="space-y-3 rounded-lg border border-border bg-card p-3">
+    <div className="space-y-3">
       <div className="flex flex-wrap items-end gap-3">
         <div>
           <Label className="text-xs">Current HP</Label>
@@ -61,22 +61,22 @@ export function HpAndStatusBlock({
             <span className="text-xs text-muted-foreground">/ {max}</span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className={`rounded-full px-3 py-1 text-xs font-bold ${
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className={`inline-block w-fit rounded-full px-3 py-1 text-xs font-bold ${
             painPenalty === 0 ? "bg-muted text-muted-foreground"
               : painPenalty === 1 ? "bg-amber-500/20 text-amber-600"
                 : "bg-destructive/20 text-destructive"
           }`}>
             Pain Penalty −{painPenalty}
           </span>
-          <span className="text-[11px] text-muted-foreground">
+          <span className="text-[11px] leading-tight text-muted-foreground">
             Subtracts {painPenalty} success{painPenalty === 1 ? "" : "es"} from every roll.
           </span>
         </div>
       </div>
       <div>
         <Label className="text-xs">Status problems</Label>
-        <div className="mt-1.5 grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+        <div className="mt-1.5 grid grid-cols-1 gap-1.5 min-[420px]:grid-cols-2 min-[640px]:grid-cols-3">
           {STATUS_CONDITIONS.map((c) => (
             <label key={c} className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5 text-xs">
               <Checkbox
@@ -84,7 +84,7 @@ export function HpAndStatusBlock({
                 disabled={!canEdit}
                 onCheckedChange={(v) => toggle(c, !!v)}
               />
-              <span>{c}</span>
+              <span className="truncate">{c}</span>
             </label>
           ))}
         </div>
