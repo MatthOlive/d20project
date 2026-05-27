@@ -805,7 +805,7 @@ function MechanicsCompendium() {
 
 type InitRow = {
   id: string; game_id: string; character_name: string; character_kind: string;
-  character_ref: string | null; successes: number; position: number;
+  character_ref: string | null; successes: number; position: number; image_url: string | null;
 };
 
 function InitiativePanel({ gameId, isNarrator, open, onClose }: { gameId: string; isNarrator: boolean; open: boolean; onClose: () => void }) {
@@ -814,7 +814,9 @@ function InitiativePanel({ gameId, isNarrator, open, onClose }: { gameId: string
     queryKey: ["initiative", gameId],
     queryFn: async () => {
       const { data } = await supabase
-        .from("initiative").select("*").eq("game_id", gameId).order("position");
+        .from("initiative").select("*").eq("game_id", gameId)
+        .order("successes", { ascending: false })
+        .order("created_at", { ascending: true });
       return (data ?? []) as InitRow[];
     },
   });
@@ -829,7 +831,7 @@ function InitiativePanel({ gameId, isNarrator, open, onClose }: { gameId: string
     return () => { supabase.removeChannel(ch); };
   }, [gameId, qc]);
 
-  if (!open || rows.length === 0) return null;
+  if (!open) return null;
 
   async function clearInit() {
     if (!confirm("End combat and clear the turn order?")) return;
@@ -837,13 +839,13 @@ function InitiativePanel({ gameId, isNarrator, open, onClose }: { gameId: string
   }
 
   return (
-    <div className="pointer-events-auto absolute right-4 top-20 z-20 w-60 rounded-lg border border-border bg-card/95 p-3 shadow-lg backdrop-blur">
+    <div className="pointer-events-auto absolute right-4 top-3 z-20 w-64 rounded-lg border border-border bg-card/95 p-3 shadow-lg backdrop-blur">
       <div className="mb-2 flex items-center justify-between">
         <h4 className="flex items-center gap-1 text-xs font-bold uppercase tracking-wide">
           <Swords className="h-3.5 w-3.5 text-primary" /> Turn Order
         </h4>
         <div className="flex items-center gap-1">
-          {isNarrator && (
+          {isNarrator && rows.length > 0 && (
             <Button size="icon" variant="ghost" className="h-6 w-6" onClick={clearInit} title="End combat">
               <Trash2 className="h-3 w-3" />
             </Button>
@@ -851,17 +853,62 @@ function InitiativePanel({ gameId, isNarrator, open, onClose }: { gameId: string
           <Button size="icon" variant="ghost" className="h-6 w-6" onClick={onClose} title="Hide">×</Button>
         </div>
       </div>
-      <ol className="space-y-1">
-        {rows.map((r, i) => (
-          <li key={r.id} className={`flex items-center justify-between rounded px-2 py-1 text-xs ${i === 0 ? "bg-primary/15 font-semibold" : "bg-muted/50"}`}>
-            <span className="flex items-center gap-1.5">
-              <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-background text-[10px]">{i + 1}</span>
-              {r.character_name}
-            </span>
-            <span className="text-muted-foreground">{r.successes} ✦</span>
-          </li>
-        ))}
-      </ol>
+      {rows.length === 0 ? (
+        <p className="px-1 py-3 text-center text-[11px] text-muted-foreground">
+          Sem rolagens de iniciativa ainda. Clique em <em>Initiative</em> em uma ficha ou na ação rápida do token para entrar na ordem.
+        </p>
+      ) : (
+        <ol className="space-y-1.5">
+          {rows.map((r, i) => (
+            <li
+              key={r.id}
+              className={`flex items-center gap-2 rounded px-2 py-1.5 text-xs ${i === 0 ? "bg-primary/15 font-semibold" : "bg-muted/50"}`}
+            >
+              <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-background text-[10px]">{i + 1}</span>
+              {r.image_url ? (
+                <img src={r.image_url} alt="" className="h-7 w-7 shrink-0 rounded-full border border-border object-cover" />
+              ) : (
+                <div className="h-7 w-7 shrink-0 rounded-full bg-background" />
+              )}
+              <span className="flex-1 truncate">{r.character_name}</span>
+              <span className="text-muted-foreground">{r.successes} ✦</span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
+// Top "lingueta" disclosure — collapsed by default; click to reveal scenario controls.
+function MapTopDisclosure({
+  gameId,
+  currentBg,
+  uploadBackground,
+}: {
+  gameId: string;
+  currentBg: string | null;
+  uploadBackground: (file: File) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="pointer-events-auto absolute left-1/2 top-0 z-10 flex -translate-x-1/2 flex-col items-center">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1 rounded-b-lg bg-card/95 px-4 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground shadow backdrop-blur hover:text-foreground"
+      >
+        {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        Map tools
+      </button>
+      {open && (
+        <div className="mt-1 flex flex-wrap items-center justify-center gap-1.5 rounded-lg border border-border bg-card/95 p-2 shadow-lg backdrop-blur">
+          <label className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-md border border-border bg-background px-2 text-xs font-semibold hover:bg-accent">
+            <ImageIcon className="h-3.5 w-3.5" /> Set background
+            <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadBackground(e.target.files[0])} />
+          </label>
+          <ScenarioButtons gameId={gameId} currentBg={currentBg} />
+        </div>
+      )}
     </div>
   );
 }
