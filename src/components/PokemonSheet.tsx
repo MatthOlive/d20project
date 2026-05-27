@@ -75,7 +75,7 @@ export function PokemonSheet({
   pokemonId, gameId: _gameId, userId, isNarrator, onRoll, onChat, onDeleted,
 }: {
   pokemonId: string; gameId: string; userId: string; isNarrator: boolean;
-  onRoll: (label: string, n: number, penalty?: number) => void;
+  onRoll: (label: string, n: number, penalty?: number, meta?: { characterKind: "trainer" | "pokemon"; characterId: string; imageUrl?: string | null }) => void;
   onChat: (body: string) => void; onDeleted?: () => void;
 }) {
   const qc = useQueryClient();
