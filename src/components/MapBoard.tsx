@@ -131,16 +131,18 @@ export function MapBoard({
   }
 
   return (
+    <div className="flex h-full w-full items-center justify-center">
     <div
       ref={boardRef}
       onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
       onDrop={onDrop}
-      className="relative h-full w-full overflow-hidden rounded-xl border border-border bg-muted"
-      style={
-        backgroundUrl
+      className={`relative overflow-hidden rounded-xl border border-border bg-muted ${bgAspect ? "max-h-full max-w-full" : "h-full w-full"}`}
+      style={{
+        ...(backgroundUrl
           ? { backgroundImage: `url(${backgroundUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
-          : undefined
-      }
+          : {}),
+        ...(bgAspect ? { aspectRatio: String(bgAspect), height: "100%", width: "auto" } : {}),
+      }}
     >
       {/* grid overlay */}
       <div
