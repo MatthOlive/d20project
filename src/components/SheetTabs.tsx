@@ -200,6 +200,9 @@ export function SheetTabs(props: {
             />
           </div>
         )}
+        {active.kind === "shop" && (
+          <Shop trainerId={trainerId} />
+        )}
       </div>
     </div>
   );

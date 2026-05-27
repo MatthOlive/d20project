@@ -147,9 +147,12 @@ export function Shop({ trainerId }: { trainerId: string }) {
     if (idx >= 0) next[idx] = { ...next[idx], qty: (next[idx].qty ?? 1) + 1 };
     else next.push({ name: item.name, qty: 1 });
 
+    const patch = item.battle
+      ? { money: money - item.price, battle_items_list: next }
+      : { money: money - item.price, bag_list: next };
     const { error } = await supabase
       .from("trainers")
-      .update({ money: money - item.price, [targetList]: next })
+      .update(patch)
       .eq("id", trainerId);
     if (error) { toast.error(error.message); return; }
     toast.success(`Comprado: ${item.name}`);
