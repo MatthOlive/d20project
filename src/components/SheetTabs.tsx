@@ -128,7 +128,29 @@ export function SheetTabs(props: {
           active={active.kind === "pc" || active.kind === "pcPokemon"}
           onClick={() => setActive({ kind: "pc" })}
           tone="pc"
-          title="PC (Box)"
+          title="PC (Box) — arraste um Pokémon dos Files aqui para guardar"
+          onDragOver={(e) => {
+            if (e.dataTransfer.types.includes(DRAG_MIME)) {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+            }
+          }}
+          onDrop={async (e) => {
+            const raw = e.dataTransfer.getData(DRAG_MIME);
+            if (!raw) return;
+            e.preventDefault();
+            try {
+              const p = JSON.parse(raw) as DragCharacterPayload;
+              if (p.kind !== "pokemon") { toast.error("Apenas Pokémon podem ir para o PC."); return; }
+              const { error } = await supabase.from("pokemon")
+                .update({ owner_trainer_id: trainerId, team_slot: null })
+                .eq("id", p.id);
+              if (error) { toast.error(error.message); return; }
+              toast.success(`${p.label} guardado no PC`);
+              invalidateRoster();
+              setActive({ kind: "pc" });
+            } catch { /* ignore */ }
+          }}
         >
           <Boxes className="h-4 w-4" />
         </TabButton>
