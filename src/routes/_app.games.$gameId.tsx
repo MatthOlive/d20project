@@ -72,7 +72,12 @@ function GameRoom() {
 
   const isNarrator = !!game && !!user && game.narrator_id === user.id;
 
-  async function rollFromSheet(label: string, n: number, penalty = 0) {
+  async function rollFromSheet(
+    label: string,
+    n: number,
+    penalty = 0,
+    meta?: { characterKind: "trainer" | "pokemon"; characterId: string; imageUrl?: string | null },
+  ) {
     if (!user) return;
     const result = rollD6(n);
     const adjusted = Math.max(0, result.successes - (penalty || 0));
@@ -81,6 +86,22 @@ function GameRoom() {
       game_id: gameId, user_id: user.id, kind: "roll",
       body: finalLabel, roll_data: { ...result, successes: adjusted, penalty, label: finalLabel },
     });
+    // Auto-populate Turn Order whenever an initiative roll is made
+    if (meta && /initiative/i.test(label)) {
+      const name = label.split("·")[0]?.trim() || label;
+      await supabase.from("initiative").upsert(
+        {
+          game_id: gameId,
+          character_kind: meta.characterKind,
+          character_ref: meta.characterId,
+          character_name: name,
+          image_url: meta.imageUrl ?? null,
+          successes: adjusted,
+          position: 0,
+        },
+        { onConflict: "game_id,character_ref" },
+      );
+    }
   }
   async function sendChatFromSheet(body: string) {
     if (!user || !body.trim()) return;
