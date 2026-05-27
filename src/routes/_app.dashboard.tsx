@@ -107,6 +107,7 @@ function Dashboard() {
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
+          <KnowledgeIngest />
           {!selectMode ? (
             <Button variant="outline" size="sm" onClick={() => setSelectMode(true)}>
               <CheckSquare className="mr-1.5 h-4 w-4" /> {t("select")}
