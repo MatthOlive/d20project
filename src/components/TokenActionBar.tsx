@@ -88,7 +88,7 @@ function PokemonBar({ id, label, onRoll, onClose, onOpenSheet }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pokemon")
-        .select("current_attrs, social_attrs, skills, rank, species:species_id(abilities, base_attrs)")
+        .select("current_attrs, social_attrs, skills, rank, image_url, species:species_id(abilities, base_attrs, sprite_url)")
         .eq("id", id)
         .single();
       if (error) throw error;
@@ -97,7 +97,8 @@ function PokemonBar({ id, label, onRoll, onClose, onOpenSheet }: Props) {
         social_attrs: Record<string, number>;
         skills: Record<string, number>;
         rank: keyof typeof RANK_BONUS;
-        species: { abilities: string[]; base_attrs: Record<string, number> };
+        image_url: string | null;
+        species: { abilities: string[]; base_attrs: Record<string, number>; sprite_url: string | null };
       };
     },
   });
