@@ -88,6 +88,30 @@ const ITEMS: ShopItem[] = [
   { key: "compass",        name: "Compass",                 price: 100,  category: "gear", desc: "Points you in the right direction. Keep away from magnets." },
   { key: "pokedex",        name: "Pokédex",                 price: 5000, category: "gear", desc: "Digital encyclopedia with regional Pokémon info." },
   { key: "pokedexupgrade", name: "Pokédex Upgrade",         price: 2500, category: "gear", desc: "Add another region's Pokémon to your Pokédex." },
+
+  // Food
+  { key: "drypack",       name: "Pokémon Dry Food Pack",   price: 10,  category: "food", desc: "A bag with dry kibble." },
+  { key: "gourmetcan",    name: "Gourmet Food Can",        price: 50,  category: "food", desc: "Made with Premium ingredients. All Pokémon will love you if you feed them this on a regular basis." },
+  { key: "perfsack",      name: "High Performance Food Sack", price: 300, category: "food", desc: "High-protein kibble made for athletes. Add 1 dice to the next Training Roll of the Pokémon.", effect: "+1 die next Training Roll" },
+
+  // Vitamins
+  { key: "protein", name: "Protein", price: 9800, category: "vitamins", desc: "A tasty milkshake that aids in the growth of bigger and stronger muscles.", effect: "+1 Strength (max 1/month)" },
+  { key: "iron",    name: "Iron",    price: 9800, category: "vitamins", desc: "An iron capsule that reduces feebleness and gives you a healthy glow.", effect: "+1 Vitality (max 1/month)" },
+  { key: "calcium", name: "Calcium", price: 9800, category: "vitamins", desc: "Effervescent pills to help grow stronger bones.", effect: "+1 Special (max 1/month)" },
+  { key: "zinc",    name: "Zinc",    price: 9800, category: "vitamins", desc: "Zinc capsules help with focus and brain development.", effect: "+1 Insight (max 1/month)" },
+  { key: "carbos",  name: "Carbos",  price: 9800, category: "vitamins", desc: "A healthy syrup that fills you with energy!", effect: "+1 Dexterity (max 1/month)" },
+  { key: "ppup",    name: "PP Up",   price: 9800, category: "vitamins", desc: "Rumored to be just sugar pills. Who really knows?", effect: "Increase Will by 2" },
+  { key: "hpup",    name: "HP Up",   price: 9800, category: "vitamins", desc: "A compendium of vitamins and minerals to help your Pokémon grow as big and healthy as it can be.", effect: "Increase base HP by 2" },
+
+  // Grooming
+  { key: "groomingkit",  name: "Grooming Kit",      price: 100, category: "grooming", desc: "No more matted hair, unruly leaves, dry scales or rough rocks!", effect: "+1 Confidence" },
+  { key: "pkmncostume",  name: "Pokémon Costume",   price: 250, category: "grooming", desc: "Fashionable clothes. Your companions will look amazing.", effect: "+1 Confidence" },
+  { key: "accessory",    name: "Piece of Accessory", price: 10, category: "grooming", desc: "Ribbons, hats, collars and everything you need to make them look super special." },
+
+  // Stones
+  { key: "firestone",    name: "Fire Stone",    price: 5000, category: "stones", desc: "This stone has a flame inside, it's hot to the touch." },
+  { key: "thunderstone", name: "Thunder Stone", price: 5000, category: "stones", desc: "Glows in the dark and can be used to power small electronics." },
+  { key: "waterstone",   name: "Water Stone",   price: 5000, category: "stones", desc: "Looks like blue glass and can be found at the bottom of the sea." },
 ];
 
 const CAT_LABEL: Record<ShopItem["category"], string> = {
@@ -98,6 +122,10 @@ const CAT_LABEL: Record<ShopItem["category"], string> = {
   berries: "Berries",
   herbal: "Herbal Medicine",
   drinks: "Energy Drinks",
+  food: "Food",
+  vitamins: "Vitamins",
+  grooming: "Grooming",
+  stones: "Evolution Stones",
   protection: "Protection Items",
   travel: "Items for Traveling",
   gear: "Trainer Gear",
