@@ -13,7 +13,7 @@ type Props = {
   kind: "trainer" | "pokemon";
   id: string;
   label: string;
-  onRoll: (label: string, n: number, penalty?: number) => void;
+  onRoll: (label: string, n: number, penalty?: number, meta?: { characterKind: "trainer" | "pokemon"; characterId: string; imageUrl?: string | null }) => void;
   onClose: () => void;
   onOpenSheet: () => void;
 };
@@ -29,7 +29,7 @@ function TrainerBar({ id, label, onRoll, onClose, onOpenSheet }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("trainers")
-        .select("attrs, social_attrs, skills, rank, confidence, current_hp, status_conditions")
+        .select("attrs, social_attrs, skills, rank, confidence, current_hp, status_conditions, image_url")
         .eq("id", id)
         .single();
       if (error) throw error;
@@ -41,6 +41,7 @@ function TrainerBar({ id, label, onRoll, onClose, onOpenSheet }: Props) {
         confidence: number;
         current_hp: number | null;
         status_conditions: string[];
+        image_url: string | null;
       };
     },
   });
@@ -64,7 +65,7 @@ function TrainerBar({ id, label, onRoll, onClose, onOpenSheet }: Props) {
   return (
     <Shell onClose={onClose} title={label} onOpenSheet={onOpenSheet}>
       <ActionBtn icon={<Zap className="h-3.5 w-3.5" />} label="Initiative"
-        onClick={() => onRoll(`${label} · Initiative (Dex+Alert)`, dex + alert, pen)} />
+        onClick={() => onRoll(`${label} · Initiative (Dex+Alert)`, dex + alert, pen, { characterKind: "trainer", characterId: id, imageUrl: t.image_url })} />
       <CatchButton label={label} dex={dex} throwSk={throwSk} pen={pen} onRoll={onRoll} />
       <ActionBtn icon={<Swords className="h-3.5 w-3.5" />} label="Evasion"
         onClick={() => onRoll(`${label} · Evasion (Dex+Evasion)`, dex + evasion, pen)} />
@@ -87,7 +88,7 @@ function PokemonBar({ id, label, onRoll, onClose, onOpenSheet }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pokemon")
-        .select("current_attrs, social_attrs, skills, rank, species:species_id(abilities, base_attrs)")
+        .select("current_attrs, social_attrs, skills, rank, image_url, species:species_id(abilities, base_attrs, sprite_url)")
         .eq("id", id)
         .single();
       if (error) throw error;
@@ -96,7 +97,8 @@ function PokemonBar({ id, label, onRoll, onClose, onOpenSheet }: Props) {
         social_attrs: Record<string, number>;
         skills: Record<string, number>;
         rank: keyof typeof RANK_BONUS;
-        species: { abilities: string[]; base_attrs: Record<string, number> };
+        image_url: string | null;
+        species: { abilities: string[]; base_attrs: Record<string, number>; sprite_url: string | null };
       };
     },
   });
@@ -135,7 +137,7 @@ function PokemonBar({ id, label, onRoll, onClose, onOpenSheet }: Props) {
   return (
     <Shell onClose={onClose} title={label} onOpenSheet={onOpenSheet}>
       <ActionBtn icon={<Zap className="h-3.5 w-3.5" />} label="Initiative"
-        onClick={() => onRoll(`${label} · Initiative (Dex+Alert)`, dex + alert, pen)} />
+        onClick={() => onRoll(`${label} · Initiative (Dex+Alert)`, dex + alert, pen, { characterKind: "pokemon", characterId: id, imageUrl: p.image_url ?? p.species?.sprite_url })} />
       <ActionBtn icon={<Swords className="h-3.5 w-3.5" />} label="Evasion"
         onClick={() => onRoll(`${label} · Evasion (Dex+Evasion)`, dex + evasion, pen)} />
       <ActionBtn icon={<Swords className="h-3.5 w-3.5" />} label="Clash"

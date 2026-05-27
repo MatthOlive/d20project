@@ -75,7 +75,7 @@ export function PokemonSheet({
   pokemonId, gameId: _gameId, userId, isNarrator, onRoll, onChat, onDeleted,
 }: {
   pokemonId: string; gameId: string; userId: string; isNarrator: boolean;
-  onRoll: (label: string, n: number, penalty?: number) => void;
+  onRoll: (label: string, n: number, penalty?: number, meta?: { characterKind: "trainer" | "pokemon"; characterId: string; imageUrl?: string | null }) => void;
   onChat: (body: string) => void; onDeleted?: () => void;
 }) {
   const qc = useQueryClient();
@@ -313,7 +313,7 @@ export function PokemonSheet({
             </div>
             {/* Action row */}
             <div className="flex flex-wrap items-center gap-1.5 pt-1">
-              <Button size="sm" variant="outline" className="h-7" onClick={() => onRoll(`${name} · Initiative (Dex+Alert)`, init, painPen)}>
+              <Button size="sm" variant="outline" className="h-7" onClick={() => onRoll(`${name} · Initiative (Dex+Alert)`, init, painPen, { characterKind: "pokemon", characterId: pokemonId, imageUrl: displayImage })}>
                 <Dices className="mr-1 h-3.5 w-3.5" /> Initiative · {init}d6
               </Button>
               <AttackRollButton characterName={name} attrLabel="Dexterity" attrValue={dex} skillOptions={attackSkills} painPenalty={painPen} onRoll={onRoll} />

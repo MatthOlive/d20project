@@ -140,6 +140,7 @@ export type Database = {
           created_at: string
           game_id: string
           id: string
+          image_url: string | null
           position: number
           successes: number
         }
@@ -150,6 +151,7 @@ export type Database = {
           created_at?: string
           game_id: string
           id?: string
+          image_url?: string | null
           position?: number
           successes?: number
         }
@@ -160,6 +162,7 @@ export type Database = {
           created_at?: string
           game_id?: string
           id?: string
+          image_url?: string | null
           position?: number
           successes?: number
         }

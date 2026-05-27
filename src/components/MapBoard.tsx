@@ -44,13 +44,21 @@ export function MapBoard({
   userId: string;
   isNarrator: boolean;
   topLeftSlot?: React.ReactNode;
-  onRoll?: (label: string, n: number, penalty?: number) => void;
+  onRoll?: (label: string, n: number, penalty?: number, meta?: { characterKind: "trainer" | "pokemon"; characterId: string; imageUrl?: string | null }) => void;
   onOpenSheet?: (kind: "trainer" | "pokemon", id: string, label: string) => void;
 }) {
   const qc = useQueryClient();
   const boardRef = useRef<HTMLDivElement>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
+  const [bgAspect, setBgAspect] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!backgroundUrl) { setBgAspect(null); return; }
+    const img = new Image();
+    img.onload = () => setBgAspect(img.naturalWidth / img.naturalHeight);
+    img.src = backgroundUrl;
+  }, [backgroundUrl]);
 
   const { data: tokens = [] } = useQuery({
     queryKey: ["tokens", gameId],
@@ -123,16 +131,18 @@ export function MapBoard({
   }
 
   return (
+    <div className="flex h-full w-full items-center justify-center">
     <div
       ref={boardRef}
       onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
       onDrop={onDrop}
-      className="relative h-full w-full overflow-hidden rounded-xl border border-border bg-muted"
-      style={
-        backgroundUrl
+      className={`relative overflow-hidden rounded-xl border border-border bg-muted ${bgAspect ? "max-h-full max-w-full" : "h-full w-full"}`}
+      style={{
+        ...(backgroundUrl
           ? { backgroundImage: `url(${backgroundUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
-          : undefined
-      }
+          : {}),
+        ...(bgAspect ? { aspectRatio: String(bgAspect), height: "100%", width: "auto" } : {}),
+      }}
     >
       {/* grid overlay */}
       <div
@@ -209,6 +219,7 @@ export function MapBoard({
           </div>
         );
       })}
+    </div>
     </div>
   );
 }

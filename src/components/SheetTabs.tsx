@@ -36,7 +36,7 @@ export function SheetTabs(props: {
   gameId: string;
   userId: string;
   isNarrator: boolean;
-  onRoll: (label: string, n: number, penalty?: number) => void;
+  onRoll: (label: string, n: number, penalty?: number, meta?: { characterKind: "trainer" | "pokemon"; characterId: string; imageUrl?: string | null }) => void;
   onChat: (body: string) => void;
   onDeleted?: () => void;
 }) {
