@@ -159,15 +159,22 @@ export function PokemonSheet({
   const boundRoll = (label: string, n: number, p?: number) => onRoll(label, n, p ?? painPen);
 
 
-  async function setAttr(key: string, val: number) {
+  async function setAttrBreakdown(key: string, delta: { points?: number; bonus?: number }) {
     if (!canEdit) return;
+    const base = species!.base_attrs[key] ?? 1;
     const limit = species!.attr_limits[key] ?? 5;
-    const clamped = Math.min(val, limit);
-    const newAttrs = { ...pokemon!.current_attrs, [key]: clamped };
-    const vit = key === "vitality" ? clamped : (newAttrs.vitality ?? 1);
-    const ins = key === "insight" ? clamped : (newAttrs.insight ?? 1);
+    const points = delta.points !== undefined ? delta.points : (pokemon!.attr_points?.[key] ?? 0);
+    const bonus = delta.bonus !== undefined ? delta.bonus : (pokemon!.attr_bonus?.[key] ?? 0);
+    const totalRaw = base + points + bonus;
+    const total = Math.min(totalRaw, Math.max(limit, base));
+    const newAttrs = { ...pokemon!.current_attrs, [key]: total };
+    const vit = key === "vitality" ? total : (newAttrs.vitality ?? 1);
+    const ins = key === "insight" ? total : (newAttrs.insight ?? 1);
     const baseHp = species!.base_hp + (pokemon!.is_overgrown ? 1 : 0);
-    patch({ current_attrs: newAttrs, hp: baseHp + vit, will: ins + 2 });
+    const patchObj: Partial<Pokemon> = { current_attrs: newAttrs, hp: baseHp + vit, will: ins + 2 };
+    if (delta.points !== undefined) patchObj.attr_points = { ...pokemon!.attr_points, [key]: points };
+    if (delta.bonus !== undefined) patchObj.attr_bonus = { ...pokemon!.attr_bonus, [key]: bonus };
+    patch(patchObj);
   }
 
 
