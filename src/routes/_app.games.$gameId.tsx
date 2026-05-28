@@ -838,44 +838,49 @@ function InitiativePanel({ gameId, isNarrator, open, onClose }: { gameId: string
   }
 
   return (
-    <div className="pointer-events-auto absolute right-4 top-3 z-20 w-64 rounded-lg border border-border bg-card/95 p-3 shadow-lg backdrop-blur">
-      <div className="mb-2 flex items-center justify-between">
-        <h4 className="flex items-center gap-1 text-xs font-bold uppercase tracking-wide">
-          <Swords className="h-3.5 w-3.5 text-primary" /> Turn Order
-        </h4>
-        <div className="flex items-center gap-1">
-          {isNarrator && rows.length > 0 && (
-            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={clearInit} title="End combat">
-              <Trash2 className="h-3 w-3" />
+    <FloatingWindow
+      title="Turn Order"
+      onClose={onClose}
+      initialX={typeof window !== "undefined" ? window.innerWidth - 320 : 800}
+      initialY={80}
+      width={280}
+      height={420}
+      minWidth={240}
+      minHeight={160}
+    >
+      <div className="p-3">
+        {isNarrator && rows.length > 0 && (
+          <div className="mb-2 flex justify-end">
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={clearInit} title="End combat">
+              <Trash2 className="mr-1 h-3 w-3" /> End combat
             </Button>
-          )}
-          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={onClose} title="Hide">×</Button>
-        </div>
+          </div>
+        )}
+        {rows.length === 0 ? (
+          <p className="px-1 py-3 text-center text-[11px] text-muted-foreground">
+            Sem rolagens de iniciativa ainda. Clique em <em>Initiative</em> em uma ficha ou na ação rápida do token para entrar na ordem.
+          </p>
+        ) : (
+          <ol className="space-y-1.5">
+            {rows.map((r, i) => (
+              <li
+                key={r.id}
+                className={`flex items-center gap-2 rounded px-2 py-1.5 text-xs ${i === 0 ? "bg-primary/15 font-semibold" : "bg-muted/50"}`}
+              >
+                <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-background text-[10px]">{i + 1}</span>
+                {r.image_url ? (
+                  <img src={r.image_url} alt="" className="h-7 w-7 shrink-0 rounded-full border border-border object-cover" />
+                ) : (
+                  <div className="h-7 w-7 shrink-0 rounded-full bg-background" />
+                )}
+                <span className="flex-1 truncate">{r.character_name}</span>
+                <span className="text-muted-foreground">{r.successes} ✦</span>
+              </li>
+            ))}
+          </ol>
+        )}
       </div>
-      {rows.length === 0 ? (
-        <p className="px-1 py-3 text-center text-[11px] text-muted-foreground">
-          Sem rolagens de iniciativa ainda. Clique em <em>Initiative</em> em uma ficha ou na ação rápida do token para entrar na ordem.
-        </p>
-      ) : (
-        <ol className="space-y-1.5">
-          {rows.map((r, i) => (
-            <li
-              key={r.id}
-              className={`flex items-center gap-2 rounded px-2 py-1.5 text-xs ${i === 0 ? "bg-primary/15 font-semibold" : "bg-muted/50"}`}
-            >
-              <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-background text-[10px]">{i + 1}</span>
-              {r.image_url ? (
-                <img src={r.image_url} alt="" className="h-7 w-7 shrink-0 rounded-full border border-border object-cover" />
-              ) : (
-                <div className="h-7 w-7 shrink-0 rounded-full bg-background" />
-              )}
-              <span className="flex-1 truncate">{r.character_name}</span>
-              <span className="text-muted-foreground">{r.successes} ✦</span>
-            </li>
-          ))}
-        </ol>
-      )}
-    </div>
+    </FloatingWindow>
   );
 }
 
