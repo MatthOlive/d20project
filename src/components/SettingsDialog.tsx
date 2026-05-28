@@ -193,10 +193,13 @@ function RulesSection() {
                   size="sm" variant="ghost"
                   onClick={async () => {
                     if (!confirm(`Remover regras de ${meta?.label ?? s.id}?`)) return;
-                    const { error } = await supabase.from("knowledge_chunks").delete().eq("source", s.id);
-                    if (error) { toast.error(error.message); return; }
-                    toast.success("Removido");
-                    qc.invalidateQueries({ queryKey: ["knowledge-sources"] });
+                    try {
+                      await delSource({ data: { source: s.id } });
+                      toast.success("Removido");
+                      qc.invalidateQueries({ queryKey: ["knowledge-sources"] });
+                    } catch (e) {
+                      toast.error(e instanceof Error ? e.message : "Falha ao remover");
+                    }
                   }}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
