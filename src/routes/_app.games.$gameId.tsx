@@ -23,6 +23,7 @@ import { OnlinePresence } from "@/components/OnlinePresence";
 import { PokemonSheet } from "@/components/PokemonSheet";
 import { SheetTabs } from "@/components/SheetTabs";
 import { MapBoard, DRAG_MIME, type DragCharacterPayload } from "@/components/MapBoard";
+import { MusicPanel } from "@/components/MusicPanel";
 import { toast } from "sonner";
 import { Copy, Crown, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Swords, ChevronDown, ChevronUp } from "lucide-react";
 import { rollD6, rollShiny, POKEMON_TYPES, TYPE_COLORS, type PokemonType } from "@/lib/pokerole";
