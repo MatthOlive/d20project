@@ -103,13 +103,14 @@ export function ChatPanel({
     setText("");
     const roll = parseRollCommand(trimmed);
     if (roll) {
-      const result = rollD6(roll.n);
+      const result = rollDice(roll.n, roll.faces);
+      const body = roll.label ?? `${roll.n}d${roll.faces}`;
       await supabase.from("chat_messages").insert({
         game_id: gameId,
         user_id: userId,
         kind: "roll",
-        body: roll.label ?? `${roll.n}d6`,
-        roll_data: { ...result, label: roll.label },
+        body,
+        roll_data: { ...result, label: body },
       });
     } else {
       await supabase.from("chat_messages").insert({
