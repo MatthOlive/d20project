@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dices, Send, Bot, Sparkles } from "lucide-react";
-import { rollD6, parseRollCommand } from "@/lib/pokerole";
+import { rollD6, rollDice, parseRollCommand } from "@/lib/pokerole";
 import { cn } from "@/lib/utils";
 import { narratorTurn } from "@/lib/narrator.functions";
 import { toast } from "sonner";
