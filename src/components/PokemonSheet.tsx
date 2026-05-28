@@ -24,6 +24,8 @@ import { toast } from "sonner";
 import { Plus, Dices, Trash2, ImagePlus, RotateCcw, Sparkles, Zap, Maximize2, X as XIcon } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { EffectIcons } from "@/components/EffectIcons";
+import { MoveCard, type MoveRollMessage } from "@/components/MoveCard";
+import { rollD6 } from "@/lib/pokerole";
 import {
   HpAndStatusBlock, AttackRollButton, GenericRollButton, painPenaltyFor,
 } from "@/components/SheetRolls";
