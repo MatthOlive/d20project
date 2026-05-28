@@ -86,8 +86,8 @@ export function HpAndStatusBlock({
             </div>
           )}
         </div>
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className={`inline-block w-fit rounded-full px-3 py-1 text-xs font-bold ${
+        <div className="flex min-w-[140px] flex-col gap-0.5">
+          <span className={`inline-block w-fit whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold ${
             painPenalty === 0 ? "bg-muted text-muted-foreground"
               : painPenalty === 1 ? "bg-amber-500/20 text-amber-600"
                 : "bg-destructive/20 text-destructive"
@@ -95,7 +95,7 @@ export function HpAndStatusBlock({
             Pain Penalty −{painPenalty}
           </span>
           <span className="text-[11px] leading-tight text-muted-foreground">
-            Subtracts {painPenalty} success{painPenalty === 1 ? "" : "es"} from every roll.
+            −{painPenalty} success{painPenalty === 1 ? "" : "es"} on every roll.
           </span>
         </div>
       </div>
