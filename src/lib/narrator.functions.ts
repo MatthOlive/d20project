@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { searchKnowledge } from "./knowledge.functions";
 
@@ -386,14 +387,26 @@ const LANG_INSTRUCTION: Record<string, string> = {
 
 export const narratorTurn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { gameId: string; userPrompt?: string }) => {
-    if (!data?.gameId) throw new Error("gameId required");
-    return data;
-  })
+  .inputValidator((data) =>
+    z.object({
+      gameId: z.string().uuid(),
+      userPrompt: z.string().max(2000).optional(),
+    }).parse(data),
+  )
   .handler(async ({ data, context }) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = context.supabase as any;
     const userId = context.userId as string;
+
+    // Server-side narrator authorization: only the game's narrator may invoke the AI.
+    const { data: narratorCheck } = await supabase
+      .from("games")
+      .select("id")
+      .eq("id", data.gameId)
+      .eq("narrator_id", userId)
+      .maybeSingle();
+    if (!narratorCheck) throw new Error("Only the narrator may invoke the AI.");
+
 
     const [{ data: game }, { data: chat }, { data: pokes }, { data: trainers }, { data: init }, { data: members }] = await Promise.all([
       supabase.from("games").select("id,name,narrator_type,language").eq("id", data.gameId).single(),
