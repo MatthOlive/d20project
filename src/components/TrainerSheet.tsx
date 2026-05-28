@@ -43,7 +43,11 @@ type Trainer = {
   confidence: number;
   rank: Rank;
   attrs: Record<string, number>;
+  attr_points: Record<string, number>;
+  attr_bonus: Record<string, number>;
   social_attrs: Record<string, number>;
+  social_attr_points: Record<string, number>;
+  social_attr_bonus: Record<string, number>;
   skills: Record<string, number>;
   custom_skills: CustomSkill[];
   badges: Badge[];
