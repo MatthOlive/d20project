@@ -263,18 +263,23 @@ export function TrainerSheet({
                     ))}
                   </SelectContent>
                 </Select>
-                <Input type="number" min={0} max={3} value={catchBonus} title="Bonus"
-                  onChange={(e) => setCatchBonus(Math.max(0, Math.min(3, parseInt(e.target.value) || 0)))}
-                  className="h-6 w-10 text-center text-xs" />
-                <Button size="sm" variant="outline" className="h-6 px-2 text-xs"
+                <div className="flex flex-col items-center">
+                  <span className="text-[8px] uppercase tracking-wider text-muted-foreground">Bônus</span>
+                  <Input type="number" min={0} max={3} value={catchBonus} title="Bonus"
+                    onChange={(e) => setCatchBonus(Math.max(0, Math.min(3, parseInt(e.target.value) || 0)))}
+                    className="h-7 w-14 text-center text-sm font-bold" />
+                </div>
+                <Button size="sm" variant="outline" className="h-7 px-2 text-xs"
                   disabled={ballKey === "masterball"}
                   onClick={() => onRoll(
                     `${trainer.name} · Catch (${ball.label}${catchBonus ? ` +${catchBonus}` : ""})`,
                     catchPool,
+                    -catchBonus,
                   )}>
                   <Dices className="mr-1 h-3 w-3" />
                   {ballKey === "masterball" ? "Auto" : `Catch · ${catchPool}d6`}
                 </Button>
+
               </div>
             </div>
             <p className="text-[10px] text-muted-foreground">
