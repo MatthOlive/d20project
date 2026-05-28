@@ -18,9 +18,20 @@ function AuthPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
+  function postAuthRedirect() {
+    const pending = typeof window !== "undefined" ? sessionStorage.getItem("pendingInvite") : null;
+    if (pending) {
+      sessionStorage.removeItem("pendingInvite");
+      navigate({ to: "/join/$inviteCode", params: { inviteCode: pending } });
+    } else {
+      navigate({ to: "/dashboard" });
+    }
+  }
+
   useEffect(() => {
-    if (!loading && user) navigate({ to: "/dashboard" });
-  }, [user, loading, navigate]);
+    if (!loading && user) postAuthRedirect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, loading]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -33,8 +44,9 @@ function AuthPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
     if (error) toast.error(error.message);
-    else navigate({ to: "/dashboard" });
+    else postAuthRedirect();
   }
+
 
   async function signUp(e: React.FormEvent) {
     e.preventDefault();
