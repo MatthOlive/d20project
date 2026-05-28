@@ -105,13 +105,31 @@ export function rollD6(n: number): { dice: number[]; successes: number; ones: nu
   };
 }
 
-// /roll syntax: "5", "5d6", optional label
-export function parseRollCommand(input: string): { n: number; label?: string } | null {
-  const m = input.trim().match(/^\/roll\s+(\d+)(?:d6)?(?:\s+(.+))?$/i);
+// Generic NdM dice roller. Successes only meaningful for d6 (Pokérole).
+export function rollDice(n: number, faces: number): {
+  dice: number[]; successes: number; ones: number; faces: number;
+} {
+  const dice: number[] = [];
+  const f = Math.max(2, Math.min(1000, Math.floor(faces)));
+  for (let i = 0; i < Math.max(0, Math.min(50, n)); i++) {
+    dice.push(1 + Math.floor(Math.random() * f));
+  }
+  return {
+    dice,
+    successes: f === 6 ? dice.filter((d) => d >= 4).length : 0,
+    ones: f === 6 ? dice.filter((d) => d === 1).length : 0,
+    faces: f,
+  };
+}
+
+// /roll or /r syntax: "5", "5d6", "3d20", optional label
+export function parseRollCommand(input: string): { n: number; faces: number; label?: string } | null {
+  const m = input.trim().match(/^\/(?:r|roll)\s+(\d+)(?:d(\d+))?(?:\s+(.+))?$/i);
   if (!m) return null;
   const n = parseInt(m[1], 10);
-  if (!Number.isFinite(n) || n <= 0) return null;
-  return { n, label: m[2]?.trim() };
+  const faces = m[2] ? parseInt(m[2], 10) : 6;
+  if (!Number.isFinite(n) || n <= 0 || !Number.isFinite(faces) || faces < 2) return null;
+  return { n, faces, label: m[3]?.trim() };
 }
 
 // Skills in DB rows (moves table) are lowercase, sometimes compound like
