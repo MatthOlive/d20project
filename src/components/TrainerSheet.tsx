@@ -582,24 +582,24 @@ function TrainerImage({
     reader.readAsDataURL(file);
   }
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex flex-col items-start gap-2">
       {trainer.image_url ? (
         <img src={trainer.image_url} alt={trainer.name} className="h-24 w-24 rounded-xl border border-border bg-muted object-cover" />
       ) : (
         <div className="flex h-24 w-24 items-center justify-center rounded-xl border border-dashed border-border bg-muted text-xs text-muted-foreground">No image</div>
       )}
       {canEdit && (
-        <div className="flex flex-col gap-1.5">
-          <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:bg-accent">
-            <ImagePlus className="h-3.5 w-3.5" /> {trainer.image_url ? "Replace" : "Upload"} image
+        <div className="flex w-full flex-wrap gap-1.5">
+          <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold hover:bg-accent">
+            <ImagePlus className="h-3 w-3" /> {trainer.image_url ? "Replace" : "Upload"}
             <input type="file" accept="image/*" className="hidden"
               onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
           </label>
           {trainer.image_url && (
             <button
               onClick={() => onChange(null)}
-              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:bg-accent"
-            ><XIcon className="h-3.5 w-3.5" /> Remove</button>
+              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold hover:bg-accent"
+            ><XIcon className="h-3 w-3" /> Remove</button>
           )}
         </div>
       )}
