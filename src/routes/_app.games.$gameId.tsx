@@ -183,7 +183,11 @@ function GameRoom() {
 
       {/* Right: tabs */}
       <Card className="flex min-h-0 flex-col overflow-hidden p-0">
+        <div className="p-2">
+          <OnlinePresence gameId={gameId} userId={user.id} isNarrator={isNarrator} />
+        </div>
         <Tabs defaultValue="chat" className="flex h-full flex-col">
+
           <TabsList className="m-2 grid grid-cols-3">
             <TabsTrigger value="chat">Chat</TabsTrigger>
             <TabsTrigger value="compendium">Compendium</TabsTrigger>
