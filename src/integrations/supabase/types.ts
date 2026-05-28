@@ -72,18 +72,21 @@ export type Database = {
       }
       game_members: {
         Row: {
+          display_name: string | null
           game_id: string
           joined_at: string
           role: Database["public"]["Enums"]["game_role"]
           user_id: string
         }
         Insert: {
+          display_name?: string | null
           game_id: string
           joined_at?: string
           role?: Database["public"]["Enums"]["game_role"]
           user_id: string
         }
         Update: {
+          display_name?: string | null
           game_id?: string
           joined_at?: string
           role?: Database["public"]["Enums"]["game_role"]
