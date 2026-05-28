@@ -467,9 +467,7 @@ function SkillGroup({
           return (
             <div key={s} className="flex items-center justify-between gap-2">
               <span className="text-xs">{s}</span>
-              <DotEditor value={v} max={5}
-                onChange={(n) => onChange({ [s]: n })}
-                disabled={!canEdit} />
+              <SkillNumberInput value={v} onChange={(n) => onChange({ [s]: n })} disabled={!canEdit} />
             </div>
           );
         })}
@@ -510,9 +508,11 @@ function CustomSkillsSection({
               onChange={(e) => onChange(items.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}
               className="h-6 flex-1 text-xs"
             />
-            <DotEditor value={it.value} max={5}
+            <SkillNumberInput
+              value={it.value}
               onChange={(n) => onChange(items.map((x, j) => j === i ? { ...x, value: n } : x))}
-              disabled={!canEdit} />
+              disabled={!canEdit}
+            />
             {canEdit && (
               <Button size="sm" variant="ghost" className="h-6 w-6 p-0"
                 onClick={() => onChange(items.filter((_, j) => j !== i))}>
