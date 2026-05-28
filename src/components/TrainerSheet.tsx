@@ -305,11 +305,6 @@ export function TrainerSheet({
             willMax={will}
             onWillChange={(n) => patch({ current_will: n })}
           />
-        </div>
-        <div className="rounded-lg border border-border bg-card p-3">
-          <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-primary">Physical</h4>
-          <div className="space-y-1.5">
-            {ATTRS.map((a) => (
               <AttrFourField
                 key={a}
                 label={a}
@@ -317,6 +312,7 @@ export function TrainerSheet({
                 points={trainer.attr_points?.[a] ?? 0}
                 bonus={trainer.attr_bonus?.[a] ?? 0}
                 baseEditable
+                hideBase
                 disabled={!canEdit}
                 cap={HUMAN_ATTR_CAP}
                 onChange={(d) => {
@@ -339,10 +335,17 @@ export function TrainerSheet({
                 points={trainer.social_attr_points?.[a] ?? 0}
                 bonus={trainer.social_attr_bonus?.[a] ?? 0}
                 baseEditable
+                hideBase
                 disabled={!canEdit}
                 cap={HUMAN_ATTR_CAP}
                 onChange={(d) => {
                   if (d.base !== undefined) patch({ social_attrs: { ...trainer.social_attrs, [a]: d.base } });
+                  if (d.points !== undefined) patch({ social_attr_points: { ...trainer.social_attr_points, [a]: d.points } });
+                  if (d.bonus !== undefined) patch({ social_attr_bonus: { ...trainer.social_attr_bonus, [a]: d.bonus } });
+                }}
+              />
+            ))}
+
                   if (d.points !== undefined) patch({ social_attr_points: { ...trainer.social_attr_points, [a]: d.points } });
                   if (d.bonus !== undefined) patch({ social_attr_bonus: { ...trainer.social_attr_bonus, [a]: d.bonus } });
                 }}
