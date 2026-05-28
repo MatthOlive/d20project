@@ -28,13 +28,13 @@ export function AttrFourField({
   onChange: (next: { base?: number; points?: number; bonus?: number }) => void;
 }) {
   const total = (base || 0) + (points || 0) + (bonus || 0);
-  const clamp = (n: number) => {
+  const total = (base || 0) + (points || 0) + (bonus || 0);
+  const clamp = (n: number, allowNegative = false) => {
     if (!Number.isFinite(n)) return 0;
-    if (n < 0) return 0;
+    if (!allowNegative && n < 0) return 0;
     if (cap !== undefined && n > cap) return cap;
     return n;
   };
-  return (
     <div className={`grid items-center gap-1.5 rounded-md bg-background px-2 py-1 ${hideBase ? "grid-cols-[1fr_repeat(3,46px)]" : "grid-cols-[1fr_repeat(4,46px)]"}`}>
       <span className="text-xs font-medium uppercase">{label}</span>
       {!hideBase && (
