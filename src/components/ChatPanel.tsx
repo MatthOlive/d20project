@@ -9,6 +9,7 @@ import { rollD6, rollDice, parseRollCommand } from "@/lib/pokerole";
 import { cn } from "@/lib/utils";
 import { narratorTurn } from "@/lib/narrator.functions";
 import { toast } from "sonner";
+import { MoveCard, SuccessHover, type MoveRollMessage } from "@/components/MoveCard";
 
 type Msg = {
   id: string;
@@ -16,9 +17,10 @@ type Msg = {
   user_id: string;
   kind: string;
   body: string;
-  roll_data: { dice: number[]; successes: number; ones: number; label?: string; faces?: number } | null;
+  roll_data: { dice: number[]; successes: number; ones: number; label?: string; faces?: number } | MoveRollMessage | null;
   created_at: string;
 };
+
 
 export function ChatPanel({
   gameId,
@@ -216,10 +218,62 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
       </div>
     );
   }
-  if (msg.kind === "roll" && msg.roll_data) {
-    const faces = msg.roll_data.faces ?? 6;
+  if (msg.kind === "move" && msg.roll_data && (msg.roll_data as MoveRollMessage).v === "move-1") {
+    const m = msg.roll_data as MoveRollMessage;
+    return (
+      <div className="space-y-1">
+        <div className="px-1 text-[11px] text-muted-foreground">
+          <span className="font-semibold text-foreground">{authorName}</span> · {m.pokemonName} used <b>{m.card.name}</b>
+        </div>
+        <MoveCard
+          data={m.card}
+          hasStab={m.hasStab}
+          accuracySlot={
+            <SuccessHover
+              label="success"
+              successes={m.accuracy.successes}
+              dice={m.accuracy.dice}
+            />
+          }
+          damageSlot={
+            m.damage ? (
+              <SuccessHover
+                label="dmg"
+                successes={m.damage.successes}
+                dice={m.damage.dice}
+                tone="danger"
+              />
+            ) : (
+              <span className="text-muted-foreground">Status</span>
+            )
+          }
+          chanceSlot={
+            m.chance.length > 0 ? (
+              <>
+                {m.chance.map((c, i) => (
+                  <SuccessHover
+                    key={i}
+                    label={`6s · ${c.label}`}
+                    successes={c.successes}
+                    dice={c.dice}
+                    tone="amber"
+                    highlight={(d) => d === 6}
+                  />
+                ))}
+              </>
+            ) : null
+          }
+        />
+      </div>
+    );
+  }
+  // Legacy simple roll message
+  const rd = msg.roll_data as { dice: number[]; successes: number; ones: number; faces?: number } | null;
+  if (msg.kind === "roll" && rd) {
+    const faces = rd.faces ?? 6;
     const isD6 = faces === 6;
-    const sum = msg.roll_data.dice.reduce((a, b) => a + b, 0);
+    const sum = rd.dice.reduce((a, b) => a + b, 0);
+
     return (
       <div className="rounded-lg border border-border bg-card p-3">
         <div className="mb-1.5 flex items-baseline justify-between text-xs">
@@ -227,7 +281,7 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
           <span className="text-muted-foreground">rolled {msg.body}</span>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          {msg.roll_data.dice.map((d, i) => (
+          {rd.dice.map((d, i) => (
             <span
               key={i}
               className={cn(
@@ -243,11 +297,11 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
           {isD6 ? (
             <>
               <span className="ml-2 rounded-full bg-success/15 px-2.5 py-0.5 text-xs font-bold text-success">
-                {msg.roll_data.successes} success{msg.roll_data.successes === 1 ? "" : "es"}
+                {rd.successes} success{rd.successes === 1 ? "" : "es"}
               </span>
-              {msg.roll_data.ones > 0 && (
+              {rd.ones > 0 && (
                 <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive">
-                  {msg.roll_data.ones} × 1
+                  {rd.ones} × 1
                 </span>
               )}
             </>
