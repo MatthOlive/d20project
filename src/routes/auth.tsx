@@ -68,8 +68,9 @@ function AuthPage() {
       redirect_uri: typeof window !== "undefined" ? window.location.origin : undefined,
     });
     if (res.error) toast.error(res.error.message);
-    else if (!res.redirected) navigate({ to: "/dashboard" });
+    else if (!res.redirected) postAuthRedirect();
   }
+
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
