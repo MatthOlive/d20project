@@ -79,11 +79,11 @@ function AuthPage() {
           <div className="h-9 w-9 rounded-full border-4 border-primary bg-white">
             <div className="m-1 h-3 w-3 rounded-full bg-primary shadow-inner" />
           </div>
-          <span className="text-xl font-extrabold">Pokérole VTT</span>
+          <span className="text-xl font-extrabold">D20 Project</span>
         </Link>
         <Card>
           <CardHeader>
-            <CardTitle>Welcome, Trainer</CardTitle>
+            <CardTitle>Welcome</CardTitle>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="signin">

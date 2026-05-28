@@ -22,7 +22,7 @@ function Landing() {
             <div className="h-9 w-9 rounded-full border-4 border-white bg-white">
               <div className="m-1 h-3 w-3 rounded-full bg-pokedex shadow-inner" />
             </div>
-            <span className="text-lg font-extrabold tracking-tight">Pokérole VTT</span>
+            <span className="text-lg font-extrabold tracking-tight">D20 Project</span>
           </div>
           <Link to="/auth">
             <Button variant="secondary" className="font-semibold">Sign in</Button>
@@ -32,23 +32,23 @@ function Landing() {
 
       <main className="mx-auto max-w-5xl px-6 py-20">
         <h1 className="text-5xl font-extrabold tracking-tight text-foreground sm:text-6xl">
-          Run Pokérole 2.0 sessions <span className="text-primary">at the table</span>.
+          Sua mesa de RPG, <span className="text-primary">em qualquer sistema</span>.
         </h1>
         <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
-          A virtual tabletop built for the Pokérole 2.0 RPG. Species-aware sheets,
-          rank-filtered moves, dice rolls in real time, and a chat that knows when you crit.
+          Um virtual tabletop modular para mesas de RPG. Fichas dinâmicas, rolagens em tempo real,
+          chat integrado, mapas e um narrador de IA que conhece as regras do seu sistema.
         </p>
         <div className="mt-10 flex gap-3">
           <Link to="/auth">
-            <Button size="lg" className="font-semibold">Get started</Button>
+            <Button size="lg" className="font-semibold">Começar agora</Button>
           </Link>
         </div>
 
         <div className="mt-20 grid gap-6 sm:grid-cols-3">
           {[
-            { title: "Pokémon sheet engine", body: "Species auto-fill, rank-locked moves, hard Insight + 2 cap." },
-            { title: "Realtime chat & dice", body: "D10 rolls with success counts highlighted in green." },
-            { title: "Narrator tools", body: "Invite links, initiative tracker, character permissions." },
+            { title: "Multi-sistema", body: "Crie campanhas para qualquer sistema. Hoje Pokérole 2.0, em breve D&D e T20." },
+            { title: "Rolagens em tempo real", body: "Dados, sucessos e modificadores compartilhados com toda a mesa instantaneamente." },
+            { title: "Narrador de IA", body: "Treine a IA com os PDFs do seu sistema e tenha um co-mestre que conhece as regras." },
           ].map((f) => (
             <div key={f.title} className="rounded-xl border border-border bg-card p-5">
               <h3 className="text-base font-bold text-foreground">{f.title}</h3>

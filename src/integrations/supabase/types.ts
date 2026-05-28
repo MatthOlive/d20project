@@ -114,6 +114,7 @@ export type Database = {
           narrator_type: string
           overgrown_chance: number
           shiny_chance: number
+          system: string
         }
         Insert: {
           background_url?: string | null
@@ -126,6 +127,7 @@ export type Database = {
           narrator_type?: string
           overgrown_chance?: number
           shiny_chance?: number
+          system?: string
         }
         Update: {
           background_url?: string | null
@@ -138,6 +140,7 @@ export type Database = {
           narrator_type?: string
           overgrown_chance?: number
           shiny_chance?: number
+          system?: string
         }
         Relationships: []
       }

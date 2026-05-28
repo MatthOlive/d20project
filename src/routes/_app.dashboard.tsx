@@ -18,7 +18,7 @@ import { Plus, Users, Crown, Sparkles, Trash2, CheckSquare, X } from "lucide-rea
 import { useAuth } from "@/hooks/use-auth";
 import { useT, LANGS, type Lang } from "@/lib/i18n";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { KnowledgeIngest } from "@/components/KnowledgeIngest";
+import { SettingsDialog, RPG_SYSTEMS } from "@/components/SettingsDialog";
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: Dashboard,
@@ -45,6 +45,7 @@ function Dashboard() {
   const [name, setName] = useState("");
   const [narratorType, setNarratorType] = useState<"human" | "ai">("human");
   const [language, setLanguage] = useState<Lang>("pt-BR");
+  const [system, setSystem] = useState<string>("pokerole");
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -53,7 +54,8 @@ function Dashboard() {
       if (!user) throw new Error("Not signed in");
       const { data, error } = await supabase
         .from("games")
-        .insert({ name: gameName, narrator_id: user.id, narrator_type: narratorType, language })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .insert({ name: gameName, narrator_id: user.id, narrator_type: narratorType, language, system } as any)
         .select()
         .single();
       if (error) throw error;
@@ -65,6 +67,7 @@ function Dashboard() {
       setName("");
       setNarratorType("human");
       setLanguage("pt-BR");
+      setSystem("pokerole");
       toast.success("Game created!");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -107,7 +110,7 @@ function Dashboard() {
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <KnowledgeIngest />
+          <SettingsDialog />
           {!selectMode ? (
             <Button variant="outline" size="sm" onClick={() => setSelectMode(true)}>
               <CheckSquare className="mr-1.5 h-4 w-4" /> {t("select")}
@@ -134,6 +137,19 @@ function Dashboard() {
                   <Input id="gname" value={name} onChange={(e) => setName(e.target.value)} placeholder="The Kanto Chronicles" />
                 </div>
                 <div className="space-y-2">
+                  <Label>Sistema</Label>
+                  <Select value={system} onValueChange={setSystem}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {RPG_SYSTEMS.map((s) => (
+                        <SelectItem key={s.id} value={s.id} disabled={!s.available}>
+                          {s.label}{!s.available ? " — em breve" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label>{t("narrator")}</Label>
                   <Select value={narratorType} onValueChange={(v) => setNarratorType(v as "human" | "ai")}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -154,7 +170,7 @@ function Dashboard() {
                 </div>
               </div>
               <DialogFooter>
-                <Button disabled={!name.trim() || createGame.isPending} onClick={() => createGame.mutate(name.trim())}>
+                <Button disabled={!name.trim() || !system || createGame.isPending} onClick={() => createGame.mutate(name.trim())}>
                   {t("create")}
                 </Button>
               </DialogFooter>

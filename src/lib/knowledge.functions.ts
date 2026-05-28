@@ -94,6 +94,21 @@ export const ingestKnowledge = createServerFn({ method: "POST" })
     return { ok: true, inserted };
   });
 
+export const deleteKnowledgeSource = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ source: z.string().min(1).max(120) }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = context.supabase as any;
+    const { data: games } = await supabase
+      .from("games").select("id").eq("narrator_id", context.userId).limit(1);
+    if (!games || games.length === 0) throw new Error("Only a narrator can delete knowledge.");
+    const { error } = await supabaseAdmin.from("knowledge_chunks").delete().eq("source", data.source);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 /** Internal: top-k semantic search of the rulebook. */
 export async function searchKnowledge(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
