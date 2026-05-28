@@ -267,7 +267,9 @@ export function MapBoard({
           </div>
         );
       })}
+      </div>
     </div>
     </div>
   );
 }
+
