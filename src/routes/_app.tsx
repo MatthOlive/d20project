@@ -29,7 +29,7 @@ function AppLayout() {
             <div className="h-8 w-8 rounded-full border-[3px] border-white bg-white">
               <div className="m-[3px] h-2.5 w-2.5 rounded-full bg-pokedex" />
             </div>
-            <span className="text-base font-extrabold tracking-tight">Pokérole VTT</span>
+            <span className="text-base font-extrabold tracking-tight">D20 Project</span>
           </Link>
           <div className="flex items-center gap-3 text-sm">
             <span className="hidden sm:inline opacity-90">{user?.email}</span>
