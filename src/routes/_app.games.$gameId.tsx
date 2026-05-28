@@ -1094,3 +1094,63 @@ function AbilitiesCompendium() {
     </div>
   );
 }
+
+function GameSettingsButton({ gameId }: { gameId: string }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [shiny, setShiny] = useState<number>(10);
+  const [over, setOver] = useState<number>(0);
+
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      const { data } = await supabase
+        .from("games")
+        .select("shiny_chance,overgrown_chance")
+        .eq("id", gameId)
+        .single();
+      const row = data as { shiny_chance?: number; overgrown_chance?: number } | null;
+      setShiny(row?.shiny_chance ?? 10);
+      setOver(row?.overgrown_chance ?? 0);
+    })();
+  }, [open, gameId]);
+
+  async function save() {
+    const s = Math.max(0, Math.min(100, Math.round(shiny)));
+    const o = Math.max(0, Math.min(100, Math.round(over)));
+    const { error } = await supabase
+      .from("games")
+      .update({ shiny_chance: s, overgrown_chance: o } as never)
+      .eq("id", gameId);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Configurações salvas");
+    qc.invalidateQueries({ queryKey: ["game", gameId] });
+    setOpen(false);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="secondary" className="h-8 justify-start">⚙️ Settings</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Configurações do Jogo</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label className="text-xs">Chance de Shiny (%)</Label>
+            <Input type="number" min={0} max={100} value={shiny} onChange={(e) => setShiny(Number(e.target.value))} />
+            <p className="mt-1 text-[11px] text-muted-foreground">Aplicada ao criar um Pokémon novo.</p>
+          </div>
+          <div>
+            <Label className="text-xs">Chance de Overgrown (%)</Label>
+            <Input type="number" min={0} max={100} value={over} onChange={(e) => setOver(Number(e.target.value))} />
+            <p className="mt-1 text-[11px] text-muted-foreground">0 = só manual (checkbox na criação).</p>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button onClick={save}>Salvar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
