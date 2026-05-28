@@ -440,6 +440,7 @@ export function PokemonSheet({
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-semibold">{a}{hasChoice && isSelected && <span className="ml-2 text-[10px] uppercase tracking-wide text-primary">active</span>}</div>
                   {detail?.effect && <div className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">{detail.effect}</div>}
+                  {detail?.effect && <EffectIcons effect={detail.effect} className="mt-1" />}
                 </div>
                 <AbilityRollDialog name={a} effect={detail?.effect ?? ""} pokemonName={name} onRoll={boundRoll} onChat={onChat} />
               </div>
