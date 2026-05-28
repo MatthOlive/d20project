@@ -304,35 +304,48 @@ export function TrainerSheet({
         <div className="rounded-lg border border-border bg-card p-3">
           <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-primary">Physical</h4>
           <div className="space-y-1.5">
-            {ATTRS.map((a) => {
-              const v = trainer.attrs[a] ?? 1;
-              return (
-                <div key={a} className="flex items-center justify-between rounded-md bg-background px-2 py-1">
-                  <span className="text-xs font-medium uppercase">{a}</span>
-                  <DotEditor value={v} max={HUMAN_ATTR_CAP}
-                    onChange={(n) => patch({ attrs: { ...trainer.attrs, [a]: n } })}
-                    disabled={!canEdit} />
-                </div>
-              );
-            })}
+            {ATTRS.map((a) => (
+              <AttrFourField
+                key={a}
+                label={a}
+                base={trainer.attrs?.[a] ?? 1}
+                points={trainer.attr_points?.[a] ?? 0}
+                bonus={trainer.attr_bonus?.[a] ?? 0}
+                baseEditable
+                disabled={!canEdit}
+                cap={HUMAN_ATTR_CAP}
+                onChange={(d) => {
+                  if (d.base !== undefined) patch({ attrs: { ...trainer.attrs, [a]: d.base } });
+                  if (d.points !== undefined) patch({ attr_points: { ...trainer.attr_points, [a]: d.points } });
+                  if (d.bonus !== undefined) patch({ attr_bonus: { ...trainer.attr_bonus, [a]: d.bonus } });
+                }}
+              />
+            ))}
           </div>
         </div>
         <div className="rounded-lg border border-border bg-card p-3">
           <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-amber-500">Social</h4>
           <div className="space-y-1.5">
-            {SOCIAL_ATTRS.map((a) => {
-              const v = trainer.social_attrs?.[a] ?? 1;
-              return (
-                <div key={a} className="flex items-center justify-between rounded-md bg-background px-2 py-1">
-                  <span className="text-xs font-medium uppercase">{a}</span>
-                  <DotEditor value={v} max={HUMAN_ATTR_CAP}
-                    onChange={(n) => patch({ social_attrs: { ...trainer.social_attrs, [a]: n } })}
-                    disabled={!canEdit} />
-                </div>
-              );
-            })}
+            {SOCIAL_ATTRS.map((a) => (
+              <AttrFourField
+                key={a}
+                label={a}
+                base={trainer.social_attrs?.[a] ?? 1}
+                points={trainer.social_attr_points?.[a] ?? 0}
+                bonus={trainer.social_attr_bonus?.[a] ?? 0}
+                baseEditable
+                disabled={!canEdit}
+                cap={HUMAN_ATTR_CAP}
+                onChange={(d) => {
+                  if (d.base !== undefined) patch({ social_attrs: { ...trainer.social_attrs, [a]: d.base } });
+                  if (d.points !== undefined) patch({ social_attr_points: { ...trainer.social_attr_points, [a]: d.points } });
+                  if (d.bonus !== undefined) patch({ social_attr_bonus: { ...trainer.social_attr_bonus, [a]: d.bonus } });
+                }}
+              />
+            ))}
           </div>
         </div>
+
       </section>
 
       {/* ============ BLOCO 3 — Skills (Fight / Survival / Social / Knowledge / Custom) ============ */}
