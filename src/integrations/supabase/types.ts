@@ -764,6 +764,13 @@ export type Database = {
         Args: { _game: string; _user: string }
         Returns: boolean
       }
+      join_game_by_invite: {
+        Args: { _code: string }
+        Returns: {
+          game_id: string
+          game_name: string
+        }[]
+      }
       match_knowledge: {
         Args: { match_count?: number; query_embedding: string }
         Returns: {
