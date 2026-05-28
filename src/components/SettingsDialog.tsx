@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useServerFn } from "@tanstack/react-start";
-import { ingestKnowledge } from "@/lib/knowledge.functions";
+import { ingestKnowledge, deleteKnowledgeSource } from "@/lib/knowledge.functions";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Settings as SettingsIcon, Loader2, Plus, BookOpen, Upload, FileText, Trash2 } from "lucide-react";
