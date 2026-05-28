@@ -9,6 +9,7 @@ import { rollD6, rollDice, parseRollCommand } from "@/lib/pokerole";
 import { cn } from "@/lib/utils";
 import { narratorTurn } from "@/lib/narrator.functions";
 import { toast } from "sonner";
+import { MoveCard, SuccessHover, type MoveRollMessage } from "@/components/MoveCard";
 
 type Msg = {
   id: string;
@@ -16,9 +17,10 @@ type Msg = {
   user_id: string;
   kind: string;
   body: string;
-  roll_data: { dice: number[]; successes: number; ones: number; label?: string; faces?: number } | null;
+  roll_data: { dice: number[]; successes: number; ones: number; label?: string; faces?: number } | MoveRollMessage | null;
   created_at: string;
 };
+
 
 export function ChatPanel({
   gameId,
