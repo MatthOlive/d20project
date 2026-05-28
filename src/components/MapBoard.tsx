@@ -49,9 +49,32 @@ export function MapBoard({
 }) {
   const qc = useQueryClient();
   const boardRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
   const [bgAspect, setBgAspect] = useState<number | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const panOrigin = useRef<{ mx: number; my: number; ox: number; oy: number } | null>(null);
+
+  useEffect(() => {
+    function onMove(e: MouseEvent) {
+      if (panOrigin.current) {
+        setPan({
+          x: panOrigin.current.ox + e.clientX - panOrigin.current.mx,
+          y: panOrigin.current.oy + e.clientY - panOrigin.current.my,
+        });
+      }
+    }
+    function onUp() { panOrigin.current = null; }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, []);
+
 
   useEffect(() => {
     if (!backgroundUrl) { setBgAspect(null); return; }
