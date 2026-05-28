@@ -116,3 +116,7 @@ export function FloatingWindow({
           />
         </>
       )}
+    </div>
+  );
+}
+
