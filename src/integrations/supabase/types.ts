@@ -755,6 +755,7 @@ export type Database = {
         Args: { _game: string; _owner: string }
         Returns: boolean
       }
+      get_game_invite_code: { Args: { _game: string }; Returns: string }
       is_game_member: {
         Args: { _game: string; _user: string }
         Returns: boolean
