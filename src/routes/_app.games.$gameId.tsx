@@ -355,8 +355,17 @@ function FilesPanel({
   const createPokemon = useMutation({
     mutationFn: async () => {
       if (!newPkmSpecies) throw new Error("Pick a species");
-      // Roll 1d100; 1–10 = shiny (10%)
-      const isShiny = Math.floor(Math.random() * 100) + 1 <= 10;
+      // Read configured chances from the game (defaults 10/0)
+      const { data: gameRow } = await supabase
+        .from("games")
+        .select("shiny_chance,overgrown_chance")
+        .eq("id", gameId)
+        .single();
+      const shinyChance = (gameRow as { shiny_chance?: number } | null)?.shiny_chance ?? 10;
+      const overgrownChance = (gameRow as { overgrown_chance?: number } | null)?.overgrown_chance ?? 0;
+      const isShiny = Math.floor(Math.random() * 100) + 1 <= shinyChance;
+      const rolledOver = overgrownChance > 0 && Math.floor(Math.random() * 100) + 1 <= overgrownChance;
+      const finalOvergrown = newPkmOvergrown || rolledOver;
       const { data, error } = await supabase
         .from("pokemon")
         .insert({
@@ -365,11 +374,12 @@ function FilesPanel({
           species_id: newPkmSpecies,
           rank: "starter",
           is_shiny: isShiny,
-          is_overgrown: newPkmOvergrown,
+          is_overgrown: finalOvergrown,
         })
         .select().single();
       if (error) throw error;
       if (isShiny) toast.success("✨ Shiny rolled!");
+      if (rolledOver && !newPkmOvergrown) toast.success("🌿 Overgrown rolled!");
       return data;
     },
     onSuccess: (p) => {
