@@ -268,7 +268,7 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
     );
   }
   // Legacy simple roll message
-  const rd = msg.roll_data as { dice: number[]; successes: number; ones: number; faces?: number } | null;
+  const rd = msg.roll_data as unknown as { dice: number[]; successes: number; ones: number; faces?: number } | null;
   if (msg.kind === "roll" && rd) {
     const faces = rd.faces ?? 6;
     const isD6 = faces === 6;
