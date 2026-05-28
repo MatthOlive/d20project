@@ -497,6 +497,8 @@ export function PokemonSheet({
                     {isStatus ? " · Status (no damage)" : ` · Damage ${dmgStat} ${dmgAttrVal} + Pwr ${m.power}${hasStab ? " + STAB" : ""} · ${dmgPool}d6`}
                   </div>
                   {m.effect && <p className="text-xs">{m.effect}</p>}
+                  <EffectIcons effect={m.effect} />
+
                   <div className="flex items-center justify-between">
                     <MoveRollDialog move={m} pokemonName={name} accPool={accPool} dmgPool={dmgPool} isStatus={isStatus} isSpecial={isSpecial} hasStab={hasStab} onRoll={boundRoll} onChat={onChat} />
                     {canEdit && <Button size="icon" variant="ghost" onClick={() => removeMove(m.id)}><Trash2 className="h-3.5 w-3.5" /></Button>}
