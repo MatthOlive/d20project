@@ -755,6 +755,7 @@ export type Database = {
         Args: { _game: string; _owner: string }
         Returns: boolean
       }
+      get_game_invite_code: { Args: { _game: string }; Returns: string }
       is_game_member: {
         Args: { _game: string; _user: string }
         Returns: boolean
@@ -762,6 +763,13 @@ export type Database = {
       is_game_narrator: {
         Args: { _game: string; _user: string }
         Returns: boolean
+      }
+      join_game_by_invite: {
+        Args: { _code: string }
+        Returns: {
+          game_id: string
+          game_name: string
+        }[]
       }
       match_knowledge: {
         Args: { match_count?: number; query_embedding: string }

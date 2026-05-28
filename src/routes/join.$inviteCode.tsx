@@ -21,25 +21,15 @@ function JoinPage() {
       return;
     }
     (async () => {
-      const { data: game, error } = await supabase
-        .from("games")
-        .select("id,name")
-        .eq("invite_code", inviteCode)
-        .maybeSingle();
-      if (error || !game) {
+      const { data, error } = await supabase.rpc("join_game_by_invite", { _code: inviteCode });
+      const row = Array.isArray(data) ? data[0] : null;
+      if (error || !row) {
         toast.error("Invite link is invalid.");
         navigate({ to: "/dashboard" });
         return;
       }
-      const { error: joinErr } = await supabase
-        .from("game_members")
-        .insert({ game_id: game.id, user_id: user.id, role: "player" });
-      if (joinErr && !joinErr.message.includes("duplicate")) {
-        toast.error(joinErr.message);
-      } else {
-        toast.success(`Joined ${game.name}`);
-      }
-      navigate({ to: "/games/$gameId", params: { gameId: game.id } });
+      toast.success(`Joined ${row.game_name}`);
+      navigate({ to: "/games/$gameId", params: { gameId: row.game_id } });
     })();
   }, [user, loading, inviteCode, navigate]);
 
