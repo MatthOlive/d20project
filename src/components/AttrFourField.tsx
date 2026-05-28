@@ -9,7 +9,7 @@ export function AttrFourField({
   label,
   base,
   points,
-export function AttrFourField({
+
   label,
   base,
   points,
