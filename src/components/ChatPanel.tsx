@@ -281,7 +281,7 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
           <span className="text-muted-foreground">rolled {msg.body}</span>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          {msg.roll_data.dice.map((d, i) => (
+          {rd.dice.map((d, i) => (
             <span
               key={i}
               className={cn(
@@ -297,11 +297,11 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
           {isD6 ? (
             <>
               <span className="ml-2 rounded-full bg-success/15 px-2.5 py-0.5 text-xs font-bold text-success">
-                {msg.roll_data.successes} success{msg.roll_data.successes === 1 ? "" : "es"}
+                {rd.successes} success{rd.successes === 1 ? "" : "es"}
               </span>
-              {msg.roll_data.ones > 0 && (
+              {rd.ones > 0 && (
                 <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive">
-                  {msg.roll_data.ones} × 1
+                  {rd.ones} × 1
                 </span>
               )}
             </>
