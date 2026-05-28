@@ -12,6 +12,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { DotEditor } from "@/components/DotEditor";
+import { AttrFourField, SkillNumberInput } from "@/components/AttrFourField";
 import { Textarea } from "@/components/ui/textarea";
 import {
   POKEMON_ATTRS, SOCIAL_ATTRS, RANKS, RANK_LABELS, RANK_BONUS, TYPE_COLORS, type Rank,
@@ -60,7 +61,10 @@ type Move = {
 type Pokemon = {
   id: string; game_id: string; owner_id: string; species_id: string;
   nickname: string | null; rank: Rank; current_attrs: Record<string, number>;
-  social_attrs: Record<string, number>; skills: Record<string, number>;
+  attr_points: Record<string, number>; attr_bonus: Record<string, number>;
+  social_attrs: Record<string, number>;
+  social_attr_points: Record<string, number>; social_attr_bonus: Record<string, number>;
+  skills: Record<string, number>;
   modifiers: Record<string, number>; hp: number; current_hp: number | null;
   will: number; status: string[]; notes: string; image_url: string | null;
   nature: string | null; held_item: string | null; happiness: number;
