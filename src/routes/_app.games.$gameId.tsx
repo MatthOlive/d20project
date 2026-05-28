@@ -23,6 +23,7 @@ import { OnlinePresence } from "@/components/OnlinePresence";
 import { PokemonSheet } from "@/components/PokemonSheet";
 import { SheetTabs } from "@/components/SheetTabs";
 import { MapBoard, DRAG_MIME, type DragCharacterPayload } from "@/components/MapBoard";
+import { MusicPanel } from "@/components/MusicPanel";
 import { toast } from "sonner";
 import { Copy, Crown, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Swords, ChevronDown, ChevronUp } from "lucide-react";
 import { rollD6, rollShiny, POKEMON_TYPES, TYPE_COLORS, type PokemonType } from "@/lib/pokerole";
@@ -162,6 +163,7 @@ function GameRoom() {
               </span>
             )}
             {isNarrator && <InviteButton url={inviteUrl} />}
+            {isNarrator && <GameSettingsButton gameId={gameId} />}
             <Button
               size="sm"
               variant="secondary"
@@ -190,10 +192,11 @@ function GameRoom() {
         </div>
         <Tabs defaultValue="chat" className="flex h-full flex-col">
 
-          <TabsList className="m-2 grid grid-cols-3">
+          <TabsList className="m-2 grid grid-cols-4">
             <TabsTrigger value="chat">Chat</TabsTrigger>
             <TabsTrigger value="compendium">Compendium</TabsTrigger>
             <TabsTrigger value="files">Files</TabsTrigger>
+            <TabsTrigger value="music">Music</TabsTrigger>
           </TabsList>
           <TabsContent value="chat" className="flex-1 overflow-hidden">
             <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} isGameOwner={isNarrator} />
@@ -203,6 +206,9 @@ function GameRoom() {
           </TabsContent>
           <TabsContent value="files" className="flex-1 overflow-auto p-3">
             <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindow} />
+          </TabsContent>
+          <TabsContent value="music" className="flex-1 overflow-hidden">
+            <MusicPanel gameId={gameId} isNarrator={isNarrator} />
           </TabsContent>
         </Tabs>
       </Card>
@@ -350,8 +356,17 @@ function FilesPanel({
   const createPokemon = useMutation({
     mutationFn: async () => {
       if (!newPkmSpecies) throw new Error("Pick a species");
-      // Roll 1d100; 1–10 = shiny (10%)
-      const isShiny = Math.floor(Math.random() * 100) + 1 <= 10;
+      // Read configured chances from the game (defaults 10/0)
+      const { data: gameRow } = await supabase
+        .from("games")
+        .select("shiny_chance,overgrown_chance")
+        .eq("id", gameId)
+        .single();
+      const shinyChance = (gameRow as { shiny_chance?: number } | null)?.shiny_chance ?? 10;
+      const overgrownChance = (gameRow as { overgrown_chance?: number } | null)?.overgrown_chance ?? 0;
+      const isShiny = Math.floor(Math.random() * 100) + 1 <= shinyChance;
+      const rolledOver = overgrownChance > 0 && Math.floor(Math.random() * 100) + 1 <= overgrownChance;
+      const finalOvergrown = newPkmOvergrown || rolledOver;
       const { data, error } = await supabase
         .from("pokemon")
         .insert({
@@ -360,11 +375,12 @@ function FilesPanel({
           species_id: newPkmSpecies,
           rank: "starter",
           is_shiny: isShiny,
-          is_overgrown: newPkmOvergrown,
+          is_overgrown: finalOvergrown,
         })
         .select().single();
       if (error) throw error;
       if (isShiny) toast.success("✨ Shiny rolled!");
+      if (rolledOver && !newPkmOvergrown) toast.success("🌿 Overgrown rolled!");
       return data;
     },
     onSuccess: (p) => {
@@ -528,7 +544,7 @@ function FilesPanel({
                 </span>
               </label>
               <p className="text-xs text-muted-foreground">
-                Chance de shiny: 10% (rolada automaticamente).
+                Chances de shiny/overgrown configuráveis em ⚙️ Settings.
               </p>
               <DialogFooter>
                 <Button onClick={() => createPokemon.mutate()} disabled={createPokemon.isPending}>Create</Button>
@@ -1076,5 +1092,65 @@ function AbilitiesCompendium() {
         {filtered.length === 0 && <p className="p-4 text-center text-xs text-muted-foreground">No abilities.</p>}
       </div>
     </div>
+  );
+}
+
+function GameSettingsButton({ gameId }: { gameId: string }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [shiny, setShiny] = useState<number>(10);
+  const [over, setOver] = useState<number>(0);
+
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      const { data } = await supabase
+        .from("games")
+        .select("shiny_chance,overgrown_chance")
+        .eq("id", gameId)
+        .single();
+      const row = data as { shiny_chance?: number; overgrown_chance?: number } | null;
+      setShiny(row?.shiny_chance ?? 10);
+      setOver(row?.overgrown_chance ?? 0);
+    })();
+  }, [open, gameId]);
+
+  async function save() {
+    const s = Math.max(0, Math.min(100, Math.round(shiny)));
+    const o = Math.max(0, Math.min(100, Math.round(over)));
+    const { error } = await supabase
+      .from("games")
+      .update({ shiny_chance: s, overgrown_chance: o } as never)
+      .eq("id", gameId);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Configurações salvas");
+    qc.invalidateQueries({ queryKey: ["game", gameId] });
+    setOpen(false);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="secondary" className="h-8 justify-start">⚙️ Settings</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Configurações do Jogo</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label className="text-xs">Chance de Shiny (%)</Label>
+            <Input type="number" min={0} max={100} value={shiny} onChange={(e) => setShiny(Number(e.target.value))} />
+            <p className="mt-1 text-[11px] text-muted-foreground">Aplicada ao criar um Pokémon novo.</p>
+          </div>
+          <div>
+            <Label className="text-xs">Chance de Overgrown (%)</Label>
+            <Input type="number" min={0} max={100} value={over} onChange={(e) => setOver(Number(e.target.value))} />
+            <p className="mt-1 text-[11px] text-muted-foreground">0 = só manual (checkbox na criação).</p>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button onClick={save}>Salvar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
