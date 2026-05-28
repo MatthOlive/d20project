@@ -112,11 +112,25 @@ export function MapBoard({
   }
 
   function pointToRel(clientX: number, clientY: number) {
-    const rect = boardRef.current!.getBoundingClientRect();
+    const target = innerRef.current ?? boardRef.current!;
+    const rect = target.getBoundingClientRect();
     return {
       x: snap((clientX - rect.left) / rect.width, rect.width),
       y: snap((clientY - rect.top) / rect.height, rect.height),
     };
+  }
+
+  function onWheel(e: React.WheelEvent) {
+    e.preventDefault();
+    const delta = -e.deltaY * 0.0015;
+    setZoom((z) => Math.max(0.3, Math.min(4, z * (1 + delta))));
+  }
+  function onContextMenu(e: React.MouseEvent) { e.preventDefault(); }
+  function onMouseDown(e: React.MouseEvent) {
+    if (e.button === 2) {
+      e.preventDefault();
+      panOrigin.current = { mx: e.clientX, my: e.clientY, ox: pan.x, oy: pan.y };
+    }
   }
 
   async function onDrop(e: React.DragEvent) {
