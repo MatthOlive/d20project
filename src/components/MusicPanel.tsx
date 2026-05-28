@@ -112,8 +112,8 @@ export function MusicPanel({
 
       {playing && (
         <div className="rounded-md border border-border bg-muted/30 p-2">
-          <div className="mb-2 flex items-center gap-2">
-            <div className="flex-1 truncate text-xs font-medium">{playing.title}</div>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 truncate text-xs font-medium">▶ {playing.title}</div>
             {isNarrator && (
               <>
                 <Button size="sm" variant="ghost" onClick={nextTrack} title="Próxima">
@@ -125,15 +125,6 @@ export function MusicPanel({
               </>
             )}
           </div>
-          <iframe
-            key={playing.video_id}
-            width="100%"
-            height="80"
-            src={`https://www.youtube.com/embed/${playing.video_id}?autoplay=1&modestbranding=1`}
-            title={playing.title}
-            allow="autoplay; encrypted-media"
-            className="rounded"
-          />
         </div>
       )}
 
