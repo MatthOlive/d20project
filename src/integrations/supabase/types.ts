@@ -112,6 +112,8 @@ export type Database = {
           name: string
           narrator_id: string
           narrator_type: string
+          overgrown_chance: number
+          shiny_chance: number
         }
         Insert: {
           background_url?: string | null
@@ -122,6 +124,8 @@ export type Database = {
           name: string
           narrator_id: string
           narrator_type?: string
+          overgrown_chance?: number
+          shiny_chance?: number
         }
         Update: {
           background_url?: string | null
@@ -132,6 +136,8 @@ export type Database = {
           name?: string
           narrator_id?: string
           narrator_type?: string
+          overgrown_chance?: number
+          shiny_chance?: number
         }
         Relationships: []
       }
@@ -242,6 +248,42 @@ export type Database = {
           power?: number
           target?: string
           type?: Database["public"]["Enums"]["pokemon_type"]
+        }
+        Relationships: []
+      }
+      music_tracks: {
+        Row: {
+          added_by: string
+          created_at: string
+          game_id: string
+          id: string
+          is_playing: boolean
+          position: number
+          thumbnail: string | null
+          title: string
+          video_id: string
+        }
+        Insert: {
+          added_by: string
+          created_at?: string
+          game_id: string
+          id?: string
+          is_playing?: boolean
+          position?: number
+          thumbnail?: string | null
+          title?: string
+          video_id: string
+        }
+        Update: {
+          added_by?: string
+          created_at?: string
+          game_id?: string
+          id?: string
+          is_playing?: boolean
+          position?: number
+          thumbnail?: string | null
+          title?: string
+          video_id?: string
         }
         Relationships: []
       }
