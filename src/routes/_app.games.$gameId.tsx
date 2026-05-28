@@ -18,6 +18,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ChatPanel } from "@/components/ChatPanel";
 
 import { FloatingWindow } from "@/components/FloatingWindow";
+import { OnlinePresence } from "@/components/OnlinePresence";
+
 import { PokemonSheet } from "@/components/PokemonSheet";
 import { SheetTabs } from "@/components/SheetTabs";
 import { MapBoard, DRAG_MIME, type DragCharacterPayload } from "@/components/MapBoard";
