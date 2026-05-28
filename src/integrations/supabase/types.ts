@@ -276,6 +276,8 @@ export type Database = {
         Row: {
           ai_scene_id: string | null
           ai_spawned: boolean
+          attr_bonus: Json
+          attr_points: Json
           battles: number
           confidence: number
           created_at: string
@@ -301,6 +303,8 @@ export type Database = {
           rank: Database["public"]["Enums"]["pokerole_rank"]
           sex: string | null
           skills: Json
+          social_attr_bonus: Json
+          social_attr_points: Json
           social_attrs: Json
           species_id: string
           status: string[]
@@ -311,6 +315,8 @@ export type Database = {
         Insert: {
           ai_scene_id?: string | null
           ai_spawned?: boolean
+          attr_bonus?: Json
+          attr_points?: Json
           battles?: number
           confidence?: number
           created_at?: string
@@ -336,6 +342,8 @@ export type Database = {
           rank?: Database["public"]["Enums"]["pokerole_rank"]
           sex?: string | null
           skills?: Json
+          social_attr_bonus?: Json
+          social_attr_points?: Json
           social_attrs?: Json
           species_id: string
           status?: string[]
@@ -346,6 +354,8 @@ export type Database = {
         Update: {
           ai_scene_id?: string | null
           ai_spawned?: boolean
+          attr_bonus?: Json
+          attr_points?: Json
           battles?: number
           confidence?: number
           created_at?: string
@@ -371,6 +381,8 @@ export type Database = {
           rank?: Database["public"]["Enums"]["pokerole_rank"]
           sex?: string | null
           skills?: Json
+          social_attr_bonus?: Json
+          social_attr_points?: Json
           social_attrs?: Json
           species_id?: string
           status?: string[]
@@ -639,6 +651,8 @@ export type Database = {
           age: number | null
           ai_scene_id: string | null
           ai_spawned: boolean
+          attr_bonus: Json
+          attr_points: Json
           attrs: Json
           background: string | null
           badges: Json
@@ -666,6 +680,8 @@ export type Database = {
           rank: Database["public"]["Enums"]["pokerole_rank"]
           sex: string | null
           skills: Json
+          social_attr_bonus: Json
+          social_attr_points: Json
           social_attrs: Json
           status_conditions: string[]
         }
@@ -674,6 +690,8 @@ export type Database = {
           age?: number | null
           ai_scene_id?: string | null
           ai_spawned?: boolean
+          attr_bonus?: Json
+          attr_points?: Json
           attrs?: Json
           background?: string | null
           badges?: Json
@@ -701,6 +719,8 @@ export type Database = {
           rank?: Database["public"]["Enums"]["pokerole_rank"]
           sex?: string | null
           skills?: Json
+          social_attr_bonus?: Json
+          social_attr_points?: Json
           social_attrs?: Json
           status_conditions?: string[]
         }
@@ -709,6 +729,8 @@ export type Database = {
           age?: number | null
           ai_scene_id?: string | null
           ai_spawned?: boolean
+          attr_bonus?: Json
+          attr_points?: Json
           attrs?: Json
           background?: string | null
           badges?: Json
@@ -736,6 +758,8 @@ export type Database = {
           rank?: Database["public"]["Enums"]["pokerole_rank"]
           sex?: string | null
           skills?: Json
+          social_attr_bonus?: Json
+          social_attr_points?: Json
           social_attrs?: Json
           status_conditions?: string[]
         }

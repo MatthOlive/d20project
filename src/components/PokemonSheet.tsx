@@ -12,6 +12,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { DotEditor } from "@/components/DotEditor";
+import { AttrFourField, SkillNumberInput } from "@/components/AttrFourField";
 import { Textarea } from "@/components/ui/textarea";
 import {
   POKEMON_ATTRS, SOCIAL_ATTRS, RANKS, RANK_LABELS, RANK_BONUS, TYPE_COLORS, type Rank,
@@ -60,7 +61,10 @@ type Move = {
 type Pokemon = {
   id: string; game_id: string; owner_id: string; species_id: string;
   nickname: string | null; rank: Rank; current_attrs: Record<string, number>;
-  social_attrs: Record<string, number>; skills: Record<string, number>;
+  attr_points: Record<string, number>; attr_bonus: Record<string, number>;
+  social_attrs: Record<string, number>;
+  social_attr_points: Record<string, number>; social_attr_bonus: Record<string, number>;
+  skills: Record<string, number>;
   modifiers: Record<string, number>; hp: number; current_hp: number | null;
   will: number; status: string[]; notes: string; image_url: string | null;
   nature: string | null; held_item: string | null; happiness: number;
@@ -155,15 +159,22 @@ export function PokemonSheet({
   const boundRoll = (label: string, n: number, p?: number) => onRoll(label, n, p ?? painPen);
 
 
-  async function setAttr(key: string, val: number) {
+  async function setAttrBreakdown(key: string, delta: { points?: number; bonus?: number }) {
     if (!canEdit) return;
+    const base = species!.base_attrs[key] ?? 1;
     const limit = species!.attr_limits[key] ?? 5;
-    const clamped = Math.min(val, limit);
-    const newAttrs = { ...pokemon!.current_attrs, [key]: clamped };
-    const vit = key === "vitality" ? clamped : (newAttrs.vitality ?? 1);
-    const ins = key === "insight" ? clamped : (newAttrs.insight ?? 1);
+    const points = delta.points !== undefined ? delta.points : (pokemon!.attr_points?.[key] ?? 0);
+    const bonus = delta.bonus !== undefined ? delta.bonus : (pokemon!.attr_bonus?.[key] ?? 0);
+    const totalRaw = base + points + bonus;
+    const total = Math.min(totalRaw, Math.max(limit, base));
+    const newAttrs = { ...pokemon!.current_attrs, [key]: total };
+    const vit = key === "vitality" ? total : (newAttrs.vitality ?? 1);
+    const ins = key === "insight" ? total : (newAttrs.insight ?? 1);
     const baseHp = species!.base_hp + (pokemon!.is_overgrown ? 1 : 0);
-    patch({ current_attrs: newAttrs, hp: baseHp + vit, will: ins + 2 });
+    const patchObj: Partial<Pokemon> = { current_attrs: newAttrs, hp: baseHp + vit, will: ins + 2 };
+    if (delta.points !== undefined) patchObj.attr_points = { ...pokemon!.attr_points, [key]: points };
+    if (delta.bonus !== undefined) patchObj.attr_bonus = { ...pokemon!.attr_bonus, [key]: bonus };
+    patch(patchObj);
   }
 
 
@@ -346,14 +357,20 @@ export function PokemonSheet({
           <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-primary">Physical</h4>
           <div className="space-y-1.5">
             {POKEMON_ATTRS.map((a) => {
-              const val = pokemon.current_attrs[a] ?? species.base_attrs[a] ?? 1;
+              const base = species.base_attrs[a] ?? 1;
               const limit = species.attr_limits[a] ?? 5;
               return (
-                <div key={a} className="flex items-center justify-between gap-2 rounded-md bg-background px-2 py-1">
-                  <span className="text-xs font-medium uppercase">{a}</span>
-                  <DotEditor value={val} max={Math.max(10, limit)} cap={limit}
-                    onChange={(n) => setAttr(a, n)} disabled={!canEdit} />
-                </div>
+                <AttrFourField
+                  key={a}
+                  label={a}
+                  base={base}
+                  points={pokemon.attr_points?.[a] ?? 0}
+                  bonus={pokemon.attr_bonus?.[a] ?? 0}
+                  baseEditable={false}
+                  disabled={!canEdit}
+                  cap={Math.max(limit, base)}
+                  onChange={(d) => setAttrBreakdown(a, d)}
+                />
               );
             })}
           </div>
@@ -361,18 +378,26 @@ export function PokemonSheet({
         <div className="rounded-lg border border-border bg-card p-3 min-w-0">
           <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-amber-500">Social</h4>
           <div className="space-y-1.5">
-            {SOCIAL_ATTRS.map((a) => {
-              const v = pokemon.social_attrs?.[a] ?? 1;
-              return (
-                <div key={a} className="flex items-center justify-between gap-2 rounded-md bg-background px-2 py-1">
-                  <span className="text-xs font-medium uppercase">{a}</span>
-                  <DotEditor value={v} max={5}
-                    onChange={(n) => patch({ social_attrs: { ...pokemon.social_attrs, [a]: n } })} disabled={!canEdit} />
-                </div>
-              );
-            })}
+            {SOCIAL_ATTRS.map((a) => (
+              <AttrFourField
+                key={a}
+                label={a}
+                base={pokemon.social_attrs?.[a] ?? 1}
+                points={pokemon.social_attr_points?.[a] ?? 0}
+                bonus={pokemon.social_attr_bonus?.[a] ?? 0}
+                baseEditable
+                disabled={!canEdit}
+                cap={5}
+                onChange={(d) => {
+                  if (d.base !== undefined) patch({ social_attrs: { ...pokemon.social_attrs, [a]: d.base } });
+                  if (d.points !== undefined) patch({ social_attr_points: { ...pokemon.social_attr_points, [a]: d.points } });
+                  if (d.bonus !== undefined) patch({ social_attr_bonus: { ...pokemon.social_attr_bonus, [a]: d.bonus } });
+                }}
+              />
+            ))}
           </div>
         </div>
+
       </section>
 
       {/* ============ BLOCO 3 — Skills ============ */}
@@ -546,7 +571,7 @@ function SkillGroup({ title, tint, skills, values, canEdit, onChange }: {
           return (
             <div key={s} className="flex items-center justify-between gap-2">
               <span className="text-xs">{s}</span>
-              <DotEditor value={v} max={5} onChange={(n) => onChange({ [s]: n })} disabled={!canEdit} />
+              <SkillNumberInput value={v} onChange={(n) => onChange({ [s]: n })} disabled={!canEdit} />
             </div>
           );
         })}

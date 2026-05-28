@@ -12,7 +12,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { DotEditor } from "@/components/DotEditor";
+import { AttrFourField, SkillNumberInput } from "@/components/AttrFourField";
 import {
   ATTRS, SOCIAL_ATTRS, RANKS, RANK_LABELS, RANK_BONUS, TRAINER_SKILLS, HUMAN_ATTR_CAP, type Rank,
 } from "@/lib/pokerole";
@@ -43,7 +43,11 @@ type Trainer = {
   confidence: number;
   rank: Rank;
   attrs: Record<string, number>;
+  attr_points: Record<string, number>;
+  attr_bonus: Record<string, number>;
   social_attrs: Record<string, number>;
+  social_attr_points: Record<string, number>;
+  social_attr_bonus: Record<string, number>;
   skills: Record<string, number>;
   custom_skills: CustomSkill[];
   badges: Badge[];
@@ -110,10 +114,15 @@ export function TrainerSheet({
   if (!trainer) return <div className="p-4 text-sm text-muted-foreground">Loading…</div>;
   const canEdit = trainer.owner_id === userId || isNarrator;
 
-  const vit = trainer.attrs.vitality ?? 1;
-  const str = trainer.attrs.strength ?? 1;
-  const dex = trainer.attrs.dexterity ?? 1;
-  const ins = trainer.attrs.insight ?? 1;
+  const totalAttr = (k: string) =>
+    (trainer.attrs?.[k] ?? 1) + (trainer.attr_points?.[k] ?? 0) + (trainer.attr_bonus?.[k] ?? 0);
+  const totalSocial = (k: string) =>
+    (trainer.social_attrs?.[k] ?? 1) + (trainer.social_attr_points?.[k] ?? 0) + (trainer.social_attr_bonus?.[k] ?? 0);
+
+  const vit = totalAttr("vitality");
+  const str = totalAttr("strength");
+  const dex = totalAttr("dexterity");
+  const ins = totalAttr("insight");
   const alert = trainer.skills?.Alert ?? 0;
   const hp = 4 + vit;
   const currentHp = trainer.current_hp ?? hp;
@@ -130,8 +139,8 @@ export function TrainerSheet({
     { name: "Weapons", value: trainer.skills?.Weapons ?? 0 },
   ];
   const allAttrsForRoll = [
-    ...ATTRS.map((a) => ({ name: a, value: trainer.attrs[a] ?? 1 })),
-    ...SOCIAL_ATTRS.map((a) => ({ name: a, value: trainer.social_attrs?.[a] ?? 1 })),
+    ...ATTRS.map((a) => ({ name: a, value: totalAttr(a) })),
+    ...SOCIAL_ATTRS.map((a) => ({ name: a, value: totalSocial(a) })),
   ];
   const allSkillsForRoll = TRAINER_SKILLS.map((s) => ({ name: s, value: trainer.skills?.[s] ?? 0 }));
   const charName = trainer.name;
@@ -295,35 +304,48 @@ export function TrainerSheet({
         <div className="rounded-lg border border-border bg-card p-3">
           <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-primary">Physical</h4>
           <div className="space-y-1.5">
-            {ATTRS.map((a) => {
-              const v = trainer.attrs[a] ?? 1;
-              return (
-                <div key={a} className="flex items-center justify-between rounded-md bg-background px-2 py-1">
-                  <span className="text-xs font-medium uppercase">{a}</span>
-                  <DotEditor value={v} max={HUMAN_ATTR_CAP}
-                    onChange={(n) => patch({ attrs: { ...trainer.attrs, [a]: n } })}
-                    disabled={!canEdit} />
-                </div>
-              );
-            })}
+            {ATTRS.map((a) => (
+              <AttrFourField
+                key={a}
+                label={a}
+                base={trainer.attrs?.[a] ?? 1}
+                points={trainer.attr_points?.[a] ?? 0}
+                bonus={trainer.attr_bonus?.[a] ?? 0}
+                baseEditable
+                disabled={!canEdit}
+                cap={HUMAN_ATTR_CAP}
+                onChange={(d) => {
+                  if (d.base !== undefined) patch({ attrs: { ...trainer.attrs, [a]: d.base } });
+                  if (d.points !== undefined) patch({ attr_points: { ...trainer.attr_points, [a]: d.points } });
+                  if (d.bonus !== undefined) patch({ attr_bonus: { ...trainer.attr_bonus, [a]: d.bonus } });
+                }}
+              />
+            ))}
           </div>
         </div>
         <div className="rounded-lg border border-border bg-card p-3">
           <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-amber-500">Social</h4>
           <div className="space-y-1.5">
-            {SOCIAL_ATTRS.map((a) => {
-              const v = trainer.social_attrs?.[a] ?? 1;
-              return (
-                <div key={a} className="flex items-center justify-between rounded-md bg-background px-2 py-1">
-                  <span className="text-xs font-medium uppercase">{a}</span>
-                  <DotEditor value={v} max={HUMAN_ATTR_CAP}
-                    onChange={(n) => patch({ social_attrs: { ...trainer.social_attrs, [a]: n } })}
-                    disabled={!canEdit} />
-                </div>
-              );
-            })}
+            {SOCIAL_ATTRS.map((a) => (
+              <AttrFourField
+                key={a}
+                label={a}
+                base={trainer.social_attrs?.[a] ?? 1}
+                points={trainer.social_attr_points?.[a] ?? 0}
+                bonus={trainer.social_attr_bonus?.[a] ?? 0}
+                baseEditable
+                disabled={!canEdit}
+                cap={HUMAN_ATTR_CAP}
+                onChange={(d) => {
+                  if (d.base !== undefined) patch({ social_attrs: { ...trainer.social_attrs, [a]: d.base } });
+                  if (d.points !== undefined) patch({ social_attr_points: { ...trainer.social_attr_points, [a]: d.points } });
+                  if (d.bonus !== undefined) patch({ social_attr_bonus: { ...trainer.social_attr_bonus, [a]: d.bonus } });
+                }}
+              />
+            ))}
           </div>
         </div>
+
       </section>
 
       {/* ============ BLOCO 3 — Skills (Fight / Survival / Social / Knowledge / Custom) ============ */}
@@ -445,9 +467,7 @@ function SkillGroup({
           return (
             <div key={s} className="flex items-center justify-between gap-2">
               <span className="text-xs">{s}</span>
-              <DotEditor value={v} max={5}
-                onChange={(n) => onChange({ [s]: n })}
-                disabled={!canEdit} />
+              <SkillNumberInput value={v} onChange={(n) => onChange({ [s]: n })} disabled={!canEdit} />
             </div>
           );
         })}
@@ -488,9 +508,11 @@ function CustomSkillsSection({
               onChange={(e) => onChange(items.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}
               className="h-6 flex-1 text-xs"
             />
-            <DotEditor value={it.value} max={5}
+            <SkillNumberInput
+              value={it.value}
               onChange={(n) => onChange(items.map((x, j) => j === i ? { ...x, value: n } : x))}
-              disabled={!canEdit} />
+              disabled={!canEdit}
+            />
             {canEdit && (
               <Button size="sm" variant="ghost" className="h-6 w-6 p-0"
                 onClick={() => onChange(items.filter((_, j) => j !== i))}>
