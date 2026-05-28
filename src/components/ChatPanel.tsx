@@ -218,10 +218,62 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
       </div>
     );
   }
-  if (msg.kind === "roll" && msg.roll_data) {
-    const faces = msg.roll_data.faces ?? 6;
+  if (msg.kind === "move" && msg.roll_data && (msg.roll_data as MoveRollMessage).v === "move-1") {
+    const m = msg.roll_data as MoveRollMessage;
+    return (
+      <div className="space-y-1">
+        <div className="px-1 text-[11px] text-muted-foreground">
+          <span className="font-semibold text-foreground">{authorName}</span> · {m.pokemonName} used <b>{m.card.name}</b>
+        </div>
+        <MoveCard
+          data={m.card}
+          hasStab={m.hasStab}
+          accuracySlot={
+            <SuccessHover
+              label="success"
+              successes={m.accuracy.successes}
+              dice={m.accuracy.dice}
+            />
+          }
+          damageSlot={
+            m.damage ? (
+              <SuccessHover
+                label="dmg"
+                successes={m.damage.successes}
+                dice={m.damage.dice}
+                tone="danger"
+              />
+            ) : (
+              <span className="text-muted-foreground">Status</span>
+            )
+          }
+          chanceSlot={
+            m.chance.length > 0 ? (
+              <>
+                {m.chance.map((c, i) => (
+                  <SuccessHover
+                    key={i}
+                    label={`6s · ${c.label}`}
+                    successes={c.successes}
+                    dice={c.dice}
+                    tone="amber"
+                    highlight={(d) => d === 6}
+                  />
+                ))}
+              </>
+            ) : null
+          }
+        />
+      </div>
+    );
+  }
+  // Legacy simple roll message
+  const rd = msg.roll_data as { dice: number[]; successes: number; ones: number; faces?: number } | null;
+  if (msg.kind === "roll" && rd) {
+    const faces = rd.faces ?? 6;
     const isD6 = faces === 6;
-    const sum = msg.roll_data.dice.reduce((a, b) => a + b, 0);
+    const sum = rd.dice.reduce((a, b) => a + b, 0);
+
     return (
       <div className="rounded-lg border border-border bg-card p-3">
         <div className="mb-1.5 flex items-baseline justify-between text-xs">
