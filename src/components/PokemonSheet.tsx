@@ -330,7 +330,7 @@ export function PokemonSheet({
       </section>
 
       {/* ============ BLOCO 2 — Status + Physical + Social ============ */}
-      <section className="grid gap-3 lg:grid-cols-3">
+      <section className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
         <div className="rounded-lg border border-border bg-card p-3 min-w-0">
           <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Status problems</h4>
           <HpAndStatusBlock
@@ -342,14 +342,14 @@ export function PokemonSheet({
             onWillChange={(n) => patch({ will: n })}
           />
         </div>
-        <div className="rounded-lg border border-border bg-card p-3">
+        <div className="rounded-lg border border-border bg-card p-3 min-w-0">
           <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-primary">Physical</h4>
           <div className="space-y-1.5">
             {POKEMON_ATTRS.map((a) => {
               const val = pokemon.current_attrs[a] ?? species.base_attrs[a] ?? 1;
               const limit = species.attr_limits[a] ?? 5;
               return (
-                <div key={a} className="flex items-center justify-between rounded-md bg-background px-2 py-1">
+                <div key={a} className="flex items-center justify-between gap-2 rounded-md bg-background px-2 py-1">
                   <span className="text-xs font-medium uppercase">{a}</span>
                   <DotEditor value={val} max={Math.max(10, limit)} cap={limit}
                     onChange={(n) => setAttr(a, n)} disabled={!canEdit} />
@@ -358,13 +358,13 @@ export function PokemonSheet({
             })}
           </div>
         </div>
-        <div className="rounded-lg border border-border bg-card p-3">
+        <div className="rounded-lg border border-border bg-card p-3 min-w-0">
           <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-amber-500">Social</h4>
           <div className="space-y-1.5">
             {SOCIAL_ATTRS.map((a) => {
               const v = pokemon.social_attrs?.[a] ?? 1;
               return (
-                <div key={a} className="flex items-center justify-between rounded-md bg-background px-2 py-1">
+                <div key={a} className="flex items-center justify-between gap-2 rounded-md bg-background px-2 py-1">
                   <span className="text-xs font-medium uppercase">{a}</span>
                   <DotEditor value={v} max={5}
                     onChange={(n) => patch({ social_attrs: { ...pokemon.social_attrs, [a]: n } })} disabled={!canEdit} />
