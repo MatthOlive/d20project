@@ -55,6 +55,7 @@ export function SettingsDialog() {
 function RulesSection() {
   const qc = useQueryClient();
   const ingest = useServerFn(ingestKnowledge);
+  const delSource = useServerFn(deleteKnowledgeSource);
 
   const { data: sources } = useQuery({
     queryKey: ["knowledge-sources"],
