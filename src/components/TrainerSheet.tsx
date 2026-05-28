@@ -12,7 +12,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { DotEditor } from "@/components/DotEditor";
+import { AttrFourField, SkillNumberInput } from "@/components/AttrFourField";
 import {
   ATTRS, SOCIAL_ATTRS, RANKS, RANK_LABELS, RANK_BONUS, TRAINER_SKILLS, HUMAN_ATTR_CAP, type Rank,
 } from "@/lib/pokerole";
