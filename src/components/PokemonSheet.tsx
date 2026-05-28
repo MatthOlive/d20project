@@ -23,6 +23,7 @@ import { useDebouncedPatch } from "@/lib/use-debounced-patch";
 import { toast } from "sonner";
 import { Plus, Dices, Trash2, ImagePlus, RotateCcw, Sparkles, Zap, Maximize2, X as XIcon } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { EffectIcons } from "@/components/EffectIcons";
 import {
   HpAndStatusBlock, AttackRollButton, GenericRollButton, painPenaltyFor,
 } from "@/components/SheetRolls";
@@ -439,6 +440,7 @@ export function PokemonSheet({
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-semibold">{a}{hasChoice && isSelected && <span className="ml-2 text-[10px] uppercase tracking-wide text-primary">active</span>}</div>
                   {detail?.effect && <div className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">{detail.effect}</div>}
+                  {detail?.effect && <EffectIcons effect={detail.effect} className="mt-1" />}
                 </div>
                 <AbilityRollDialog name={a} effect={detail?.effect ?? ""} pokemonName={name} onRoll={boundRoll} onChat={onChat} />
               </div>
@@ -497,6 +499,8 @@ export function PokemonSheet({
                     {isStatus ? " · Status (no damage)" : ` · Damage ${dmgStat} ${dmgAttrVal} + Pwr ${m.power}${hasStab ? " + STAB" : ""} · ${dmgPool}d6`}
                   </div>
                   {m.effect && <p className="text-xs">{m.effect}</p>}
+                  <EffectIcons effect={m.effect} />
+
                   <div className="flex items-center justify-between">
                     <MoveRollDialog move={m} pokemonName={name} accPool={accPool} dmgPool={dmgPool} isStatus={isStatus} isSpecial={isSpecial} hasStab={hasStab} onRoll={boundRoll} onChat={onChat} />
                     {canEdit && <Button size="icon" variant="ghost" onClick={() => removeMove(m.id)}><Trash2 className="h-3.5 w-3.5" /></Button>}
