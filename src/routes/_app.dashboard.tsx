@@ -34,7 +34,7 @@ function Dashboard() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("games")
-        .select("id,name,background_url,invite_code,narrator_id,created_at,language,game_members(user_id,role)")
+        .select("id,name,background_url,narrator_id,created_at,language,game_members(user_id,role)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
