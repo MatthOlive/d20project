@@ -304,7 +304,11 @@ export function TrainerSheet({
             will={currentWill}
             willMax={will}
             onWillChange={(n) => patch({ current_will: n })}
-          />
+        </div>
+        <div className="rounded-lg border border-border bg-card p-3">
+          <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-primary">Physical</h4>
+          <div className="space-y-1.5">
+            {ATTRS.map((a) => (
               <AttrFourField
                 key={a}
                 label={a}
@@ -345,16 +349,10 @@ export function TrainerSheet({
                 }}
               />
             ))}
-
-                  if (d.points !== undefined) patch({ social_attr_points: { ...trainer.social_attr_points, [a]: d.points } });
-                  if (d.bonus !== undefined) patch({ social_attr_bonus: { ...trainer.social_attr_bonus, [a]: d.bonus } });
-                }}
-              />
-            ))}
           </div>
         </div>
-
       </section>
+
 
       {/* ============ BLOCO 3 — Skills (Fight / Survival / Social / Knowledge / Custom) ============ */}
       <section className="rounded-lg border border-border bg-card p-3">
