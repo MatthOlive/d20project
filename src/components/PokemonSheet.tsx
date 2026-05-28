@@ -703,10 +703,19 @@ function parseMoveExtras(effect: string | null | undefined): {
   return { chance, extra };
 }
 
-function MoveRollDialog({ move, pokemonName, accPool, dmgPool, isStatus, isSpecial, hasStab, onRoll, onChat }: {
+function cap(s: string): string {
+  if (!s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function MoveRollDialog({
+  move, pokemonName, accPool, dmgPool, isStatus, isSpecial, hasStab,
+  accuracyText, damagePoolText, gameId, userId, painPenalty, imageUrl,
+}: {
   move: Move; pokemonName: string; accPool: number; dmgPool: number;
   isStatus?: boolean; isSpecial?: boolean; hasStab?: boolean;
-  onRoll: (label: string, n: number) => void; onChat: (body: string) => void;
+  accuracyText: string; damagePoolText: string;
+  gameId: string; userId: string; painPenalty: number; imageUrl?: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const [accBonus, setAccBonus] = useState(0);
@@ -716,20 +725,68 @@ function MoveRollDialog({ move, pokemonName, accPool, dmgPool, isStatus, isSpeci
   const [extraOn, setExtraOn] = useState<boolean[]>(() => extras.extra.map(() => false));
   const defLabel = isSpecial ? "Target Sp.Def" : "Target Def";
   const extraDmgBonus = extras.extra.reduce((acc, e, i) => acc + (extraOn[i] ? e.count : 0), 0);
-  const finalDmg = Math.max(0, dmgPool + dmgBonus + extraDmgBonus - targetDef);
-  function confirm() {
-    const stab = hasStab ? " STAB" : "";
-    const defNote = targetDef > 0 ? ` −${defLabel} ${targetDef}` : "";
-    const desc = `**${pokemonName}** uses **${move.name}** (${move.type}${stab})${move.effect ? ` — ${move.effect}` : ""}`;
-    onChat(desc);
-    onRoll(`${pokemonName} · ${move.name} · Accuracy`, Math.max(0, accPool + accBonus));
-    if (!isStatus && finalDmg > 0) onRoll(`${pokemonName} · ${move.name} · Damage${stab}${defNote}`, finalDmg);
-    for (const c of extras.chance) {
-      onRoll(`${pokemonName} · ${move.name} · Chance (${c.label})`, c.count);
+  const finalDmgPool = Math.max(0, dmgPool + dmgBonus + extraDmgBonus - targetDef);
+  const finalAccPool = Math.max(0, accPool + accBonus);
+
+  async function confirm() {
+    const accResult = rollD6(finalAccPool);
+    const accSuccesses = Math.max(0, accResult.successes - painPenalty);
+    let dmg: MoveRollMessage["damage"] = null;
+    if (!isStatus && finalDmgPool > 0) {
+      const dmgResult = rollD6(finalDmgPool);
+      dmg = {
+        pool: finalDmgPool,
+        dice: dmgResult.dice,
+        successes: Math.max(0, dmgResult.successes - painPenalty),
+        penalty: painPenalty,
+        isStatus: false,
+        targetDef,
+      };
     }
+    const chance = extras.chance.map((c) => {
+      const r = rollD6(c.count);
+      return {
+        label: c.label,
+        pool: c.count,
+        dice: r.dice,
+        successes: r.dice.filter((d) => d === 6).length,
+      };
+    });
+    const payload: MoveRollMessage = {
+      v: "move-1",
+      pokemonName,
+      hasStab: !!hasStab,
+      imageUrl: imageUrl ?? null,
+      card: {
+        name: move.name,
+        type: move.type,
+        power: move.power,
+        accuracyText,
+        damagePoolText,
+        effect: move.effect ?? "",
+        category: move.category,
+      },
+      accuracy: {
+        pool: finalAccPool,
+        dice: accResult.dice,
+        successes: accSuccesses,
+        penalty: painPenalty,
+      },
+      damage: dmg,
+      chance,
+    };
+    const { error } = await supabase.from("chat_messages").insert({
+      game_id: gameId,
+      user_id: userId,
+      kind: "move",
+      body: `${pokemonName} used ${move.name}`,
+      roll_data: payload as unknown as Record<string, unknown>,
+    });
+    if (error) toast.error(error.message);
     setOpen(false); setAccBonus(0); setDmgBonus(0); setTargetDef(0);
     setExtraOn(extras.extra.map(() => false));
   }
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -738,10 +795,10 @@ function MoveRollDialog({ move, pokemonName, accPool, dmgPool, isStatus, isSpeci
       <DialogContent>
         <DialogHeader><DialogTitle>{move.name}{hasStab ? <span className="ml-2 rounded bg-success/20 px-1.5 py-0.5 text-xs font-bold text-success">STAB +1</span> : null}</DialogTitle></DialogHeader>
         {move.effect && <p className="text-sm text-muted-foreground">{move.effect}</p>}
-        <p className="text-[11px] text-muted-foreground italic">Order: 1) Accuracy → 2) Damage{extras.chance.length > 0 ? " → 3) Chance Dice" : ""}.</p>
+        <p className="text-[11px] italic text-muted-foreground">Order: 1) Accuracy → 2) Damage{extras.chance.length > 0 ? " → 3) Chance Dice (only 6s succeed)" : ""}.{painPenalty > 0 ? ` Pain Penalty −${painPenalty} applies to Accuracy & Damage successes.` : ""}</p>
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
-            <div><Label className="text-xs">Accuracy bonus dice</Label><p className="text-[11px] text-muted-foreground">Pool: {accPool}d6 → rolling {Math.max(0, accPool + accBonus)}d6</p></div>
+            <div><Label className="text-xs">Accuracy bonus dice</Label><p className="text-[11px] text-muted-foreground">Pool: {accPool}d6 → rolling {finalAccPool}d6</p></div>
             <Input type="number" value={accBonus} onChange={(e) => setAccBonus(parseInt(e.target.value) || 0)} className="h-9 w-20" />
           </div>
           {!isStatus && dmgPool > 0 && (
@@ -751,7 +808,7 @@ function MoveRollDialog({ move, pokemonName, accPool, dmgPool, isStatus, isSpeci
                 <Input type="number" value={dmgBonus} onChange={(e) => setDmgBonus(parseInt(e.target.value) || 0)} className="h-9 w-20" />
               </div>
               <div className="flex items-center justify-between gap-3">
-                <div><Label className="text-xs">{defLabel} (subtracted from damage pool)</Label><p className="text-[11px] text-muted-foreground">Final damage pool: <b>{finalDmg}d6</b></p></div>
+                <div><Label className="text-xs">{defLabel} (subtracted from damage pool)</Label><p className="text-[11px] text-muted-foreground">Final damage pool: <b>{finalDmgPool}d6</b></p></div>
                 <Input type="number" min={0} value={targetDef} onChange={(e) => setTargetDef(Math.max(0, parseInt(e.target.value) || 0))} className="h-9 w-20" />
               </div>
             </>
@@ -776,7 +833,7 @@ function MoveRollDialog({ move, pokemonName, accPool, dmgPool, isStatus, isSpeci
           )}
           {extras.chance.length > 0 && (
             <div className="rounded-md border border-border bg-muted/30 p-2 text-xs">
-              <Label className="text-xs font-semibold">Chance Dice (auto-rolled)</Label>
+              <Label className="text-xs font-semibold">Chance Dice (auto-rolled, 6s only)</Label>
               <ul className="mt-1 list-disc space-y-0.5 pl-4">
                 {extras.chance.map((c, i) => (
                   <li key={i}><b>{c.count}d6</b> — {c.label}</li>
@@ -784,12 +841,13 @@ function MoveRollDialog({ move, pokemonName, accPool, dmgPool, isStatus, isSpeci
               </ul>
             </div>
           )}
-          <Button onClick={confirm} className="w-full"><Dices className="mr-1.5 h-4 w-4" /> Roll</Button>
+          <Button onClick={confirm} className="w-full"><Dices className="mr-1.5 h-4 w-4" /> Roll & Send Card</Button>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
+
 
 type Nature = { id: string; name: string; keywords: string; description: string; confidence: number; };
 
