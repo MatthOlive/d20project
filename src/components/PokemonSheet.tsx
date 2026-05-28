@@ -357,14 +357,20 @@ export function PokemonSheet({
           <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-primary">Physical</h4>
           <div className="space-y-1.5">
             {POKEMON_ATTRS.map((a) => {
-              const val = pokemon.current_attrs[a] ?? species.base_attrs[a] ?? 1;
+              const base = species.base_attrs[a] ?? 1;
               const limit = species.attr_limits[a] ?? 5;
               return (
-                <div key={a} className="flex items-center justify-between gap-2 rounded-md bg-background px-2 py-1">
-                  <span className="text-xs font-medium uppercase">{a}</span>
-                  <DotEditor value={val} max={Math.max(10, limit)} cap={limit}
-                    onChange={(n) => setAttr(a, n)} disabled={!canEdit} />
-                </div>
+                <AttrFourField
+                  key={a}
+                  label={a}
+                  base={base}
+                  points={pokemon.attr_points?.[a] ?? 0}
+                  bonus={pokemon.attr_bonus?.[a] ?? 0}
+                  baseEditable={false}
+                  disabled={!canEdit}
+                  cap={Math.max(limit, base)}
+                  onChange={(d) => setAttrBreakdown(a, d)}
+                />
               );
             })}
           </div>
@@ -372,18 +378,26 @@ export function PokemonSheet({
         <div className="rounded-lg border border-border bg-card p-3 min-w-0">
           <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-amber-500">Social</h4>
           <div className="space-y-1.5">
-            {SOCIAL_ATTRS.map((a) => {
-              const v = pokemon.social_attrs?.[a] ?? 1;
-              return (
-                <div key={a} className="flex items-center justify-between gap-2 rounded-md bg-background px-2 py-1">
-                  <span className="text-xs font-medium uppercase">{a}</span>
-                  <DotEditor value={v} max={5}
-                    onChange={(n) => patch({ social_attrs: { ...pokemon.social_attrs, [a]: n } })} disabled={!canEdit} />
-                </div>
-              );
-            })}
+            {SOCIAL_ATTRS.map((a) => (
+              <AttrFourField
+                key={a}
+                label={a}
+                base={pokemon.social_attrs?.[a] ?? 1}
+                points={pokemon.social_attr_points?.[a] ?? 0}
+                bonus={pokemon.social_attr_bonus?.[a] ?? 0}
+                baseEditable
+                disabled={!canEdit}
+                cap={5}
+                onChange={(d) => {
+                  if (d.base !== undefined) patch({ social_attrs: { ...pokemon.social_attrs, [a]: d.base } });
+                  if (d.points !== undefined) patch({ social_attr_points: { ...pokemon.social_attr_points, [a]: d.points } });
+                  if (d.bonus !== undefined) patch({ social_attr_bonus: { ...pokemon.social_attr_bonus, [a]: d.bonus } });
+                }}
+              />
+            ))}
           </div>
         </div>
+
       </section>
 
       {/* ============ BLOCO 3 — Skills ============ */}
