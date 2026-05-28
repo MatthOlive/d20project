@@ -16,7 +16,7 @@ type Msg = {
   user_id: string;
   kind: string;
   body: string;
-  roll_data: { dice: number[]; successes: number; ones: number; label?: string } | null;
+  roll_data: { dice: number[]; successes: number; ones: number; label?: string; faces?: number } | null;
   created_at: string;
 };
 
