@@ -60,11 +60,16 @@ export function AttrFourField({
           className="h-6 px-1 text-center text-xs"
         />
       </Cell>
-
+      <Cell title="Bônus">
+        <Input
+          type="number"
+          value={bonus ?? 0}
+          disabled={disabled}
           onChange={(e) => onChange({ bonus: clamp(parseInt(e.target.value) || 0) })}
           className="h-6 px-1 text-center text-xs"
         />
       </Cell>
+
       <Cell title="Total">
         <div className="flex h-6 items-center justify-center rounded-md border border-primary/40 bg-primary/10 px-1 text-xs font-bold text-primary">
           {total}
