@@ -163,6 +163,7 @@ function GameRoom() {
               </span>
             )}
             {isNarrator && <InviteButton url={inviteUrl} />}
+            {isNarrator && <GameSettingsButton gameId={gameId} />}
             <Button
               size="sm"
               variant="secondary"
