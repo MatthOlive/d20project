@@ -45,6 +45,7 @@ function Dashboard() {
   const [name, setName] = useState("");
   const [narratorType, setNarratorType] = useState<"human" | "ai">("human");
   const [language, setLanguage] = useState<Lang>("pt-BR");
+  const [system, setSystem] = useState<string>("pokerole");
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -53,7 +54,8 @@ function Dashboard() {
       if (!user) throw new Error("Not signed in");
       const { data, error } = await supabase
         .from("games")
-        .insert({ name: gameName, narrator_id: user.id, narrator_type: narratorType, language })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .insert({ name: gameName, narrator_id: user.id, narrator_type: narratorType, language, system } as any)
         .select()
         .single();
       if (error) throw error;
@@ -65,6 +67,7 @@ function Dashboard() {
       setName("");
       setNarratorType("human");
       setLanguage("pt-BR");
+      setSystem("pokerole");
       toast.success("Game created!");
     },
     onError: (e: Error) => toast.error(e.message),
