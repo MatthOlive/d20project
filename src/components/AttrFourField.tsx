@@ -62,7 +62,7 @@ export function AttrFourField({
           type="number"
           value={bonus ?? 0}
           disabled={disabled}
-          onChange={(e) => onChange({ bonus: clamp(parseInt(e.target.value) || 0) })}
+          onChange={(e) => onChange({ bonus: clamp(parseInt(e.target.value) || 0, true) })}
           className="h-6 px-1 text-center text-xs"
         />
       </Cell>
