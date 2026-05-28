@@ -10,9 +10,6 @@ export function AttrFourField({
   base,
   points,
 
-  label,
-  base,
-  points,
   bonus,
   baseEditable,
   hideBase,
