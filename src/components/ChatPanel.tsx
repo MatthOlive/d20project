@@ -196,7 +196,7 @@ export function ChatPanel({
           <Input
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Message or /roll N"
+            placeholder="Message or /r 3d6"
           />
           <Button type="submit" size="icon"><Send className="h-4 w-4" /></Button>
         </form>
