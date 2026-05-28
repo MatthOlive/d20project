@@ -191,10 +191,11 @@ function GameRoom() {
         </div>
         <Tabs defaultValue="chat" className="flex h-full flex-col">
 
-          <TabsList className="m-2 grid grid-cols-3">
+          <TabsList className="m-2 grid grid-cols-4">
             <TabsTrigger value="chat">Chat</TabsTrigger>
             <TabsTrigger value="compendium">Compendium</TabsTrigger>
             <TabsTrigger value="files">Files</TabsTrigger>
+            <TabsTrigger value="music">Music</TabsTrigger>
           </TabsList>
           <TabsContent value="chat" className="flex-1 overflow-hidden">
             <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} isGameOwner={isNarrator} />
@@ -204,6 +205,9 @@ function GameRoom() {
           </TabsContent>
           <TabsContent value="files" className="flex-1 overflow-auto p-3">
             <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindow} />
+          </TabsContent>
+          <TabsContent value="music" className="flex-1 overflow-hidden">
+            <MusicPanel gameId={gameId} isNarrator={isNarrator} />
           </TabsContent>
         </Tabs>
       </Card>
