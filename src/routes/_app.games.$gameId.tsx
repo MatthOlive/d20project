@@ -112,8 +112,17 @@ function GameRoom() {
     });
   }
 
-  const inviteUrl = typeof window !== "undefined" && game
-    ? `${window.location.origin}/join/${game.invite_code}` : "";
+  const { data: inviteCode } = useQuery({
+    queryKey: ["invite", gameId],
+    queryFn: async () => {
+      if (!isNarrator) return null;
+      const { data } = await supabase.rpc("get_game_invite_code", { _game: gameId });
+      return (data as string | null) ?? null;
+    },
+    enabled: !!isNarrator,
+  });
+  const inviteUrl = typeof window !== "undefined" && inviteCode
+    ? `${window.location.origin}/join/${inviteCode}` : "";
 
   // Character creation lives in <FilesPanel>.
 
