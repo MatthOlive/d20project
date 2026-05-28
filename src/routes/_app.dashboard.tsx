@@ -137,6 +137,19 @@ function Dashboard() {
                   <Input id="gname" value={name} onChange={(e) => setName(e.target.value)} placeholder="The Kanto Chronicles" />
                 </div>
                 <div className="space-y-2">
+                  <Label>Sistema</Label>
+                  <Select value={system} onValueChange={setSystem}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {RPG_SYSTEMS.map((s) => (
+                        <SelectItem key={s.id} value={s.id} disabled={!s.available}>
+                          {s.label}{!s.available ? " — em breve" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label>{t("narrator")}</Label>
                   <Select value={narratorType} onValueChange={(v) => setNarratorType(v as "human" | "ai")}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
