@@ -304,7 +304,9 @@ export function TrainerSheet({
             will={currentWill}
             willMax={will}
             onWillChange={(n) => patch({ current_will: n })}
+          />
         </div>
+
         <div className="rounded-lg border border-border bg-card p-3">
           <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-primary">Physical</h4>
           <div className="space-y-1.5">
