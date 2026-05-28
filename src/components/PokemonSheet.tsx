@@ -330,7 +330,7 @@ export function PokemonSheet({
       </section>
 
       {/* ============ BLOCO 2 — Status + Physical + Social ============ */}
-      <section className="grid gap-3 lg:grid-cols-3">
+      <section className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
         <div className="rounded-lg border border-border bg-card p-3 min-w-0">
           <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Status problems</h4>
           <HpAndStatusBlock
@@ -342,14 +342,14 @@ export function PokemonSheet({
             onWillChange={(n) => patch({ will: n })}
           />
         </div>
-        <div className="rounded-lg border border-border bg-card p-3">
+        <div className="rounded-lg border border-border bg-card p-3 min-w-0">
           <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-primary">Physical</h4>
           <div className="space-y-1.5">
             {POKEMON_ATTRS.map((a) => {
               const val = pokemon.current_attrs[a] ?? species.base_attrs[a] ?? 1;
               const limit = species.attr_limits[a] ?? 5;
               return (
-                <div key={a} className="flex items-center justify-between rounded-md bg-background px-2 py-1">
+                <div key={a} className="flex items-center justify-between gap-2 rounded-md bg-background px-2 py-1">
                   <span className="text-xs font-medium uppercase">{a}</span>
                   <DotEditor value={val} max={Math.max(10, limit)} cap={limit}
                     onChange={(n) => setAttr(a, n)} disabled={!canEdit} />
@@ -358,13 +358,13 @@ export function PokemonSheet({
             })}
           </div>
         </div>
-        <div className="rounded-lg border border-border bg-card p-3">
+        <div className="rounded-lg border border-border bg-card p-3 min-w-0">
           <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-amber-500">Social</h4>
           <div className="space-y-1.5">
             {SOCIAL_ATTRS.map((a) => {
               const v = pokemon.social_attrs?.[a] ?? 1;
               return (
-                <div key={a} className="flex items-center justify-between rounded-md bg-background px-2 py-1">
+                <div key={a} className="flex items-center justify-between gap-2 rounded-md bg-background px-2 py-1">
                   <span className="text-xs font-medium uppercase">{a}</span>
                   <DotEditor value={v} max={5}
                     onChange={(n) => patch({ social_attrs: { ...pokemon.social_attrs, [a]: n } })} disabled={!canEdit} />
@@ -568,20 +568,20 @@ function PokemonImage({ pokemon, species, canEdit, onChange }: {
     reader.readAsDataURL(file);
   }
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex flex-col items-start gap-2">
       {displayImage ? (
         <img src={displayImage} alt={species.name} className="h-24 w-24 rounded-xl border border-border bg-muted object-contain" />
       ) : (
         <div className="flex h-24 w-24 items-center justify-center rounded-xl border border-dashed border-border bg-muted text-xs text-muted-foreground">No image</div>
       )}
       {canEdit && (
-        <div className="flex flex-col gap-1.5">
-          <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:bg-accent">
-            <ImagePlus className="h-3.5 w-3.5" /> {pokemon.image_url ? "Replace" : "Upload"} image
+        <div className="flex w-full flex-wrap gap-1.5">
+          <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold hover:bg-accent">
+            <ImagePlus className="h-3 w-3" /> {pokemon.image_url ? "Replace" : "Upload"}
             <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
           </label>
           {pokemon.image_url && (
-            <button onClick={() => onChange(null)} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:bg-accent"><RotateCcw className="h-3.5 w-3.5" /> Reset to sprite</button>
+            <button onClick={() => onChange(null)} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold hover:bg-accent"><RotateCcw className="h-3 w-3" /> Reset</button>
           )}
         </div>
       )}

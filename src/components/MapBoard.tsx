@@ -49,9 +49,32 @@ export function MapBoard({
 }) {
   const qc = useQueryClient();
   const boardRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
   const [bgAspect, setBgAspect] = useState<number | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const panOrigin = useRef<{ mx: number; my: number; ox: number; oy: number } | null>(null);
+
+  useEffect(() => {
+    function onMove(e: MouseEvent) {
+      if (panOrigin.current) {
+        setPan({
+          x: panOrigin.current.ox + e.clientX - panOrigin.current.mx,
+          y: panOrigin.current.oy + e.clientY - panOrigin.current.my,
+        });
+      }
+    }
+    function onUp() { panOrigin.current = null; }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, []);
+
 
   useEffect(() => {
     if (!backgroundUrl) { setBgAspect(null); return; }
@@ -89,11 +112,25 @@ export function MapBoard({
   }
 
   function pointToRel(clientX: number, clientY: number) {
-    const rect = boardRef.current!.getBoundingClientRect();
+    const target = innerRef.current ?? boardRef.current!;
+    const rect = target.getBoundingClientRect();
     return {
       x: snap((clientX - rect.left) / rect.width, rect.width),
       y: snap((clientY - rect.top) / rect.height, rect.height),
     };
+  }
+
+  function onWheel(e: React.WheelEvent) {
+    e.preventDefault();
+    const delta = -e.deltaY * 0.0015;
+    setZoom((z) => Math.max(0.3, Math.min(4, z * (1 + delta))));
+  }
+  function onContextMenu(e: React.MouseEvent) { e.preventDefault(); }
+  function onMouseDown(e: React.MouseEvent) {
+    if (e.button === 2) {
+      e.preventDefault();
+      panOrigin.current = { mx: e.clientX, my: e.clientY, ox: pan.x, oy: pan.y };
+    }
   }
 
   async function onDrop(e: React.DragEvent) {
@@ -136,14 +173,25 @@ export function MapBoard({
       ref={boardRef}
       onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
       onDrop={onDrop}
+      onWheel={onWheel}
+      onContextMenu={onContextMenu}
+      onMouseDown={onMouseDown}
       className={`relative overflow-hidden rounded-xl border border-border bg-muted ${bgAspect ? "max-h-full max-w-full" : "h-full w-full"}`}
       style={{
-        ...(backgroundUrl
-          ? { backgroundImage: `url(${backgroundUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
-          : {}),
         ...(bgAspect ? { aspectRatio: String(bgAspect), height: "100%", width: "auto" } : {}),
       }}
     >
+      {topLeftSlot && <div className="absolute left-3 top-3 z-30 flex items-center gap-2">{topLeftSlot}</div>}
+      <div
+        ref={innerRef}
+        className="absolute inset-0 origin-center"
+        style={{
+          transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+          ...(backgroundUrl
+            ? { backgroundImage: `url(${backgroundUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
+            : {}),
+        }}
+      >
       {/* grid overlay */}
       <div
         className="pointer-events-none absolute inset-0 opacity-30"
@@ -153,7 +201,7 @@ export function MapBoard({
           backgroundSize: `${GRID_PX}px ${GRID_PX}px`,
         }}
       />
-      {topLeftSlot && <div className="absolute left-3 top-3 z-10 flex items-center gap-2">{topLeftSlot}</div>}
+
 
       {tokens.map((t) => {
         const canMove = isNarrator || t.owner_id === userId;
@@ -219,7 +267,9 @@ export function MapBoard({
           </div>
         );
       })}
+      </div>
     </div>
     </div>
   );
 }
+
