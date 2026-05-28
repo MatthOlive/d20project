@@ -9,8 +9,10 @@ export function AttrFourField({
   label,
   base,
   points,
+
   bonus,
   baseEditable,
+  hideBase,
   disabled,
   cap,
   onChange,
@@ -20,6 +22,7 @@ export function AttrFourField({
   points: number;
   bonus: number;
   baseEditable: boolean;
+  hideBase?: boolean;
   disabled?: boolean;
   cap?: number;
   onChange: (next: { base?: number; points?: number; bonus?: number }) => void;
@@ -32,17 +35,19 @@ export function AttrFourField({
     return n;
   };
   return (
-    <div className="grid grid-cols-[1fr_repeat(4,46px)] items-center gap-1.5 rounded-md bg-background px-2 py-1">
+    <div className={`grid items-center gap-1.5 rounded-md bg-background px-2 py-1 ${hideBase ? "grid-cols-[1fr_repeat(3,46px)]" : "grid-cols-[1fr_repeat(4,46px)]"}`}>
       <span className="text-xs font-medium uppercase">{label}</span>
-      <Cell title="Base">
-        <Input
-          type="number"
-          value={base ?? 0}
-          disabled={disabled || !baseEditable}
-          onChange={(e) => onChange({ base: clamp(parseInt(e.target.value) || 0) })}
-          className="h-6 px-1 text-center text-xs"
-        />
-      </Cell>
+      {!hideBase && (
+        <Cell title="Base">
+          <Input
+            type="number"
+            value={base ?? 0}
+            disabled={disabled || !baseEditable}
+            onChange={(e) => onChange({ base: clamp(parseInt(e.target.value) || 0) })}
+            className="h-6 px-1 text-center text-xs"
+          />
+        </Cell>
+      )}
       <Cell title="Pontos">
         <Input
           type="number"
@@ -61,6 +66,7 @@ export function AttrFourField({
           className="h-6 px-1 text-center text-xs"
         />
       </Cell>
+
       <Cell title="Total">
         <div className="flex h-6 items-center justify-center rounded-md border border-primary/40 bg-primary/10 px-1 text-xs font-bold text-primary">
           {total}

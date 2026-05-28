@@ -263,18 +263,23 @@ export function TrainerSheet({
                     ))}
                   </SelectContent>
                 </Select>
-                <Input type="number" min={0} max={3} value={catchBonus} title="Bonus"
-                  onChange={(e) => setCatchBonus(Math.max(0, Math.min(3, parseInt(e.target.value) || 0)))}
-                  className="h-6 w-10 text-center text-xs" />
-                <Button size="sm" variant="outline" className="h-6 px-2 text-xs"
+                <div className="flex flex-col items-center">
+                  <span className="text-[8px] uppercase tracking-wider text-muted-foreground">Bônus</span>
+                  <Input type="number" min={0} max={3} value={catchBonus} title="Bonus"
+                    onChange={(e) => setCatchBonus(Math.max(0, Math.min(3, parseInt(e.target.value) || 0)))}
+                    className="h-7 w-14 text-center text-sm font-bold" />
+                </div>
+                <Button size="sm" variant="outline" className="h-7 px-2 text-xs"
                   disabled={ballKey === "masterball"}
                   onClick={() => onRoll(
                     `${trainer.name} · Catch (${ball.label}${catchBonus ? ` +${catchBonus}` : ""})`,
                     catchPool,
+                    -catchBonus,
                   )}>
                   <Dices className="mr-1 h-3 w-3" />
                   {ballKey === "masterball" ? "Auto" : `Catch · ${catchPool}d6`}
                 </Button>
+
               </div>
             </div>
             <p className="text-[10px] text-muted-foreground">
@@ -301,6 +306,7 @@ export function TrainerSheet({
             onWillChange={(n) => patch({ current_will: n })}
           />
         </div>
+
         <div className="rounded-lg border border-border bg-card p-3">
           <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-primary">Physical</h4>
           <div className="space-y-1.5">
@@ -312,6 +318,7 @@ export function TrainerSheet({
                 points={trainer.attr_points?.[a] ?? 0}
                 bonus={trainer.attr_bonus?.[a] ?? 0}
                 baseEditable
+                hideBase
                 disabled={!canEdit}
                 cap={HUMAN_ATTR_CAP}
                 onChange={(d) => {
@@ -334,6 +341,7 @@ export function TrainerSheet({
                 points={trainer.social_attr_points?.[a] ?? 0}
                 bonus={trainer.social_attr_bonus?.[a] ?? 0}
                 baseEditable
+                hideBase
                 disabled={!canEdit}
                 cap={HUMAN_ATTR_CAP}
                 onChange={(d) => {
@@ -345,8 +353,8 @@ export function TrainerSheet({
             ))}
           </div>
         </div>
-
       </section>
+
 
       {/* ============ BLOCO 3 — Skills (Fight / Survival / Social / Knowledge / Custom) ============ */}
       <section className="rounded-lg border border-border bg-card p-3">
