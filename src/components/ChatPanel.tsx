@@ -160,7 +160,7 @@ export function ChatPanel({
           <p className="py-6 text-center text-sm text-muted-foreground">
             {aiNarrator
               ? "Tap “Ask AI Narrator” to open the scene."
-              : <>No messages yet. Try <code className="rounded bg-muted px-1.5 py-0.5">/roll 5</code> to roll 5d6.</>}
+              : <>No messages yet. Try <code className="rounded bg-muted px-1.5 py-0.5">/r 5d6</code> or <code className="rounded bg-muted px-1.5 py-0.5">/r 2d20</code>.</>}
           </p>
         )}
         {aiBusy && (
