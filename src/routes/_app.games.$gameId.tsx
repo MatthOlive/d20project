@@ -145,6 +145,7 @@ function GameRoom() {
 
   return (
     <div className="mx-auto grid h-[calc(100vh-4rem)] max-w-7xl grid-cols-1 gap-3 px-3 py-3 lg:grid-cols-[1fr_360px]">
+      <MusicPlayer gameId={gameId} />
       {/* Center: background + characters */}
       <div className="flex min-h-0 flex-col gap-3">
         <div className="relative flex-1 min-h-0">
