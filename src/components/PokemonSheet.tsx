@@ -571,7 +571,7 @@ function SkillGroup({ title, tint, skills, values, canEdit, onChange }: {
           return (
             <div key={s} className="flex items-center justify-between gap-2">
               <span className="text-xs">{s}</span>
-              <DotEditor value={v} max={5} onChange={(n) => onChange({ [s]: n })} disabled={!canEdit} />
+              <SkillNumberInput value={v} onChange={(n) => onChange({ [s]: n })} disabled={!canEdit} />
             </div>
           );
         })}
