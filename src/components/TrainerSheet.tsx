@@ -115,9 +115,9 @@ export function TrainerSheet({
   const canEdit = trainer.owner_id === userId || isNarrator;
 
   const totalAttr = (k: string) =>
-    (trainer.attrs?.[k] ?? 1) + (trainer.attr_points?.[k] ?? 0) + (trainer.attr_bonus?.[k] ?? 0);
+    (trainer.attrs?.[k] ?? 0) + (trainer.attr_points?.[k] ?? 0) + (trainer.attr_bonus?.[k] ?? 0);
   const totalSocial = (k: string) =>
-    (trainer.social_attrs?.[k] ?? 1) + (trainer.social_attr_points?.[k] ?? 0) + (trainer.social_attr_bonus?.[k] ?? 0);
+    (trainer.social_attrs?.[k] ?? 0) + (trainer.social_attr_points?.[k] ?? 0) + (trainer.social_attr_bonus?.[k] ?? 0);
 
   const vit = totalAttr("vitality");
   const str = totalAttr("strength");
@@ -314,7 +314,7 @@ export function TrainerSheet({
               <AttrFourField
                 key={a}
                 label={a}
-                base={trainer.attrs?.[a] ?? 1}
+                base={trainer.attrs?.[a] ?? 0}
                 points={trainer.attr_points?.[a] ?? 0}
                 bonus={trainer.attr_bonus?.[a] ?? 0}
                 baseEditable
@@ -337,7 +337,7 @@ export function TrainerSheet({
               <AttrFourField
                 key={a}
                 label={a}
-                base={trainer.social_attrs?.[a] ?? 1}
+                base={trainer.social_attrs?.[a] ?? 0}
                 points={trainer.social_attr_points?.[a] ?? 0}
                 bonus={trainer.social_attr_bonus?.[a] ?? 0}
                 baseEditable

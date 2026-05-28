@@ -228,7 +228,7 @@ async function spawnTrainer(
   }
 
   const importance = params.importance ?? "random";
-  const baseAttrs: Record<string, number> = { strength: 1, dexterity: 1, vitality: 1, insight: 1 };
+  const baseAttrs: Record<string, number> = { strength: 0, dexterity: 0, vitality: 0, insight: 0 };
   const physPoints = tbl.attrPoints + age.phys;
   const socialPoints = tbl.socialPoints + age.social;
   const attrs = distributePoints(
@@ -236,15 +236,15 @@ async function spawnTrainer(
     () => tbl.attrCap, importance, params.preferred_attrs,
   );
   const social = distributePoints(
-    { tough: 1, cool: 1, beautiful: 1, cute: 1, clever: 1 },
+    { tough: 0, cool: 0, beautiful: 0, cute: 0, clever: 0 },
     SOCIAL_KEYS, socialPoints, () => tbl.attrCap, importance,
   );
   const skills = distributePoints(
     {}, TRAINER_SKILL_KEYS, tbl.skillPoints,
     () => tbl.skillCap, importance, params.preferred_skills,
   );
-  const hp = 4 + (attrs.vitality ?? 1);
-  const will = (attrs.insight ?? 1) + 2;
+  const hp = 4 + (attrs.vitality ?? 0);
+  const will = (attrs.insight ?? 0) + 2;
 
   const { data, error } = await supabase
     .from("trainers").insert({
