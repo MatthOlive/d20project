@@ -170,7 +170,7 @@ function Dashboard() {
                 </div>
               </div>
               <DialogFooter>
-                <Button disabled={!name.trim() || createGame.isPending} onClick={() => createGame.mutate(name.trim())}>
+                <Button disabled={!name.trim() || !system || createGame.isPending} onClick={() => createGame.mutate(name.trim())}>
                   {t("create")}
                 </Button>
               </DialogFooter>
