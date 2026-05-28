@@ -544,7 +544,7 @@ function FilesPanel({
                 </span>
               </label>
               <p className="text-xs text-muted-foreground">
-                Chance de shiny: 10% (rolada automaticamente).
+                Chances de shiny/overgrown configuráveis em ⚙️ Settings.
               </p>
               <DialogFooter>
                 <Button onClick={() => createPokemon.mutate()} disabled={createPokemon.isPending}>Create</Button>
