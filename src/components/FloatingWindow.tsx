@@ -28,6 +28,7 @@ export function FloatingWindow({
 }) {
   const [pos, setPos] = useState({ x: initialX, y: initialY });
   const [size, setSize] = useState({ w: width, h: height });
+  const [minimized, setMinimized] = useState(false);
   const nextZ = () => {
     zCounter = zCounter >= 45 ? 10 : zCounter + 1;
     return zCounter;
@@ -65,7 +66,13 @@ export function FloatingWindow({
   return (
     <div
       className="pointer-events-auto fixed flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
-      style={{ left: pos.x, top: pos.y, width: size.w, height: size.h, zIndex: z }}
+      style={{
+        left: pos.x,
+        top: pos.y,
+        width: size.w,
+        height: minimized ? 36 : size.h,
+        zIndex: z,
+      }}
       onMouseDown={bringFront}
     >
       <div
@@ -73,27 +80,39 @@ export function FloatingWindow({
         onMouseDown={(e) => {
           dragOrigin.current = { mx: e.clientX, my: e.clientY, ox: pos.x, oy: pos.y };
         }}
+        onDoubleClick={() => setMinimized((v) => !v)}
+        title="Double-click to minimize"
       >
         <span className="text-sm font-bold">{title}</span>
-        <button
-          onClick={onClose}
-          className="rounded p-1 transition hover:bg-white/15"
-          aria-label="Close"
-        ><X className="h-4 w-4" /></button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={(e) => { e.stopPropagation(); setMinimized((v) => !v); }}
+            className="rounded p-1 transition hover:bg-white/15"
+            aria-label={minimized ? "Restore" : "Minimize"}
+          >
+            <span className="block h-0.5 w-3 bg-current" />
+          </button>
+          <button
+            onClick={onClose}
+            className="rounded p-1 transition hover:bg-white/15"
+            aria-label="Close"
+          ><X className="h-4 w-4" /></button>
+        </div>
       </div>
-      <div className={cn("flex-1 overflow-auto bg-background")}>{children}</div>
-      <div
-        className="absolute bottom-0 right-0 z-10 h-4 w-4 cursor-se-resize"
-        onMouseDown={(e) => {
-          e.stopPropagation();
-          resizeOrigin.current = { mx: e.clientX, my: e.clientY, ow: size.w, oh: size.h };
-        }}
-        style={{
-          background:
-            "linear-gradient(135deg, transparent 0 50%, hsl(var(--muted-foreground) / 0.5) 50% 60%, transparent 60% 70%, hsl(var(--muted-foreground) / 0.5) 70% 80%, transparent 80%)",
-        }}
-        aria-label="Resize"
-      />
-    </div>
-  );
-}
+      {!minimized && (
+        <>
+          <div className={cn("flex-1 overflow-auto bg-background")}>{children}</div>
+          <div
+            className="absolute bottom-0 right-0 z-10 h-4 w-4 cursor-se-resize"
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              resizeOrigin.current = { mx: e.clientX, my: e.clientY, ow: size.w, oh: size.h };
+            }}
+            style={{
+              background:
+                "linear-gradient(135deg, transparent 0 50%, hsl(var(--muted-foreground) / 0.5) 50% 60%, transparent 60% 70%, hsl(var(--muted-foreground) / 0.5) 70% 80%, transparent 80%)",
+            }}
+            aria-label="Resize"
+          />
+        </>
+      )}
