@@ -468,14 +468,13 @@ export function PokemonSheet({
             )}
           </div>
         </div>
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2">
           {knownMoves.map((baseMove) => {
             const m: Move = (() => {
               if (zMode && baseMove.power > 0) return { ...baseMove, name: Z_MOVE_NAMES[baseMove.type] ?? `Z-${baseMove.name}`, power: zMovePower(baseMove.power) };
               if (gMaxMode && baseMove.power > 0) return { ...baseMove, name: `G-Max ${baseMove.name}`, power: baseMove.power + 3 };
               return baseMove;
             })();
-            const tcol = TYPE_COLORS[m.type] ?? { bg: "#888", fg: "#fff" };
             const accStat = m.accuracy_stat ?? "dexterity";
             const accAttrVal = pokemon.current_attrs[accStat] ?? 1;
             const accSkill = resolveSkillValue(m.accuracy_skill, pokemon.skills);
@@ -489,30 +488,53 @@ export function PokemonSheet({
             const stabBonus = hasStab ? 1 : 0;
             const dmgPool = isStatus ? 0 : m.power + dmgAttrVal + stabBonus;
             const isSpecial = cat === "special";
+            const accuracyText = `${cap(accStat)}${m.accuracy_skill ? ` + ${accSkill.label}` : ""}`;
+            const damagePoolText = isStatus ? "—" : `${cap(dmgStat)} + ${m.power}${hasStab ? " + 1 STAB" : ""}`;
             return (
-              <div key={m.id} className="overflow-hidden rounded-lg border border-border">
-                <div className="flex items-center justify-between px-3 py-1.5" style={{ backgroundColor: tcol.bg, color: tcol.fg }}>
-                  <span className="text-sm font-bold">{m.name}</span>
-                  <span className="text-xs uppercase opacity-90">{m.type}{hasStab ? " · STAB" : ""}</span>
-                </div>
-                <div className="space-y-2 bg-card p-3">
-                  <div className="text-xs text-muted-foreground">
-                    Accuracy {accStat} {accAttrVal}{m.accuracy_skill ? ` + ${accSkill.label} ${accSkillVal}` : ""} · {accPool}d6
-                    {isStatus ? " · Status (no damage)" : ` · Damage ${dmgStat} ${dmgAttrVal} + Pwr ${m.power}${hasStab ? " + STAB" : ""} · ${dmgPool}d6`}
-                  </div>
-                  {m.effect && <p className="text-xs">{m.effect}</p>}
-                  <EffectIcons effect={m.effect} />
-
+              <MoveCard
+                key={m.id}
+                hasStab={hasStab}
+                data={{
+                  name: m.name,
+                  type: m.type,
+                  power: m.power,
+                  accuracyText,
+                  damagePoolText,
+                  effect: m.effect ?? "",
+                  category: m.category,
+                }}
+                accuracySlot={
+                  <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-bold text-primary">
+                    {accPool}d6 <span className="opacity-70">({accuracyText})</span>
+                  </span>
+                }
+                damageSlot={
+                  isStatus ? (
+                    <span className="text-muted-foreground">Status (no damage)</span>
+                  ) : (
+                    <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-[11px] font-bold text-destructive">
+                      {dmgPool}d6 <span className="opacity-70">({damagePoolText})</span>
+                    </span>
+                  )
+                }
+                footer={
                   <div className="flex items-center justify-between">
-                    <MoveRollDialog move={m} pokemonName={name} accPool={accPool} dmgPool={dmgPool} isStatus={isStatus} isSpecial={isSpecial} hasStab={hasStab} onRoll={boundRoll} onChat={onChat} />
+                    <MoveRollDialog
+                      move={m} pokemonName={name} accPool={accPool} dmgPool={dmgPool}
+                      isStatus={isStatus} isSpecial={isSpecial} hasStab={hasStab}
+                      accuracyText={accuracyText} damagePoolText={damagePoolText}
+                      gameId={_gameId} userId={userId} painPenalty={painPen}
+                      imageUrl={displayImage}
+                    />
                     {canEdit && <Button size="icon" variant="ghost" onClick={() => removeMove(m.id)}><Trash2 className="h-3.5 w-3.5" /></Button>}
                   </div>
-                </div>
-              </div>
+                }
+              />
             );
           })}
         </div>
       </section>
+
 
       {/* ============ BLOCO 6 — Extras + Notes ============ */}
       <section className="space-y-3 rounded-lg border border-border bg-card p-3">
