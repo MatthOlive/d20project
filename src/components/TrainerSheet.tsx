@@ -114,10 +114,15 @@ export function TrainerSheet({
   if (!trainer) return <div className="p-4 text-sm text-muted-foreground">Loading…</div>;
   const canEdit = trainer.owner_id === userId || isNarrator;
 
-  const vit = trainer.attrs.vitality ?? 1;
-  const str = trainer.attrs.strength ?? 1;
-  const dex = trainer.attrs.dexterity ?? 1;
-  const ins = trainer.attrs.insight ?? 1;
+  const totalAttr = (k: string) =>
+    (trainer.attrs?.[k] ?? 1) + (trainer.attr_points?.[k] ?? 0) + (trainer.attr_bonus?.[k] ?? 0);
+  const totalSocial = (k: string) =>
+    (trainer.social_attrs?.[k] ?? 1) + (trainer.social_attr_points?.[k] ?? 0) + (trainer.social_attr_bonus?.[k] ?? 0);
+
+  const vit = totalAttr("vitality");
+  const str = totalAttr("strength");
+  const dex = totalAttr("dexterity");
+  const ins = totalAttr("insight");
   const alert = trainer.skills?.Alert ?? 0;
   const hp = 4 + vit;
   const currentHp = trainer.current_hp ?? hp;
@@ -134,8 +139,8 @@ export function TrainerSheet({
     { name: "Weapons", value: trainer.skills?.Weapons ?? 0 },
   ];
   const allAttrsForRoll = [
-    ...ATTRS.map((a) => ({ name: a, value: trainer.attrs[a] ?? 1 })),
-    ...SOCIAL_ATTRS.map((a) => ({ name: a, value: trainer.social_attrs?.[a] ?? 1 })),
+    ...ATTRS.map((a) => ({ name: a, value: totalAttr(a) })),
+    ...SOCIAL_ATTRS.map((a) => ({ name: a, value: totalSocial(a) })),
   ];
   const allSkillsForRoll = TRAINER_SKILLS.map((s) => ({ name: s, value: trainer.skills?.[s] ?? 0 }));
   const charName = trainer.name;
