@@ -780,7 +780,7 @@ function MoveRollDialog({
       user_id: userId,
       kind: "move",
       body: `${pokemonName} used ${move.name}`,
-      roll_data: payload as unknown as Record<string, unknown>,
+      roll_data: payload as unknown as never,
     });
     if (error) toast.error(error.message);
     setOpen(false); setAccBonus(0); setDmgBonus(0); setTargetDef(0);
