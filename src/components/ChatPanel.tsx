@@ -217,6 +217,9 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
     );
   }
   if (msg.kind === "roll" && msg.roll_data) {
+    const faces = msg.roll_data.faces ?? 6;
+    const isD6 = faces === 6;
+    const sum = msg.roll_data.dice.reduce((a, b) => a + b, 0);
     return (
       <div className="rounded-lg border border-border bg-card p-3">
         <div className="mb-1.5 flex items-baseline justify-between text-xs">
@@ -228,21 +231,29 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
             <span
               key={i}
               className={cn(
-                "inline-flex h-7 w-7 items-center justify-center rounded-md border text-sm font-bold tabular-nums",
-                d >= 4
+                "inline-flex h-7 min-w-7 items-center justify-center rounded-md border px-1.5 text-sm font-bold tabular-nums",
+                isD6 && d >= 4
                   ? "border-success bg-success text-success-foreground"
-                  : d === 1
+                  : isD6 && d === 1
                     ? "border-destructive/30 bg-destructive/10 text-destructive"
                     : "border-border bg-muted text-foreground",
               )}
             >{d}</span>
           ))}
-          <span className="ml-2 rounded-full bg-success/15 px-2.5 py-0.5 text-xs font-bold text-success">
-            {msg.roll_data.successes} success{msg.roll_data.successes === 1 ? "" : "es"}
-          </span>
-          {msg.roll_data.ones > 0 && (
-            <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive">
-              {msg.roll_data.ones} × 1
+          {isD6 ? (
+            <>
+              <span className="ml-2 rounded-full bg-success/15 px-2.5 py-0.5 text-xs font-bold text-success">
+                {msg.roll_data.successes} success{msg.roll_data.successes === 1 ? "" : "es"}
+              </span>
+              {msg.roll_data.ones > 0 && (
+                <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive">
+                  {msg.roll_data.ones} × 1
+                </span>
+              )}
+            </>
+          ) : (
+            <span className="ml-2 rounded-full bg-primary/15 px-2.5 py-0.5 text-xs font-bold text-primary">
+              total {sum}
             </span>
           )}
         </div>
