@@ -76,8 +76,9 @@ export function SheetPermissionsDialog({
   }
 
   async function save() {
-    const { error } = await supabase
-      .from(table)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const q: any = kind === "pokemon" ? supabase.from("pokemon") : supabase.from("trainers");
+    const { error } = await q
       .update({ allowed_editors: editors, allowed_viewers: viewers })
       .eq("id", entityId);
     if (error) { toast.error(error.message); return; }
