@@ -998,6 +998,12 @@ function EvolveButton({ pokemonId, fromSprite, fromSpeciesId, currentName, evolu
           )}
         </DialogContent>
       </Dialog>
+      )}
+      {showMethodInfo && methodLabel && (
+        <span className="rounded-md border border-dashed border-border bg-muted/40 px-2 py-1 text-[10px] font-medium text-muted-foreground">
+          {methodLabel}
+        </span>
+      )}
       {/* Extra dedicated Mega Evolve button when normal evolutions are available alongside mega forms */}
       {!isMegaForm && hasNormal && hasMega && (
         <MegaEvolveSubButton
