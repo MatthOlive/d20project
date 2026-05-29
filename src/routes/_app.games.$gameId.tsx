@@ -628,7 +628,7 @@ function FilesPanel({
                 Chances de shiny/overgrown configuráveis em ⚙️ Settings.
               </p>
               <DialogFooter>
-                <Button onClick={() => createPokemon.mutate()} disabled={createPokemon.isPending}>Create</Button>
+                <Button onClick={() => createPokemon.mutate(undefined)} disabled={createPokemon.isPending}>Create</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
