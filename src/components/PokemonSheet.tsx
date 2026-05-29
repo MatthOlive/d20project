@@ -941,8 +941,22 @@ function EvolveButton({ pokemonId, fromSprite, fromSpeciesId, currentName, evolu
   const displayedSprite = showEvolved ? nextSprite : (toggle ? nextSprite : fromSprite);
   // Hide the button entirely if there's nothing to do.
   if (!isMegaForm && !hasNormal && !hasMega) return null;
+
+  // Evolution method gating — only applies to normal evolve mode (not mega/revert).
+  const showMethodInfo = !isMegaForm && hasNormal && evolutionMethod;
+  const isTimeMethod = evolutionMethod?.kind === "time" && evolutionMethod.speed;
+  const threshold = isTimeMethod ? TIME_THRESHOLDS[evolutionMethod!.speed!] : 0;
+  const timeReady = !isTimeMethod || victories >= threshold;
+  const showEvolveButton = mode !== "evolve" || timeReady;
+  const methodLabel = isTimeMethod
+    ? `Evolução: ${victories}/${threshold} vitórias (${evolutionMethod!.speed})`
+    : evolutionMethod?.kind === "other" && evolutionMethod.text
+      ? `Evolução: ${evolutionMethod.text}`
+      : null;
+
   return (
     <>
+      {showEvolveButton && (
       <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setAnimating(false); setShowEvolved(false); setToggle(false); } }}>
         <DialogTrigger asChild><Button size="sm" variant="secondary" className="h-8"><Icon className="mr-1 h-3.5 w-3.5" /> {label}</Button></DialogTrigger>
         <DialogContent>
