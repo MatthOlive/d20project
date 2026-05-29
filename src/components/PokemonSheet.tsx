@@ -878,9 +878,11 @@ function NatureSelect({ value, disabled, onChange }: { value: string | null; dis
   );
 }
 
-function EvolveButton({ pokemonId, fromSprite, fromSpeciesId, currentName, evolutions, baseSpeciesId }: {
+const TIME_THRESHOLDS = { fast: 5, medium: 15, slow: 45 } as const;
+
+function EvolveButton({ pokemonId, fromSprite, fromSpeciesId, currentName, evolutions, evolutionMethod, victories, baseSpeciesId }: {
   pokemonId: string; fromSprite: string | null; fromSpeciesId: string; currentName: string;
-  evolutions: string[]; baseSpeciesId?: string;
+  evolutions: string[]; evolutionMethod: EvolutionMethod | null; victories: number; baseSpeciesId?: string;
 }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
