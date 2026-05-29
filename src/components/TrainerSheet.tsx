@@ -22,6 +22,7 @@ import { Dices, ImagePlus, X as XIcon, Plus, Trash2 } from "lucide-react";
 import {
   HpAndStatusBlock, AttackRollButton, GenericRollButton, painPenaltyFor,
 } from "@/components/SheetRolls";
+import { SheetPermissionsDialog } from "@/components/SheetPermissionsDialog";
 
 const POKEBALLS = {
   pokeball:  { label: "Pokéball",  pool: 4 },
@@ -183,7 +184,10 @@ export function TrainerSheet({
           <div className="space-y-2">
             <div>
               <Label className="text-[10px] uppercase text-muted-foreground">Name</Label>
-              <Input value={trainer.name} onChange={(e) => patch({ name: e.target.value })} disabled={!canEdit} className="h-9 text-base font-bold" />
+              <div className="flex items-center gap-2">
+                <Input value={trainer.name} onChange={(e) => patch({ name: e.target.value })} disabled={!canEdit} className="h-9 text-base font-bold" />
+                <SheetPermissionsDialog kind="trainer" entityId={trainerId} gameId={trainer.game_id} isNarrator={isNarrator} />
+              </div>
             </div>
             <div className="grid gap-2 sm:grid-cols-3">
               <div>

@@ -321,6 +321,8 @@ export type Database = {
         Row: {
           ai_scene_id: string | null
           ai_spawned: boolean
+          allowed_editors: string[]
+          allowed_viewers: string[]
           attr_bonus: Json
           attr_points: Json
           battles: number
@@ -360,6 +362,8 @@ export type Database = {
         Insert: {
           ai_scene_id?: string | null
           ai_spawned?: boolean
+          allowed_editors?: string[]
+          allowed_viewers?: string[]
           attr_bonus?: Json
           attr_points?: Json
           battles?: number
@@ -399,6 +403,8 @@ export type Database = {
         Update: {
           ai_scene_id?: string | null
           ai_spawned?: boolean
+          allowed_editors?: string[]
+          allowed_viewers?: string[]
           attr_bonus?: Json
           attr_points?: Json
           battles?: number
@@ -550,6 +556,8 @@ export type Database = {
           evolutions: string[]
           hidden_ability: string | null
           id: string
+          is_legendary: boolean
+          is_starter: boolean
           name: string
           sprite_url: string | null
           suggested_rank: Database["public"]["Enums"]["pokerole_rank"] | null
@@ -564,6 +572,8 @@ export type Database = {
           evolutions?: string[]
           hidden_ability?: string | null
           id?: string
+          is_legendary?: boolean
+          is_starter?: boolean
           name: string
           sprite_url?: string | null
           suggested_rank?: Database["public"]["Enums"]["pokerole_rank"] | null
@@ -578,6 +588,8 @@ export type Database = {
           evolutions?: string[]
           hidden_ability?: string | null
           id?: string
+          is_legendary?: boolean
+          is_starter?: boolean
           name?: string
           sprite_url?: string | null
           suggested_rank?: Database["public"]["Enums"]["pokerole_rank"] | null
@@ -696,6 +708,8 @@ export type Database = {
           age: number | null
           ai_scene_id: string | null
           ai_spawned: boolean
+          allowed_editors: string[]
+          allowed_viewers: string[]
           attr_bonus: Json
           attr_points: Json
           attrs: Json
@@ -735,6 +749,8 @@ export type Database = {
           age?: number | null
           ai_scene_id?: string | null
           ai_spawned?: boolean
+          allowed_editors?: string[]
+          allowed_viewers?: string[]
           attr_bonus?: Json
           attr_points?: Json
           attrs?: Json
@@ -774,6 +790,8 @@ export type Database = {
           age?: number | null
           ai_scene_id?: string | null
           ai_spawned?: boolean
+          allowed_editors?: string[]
+          allowed_viewers?: string[]
           attr_bonus?: Json
           attr_points?: Json
           attrs?: Json
