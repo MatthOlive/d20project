@@ -553,6 +553,7 @@ export type Database = {
           base_attrs: Json
           base_hp: number
           dex_number: number | null
+          evolution_method: Json | null
           evolutions: string[]
           hidden_ability: string | null
           id: string
@@ -569,6 +570,7 @@ export type Database = {
           base_attrs?: Json
           base_hp?: number
           dex_number?: number | null
+          evolution_method?: Json | null
           evolutions?: string[]
           hidden_ability?: string | null
           id?: string
@@ -585,6 +587,7 @@ export type Database = {
           base_attrs?: Json
           base_hp?: number
           dex_number?: number | null
+          evolution_method?: Json | null
           evolutions?: string[]
           hidden_ability?: string | null
           id?: string

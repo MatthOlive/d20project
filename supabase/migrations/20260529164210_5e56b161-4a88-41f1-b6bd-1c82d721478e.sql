@@ -1,0 +1,1 @@
+ALTER TABLE public.species ADD COLUMN IF NOT EXISTS evolution_method jsonb;

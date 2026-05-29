@@ -49,11 +49,14 @@ function zMovePower(p: number): number {
   return p + 2;
 }
 
+type EvolutionMethod = { kind: "time" | "other"; speed?: "fast" | "medium" | "slow"; text?: string };
+
 type Species = {
   id: string; name: string; types: string[]; base_hp: number;
   base_attrs: Record<string, number>; attr_limits: Record<string, number>;
   abilities: string[]; hidden_ability: string | null;
   suggested_rank: Rank | null; sprite_url: string | null; evolutions: string[];
+  evolution_method: EvolutionMethod | null;
 };
 
 type Move = {
@@ -323,7 +326,7 @@ export function PokemonSheet({
                   Use {spDefUsesInsight ? "Vit" : "Ins"}
                 </Button>
               )}
-              {canEdit && <EvolveButton pokemonId={pokemonId} fromSprite={species.sprite_url} fromSpeciesId={species.id} currentName={species.name} evolutions={species.evolutions} baseSpeciesId={(pokemon.modifiers as Record<string, unknown>)?._base_species as string | undefined} />}
+              {canEdit && <EvolveButton pokemonId={pokemonId} fromSprite={species.sprite_url} fromSpeciesId={species.id} currentName={species.name} evolutions={species.evolutions} evolutionMethod={species.evolution_method} victories={pokemon.victories} baseSpeciesId={(pokemon.modifiers as Record<string, unknown>)?._base_species as string | undefined} />}
               {canEdit && <DynamaxToggle mode={dynaMode} onChange={setDynaMode} />}
               {dynaMode && <span className="rounded-full bg-red-500/20 px-2.5 py-0.5 text-xs font-bold uppercase text-red-500">{dynaMode === "gigantamax" ? "G-Max" : "Dynamax"}</span>}
             </div>
@@ -875,9 +878,11 @@ function NatureSelect({ value, disabled, onChange }: { value: string | null; dis
   );
 }
 
-function EvolveButton({ pokemonId, fromSprite, fromSpeciesId, currentName, evolutions, baseSpeciesId }: {
+const TIME_THRESHOLDS = { fast: 5, medium: 15, slow: 45 } as const;
+
+function EvolveButton({ pokemonId, fromSprite, fromSpeciesId, currentName, evolutions, evolutionMethod, victories, baseSpeciesId }: {
   pokemonId: string; fromSprite: string | null; fromSpeciesId: string; currentName: string;
-  evolutions: string[]; baseSpeciesId?: string;
+  evolutions: string[]; evolutionMethod: EvolutionMethod | null; victories: number; baseSpeciesId?: string;
 }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -936,8 +941,22 @@ function EvolveButton({ pokemonId, fromSprite, fromSpeciesId, currentName, evolu
   const displayedSprite = showEvolved ? nextSprite : (toggle ? nextSprite : fromSprite);
   // Hide the button entirely if there's nothing to do.
   if (!isMegaForm && !hasNormal && !hasMega) return null;
+
+  // Evolution method gating — only applies to normal evolve mode (not mega/revert).
+  const showMethodInfo = !isMegaForm && hasNormal && evolutionMethod;
+  const isTimeMethod = evolutionMethod?.kind === "time" && evolutionMethod.speed;
+  const threshold = isTimeMethod ? TIME_THRESHOLDS[evolutionMethod!.speed!] : 0;
+  const timeReady = !isTimeMethod || victories >= threshold;
+  const showEvolveButton = mode !== "evolve" || timeReady;
+  const methodLabel = isTimeMethod
+    ? `Evolução: ${victories}/${threshold} vitórias (${evolutionMethod!.speed})`
+    : evolutionMethod?.kind === "other" && evolutionMethod.text
+      ? `Evolução: ${evolutionMethod.text}`
+      : null;
+
   return (
     <>
+      {showEvolveButton && (
       <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setAnimating(false); setShowEvolved(false); setToggle(false); } }}>
         <DialogTrigger asChild><Button size="sm" variant="secondary" className="h-8"><Icon className="mr-1 h-3.5 w-3.5" /> {label}</Button></DialogTrigger>
         <DialogContent>
@@ -979,6 +998,12 @@ function EvolveButton({ pokemonId, fromSprite, fromSpeciesId, currentName, evolu
           )}
         </DialogContent>
       </Dialog>
+      )}
+      {showMethodInfo && methodLabel && (
+        <span className="rounded-md border border-dashed border-border bg-muted/40 px-2 py-1 text-[10px] font-medium text-muted-foreground">
+          {methodLabel}
+        </span>
+      )}
       {/* Extra dedicated Mega Evolve button when normal evolutions are available alongside mega forms */}
       {!isMegaForm && hasNormal && hasMega && (
         <MegaEvolveSubButton

@@ -369,8 +369,9 @@ function FilesPanel({
   });
 
   const createPokemon = useMutation({
-    mutationFn: async () => {
-      if (!newPkmSpecies) throw new Error("Pick a species");
+    mutationFn: async (overrideSpeciesId?: string) => {
+      const speciesId = overrideSpeciesId || newPkmSpecies;
+      if (!speciesId) throw new Error("Pick a species");
       // Read configured chances from the game (defaults 10/0)
       const { data: gameRow } = await supabase
         .from("games")
@@ -387,7 +388,7 @@ function FilesPanel({
         .insert({
           game_id: gameId,
           owner_id: userId,
-          species_id: newPkmSpecies,
+          species_id: speciesId,
           rank: "starter",
           is_shiny: isShiny,
           is_overgrown: finalOvergrown,
@@ -403,10 +404,12 @@ function FilesPanel({
       setPkmDialogOpen(false);
       setNewPkmSpecies("");
       setNewPkmOvergrown(false);
+      setRandomOpen(false);
       onOpen({ kind: "pokemon", id: p.id, title: "Pokémon" });
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   const rows: CharRow[] = [
     ...(characters?.trainers ?? []).map<CharRow>((t) => ({
@@ -575,8 +578,8 @@ function FilesPanel({
                   const pool = list.filter(matches);
                   if (pool.length === 0) { toast.error("Nenhum Pokémon corresponde aos filtros"); return; }
                   const pick = pool[Math.floor(Math.random() * pool.length)];
-                  setNewPkmSpecies(pick.id);
                   toast.success(`🎲 ${pick.name}`);
+                  createPokemon.mutate(pick.id);
                 }
                 return (
                   <div className="space-y-2 rounded-md border border-border bg-muted/30 p-2.5 text-xs">
@@ -625,7 +628,7 @@ function FilesPanel({
                 Chances de shiny/overgrown configuráveis em ⚙️ Settings.
               </p>
               <DialogFooter>
-                <Button onClick={() => createPokemon.mutate()} disabled={createPokemon.isPending}>Create</Button>
+                <Button onClick={() => createPokemon.mutate(undefined)} disabled={createPokemon.isPending}>Create</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
