@@ -217,3 +217,68 @@ function RulesSection() {
     </div>
   );
 }
+
+function ImportFromBucketButton({ onDone }: { onDone: () => void }) {
+  const ingest = useServerFn(ingestKnowledge);
+  const [busy, setBusy] = useState(false);
+
+  async function listAllPdfs(prefix = ""): Promise<string[]> {
+    const { data, error } = await supabase.storage.from("pokerole2").list(prefix, {
+      limit: 1000,
+      sortBy: { column: "name", order: "asc" },
+    });
+    if (error) throw error;
+    const out: string[] = [];
+    for (const item of data ?? []) {
+      const path = prefix ? `${prefix}/${item.name}` : item.name;
+      // Folders have null id in Supabase storage listing
+      if (item.id === null) {
+        const sub = await listAllPdfs(path);
+        out.push(...sub);
+      } else if (item.name.toLowerCase().endsWith(".pdf")) {
+        out.push(path);
+      }
+    }
+    return out;
+  }
+
+  async function run() {
+    setBusy(true);
+    try {
+      toast.info("Listando PDFs do bucket pokerole2…");
+      const paths = await listAllPdfs();
+      if (paths.length === 0) { toast.error("Nenhum PDF encontrado no bucket"); return; }
+      toast.info(`${paths.length} PDF(s) encontrado(s). Indexando…`);
+
+      let total = 0;
+      for (const path of paths) {
+        try {
+          const { data: blob, error } = await supabase.storage.from("pokerole2").download(path);
+          if (error || !blob) { toast.error(`Falha ao baixar ${path}`); continue; }
+          const file = new File([blob], path.split("/").pop() ?? path, { type: "application/pdf" });
+          toast.info(`Lendo ${file.name}…`);
+          const text = await extractPdfText(file);
+          if (text.trim().length < 100) { toast.error(`Sem texto extraível em ${path}`); continue; }
+          const res = await ingest({ data: { source: "pokerole", text, replace: false } });
+          total += res.inserted;
+          toast.success(`${file.name}: ${res.inserted} trechos`);
+        } catch (e) {
+          toast.error(`${path}: ${e instanceof Error ? e.message : "erro"}`);
+        }
+      }
+      toast.success(`Concluído. Total de ${total} trechos indexados.`);
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Button size="sm" variant="outline" onClick={run} disabled={busy}>
+      {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Cloud className="mr-1 h-3.5 w-3.5" />}
+      Importar do bucket
+    </Button>
+  );
+}
