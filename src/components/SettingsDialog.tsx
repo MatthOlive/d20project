@@ -7,7 +7,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { ingestKnowledge, deleteKnowledgeSource } from "@/lib/knowledge.functions";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Settings as SettingsIcon, Loader2, Plus, BookOpen, Upload, FileText, Trash2 } from "lucide-react";
+import { Settings as SettingsIcon, Loader2, Plus, BookOpen, Upload, FileText, Trash2, Cloud } from "lucide-react";
 import { toast } from "sonner";
 
 export type RpgSystem = { id: string; label: string; available: boolean };
