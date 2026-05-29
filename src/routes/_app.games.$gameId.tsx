@@ -332,10 +332,16 @@ function FilesPanel({
   });
 
   const { data: speciesList } = useQuery({
-    queryKey: ["species-list"],
+    queryKey: ["species-list-full"],
     queryFn: async () => {
-      const { data } = await supabase.from("species").select("id,name").order("dex_number");
-      return data ?? [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase.from("species") as any)
+        .select("id,name,evolutions,suggested_rank,is_starter,is_legendary")
+        .order("dex_number");
+      return (data ?? []) as Array<{
+        id: string; name: string; evolutions: string[];
+        suggested_rank: string | null; is_starter: boolean; is_legendary: boolean;
+      }>;
     },
   });
 
