@@ -27,8 +27,9 @@ export function SheetPermissionsDialog({
     queryKey: [table, entityId, "perms"],
     enabled: open,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from(table)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const q: any = kind === "pokemon" ? supabase.from("pokemon") : supabase.from("trainers");
+      const { data, error } = await q
         .select("owner_id, allowed_editors, allowed_viewers")
         .eq("id", entityId)
         .single();
