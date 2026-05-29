@@ -111,9 +111,14 @@ function RulesSection() {
           </p>
         </div>
         {!adding && (
-          <Button size="sm" onClick={() => setAdding(true)}>
-            <Plus className="mr-1 h-3.5 w-3.5" /> Adicionar
-          </Button>
+          <div className="flex gap-2">
+            <ImportFromBucketButton
+              onDone={() => qc.invalidateQueries({ queryKey: ["knowledge-sources"] })}
+            />
+            <Button size="sm" onClick={() => setAdding(true)}>
+              <Plus className="mr-1 h-3.5 w-3.5" /> Adicionar
+            </Button>
+          </div>
         )}
       </div>
 
