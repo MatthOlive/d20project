@@ -538,13 +538,76 @@ function FilesPanel({
             </DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>Create a Pokémon</DialogTitle></DialogHeader>
-              <Label>Species</Label>
+              <div className="flex items-center justify-between">
+                <Label>Species</Label>
+                <Button size="sm" variant="outline" onClick={() => setRandomOpen((v) => !v)}>
+                  <Dices className="mr-1 h-3.5 w-3.5" /> Aleatório
+                </Button>
+              </div>
               <Select value={newPkmSpecies} onValueChange={setNewPkmSpecies}>
                 <SelectTrigger><SelectValue placeholder="Pick a species" /></SelectTrigger>
                 <SelectContent>
                   {speciesList?.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {randomOpen && (() => {
+                const list = speciesList ?? [];
+                const parentOf = new Map<string, string>();
+                for (const s of list) for (const ev of (s.evolutions ?? [])) parentOf.set(ev, s.name);
+                const isMegaName = (n: string) => /\bMega\b/.test(n);
+                const allMega = (evos: string[]) => evos.length > 0 && evos.every(isMegaName);
+                function matches(s: typeof list[number]): boolean {
+                  const hasParent = parentOf.has(s.name);
+                  const evos = s.evolutions ?? [];
+                  const rank = s.suggested_rank;
+                  const proPlus = rank === "pro" || rank === "master";
+                  const cats: boolean[] = [];
+                  if (fStarter) cats.push(!!s.is_starter);
+                  if (fLegend) cats.push(!!s.is_legendary);
+                  if (fFirst) cats.push(!s.is_legendary && !proPlus && (!hasParent || evos.length === 0));
+                  if (fSecond) cats.push(!s.is_legendary && !proPlus && hasParent && evos.length > 0 && !allMega(evos));
+                  if (fLast) cats.push(!s.is_legendary && rank !== "master" && hasParent && (evos.length === 0 || allMega(evos)));
+                  const catMatch = cats.length === 0 ? true : cats.some(Boolean);
+                  const rankMatch = !fRank || s.suggested_rank === fRank;
+                  return catMatch && rankMatch;
+                }
+                function roll() {
+                  const pool = list.filter(matches);
+                  if (pool.length === 0) { toast.error("Nenhum Pokémon corresponde aos filtros"); return; }
+                  const pick = pool[Math.floor(Math.random() * pool.length)];
+                  setNewPkmSpecies(pick.id);
+                  toast.success(`🎲 ${pick.name}`);
+                }
+                return (
+                  <div className="space-y-2 rounded-md border border-border bg-muted/30 p-2.5 text-xs">
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <label className="flex items-center gap-1.5"><Checkbox checked={fStarter} onCheckedChange={(v) => setFStarter(!!v)} /> Starter</label>
+                      <label className="flex items-center gap-1.5"><Checkbox checked={fLegend} onCheckedChange={(v) => setFLegend(!!v)} /> Lendário</label>
+                      <label className="flex items-center gap-1.5"><Checkbox checked={fFirst} onCheckedChange={(v) => setFFirst(!!v)} /> Estágio inicial</label>
+                      <label className="flex items-center gap-1.5"><Checkbox checked={fSecond} onCheckedChange={(v) => setFSecond(!!v)} /> Segundo estágio</label>
+                      <label className="flex items-center gap-1.5"><Checkbox checked={fLast} onCheckedChange={(v) => setFLast(!!v)} /> Último estágio</label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="whitespace-nowrap">Rank recomendado:</span>
+                      <Select value={fRank || "any"} onValueChange={(v) => setFRank(v === "any" ? "" : v)}>
+                        <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="any">Qualquer</SelectItem>
+                          <SelectItem value="starter">Starter</SelectItem>
+                          <SelectItem value="beginner">Beginner</SelectItem>
+                          <SelectItem value="amateur">Amateur</SelectItem>
+                          <SelectItem value="ace">Ace</SelectItem>
+                          <SelectItem value="pro">Pro</SelectItem>
+                          <SelectItem value="master">Master</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button size="sm" className="w-full" onClick={roll}>
+                      <Dices className="mr-1 h-3.5 w-3.5" /> Sortear
+                    </Button>
+                  </div>
+                );
+              })()}
               <label className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-2.5 text-sm">
                 <Checkbox
                   checked={newPkmOvergrown}
