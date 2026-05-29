@@ -369,8 +369,9 @@ function FilesPanel({
   });
 
   const createPokemon = useMutation({
-    mutationFn: async () => {
-      if (!newPkmSpecies) throw new Error("Pick a species");
+    mutationFn: async (overrideSpeciesId?: string) => {
+      const speciesId = overrideSpeciesId || newPkmSpecies;
+      if (!speciesId) throw new Error("Pick a species");
       // Read configured chances from the game (defaults 10/0)
       const { data: gameRow } = await supabase
         .from("games")
@@ -387,7 +388,7 @@ function FilesPanel({
         .insert({
           game_id: gameId,
           owner_id: userId,
-          species_id: newPkmSpecies,
+          species_id: speciesId,
           rank: "starter",
           is_shiny: isShiny,
           is_overgrown: finalOvergrown,
@@ -403,10 +404,12 @@ function FilesPanel({
       setPkmDialogOpen(false);
       setNewPkmSpecies("");
       setNewPkmOvergrown(false);
+      setRandomOpen(false);
       onOpen({ kind: "pokemon", id: p.id, title: "Pokémon" });
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   const rows: CharRow[] = [
     ...(characters?.trainers ?? []).map<CharRow>((t) => ({
