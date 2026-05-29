@@ -283,6 +283,13 @@ function FilesPanel({
   const [pkmDialogOpen, setPkmDialogOpen] = useState(false);
   const [newPkmSpecies, setNewPkmSpecies] = useState<string>("");
   const [newPkmOvergrown, setNewPkmOvergrown] = useState(false);
+  const [randomOpen, setRandomOpen] = useState(false);
+  const [fStarter, setFStarter] = useState(false);
+  const [fFirst, setFFirst] = useState(false);
+  const [fSecond, setFSecond] = useState(false);
+  const [fLast, setFLast] = useState(false);
+  const [fLegend, setFLegend] = useState(false);
+  const [fRank, setFRank] = useState<string>("");
 
   const [newFolder, setNewFolder] = useState("");
   const [extraFolders, setExtraFolders] = useState<string[]>([]);
