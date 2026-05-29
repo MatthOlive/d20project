@@ -22,6 +22,7 @@ import { Dices, ImagePlus, X as XIcon, Plus, Trash2 } from "lucide-react";
 import {
   HpAndStatusBlock, AttackRollButton, GenericRollButton, painPenaltyFor,
 } from "@/components/SheetRolls";
+import { SheetPermissionsDialog } from "@/components/SheetPermissionsDialog";
 
 const POKEBALLS = {
   pokeball:  { label: "Pokéball",  pool: 4 },
