@@ -29,6 +29,7 @@ import { rollD6 } from "@/lib/pokerole";
 import {
   HpAndStatusBlock, AttackRollButton, GenericRollButton, painPenaltyFor,
 } from "@/components/SheetRolls";
+import { SheetPermissionsDialog } from "@/components/SheetPermissionsDialog";
 
 // Z-Move names per type (Pokérole 2.0)
 const Z_MOVE_NAMES: Record<string, string> = {
