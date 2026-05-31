@@ -72,7 +72,54 @@ type CustomSkill = { name: string; value: number };
 type Badge = { name: string; image_url?: string | null };
 
 type InventoryItem = { name: string; qty: number };
-type Achievement = { name: string; done: boolean };
+type Achievement = { name: string; done: boolean; kind?: "rank" | "custom"; rankFor?: string };
+
+const RANK_UP_REQUIREMENTS: Record<string, { nextRank: string; items: string[] }> = {
+  starter: {
+    nextRank: "Beginner",
+    items: [
+      "Get your Trainer's License (Character Sheet)",
+      "Get your first Pokémon",
+    ],
+  },
+  beginner: {
+    nextRank: "Amateur",
+    items: [
+      "Successfully understand your Pokémon's gestures",
+      "Train a Pokémon",
+      "Catch your second Pokémon",
+      "Win your first Official Battle against a Trainer",
+    ],
+  },
+  amateur: {
+    nextRank: "Ace",
+    items: [
+      "Evolve a Pokémon",
+      "Win your First Badge",
+      "Increase a Pokémon's Loyalty & Happiness",
+    ],
+  },
+  ace: {
+    nextRank: "Pro",
+    items: [
+      "Win 8 Badges",
+      "Get a full party of six evolved Pokémon",
+      "Defeat your Rival",
+    ],
+  },
+  pro: {
+    nextRank: "Master",
+    items: [
+      "Get a Pokémon-related job",
+      "Clear the Victory Road",
+      "Catch a Professional-Rank Pokémon",
+    ],
+  },
+  master: {
+    nextRank: "Champion",
+    items: ["Find and study all Pokémon species in your Region"],
+  },
+};
 
 const POTION_TIERS: { key: string; label: string; defaultMax: number }[] = [
   { key: "potion", label: "Potion", defaultMax: 2 },
