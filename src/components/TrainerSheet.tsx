@@ -993,38 +993,81 @@ function PotionsBlock({
 }
 
 function AchievementsSection({
-  items, canEdit, onChange,
+  items, rank, canEdit, onChange,
 }: {
   items: Achievement[];
+  rank: string;
   canEdit: boolean;
   onChange: (items: Achievement[]) => void;
 }) {
   const [name, setName] = useState("");
+  const rankReq = RANK_UP_REQUIREMENTS[rank];
+
+  // Build rank-up achievements for the current rank, preserving done state from existing items
+  const rankItems: Achievement[] = rankReq
+    ? rankReq.items.map((n) => {
+        const existing = items.find((a) => a.kind === "rank" && a.rankFor === rank && a.name === n);
+        return { name: n, done: existing?.done ?? false, kind: "rank", rankFor: rank };
+      })
+    : [];
+  const customItems = items.filter((a) => a.kind !== "rank");
+
+  function updateRankDone(idx: number, done: boolean) {
+    const newRank = rankItems.map((x, j) => (j === idx ? { ...x, done } : x));
+    onChange([...newRank, ...customItems]);
+  }
+  function updateCustom(next: Achievement[]) {
+    onChange([...rankItems, ...next.map((x) => ({ ...x, kind: "custom" as const }))]);
+  }
   function add() {
     const n = name.trim(); if (!n) return;
-    onChange([...items, { name: n, done: false }]); setName("");
+    updateCustom([...customItems, { name: n, done: false }]);
+    setName("");
   }
+
   return (
     <section>
       <h3 className="mb-2 text-sm font-bold">Achievements</h3>
       <div className="space-y-1.5 rounded-md border border-border bg-card p-2">
-        {items.length === 0 && <p className="px-1 text-xs text-muted-foreground">No achievements yet.</p>}
-        {items.map((a, i) => (
-          <div key={i} className="flex items-center gap-2">
+        {rankReq && (
+          <div className="space-y-1.5 rounded border border-dashed border-border/60 bg-muted/30 p-2">
+            <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Para subir para {rankReq.nextRank} Rank
+            </p>
+            {rankItems.map((a, i) => (
+              <div key={`r-${i}`} className="flex items-center gap-2">
+                <Checkbox
+                  checked={a.done}
+                  disabled={!canEdit}
+                  onCheckedChange={() => updateRankDone(i, !a.done)}
+                />
+                <span className={`flex-1 text-sm ${a.done ? "line-through text-muted-foreground" : ""}`}>
+                  {a.name}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {customItems.length === 0 && !rankReq && (
+          <p className="px-1 text-xs text-muted-foreground">No achievements yet.</p>
+        )}
+        {customItems.map((a, i) => (
+          <div key={`c-${i}`} className="flex items-center gap-2">
             <Checkbox
               checked={a.done}
               disabled={!canEdit}
-              onCheckedChange={() => onChange(items.map((x, j) => j === i ? { ...x, done: !x.done } : x))}
+              onCheckedChange={() => updateCustom(customItems.map((x, j) => j === i ? { ...x, done: !x.done } : x))}
             />
             <Input
               value={a.name}
               disabled={!canEdit}
-              onChange={(e) => onChange(items.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}
+              onChange={(e) => updateCustom(customItems.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}
               className={`h-7 flex-1 text-sm ${a.done ? "line-through text-muted-foreground" : ""}`}
             />
             {canEdit && (
               <Button size="sm" variant="ghost" className="h-7 w-7 p-0"
-                onClick={() => onChange(items.filter((_, j) => j !== i))}>
+                onClick={() => updateCustom(customItems.filter((_, j) => j !== i))}>
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
             )}
