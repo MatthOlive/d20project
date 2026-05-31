@@ -467,6 +467,7 @@ export function TrainerSheet({
         />
         <AchievementsSection
           items={trainer.achievements ?? []}
+          rank={trainer.rank}
           canEdit={canEdit}
           onChange={(items) => patch({ achievements: items })}
         />
