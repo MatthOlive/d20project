@@ -74,16 +74,18 @@ type Badge = { name: string; image_url?: string | null };
 type InventoryItem = { name: string; qty: number };
 type Achievement = { name: string; done: boolean; kind?: "rank" | "custom"; rankFor?: string };
 
-const RANK_UP_REQUIREMENTS: Record<string, { nextRank: string; items: string[] }> = {
-  starter: {
-    nextRank: "Beginner",
+// Requisitos para alcançar CADA rank (chave = rank de destino).
+// Quando o treinador está em X, mostramos os requisitos da chave NEXT_RANK[X].
+const RANK_UP_REQUIREMENTS: Record<string, { label: string; items: string[] }> = {
+  beginner: {
+    label: "Beginner",
     items: [
       "Get your Trainer's License (Character Sheet)",
       "Get your first Pokémon",
     ],
   },
-  beginner: {
-    nextRank: "Amateur",
+  amateur: {
+    label: "Amateur",
     items: [
       "Successfully understand your Pokémon's gestures",
       "Train a Pokémon",
@@ -91,35 +93,45 @@ const RANK_UP_REQUIREMENTS: Record<string, { nextRank: string; items: string[] }
       "Win your first Official Battle against a Trainer",
     ],
   },
-  amateur: {
-    nextRank: "Ace",
+  ace: {
+    label: "Ace",
     items: [
       "Evolve a Pokémon",
       "Win your First Badge",
       "Increase a Pokémon's Loyalty & Happiness",
     ],
   },
-  ace: {
-    nextRank: "Pro",
+  pro: {
+    label: "Pro",
     items: [
       "Win 8 Badges",
       "Get a full party of six evolved Pokémon",
       "Defeat your Rival",
     ],
   },
-  pro: {
-    nextRank: "Master",
+  master: {
+    label: "Master",
     items: [
       "Get a Pokémon-related job",
       "Clear the Victory Road",
       "Catch a Professional-Rank Pokémon",
     ],
   },
-  master: {
-    nextRank: "Champion",
+  champion: {
+    label: "Champion",
     items: ["Find and study all Pokémon species in your Region"],
   },
 };
+
+const NEXT_RANK: Record<string, string> = {
+  starter: "beginner",
+  beginner: "amateur",
+  amateur: "ace",
+  ace: "pro",
+  pro: "master",
+  master: "champion",
+};
+
 
 const POTION_TIERS: { key: string; label: string; defaultMax: number }[] = [
   { key: "potion", label: "Potion", defaultMax: 2 },
