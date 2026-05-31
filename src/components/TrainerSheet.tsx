@@ -74,16 +74,18 @@ type Badge = { name: string; image_url?: string | null };
 type InventoryItem = { name: string; qty: number };
 type Achievement = { name: string; done: boolean; kind?: "rank" | "custom"; rankFor?: string };
 
-const RANK_UP_REQUIREMENTS: Record<string, { nextRank: string; items: string[] }> = {
-  starter: {
-    nextRank: "Beginner",
+// Requisitos para alcançar CADA rank (chave = rank de destino).
+// Quando o treinador está em X, mostramos os requisitos da chave NEXT_RANK[X].
+const RANK_UP_REQUIREMENTS: Record<string, { label: string; items: string[] }> = {
+  beginner: {
+    label: "Beginner",
     items: [
       "Get your Trainer's License (Character Sheet)",
       "Get your first Pokémon",
     ],
   },
-  beginner: {
-    nextRank: "Amateur",
+  amateur: {
+    label: "Amateur",
     items: [
       "Successfully understand your Pokémon's gestures",
       "Train a Pokémon",
@@ -91,35 +93,45 @@ const RANK_UP_REQUIREMENTS: Record<string, { nextRank: string; items: string[] }
       "Win your first Official Battle against a Trainer",
     ],
   },
-  amateur: {
-    nextRank: "Ace",
+  ace: {
+    label: "Ace",
     items: [
       "Evolve a Pokémon",
       "Win your First Badge",
       "Increase a Pokémon's Loyalty & Happiness",
     ],
   },
-  ace: {
-    nextRank: "Pro",
+  pro: {
+    label: "Pro",
     items: [
       "Win 8 Badges",
       "Get a full party of six evolved Pokémon",
       "Defeat your Rival",
     ],
   },
-  pro: {
-    nextRank: "Master",
+  master: {
+    label: "Master",
     items: [
       "Get a Pokémon-related job",
       "Clear the Victory Road",
       "Catch a Professional-Rank Pokémon",
     ],
   },
-  master: {
-    nextRank: "Champion",
+  champion: {
+    label: "Champion",
     items: ["Find and study all Pokémon species in your Region"],
   },
 };
+
+const NEXT_RANK: Record<string, string> = {
+  starter: "beginner",
+  beginner: "amateur",
+  amateur: "ace",
+  ace: "pro",
+  pro: "master",
+  master: "champion",
+};
+
 
 const POTION_TIERS: { key: string; label: string; defaultMax: number }[] = [
   { key: "potion", label: "Potion", defaultMax: 2 },
@@ -1001,13 +1013,14 @@ function AchievementsSection({
   onChange: (items: Achievement[]) => void;
 }) {
   const [name, setName] = useState("");
-  const rankReq = RANK_UP_REQUIREMENTS[rank];
+  const nextRankKey = NEXT_RANK[rank];
+  const rankReq = nextRankKey ? RANK_UP_REQUIREMENTS[nextRankKey] : undefined;
 
-  // Build rank-up achievements for the current rank, preserving done state from existing items
+  // Build rank-up achievements for the NEXT rank, preserving done state from existing items
   const rankItems: Achievement[] = rankReq
     ? rankReq.items.map((n) => {
-        const existing = items.find((a) => a.kind === "rank" && a.rankFor === rank && a.name === n);
-        return { name: n, done: existing?.done ?? false, kind: "rank", rankFor: rank };
+        const existing = items.find((a) => a.kind === "rank" && a.rankFor === nextRankKey && a.name === n);
+        return { name: n, done: existing?.done ?? false, kind: "rank", rankFor: nextRankKey };
       })
     : [];
   const customItems = items.filter((a) => a.kind !== "rank");
@@ -1032,7 +1045,7 @@ function AchievementsSection({
         {rankReq && (
           <div className="space-y-1.5 rounded border border-dashed border-border/60 bg-muted/30 p-2">
             <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Para subir para {rankReq.nextRank} Rank
+              Para subir para {rankReq.label} Rank
             </p>
             {rankItems.map((a, i) => (
               <div key={`r-${i}`} className="flex items-center gap-2">
@@ -1048,6 +1061,7 @@ function AchievementsSection({
             ))}
           </div>
         )}
+
 
         {customItems.length === 0 && !rankReq && (
           <p className="px-1 text-xs text-muted-foreground">No achievements yet.</p>
