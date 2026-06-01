@@ -49,7 +49,7 @@ function zMovePower(p: number): number {
   return p + 2;
 }
 
-type EvolutionMethod = { kind: "time" | "other"; speed?: "fast" | "medium" | "slow"; text?: string };
+type EvolutionMethod = { kind: "time" | "other" | "item"; speed?: "fast" | "medium" | "slow"; text?: string };
 
 type Species = {
   id: string; name: string; types: string[]; base_hp: number;
@@ -79,6 +79,7 @@ type Pokemon = {
   sex: string | null;
   is_shiny: boolean;
   is_overgrown: boolean;
+  owner_trainer_id: string | null;
 };
 
 
@@ -326,7 +327,7 @@ export function PokemonSheet({
                   Use {spDefUsesInsight ? "Vit" : "Ins"}
                 </Button>
               )}
-              {canEdit && <EvolveButton pokemonId={pokemonId} fromSprite={species.sprite_url} fromSpeciesId={species.id} currentName={species.name} evolutions={species.evolutions} evolutionMethod={species.evolution_method} victories={pokemon.victories} baseSpeciesId={(pokemon.modifiers as Record<string, unknown>)?._base_species as string | undefined} />}
+              {canEdit && <EvolveButton pokemonId={pokemonId} fromSprite={species.sprite_url} fromSpeciesId={species.id} currentName={species.name} evolutions={species.evolutions} evolutionMethod={species.evolution_method} victories={pokemon.victories} baseSpeciesId={(pokemon.modifiers as Record<string, unknown>)?._base_species as string | undefined} ownerTrainerId={pokemon.owner_trainer_id ?? null} heldItem={pokemon.held_item} />}
               {canEdit && <DynamaxToggle mode={dynaMode} onChange={setDynaMode} />}
               {dynaMode && <span className="rounded-full bg-red-500/20 px-2.5 py-0.5 text-xs font-bold uppercase text-red-500">{dynaMode === "gigantamax" ? "G-Max" : "Dynamax"}</span>}
             </div>
@@ -880,9 +881,10 @@ function NatureSelect({ value, disabled, onChange }: { value: string | null; dis
 
 const TIME_THRESHOLDS = { fast: 5, medium: 15, slow: 45 } as const;
 
-function EvolveButton({ pokemonId, fromSprite, fromSpeciesId, currentName, evolutions, evolutionMethod, victories, baseSpeciesId }: {
+function EvolveButton({ pokemonId, fromSprite, fromSpeciesId, currentName, evolutions, evolutionMethod, victories, baseSpeciesId, ownerTrainerId, heldItem }: {
   pokemonId: string; fromSprite: string | null; fromSpeciesId: string; currentName: string;
   evolutions: string[]; evolutionMethod: EvolutionMethod | null; victories: number; baseSpeciesId?: string;
+  ownerTrainerId: string | null; heldItem: string | null;
 }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -899,6 +901,57 @@ function EvolveButton({ pokemonId, fromSprite, fromSpeciesId, currentName, evolu
   // Mode priority: revert if mega form; otherwise normal evolve if available; otherwise mega.
   // When both exist, default to evolve; user can also pick a mega form from the dropdown.
   const mode: "revert" | "mega" | "evolve" = isMegaForm ? "revert" : hasNormal ? "evolve" : "mega";
+
+  // Trainer bag (for item-method gating)
+  const { data: trainerBag = [] } = useQuery({
+    queryKey: ["trainer-bag-evo", ownerTrainerId],
+    enabled: !!ownerTrainerId && open,
+    queryFn: async () => {
+      const { data } = await supabase.from("trainers").select("bag_list").eq("id", ownerTrainerId!).maybeSingle();
+      const list = (data?.bag_list ?? []) as Array<{ name: string; qty: number }>;
+      return list.map((i) => i.name);
+    },
+  });
+  const inventoryItems = useMemo(() => {
+    const list = trainerBag.map((n) => n.toLowerCase());
+    if (heldItem) list.push(heldItem.toLowerCase());
+    return list;
+  }, [trainerBag, heldItem]);
+
+  // Parse required items from evolution_method.text (e.g. "Leaf/Sun Stone" → ["Leaf Stone","Sun Stone"])
+  const requiredItems = useMemo(() => {
+    if (evolutionMethod?.kind !== "item" || !evolutionMethod.text) return [];
+    const items: string[] = [];
+    const text = evolutionMethod.text;
+    // Expand "X/Y Suffix" → ["X Suffix","Y Suffix"]
+    const slashRe = /\b([A-Z][a-zA-Z]+(?:\/[A-Z][a-zA-Z]+)+)\s+([A-Z][a-zA-Z]+)\b/g;
+    const seen = new Set<string>();
+    let expanded = text;
+    let m: RegExpExecArray | null;
+    while ((m = slashRe.exec(text)) !== null) {
+      const parts = m[1].split("/");
+      for (const p of parts) {
+        const full = `${p} ${m[2]}`;
+        if (!seen.has(full.toLowerCase())) { items.push(full); seen.add(full.toLowerCase()); }
+      }
+      expanded = expanded.replace(m[0], "");
+    }
+    // Remaining capitalized multi-word phrases
+    const phraseRe = /\b[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)+\b/g;
+    let pm: RegExpExecArray | null;
+    while ((pm = phraseRe.exec(expanded)) !== null) {
+      const phrase = pm[0];
+      if (!seen.has(phrase.toLowerCase())) { items.push(phrase); seen.add(phrase.toLowerCase()); }
+    }
+    return items;
+  }, [evolutionMethod]);
+
+  const availableItems = useMemo(
+    () => requiredItems.filter((it) => inventoryItems.includes(it.toLowerCase())),
+    [requiredItems, inventoryItems],
+  );
+  const hasAnyRequiredItem = requiredItems.length === 0 || availableItems.length > 0;
+
   const [target, setTarget] = useState<string>(mode === "evolve" ? (normalEvos[0] ?? "") : (megaEvos[0] ?? ""));
   useEffect(() => {
     if (mode === "evolve") setTarget(normalEvos[0] ?? "");
@@ -945,14 +998,18 @@ function EvolveButton({ pokemonId, fromSprite, fromSpeciesId, currentName, evolu
   // Evolution method gating — only applies to normal evolve mode (not mega/revert).
   const showMethodInfo = !isMegaForm && hasNormal && evolutionMethod;
   const isTimeMethod = evolutionMethod?.kind === "time" && evolutionMethod.speed;
+  const isItemMethod = evolutionMethod?.kind === "item";
   const threshold = isTimeMethod ? TIME_THRESHOLDS[evolutionMethod!.speed!] : 0;
   const timeReady = !isTimeMethod || victories >= threshold;
-  const showEvolveButton = mode !== "evolve" || timeReady;
+  const itemReady = !isItemMethod || hasAnyRequiredItem;
+  const showEvolveButton = mode !== "evolve" || (timeReady && itemReady);
   const methodLabel = isTimeMethod
     ? `Evolução: ${victories}/${threshold} vitórias (${evolutionMethod!.speed})`
-    : evolutionMethod?.kind === "other" && evolutionMethod.text
-      ? `Evolução: ${evolutionMethod.text}`
-      : null;
+    : isItemMethod
+      ? `Evolução por item: ${evolutionMethod!.text ?? ""}${requiredItems.length > 0 ? ` (${availableItems.length}/${requiredItems.length} no inventário)` : ""}`
+      : evolutionMethod?.kind === "other" && evolutionMethod.text
+        ? `Evolução: ${evolutionMethod.text}`
+        : null;
 
   return (
     <>
@@ -963,6 +1020,21 @@ function EvolveButton({ pokemonId, fromSprite, fromSpeciesId, currentName, evolu
           <DialogHeader><DialogTitle>{showEvolved ? `Transformed into ${nextName}!` : label}</DialogTitle></DialogHeader>
           {!animating && (
             <div className="space-y-3">
+              {mode === "evolve" && evolutionMethod && (
+                <div className="rounded-md border border-border bg-muted/40 p-2 text-xs">
+                  <p className="font-semibold">Método de evolução</p>
+                  <p className="text-muted-foreground">
+                    {isTimeMethod && `Tempo (${evolutionMethod.speed}) — ${victories}/${threshold} vitórias`}
+                    {isItemMethod && `Item — ${evolutionMethod.text ?? ""}`}
+                    {evolutionMethod.kind === "other" && (evolutionMethod.text ?? "Condição especial")}
+                  </p>
+                  {isItemMethod && requiredItems.length > 0 && (
+                    <p className="mt-1 text-[11px]">
+                      Disponíveis no inventário: {availableItems.length > 0 ? availableItems.join(", ") : "nenhum"}
+                    </p>
+                  )}
+                </div>
+              )}
               {mode === "evolve" && (
                 <>
                   <Label className="text-xs">Evolves into</Label>

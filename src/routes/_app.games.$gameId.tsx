@@ -26,7 +26,7 @@ import { MapBoard, DRAG_MIME, type DragCharacterPayload } from "@/components/Map
 import { MusicPanel } from "@/components/MusicPanel";
 import { MusicPlayer } from "@/components/MusicPlayer";
 import { toast } from "sonner";
-import { Copy, Crown, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Swords, ChevronDown, ChevronUp, Dices } from "lucide-react";
+import { Copy, Crown, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Swords, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, Dices, Menu } from "lucide-react";
 import { rollD6, rollShiny, POKEMON_TYPES, TYPE_COLORS, type PokemonType } from "@/lib/pokerole";
 
 export const Route = createFileRoute("/_app/games/$gameId")({
@@ -144,7 +144,7 @@ function GameRoom() {
   if (!game || !user) return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
 
   return (
-    <div className="mx-auto grid h-[calc(100vh-4rem)] max-w-7xl grid-cols-1 gap-3 px-3 py-3 lg:grid-cols-[1fr_360px]">
+    <div className="mx-auto grid h-[calc(100vh-4rem)] max-w-7xl grid-cols-1 gap-3 px-3 py-3 md:grid-cols-[1fr_360px]">
       <MusicPlayer gameId={gameId} />
       {/* Center: background + characters */}
       <div className="flex min-h-0 flex-col gap-3">
@@ -157,24 +157,13 @@ function GameRoom() {
             onRoll={rollFromSheet}
             onOpenSheet={(kind, id, label) => openWindow({ kind, id, title: label })}
           />
-          {/* Left side menu */}
-          <div className="pointer-events-auto absolute left-3 top-3 z-10 flex flex-col gap-2">
-            {isNarrator && (
-              <span className="inline-flex items-center justify-center gap-1 rounded-full bg-primary px-2.5 py-1 text-[10px] font-bold uppercase text-primary-foreground shadow">
-                <Crown className="h-3 w-3" /> Narrator
-              </span>
-            )}
-            {isNarrator && <InviteButton url={inviteUrl} />}
-            {isNarrator && <GameSettingsButton gameId={gameId} />}
-            <Button
-              size="sm"
-              variant="secondary"
-              className="h-8 justify-start"
-              onClick={() => setTurnOrderOpen((v) => !v)}
-            >
-              <Swords className="mr-1 h-3.5 w-3.5" /> Turn Order
-            </Button>
-          </div>
+          {/* Left side disclosure (toggled like Map tools) */}
+          <MapLeftDisclosure
+            isNarrator={isNarrator}
+            inviteUrl={inviteUrl}
+            gameId={gameId}
+            onToggleTurnOrder={() => setTurnOrderOpen((v) => !v)}
+          />
           {/* Top "lingueta" disclosure (narrator only) */}
           {isNarrator && (
             <MapTopDisclosure
@@ -1023,6 +1012,52 @@ function MapTopDisclosure({
             <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadBackground(e.target.files[0])} />
           </label>
           <ScenarioButtons gameId={gameId} currentBg={currentBg} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+function MapLeftDisclosure({
+  isNarrator,
+  inviteUrl,
+  gameId,
+  onToggleTurnOrder,
+}: {
+  isNarrator: boolean;
+  inviteUrl: string;
+  gameId: string;
+  onToggleTurnOrder: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="pointer-events-auto absolute left-0 top-3 z-10 flex items-start">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1 rounded-r-lg bg-card/95 px-2 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground shadow backdrop-blur hover:text-foreground"
+        title={open ? "Hide menu" : "Show menu"}
+      >
+        <Menu className="h-3.5 w-3.5" />
+        {open ? <ChevronLeft className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+      </button>
+      {open && (
+        <div className="ml-1 flex flex-col gap-2 rounded-lg border border-border bg-card/95 p-2 shadow-lg backdrop-blur">
+          {isNarrator && (
+            <span className="inline-flex items-center justify-center gap-1 rounded-full bg-primary px-2.5 py-1 text-[10px] font-bold uppercase text-primary-foreground shadow">
+              <Crown className="h-3 w-3" /> Narrator
+            </span>
+          )}
+          {isNarrator && <InviteButton url={inviteUrl} />}
+          {isNarrator && <GameSettingsButton gameId={gameId} />}
+          <Button
+            size="sm"
+            variant="secondary"
+            className="h-8 justify-start"
+            onClick={onToggleTurnOrder}
+          >
+            <Swords className="mr-1 h-3.5 w-3.5" /> Turn Order
+          </Button>
         </div>
       )}
     </div>
