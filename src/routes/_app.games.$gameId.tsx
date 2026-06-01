@@ -144,7 +144,7 @@ function GameRoom() {
   if (!game || !user) return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
 
   return (
-    <div className="mx-auto grid h-[calc(100vh-4rem)] max-w-7xl grid-cols-1 gap-3 px-3 py-3 lg:grid-cols-[1fr_360px]">
+    <div className="mx-auto grid h-[calc(100vh-4rem)] max-w-7xl grid-cols-1 gap-3 px-3 py-3 md:grid-cols-[1fr_360px]">
       <MusicPlayer gameId={gameId} />
       {/* Center: background + characters */}
       <div className="flex min-h-0 flex-col gap-3">
@@ -157,24 +157,13 @@ function GameRoom() {
             onRoll={rollFromSheet}
             onOpenSheet={(kind, id, label) => openWindow({ kind, id, title: label })}
           />
-          {/* Left side menu */}
-          <div className="pointer-events-auto absolute left-3 top-3 z-10 flex flex-col gap-2">
-            {isNarrator && (
-              <span className="inline-flex items-center justify-center gap-1 rounded-full bg-primary px-2.5 py-1 text-[10px] font-bold uppercase text-primary-foreground shadow">
-                <Crown className="h-3 w-3" /> Narrator
-              </span>
-            )}
-            {isNarrator && <InviteButton url={inviteUrl} />}
-            {isNarrator && <GameSettingsButton gameId={gameId} />}
-            <Button
-              size="sm"
-              variant="secondary"
-              className="h-8 justify-start"
-              onClick={() => setTurnOrderOpen((v) => !v)}
-            >
-              <Swords className="mr-1 h-3.5 w-3.5" /> Turn Order
-            </Button>
-          </div>
+          {/* Left side disclosure (toggled like Map tools) */}
+          <MapLeftDisclosure
+            isNarrator={isNarrator}
+            inviteUrl={inviteUrl}
+            gameId={gameId}
+            onToggleTurnOrder={() => setTurnOrderOpen((v) => !v)}
+          />
           {/* Top "lingueta" disclosure (narrator only) */}
           {isNarrator && (
             <MapTopDisclosure
