@@ -998,14 +998,18 @@ function EvolveButton({ pokemonId, fromSprite, fromSpeciesId, currentName, evolu
   // Evolution method gating — only applies to normal evolve mode (not mega/revert).
   const showMethodInfo = !isMegaForm && hasNormal && evolutionMethod;
   const isTimeMethod = evolutionMethod?.kind === "time" && evolutionMethod.speed;
+  const isItemMethod = evolutionMethod?.kind === "item";
   const threshold = isTimeMethod ? TIME_THRESHOLDS[evolutionMethod!.speed!] : 0;
   const timeReady = !isTimeMethod || victories >= threshold;
-  const showEvolveButton = mode !== "evolve" || timeReady;
+  const itemReady = !isItemMethod || hasAnyRequiredItem;
+  const showEvolveButton = mode !== "evolve" || (timeReady && itemReady);
   const methodLabel = isTimeMethod
     ? `Evolução: ${victories}/${threshold} vitórias (${evolutionMethod!.speed})`
-    : evolutionMethod?.kind === "other" && evolutionMethod.text
-      ? `Evolução: ${evolutionMethod.text}`
-      : null;
+    : isItemMethod
+      ? `Evolução por item: ${evolutionMethod!.text ?? ""}${requiredItems.length > 0 ? ` (${availableItems.length}/${requiredItems.length} no inventário)` : ""}`
+      : evolutionMethod?.kind === "other" && evolutionMethod.text
+        ? `Evolução: ${evolutionMethod.text}`
+        : null;
 
   return (
     <>
@@ -1016,6 +1020,21 @@ function EvolveButton({ pokemonId, fromSprite, fromSpeciesId, currentName, evolu
           <DialogHeader><DialogTitle>{showEvolved ? `Transformed into ${nextName}!` : label}</DialogTitle></DialogHeader>
           {!animating && (
             <div className="space-y-3">
+              {mode === "evolve" && evolutionMethod && (
+                <div className="rounded-md border border-border bg-muted/40 p-2 text-xs">
+                  <p className="font-semibold">Método de evolução</p>
+                  <p className="text-muted-foreground">
+                    {isTimeMethod && `Tempo (${evolutionMethod.speed}) — ${victories}/${threshold} vitórias`}
+                    {isItemMethod && `Item — ${evolutionMethod.text ?? ""}`}
+                    {evolutionMethod.kind === "other" && (evolutionMethod.text ?? "Condição especial")}
+                  </p>
+                  {isItemMethod && requiredItems.length > 0 && (
+                    <p className="mt-1 text-[11px]">
+                      Disponíveis no inventário: {availableItems.length > 0 ? availableItems.join(", ") : "nenhum"}
+                    </p>
+                  )}
+                </div>
+              )}
               {mode === "evolve" && (
                 <>
                   <Label className="text-xs">Evolves into</Label>
