@@ -1019,6 +1019,52 @@ function MapTopDisclosure({
 }
 
 
+function MapLeftDisclosure({
+  isNarrator,
+  inviteUrl,
+  gameId,
+  onToggleTurnOrder,
+}: {
+  isNarrator: boolean;
+  inviteUrl: string;
+  gameId: string;
+  onToggleTurnOrder: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="pointer-events-auto absolute left-0 top-3 z-10 flex items-start">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1 rounded-r-lg bg-card/95 px-2 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground shadow backdrop-blur hover:text-foreground"
+        title={open ? "Hide menu" : "Show menu"}
+      >
+        <Menu className="h-3.5 w-3.5" />
+        {open ? <ChevronLeft className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+      </button>
+      {open && (
+        <div className="ml-1 flex flex-col gap-2 rounded-lg border border-border bg-card/95 p-2 shadow-lg backdrop-blur">
+          {isNarrator && (
+            <span className="inline-flex items-center justify-center gap-1 rounded-full bg-primary px-2.5 py-1 text-[10px] font-bold uppercase text-primary-foreground shadow">
+              <Crown className="h-3 w-3" /> Narrator
+            </span>
+          )}
+          {isNarrator && <InviteButton url={inviteUrl} />}
+          {isNarrator && <GameSettingsButton gameId={gameId} />}
+          <Button
+            size="sm"
+            variant="secondary"
+            className="h-8 justify-start"
+            onClick={onToggleTurnOrder}
+          >
+            <Swords className="mr-1 h-3.5 w-3.5" /> Turn Order
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 
 type SpeciesRow = {
   id: string; name: string; dex_number: number | null; sprite_url: string | null;
