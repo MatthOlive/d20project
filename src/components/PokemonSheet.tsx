@@ -79,6 +79,7 @@ type Pokemon = {
   sex: string | null;
   is_shiny: boolean;
   is_overgrown: boolean;
+  owner_trainer_id: string | null;
 };
 
 
