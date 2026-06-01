@@ -49,7 +49,7 @@ function zMovePower(p: number): number {
   return p + 2;
 }
 
-type EvolutionMethod = { kind: "time" | "other"; speed?: "fast" | "medium" | "slow"; text?: string };
+type EvolutionMethod = { kind: "time" | "other" | "item"; speed?: "fast" | "medium" | "slow"; text?: string };
 
 type Species = {
   id: string; name: string; types: string[]; base_hp: number;
