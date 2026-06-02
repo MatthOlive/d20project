@@ -401,7 +401,7 @@ export function TrainerSheet({
               <AttrFourField
                 key={a}
                 label={a}
-                base={0}
+                base={1}
                 points={trainer.social_attr_points?.[a] ?? 0}
                 bonus={trainer.social_attr_bonus?.[a] ?? 0}
                 baseEditable
