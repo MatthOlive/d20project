@@ -126,7 +126,7 @@ export function SheetTabs(props: {
   }
 
   return (
-    <div className="flex h-full min-h-0 w-full">
+    <div className="flex h-full min-h-0 w-full" onDragOver={handleSheetDragOver} onDrop={handleSheetDrop}>
       {/* Vertical tab rail */}
       <div className="flex w-14 shrink-0 flex-col gap-1 border-r border-border bg-muted/40 p-1.5">
         <TabButton
