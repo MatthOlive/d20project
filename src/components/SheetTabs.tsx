@@ -389,7 +389,7 @@ function EmptySlot({
           <Input placeholder="Buscar…" value={search} onChange={(e) => setSearch(e.target.value)} />
           <div className="max-h-[55vh] space-y-1 overflow-y-auto">
             {filtered.map((p) => {
-              const sp = spriteMap[p.species_id];
+              const sp = speciesLookup[p.species_id];
               const sprite = p.image_url || sp?.sprite_url;
               const nm = p.nickname || sp?.name || "Pokémon";
               return (
