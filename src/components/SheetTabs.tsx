@@ -95,8 +95,38 @@ export function SheetTabs(props: {
     qc.invalidateQueries({ queryKey: ["characters", gameId] });
   }
 
+  // Drop a pokemon anywhere on the trainer sheet:
+  // - if PC tab is active → store in PC (team_slot = null)
+  // - otherwise → assign to next empty team slot (or PC if team is full)
+  async function handleSheetDrop(e: React.DragEvent<HTMLDivElement>) {
+    const raw = e.dataTransfer.getData(DRAG_MIME);
+    if (!raw) return;
+    e.preventDefault();
+    try {
+      const p = JSON.parse(raw) as DragCharacterPayload;
+      if (p.kind !== "pokemon") return;
+      const wantPc = active.kind === "pc" || active.kind === "pcPokemon";
+      const usedSlots = new Set(roster.filter((r) => r.id !== p.id && r.team_slot != null).map((r) => r.team_slot!));
+      const nextSlot = wantPc ? null : (SLOTS.find((s) => !usedSlots.has(s)) ?? null);
+      const { error } = await supabase.from("pokemon")
+        .update({ owner_trainer_id: trainerId, team_slot: nextSlot })
+        .eq("id", p.id);
+      if (error) { toast.error(error.message); return; }
+      toast.success(nextSlot != null ? `${p.label} adicionado ao slot ${nextSlot}` : `${p.label} guardado no PC`);
+      invalidateRoster();
+      if (nextSlot != null) setActive({ kind: "slot", slot: nextSlot, pokemonId: p.id });
+      else setActive({ kind: "pc" });
+    } catch { /* ignore */ }
+  }
+  function handleSheetDragOver(e: React.DragEvent<HTMLDivElement>) {
+    if (e.dataTransfer.types.includes(DRAG_MIME)) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+    }
+  }
+
   return (
-    <div className="flex h-full min-h-0 w-full">
+    <div className="flex h-full min-h-0 w-full" onDragOver={handleSheetDragOver} onDrop={handleSheetDrop}>
       {/* Vertical tab rail */}
       <div className="flex w-14 shrink-0 flex-col gap-1 border-r border-border bg-muted/40 p-1.5">
         <TabButton
@@ -295,15 +325,39 @@ function EmptySlot({
     enabled: open,
   });
 
+  // Fetch names/sprites for every candidate species (spriteMap only covers this trainer's roster)
+  const candidateSpeciesIds = useMemo(
+    () => Array.from(new Set(candidates.map((p) => p.species_id).filter(Boolean))),
+    [candidates],
+  );
+  const { data: candidateSpeciesMap = {} } = useQuery({
+    queryKey: ["candidate-species", candidateSpeciesIds.join(",")],
+    enabled: open && candidateSpeciesIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("species")
+        .select("id, sprite_url, name")
+        .in("id", candidateSpeciesIds);
+      if (error) throw error;
+      const m: Record<string, { sprite_url: string | null; name: string }> = {};
+      (data ?? []).forEach((s) => { m[s.id] = { sprite_url: s.sprite_url, name: s.name }; });
+      return m;
+    },
+  });
+  const speciesLookup = useMemo(
+    () => ({ ...spriteMap, ...candidateSpeciesMap }),
+    [spriteMap, candidateSpeciesMap],
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return candidates.filter((p) => {
       if (!q) return true;
       const nm = p.nickname?.toLowerCase() ?? "";
-      const sp = spriteMap[p.species_id]?.name?.toLowerCase() ?? "";
+      const sp = speciesLookup[p.species_id]?.name?.toLowerCase() ?? "";
       return nm.includes(q) || sp.includes(q);
     });
-  }, [candidates, search, spriteMap]);
+  }, [candidates, search, speciesLookup]);
 
   async function assign(pokemonId: string) {
     // Clear any previous slot for this pokemon, then assign new slot+owner
@@ -335,7 +389,7 @@ function EmptySlot({
           <Input placeholder="Buscar…" value={search} onChange={(e) => setSearch(e.target.value)} />
           <div className="max-h-[55vh] space-y-1 overflow-y-auto">
             {filtered.map((p) => {
-              const sp = spriteMap[p.species_id];
+              const sp = speciesLookup[p.species_id];
               const sprite = p.image_url || sp?.sprite_url;
               const nm = p.nickname || sp?.name || "Pokémon";
               return (
