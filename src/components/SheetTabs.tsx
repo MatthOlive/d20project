@@ -325,15 +325,39 @@ function EmptySlot({
     enabled: open,
   });
 
+  // Fetch names/sprites for every candidate species (spriteMap only covers this trainer's roster)
+  const candidateSpeciesIds = useMemo(
+    () => Array.from(new Set(candidates.map((p) => p.species_id).filter(Boolean))),
+    [candidates],
+  );
+  const { data: candidateSpeciesMap = {} } = useQuery({
+    queryKey: ["candidate-species", candidateSpeciesIds.join(",")],
+    enabled: open && candidateSpeciesIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("species")
+        .select("id, sprite_url, name")
+        .in("id", candidateSpeciesIds);
+      if (error) throw error;
+      const m: Record<string, { sprite_url: string | null; name: string }> = {};
+      (data ?? []).forEach((s) => { m[s.id] = { sprite_url: s.sprite_url, name: s.name }; });
+      return m;
+    },
+  });
+  const speciesLookup = useMemo(
+    () => ({ ...spriteMap, ...candidateSpeciesMap }),
+    [spriteMap, candidateSpeciesMap],
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return candidates.filter((p) => {
       if (!q) return true;
       const nm = p.nickname?.toLowerCase() ?? "";
-      const sp = spriteMap[p.species_id]?.name?.toLowerCase() ?? "";
+      const sp = speciesLookup[p.species_id]?.name?.toLowerCase() ?? "";
       return nm.includes(q) || sp.includes(q);
     });
-  }, [candidates, search, spriteMap]);
+  }, [candidates, search, speciesLookup]);
 
   async function assign(pokemonId: string) {
     // Clear any previous slot for this pokemon, then assign new slot+owner
