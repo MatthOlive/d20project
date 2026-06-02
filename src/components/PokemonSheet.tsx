@@ -987,6 +987,21 @@ function EvolveButton({ pokemonId, fromSprite, fromSpeciesId, currentName, evolu
     if (newBaseSpecies === null) delete newMods._base_species; else if (newBaseSpecies) newMods._base_species = newBaseSpecies;
     const { error } = await supabase.from("pokemon").update({ species_id: next.id, current_attrs: next.base_attrs, hp: next.base_hp + (next.base_attrs.vitality ?? 1), modifiers: newMods }).eq("id", pokemonId);
     if (error) { toast.error(error.message); setAnimating(false); return; }
+    // Consume one of the required items from the trainer's bag (item-method evolutions only)
+    if (effectiveMode === "evolve" && evolutionMethod?.kind === "item" && ownerTrainerId && availableItems.length > 0) {
+      const consume = availableItems[0];
+      const { data: tData } = await supabase.from("trainers").select("bag_list").eq("id", ownerTrainerId).maybeSingle();
+      const bag = ((tData?.bag_list ?? []) as Array<{ name: string; qty: number }>).map((i) => ({ ...i }));
+      const idx = bag.findIndex((i) => i.name.toLowerCase() === consume.toLowerCase());
+      if (idx >= 0) {
+        bag[idx].qty = (bag[idx].qty ?? 1) - 1;
+        if (bag[idx].qty <= 0) bag.splice(idx, 1);
+        await supabase.from("trainers").update({ bag_list: bag }).eq("id", ownerTrainerId);
+        qc.invalidateQueries({ queryKey: ["trainer-bag-evo", ownerTrainerId] });
+        qc.invalidateQueries({ queryKey: ["trainer", ownerTrainerId] });
+        toast.success(`Item consumido: ${consume}`);
+      }
+    }
     qc.invalidateQueries({ queryKey: ["pokemon", pokemonId] }); qc.invalidateQueries({ queryKey: ["species", next.id] });
   }
   const nextSprite = mode === "revert" ? baseSpecies?.sprite_url : targetSpecies?.sprite_url;
