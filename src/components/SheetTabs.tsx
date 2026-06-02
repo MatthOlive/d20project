@@ -95,6 +95,36 @@ export function SheetTabs(props: {
     qc.invalidateQueries({ queryKey: ["characters", gameId] });
   }
 
+  // Drop a pokemon anywhere on the trainer sheet:
+  // - if PC tab is active → store in PC (team_slot = null)
+  // - otherwise → assign to next empty team slot (or PC if team is full)
+  async function handleSheetDrop(e: React.DragEvent<HTMLDivElement>) {
+    const raw = e.dataTransfer.getData(DRAG_MIME);
+    if (!raw) return;
+    e.preventDefault();
+    try {
+      const p = JSON.parse(raw) as DragCharacterPayload;
+      if (p.kind !== "pokemon") return;
+      const wantPc = active.kind === "pc" || active.kind === "pcPokemon";
+      const usedSlots = new Set(roster.filter((r) => r.id !== p.id && r.team_slot != null).map((r) => r.team_slot!));
+      const nextSlot = wantPc ? null : (SLOTS.find((s) => !usedSlots.has(s)) ?? null);
+      const { error } = await supabase.from("pokemon")
+        .update({ owner_trainer_id: trainerId, team_slot: nextSlot })
+        .eq("id", p.id);
+      if (error) { toast.error(error.message); return; }
+      toast.success(nextSlot != null ? `${p.label} adicionado ao slot ${nextSlot}` : `${p.label} guardado no PC`);
+      invalidateRoster();
+      if (nextSlot != null) setActive({ kind: "slot", slot: nextSlot, pokemonId: p.id });
+      else setActive({ kind: "pc" });
+    } catch { /* ignore */ }
+  }
+  function handleSheetDragOver(e: React.DragEvent<HTMLDivElement>) {
+    if (e.dataTransfer.types.includes(DRAG_MIME)) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+    }
+  }
+
   return (
     <div className="flex h-full min-h-0 w-full">
       {/* Vertical tab rail */}
