@@ -392,6 +392,7 @@ export function PokemonSheet({
                   baseEditable={false}
                   disabled={!canEdit}
                   cap={Math.max(limit, base)}
+                  showCapInTotal
                   onChange={(d) => setAttrBreakdown(a, d)}
                 />
               );
