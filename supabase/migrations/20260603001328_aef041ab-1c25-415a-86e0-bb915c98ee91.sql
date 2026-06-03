@@ -1,0 +1,1 @@
+GRANT UPDATE ON public.species TO service_role;
