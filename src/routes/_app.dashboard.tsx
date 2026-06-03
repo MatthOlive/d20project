@@ -68,7 +68,7 @@ function Dashboard() {
         .from("games")
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .insert({ name: gameName, narrator_id: user.id, narrator_type: narratorType, language, system } as any)
-        .select()
+        .select("id,name,background_url,narrator_id,created_at,language,narrator_type,system")
         .single();
       if (error) throw error;
       return data;
