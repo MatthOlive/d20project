@@ -1264,11 +1264,15 @@ function ContestSection({
           <Award className="h-3.5 w-3.5" /> Contest
         </h3>
         <span className="text-[11px] uppercase text-muted-foreground">Rank</span>
-        <Select value={contestRank} onValueChange={onRankChange} disabled={!canEdit}>
+        <Select
+          value={contestRank || "none"}
+          onValueChange={(v) => onRankChange(v === "none" ? "" : v)}
+          disabled={!canEdit}
+        >
           <SelectTrigger className="h-7 w-44 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
             {CONTEST_RANKS.map((r) => (
-              <SelectItem key={r || "none"} value={r}>{CONTEST_RANK_LABELS[r]}</SelectItem>
+              <SelectItem key={r || "none"} value={r || "none"}>{CONTEST_RANK_LABELS[r]}</SelectItem>
             ))}
           </SelectContent>
         </Select>
