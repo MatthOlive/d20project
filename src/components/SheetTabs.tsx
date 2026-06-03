@@ -27,6 +27,7 @@ type SlotPokemon = {
   team_slot: number | null;
   image_url: string | null;
   species_id: string;
+  marked: boolean;
 };
 
 type Tab =
