@@ -46,8 +46,12 @@ function GameRoom() {
   const { data: game } = useQuery({
     queryKey: ["game", gameId],
     queryFn: async () => {
+      // Note: invite_code is intentionally excluded — narrator fetches it via get_game_invite_code RPC.
       const { data, error } = await supabase
-        .from("games").select("*").eq("id", gameId).single();
+        .from("games")
+        .select("id,narrator_id,name,background_url,created_at,system,language,narrator_type,shiny_chance,overgrown_chance,contest_weights")
+        .eq("id", gameId)
+        .single();
       if (error) throw error;
       return data;
     },
