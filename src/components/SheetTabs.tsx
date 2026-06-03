@@ -6,11 +6,18 @@ import { Input } from "@/components/ui/input";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { TrainerSheet } from "@/components/TrainerSheet";
 import { PokemonSheet } from "@/components/PokemonSheet";
 import { Shop } from "@/components/Shop";
 import { DRAG_MIME, type DragCharacterPayload } from "@/components/MapBoard";
-import { User, Boxes, Plus, ShoppingCart } from "lucide-react";
+import { User, Boxes, Plus, ShoppingCart, FileText, ArrowUpFromLine, Flag, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
