@@ -95,7 +95,7 @@ function AuthPage() {
         </Link>
         <Card>
           <CardHeader>
-            <CardTitle asChild><h1 className="text-2xl font-semibold">Welcome to D20 Project</h1></CardTitle>
+            <h1 className="text-2xl font-semibold leading-none tracking-tight">Welcome to D20 Project</h1>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="signin">
