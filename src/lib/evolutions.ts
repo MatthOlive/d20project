@@ -855,7 +855,8 @@ export const EVOLUTION_RULES: EvolutionRule[] = [
     "to": "Sylveon",
     "kinds": [
       "happiness_loyalty"
-    ]
+    ],
+    "loyalty": 5
   },
   {
     "from": "Porygon",
