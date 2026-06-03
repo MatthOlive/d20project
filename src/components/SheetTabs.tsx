@@ -58,7 +58,7 @@ export function SheetTabs(props: {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pokemon")
-        .select("id, nickname, team_slot, image_url, species_id")
+        .select("id, nickname, team_slot, image_url, species_id, marked")
         .eq("owner_trainer_id", trainerId);
       if (error) throw error;
       return (data ?? []) as SlotPokemon[];
