@@ -6,6 +6,7 @@ type Stat = {
   label: string;
   cur: number;
   max: number;
+  color: string;
   onChange: (n: number) => void;
 };
 
