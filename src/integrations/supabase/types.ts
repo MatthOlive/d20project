@@ -198,6 +198,7 @@ export type Database = {
           created_at: string
           embedding: string
           id: string
+          owner_id: string | null
           source: string
         }
         Insert: {
@@ -206,6 +207,7 @@ export type Database = {
           created_at?: string
           embedding: string
           id?: string
+          owner_id?: string | null
           source?: string
         }
         Update: {
@@ -214,6 +216,7 @@ export type Database = {
           created_at?: string
           embedding?: string
           id?: string
+          owner_id?: string | null
           source?: string
         }
         Relationships: []

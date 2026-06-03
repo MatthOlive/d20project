@@ -68,7 +68,7 @@ export const ingestKnowledge = createServerFn({ method: "POST" })
     if (chunks.length === 0) return { ok: true, inserted: 0 };
 
     // pgvector expects embeddings as a string like "[0.1,0.2,...]" via supabase-js.
-    const rows: { source: string; chunk_index: number; content: string; embedding: string }[] = [];
+    const rows: { source: string; chunk_index: number; content: string; embedding: string; owner_id: string }[] = [];
     for (let i = 0; i < chunks.length; i += 50) {
       const batch = chunks.slice(i, i + 50);
       const embeds = await embedBatch(batch);
@@ -78,12 +78,18 @@ export const ingestKnowledge = createServerFn({ method: "POST" })
           chunk_index: i + j,
           content: batch[j],
           embedding: `[${emb.join(",")}]`,
+          owner_id: context.userId,
         }),
       );
     }
 
     if (data.replace) {
-      await supabaseAdmin.from("knowledge_chunks").delete().eq("source", data.source);
+      // Only replace rows owned by the caller — never overwrite another narrator's data.
+      await supabaseAdmin
+        .from("knowledge_chunks")
+        .delete()
+        .eq("source", data.source)
+        .eq("owner_id", context.userId);
     }
 
     let inserted = 0;
@@ -96,6 +102,7 @@ export const ingestKnowledge = createServerFn({ method: "POST" })
     return { ok: true, inserted };
   });
 
+
 export const deleteKnowledgeSource = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ source: z.string().min(1).max(120) }).parse(d))
@@ -105,7 +112,11 @@ export const deleteKnowledgeSource = createServerFn({ method: "POST" })
     const { data: games } = await supabase
       .from("games").select("id").eq("narrator_id", context.userId).limit(1);
     if (!games || games.length === 0) throw new Error("Only a narrator can delete knowledge.");
-    const { error } = await supabaseAdmin.from("knowledge_chunks").delete().eq("source", data.source);
+    const { error } = await supabaseAdmin
+      .from("knowledge_chunks")
+      .delete()
+      .eq("source", data.source)
+      .eq("owner_id", context.userId);
     if (error) throw new Error(error.message);
     return { ok: true };
   });

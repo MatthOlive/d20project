@@ -137,6 +137,14 @@ function GameRoom() {
 
   async function uploadBackground(file: File) {
     if (!isNarrator) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file.");
+      return;
+    }
+    if (file.size > 5_000_000) {
+      toast.error("Image must be under 5 MB.");
+      return;
+    }
     // Use data URL for v1 (file storage bucket can be added later)
     const reader = new FileReader();
     reader.onload = async () => {
@@ -145,6 +153,7 @@ function GameRoom() {
     };
     reader.readAsDataURL(file);
   }
+
 
   if (!game || !user) return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
 
