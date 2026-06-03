@@ -455,7 +455,6 @@ export function TrainerSheet({
           <SkillGroup title="Notoriety" tint="bg-amber-500/15 text-amber-500"
             skills={[...NOTORIETY_SKILLS]}
             values={trainer.notoriety ?? {}} canEdit={canEdit}
-            cap={NOTORIETY_CAP}
             onChange={(s) => {
               const merged = { ...(trainer.notoriety ?? {}), ...s };
               for (const k of Object.keys(merged)) merged[k] = Math.max(0, Math.min(NOTORIETY_CAP, merged[k] ?? 0));
