@@ -20,7 +20,7 @@ import {
   CONTEST_RANKS, CONTEST_RANK_LABELS, CONTEST_RANK_UP, NEXT_CONTEST_RANK,
   NOTORIETY_SKILLS, NOTORIETY_CAP,
 } from "@/lib/contest";
-import { Progress } from "@/components/ui/progress";
+
 import { useDebouncedPatch } from "@/lib/use-debounced-patch";
 import { toast } from "sonner";
 import { Dices, ImagePlus, X as XIcon, Plus, Trash2, Award, Sparkles } from "lucide-react";
