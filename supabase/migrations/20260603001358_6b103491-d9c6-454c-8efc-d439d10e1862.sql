@@ -1,1 +1,0 @@
-GRANT UPDATE ON public.species TO sandbox_exec;

@@ -105,7 +105,6 @@ export type Database = {
       games: {
         Row: {
           background_url: string | null
-          contest_weights: Json | null
           created_at: string
           id: string
           invite_code: string
@@ -119,7 +118,6 @@ export type Database = {
         }
         Insert: {
           background_url?: string | null
-          contest_weights?: Json | null
           created_at?: string
           id?: string
           invite_code?: string
@@ -133,7 +131,6 @@ export type Database = {
         }
         Update: {
           background_url?: string | null
-          contest_weights?: Json | null
           created_at?: string
           id?: string
           invite_code?: string
@@ -727,7 +724,6 @@ export type Database = {
           battle_items_list: Json
           concept: string | null
           confidence: number
-          contest_rank: string
           created_at: string
           current_hp: number | null
           current_will: number | null
@@ -740,19 +736,16 @@ export type Database = {
           name: string
           nature: string | null
           notes: string
-          notoriety: Json
           owner_id: string
           pokedex: Json
           potions: Json
           rank: Database["public"]["Enums"]["pokerole_rank"]
-          retrains: number
           sex: string | null
           skills: Json
           social_attr_bonus: Json
           social_attr_points: Json
           social_attrs: Json
           status_conditions: string[]
-          trainings: Json
         }
         Insert: {
           achievements?: Json
@@ -772,7 +765,6 @@ export type Database = {
           battle_items_list?: Json
           concept?: string | null
           confidence?: number
-          contest_rank?: string
           created_at?: string
           current_hp?: number | null
           current_will?: number | null
@@ -785,19 +777,16 @@ export type Database = {
           name?: string
           nature?: string | null
           notes?: string
-          notoriety?: Json
           owner_id: string
           pokedex?: Json
           potions?: Json
           rank?: Database["public"]["Enums"]["pokerole_rank"]
-          retrains?: number
           sex?: string | null
           skills?: Json
           social_attr_bonus?: Json
           social_attr_points?: Json
           social_attrs?: Json
           status_conditions?: string[]
-          trainings?: Json
         }
         Update: {
           achievements?: Json
@@ -817,7 +806,6 @@ export type Database = {
           battle_items_list?: Json
           concept?: string | null
           confidence?: number
-          contest_rank?: string
           created_at?: string
           current_hp?: number | null
           current_will?: number | null
@@ -830,19 +818,16 @@ export type Database = {
           name?: string
           nature?: string | null
           notes?: string
-          notoriety?: Json
           owner_id?: string
           pokedex?: Json
           potions?: Json
           rank?: Database["public"]["Enums"]["pokerole_rank"]
-          retrains?: number
           sex?: string | null
           skills?: Json
           social_attr_bonus?: Json
           social_attr_points?: Json
           social_attrs?: Json
           status_conditions?: string[]
-          trainings?: Json
         }
         Relationships: [
           {

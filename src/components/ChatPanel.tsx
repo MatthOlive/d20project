@@ -4,9 +4,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dices, Send, Bot, Sparkles, Award } from "lucide-react";
+import { Dices, Send, Bot, Sparkles } from "lucide-react";
 import { rollD6, rollDice, parseRollCommand } from "@/lib/pokerole";
-import { drawReactionCard, REACTION_DECK } from "@/lib/contest";
 import { cn } from "@/lib/utils";
 import { narratorTurn } from "@/lib/narrator.functions";
 import { toast } from "sonner";
@@ -153,23 +152,6 @@ export function ChatPanel({
     });
   }
 
-  async function drawContest() {
-    // Fetch game-level weight overrides (narrator can set in Settings)
-    const { data: g } = await supabase
-      .from("games")
-      .select("contest_weights")
-      .eq("id", gameId)
-      .single<{ contest_weights: Record<string, number> | null }>();
-    const card = drawReactionCard(g?.contest_weights ?? null);
-    await supabase.from("chat_messages").insert({
-      game_id: gameId,
-      user_id: userId,
-      kind: "contest",
-      body: card.name,
-      roll_data: { v: "contest-1", cardId: card.id, name: card.name, hearts: card.hearts, description: card.description },
-    });
-  }
-
   return (
     <div className="flex h-full flex-col">
       <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto p-3">
@@ -208,9 +190,6 @@ export function ChatPanel({
               <Dices className="mr-1 h-3 w-3" /> {n}d6
             </Button>
           ))}
-          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => void drawContest()} title="Sortear carta de reação de Contest">
-            <Award className="mr-1 h-3 w-3" /> Contest
-          </Button>
         </div>
         <form
           onSubmit={(e) => { e.preventDefault(); void send(); }}
@@ -236,21 +215,6 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
           <Bot className="h-3 w-3" /> Narrator
         </div>
         <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.body}</p>
-      </div>
-    );
-  }
-  if (msg.kind === "contest" && msg.roll_data) {
-    const c = msg.roll_data as unknown as { name: string; hearts: number; description: string };
-    const tone = c.hearts > 0 ? "border-success/40 bg-success/10 text-success" : c.hearts < 0 ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-border bg-muted/40 text-foreground";
-    return (
-      <div className={`rounded-lg border p-3 ${tone}`}>
-        <div className="mb-1 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wide">
-          <span className="opacity-80">{authorName} drew</span>
-          <span className="rounded bg-background/40 px-1.5 py-0.5">Contest · Reaction</span>
-          <span className="ml-auto tabular-nums">{c.hearts > 0 ? `+${c.hearts}` : c.hearts} ♥</span>
-        </div>
-        <p className="text-sm font-bold">{c.name}</p>
-        <p className="mt-0.5 text-xs opacity-90">{c.description}</p>
       </div>
     );
   }

@@ -95,29 +95,6 @@ export function SheetTabs(props: {
     qc.invalidateQueries({ queryKey: ["characters", gameId] });
   }
 
-  // Auto-register a pokemon (and its species) in this trainer's Pokédex as captured.
-  async function registerInPokedex(pokemonId: string) {
-    const { data: pkm } = await supabase
-      .from("pokemon")
-      .select("species_id, nickname, species:species_id(name, sprite_url)")
-      .eq("id", pokemonId)
-      .single<{ species_id: string; nickname: string | null; species: { name: string; sprite_url: string | null } | null }>();
-    if (!pkm?.species_id) return;
-    const { data: t } = await supabase
-      .from("trainers")
-      .select("pokedex")
-      .eq("id", trainerId)
-      .single<{ pokedex: Record<string, { name: string; captured: boolean; sprite_url?: string | null }> }>();
-    const dex = { ...(t?.pokedex ?? {}) };
-    dex[pkm.species_id] = {
-      name: pkm.species?.name ?? pkm.nickname ?? "Pokémon",
-      captured: true,
-      sprite_url: pkm.species?.sprite_url ?? null,
-    };
-    await supabase.from("trainers").update({ pokedex: dex }).eq("id", trainerId);
-    qc.invalidateQueries({ queryKey: ["trainer", trainerId] });
-  }
-
   // Drop a pokemon anywhere on the trainer sheet:
   // - if PC tab is active → store in PC (team_slot = null)
   // - otherwise → assign to next empty team slot (or PC if team is full)
@@ -135,7 +112,6 @@ export function SheetTabs(props: {
         .update({ owner_trainer_id: trainerId, team_slot: nextSlot })
         .eq("id", p.id);
       if (error) { toast.error(error.message); return; }
-      await registerInPokedex(p.id);
       toast.success(nextSlot != null ? `${p.label} adicionado ao slot ${nextSlot}` : `${p.label} guardado no PC`);
       invalidateRoster();
       if (nextSlot != null) setActive({ kind: "slot", slot: nextSlot, pokemonId: p.id });
@@ -200,7 +176,6 @@ export function SheetTabs(props: {
                 .update({ owner_trainer_id: trainerId, team_slot: null })
                 .eq("id", p.id);
               if (error) { toast.error(error.message); return; }
-              await registerInPokedex(p.id);
               toast.success(`${p.label} guardado no PC`);
               invalidateRoster();
               setActive({ kind: "pc" });

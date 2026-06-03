@@ -28,7 +28,6 @@ import { MusicPlayer } from "@/components/MusicPlayer";
 import { toast } from "sonner";
 import { Copy, Crown, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Swords, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, Dices, Menu } from "lucide-react";
 import { rollD6, rollShiny, POKEMON_TYPES, TYPE_COLORS, type PokemonType } from "@/lib/pokerole";
-import { REACTION_DECK } from "@/lib/contest";
 
 export const Route = createFileRoute("/_app/games/$gameId")({
   component: GameRoom,
@@ -64,7 +63,7 @@ function GameRoom() {
   });
 
   const [windows, setWindows] = useState<OpenWindow[]>([]);
-  const [turnOrderOpen, setTurnOrderOpen] = useState(false);
+  const [turnOrderOpen, setTurnOrderOpen] = useState(true);
 
   function openWindow(w: OpenWindow) {
     if (!windows.find((x) => x.kind === w.kind && x.id === w.id)) {
@@ -916,7 +915,6 @@ function InitiativePanel({ gameId, isNarrator, open, onClose }: { gameId: string
     queryFn: async () => {
       const { data } = await supabase
         .from("initiative").select("*").eq("game_id", gameId)
-        .order("position", { ascending: true })
         .order("successes", { ascending: false })
         .order("created_at", { ascending: true });
       return (data ?? []) as InitRow[];
@@ -940,14 +938,6 @@ function InitiativePanel({ gameId, isNarrator, open, onClose }: { gameId: string
     await supabase.from("initiative").delete().eq("game_id", gameId);
   }
 
-  async function nextTurn() {
-    if (rows.length < 2) return;
-    const top = rows[0];
-    const maxPos = rows.reduce((m, r) => Math.max(m, r.position ?? 0), 0);
-    await supabase.from("initiative").update({ position: maxPos + 1 }).eq("id", top.id);
-    qc.invalidateQueries({ queryKey: ["initiative", gameId] });
-  }
-
   return (
     <FloatingWindow
       title="Turn Order"
@@ -960,16 +950,11 @@ function InitiativePanel({ gameId, isNarrator, open, onClose }: { gameId: string
       minHeight={160}
     >
       <div className="p-3">
-        {rows.length > 0 && (
-          <div className="mb-2 flex flex-wrap items-center justify-end gap-1">
-            <Button size="sm" variant="default" className="h-7 text-xs" onClick={nextTurn} disabled={rows.length < 2} title="Próximo turno">
-              <ChevronRight className="mr-1 h-3 w-3" /> Próximo turno
+        {isNarrator && rows.length > 0 && (
+          <div className="mb-2 flex justify-end">
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={clearInit} title="End combat">
+              <Trash2 className="mr-1 h-3 w-3" /> End combat
             </Button>
-            {isNarrator && (
-              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={clearInit} title="End combat">
-                <Trash2 className="mr-1 h-3 w-3" /> End combat
-              </Button>
-            )}
           </div>
         )}
         {rows.length === 0 ? (
@@ -1231,39 +1216,27 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
   const [open, setOpen] = useState(false);
   const [shiny, setShiny] = useState<number>(10);
   const [over, setOver] = useState<number>(0);
-  const [weights, setWeights] = useState<Record<string, number>>(() => {
-    const m: Record<string, number> = {};
-    for (const c of REACTION_DECK) m[c.id] = c.defaultWeight;
-    return m;
-  });
 
   useEffect(() => {
     if (!open) return;
     (async () => {
       const { data } = await supabase
         .from("games")
-        .select("shiny_chance,overgrown_chance,contest_weights")
+        .select("shiny_chance,overgrown_chance")
         .eq("id", gameId)
         .single();
-      const row = data as { shiny_chance?: number; overgrown_chance?: number; contest_weights?: Record<string, number> | null } | null;
+      const row = data as { shiny_chance?: number; overgrown_chance?: number } | null;
       setShiny(row?.shiny_chance ?? 10);
       setOver(row?.overgrown_chance ?? 0);
-      const w: Record<string, number> = {};
-      for (const c of REACTION_DECK) w[c.id] = row?.contest_weights?.[c.id] ?? c.defaultWeight;
-      setWeights(w);
     })();
   }, [open, gameId]);
-
-  const weightTotal = REACTION_DECK.reduce((s, c) => s + (weights[c.id] ?? 0), 0);
 
   async function save() {
     const s = Math.max(0, Math.min(100, Math.round(shiny)));
     const o = Math.max(0, Math.min(100, Math.round(over)));
-    const cw: Record<string, number> = {};
-    for (const c of REACTION_DECK) cw[c.id] = Math.max(0, Math.min(100, Math.round(weights[c.id] ?? 0)));
     const { error } = await supabase
       .from("games")
-      .update({ shiny_chance: s, overgrown_chance: o, contest_weights: cw } as never)
+      .update({ shiny_chance: s, overgrown_chance: o } as never)
       .eq("id", gameId);
     if (error) { toast.error(error.message); return; }
     toast.success("Configurações salvas");
@@ -1276,47 +1249,18 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
       <DialogTrigger asChild>
         <Button size="sm" variant="secondary" className="h-8 justify-start">⚙️ Settings</Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[85vh] overflow-y-auto">
+      <DialogContent>
         <DialogHeader><DialogTitle>Configurações do Jogo</DialogTitle></DialogHeader>
-        <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <Label className="text-xs">Chance de Shiny (%)</Label>
-              <Input type="number" min={0} max={100} value={shiny} onChange={(e) => setShiny(Number(e.target.value))} />
-              <p className="mt-1 text-[11px] text-muted-foreground">Aplicada ao criar um Pokémon novo.</p>
-            </div>
-            <div>
-              <Label className="text-xs">Chance de Overgrown (%)</Label>
-              <Input type="number" min={0} max={100} value={over} onChange={(e) => setOver(Number(e.target.value))} />
-              <p className="mt-1 text-[11px] text-muted-foreground">0 = só manual (checkbox na criação).</p>
-            </div>
+        <div className="space-y-3">
+          <div>
+            <Label className="text-xs">Chance de Shiny (%)</Label>
+            <Input type="number" min={0} max={100} value={shiny} onChange={(e) => setShiny(Number(e.target.value))} />
+            <p className="mt-1 text-[11px] text-muted-foreground">Aplicada ao criar um Pokémon novo.</p>
           </div>
           <div>
-            <div className="mb-1 flex items-center justify-between">
-              <Label className="text-xs font-bold uppercase tracking-wider">Contest · Reaction deck weights</Label>
-              <span className={`text-[11px] tabular-nums ${weightTotal === 100 ? "text-muted-foreground" : "text-amber-500"}`}>
-                Total {weightTotal}%
-              </span>
-            </div>
-            <div className="space-y-1.5 rounded-md border border-border bg-card p-2">
-              {REACTION_DECK.map((c) => (
-                <div key={c.id} className="grid grid-cols-[1fr_5rem] items-center gap-2">
-                  <span className="text-xs">
-                    <span className="font-medium">{c.name}</span>
-                    <span className="ml-1 text-muted-foreground">· {c.hearts > 0 ? `+${c.hearts}` : c.hearts} ♥</span>
-                  </span>
-                  <Input
-                    type="number" min={0} max={100}
-                    value={weights[c.id] ?? 0}
-                    onChange={(e) => setWeights((w) => ({ ...w, [c.id]: Number(e.target.value) }))}
-                    className="h-7 text-center text-xs"
-                  />
-                </div>
-              ))}
-              <p className="px-1 pt-1 text-[11px] text-muted-foreground">
-                Ajuste pesos por carta. Em branco/0 = nunca sai. Booing não é sorteado — ocorre em falha.
-              </p>
-            </div>
+            <Label className="text-xs">Chance de Overgrown (%)</Label>
+            <Input type="number" min={0} max={100} value={over} onChange={(e) => setOver(Number(e.target.value))} />
+            <p className="mt-1 text-[11px] text-muted-foreground">0 = só manual (checkbox na criação).</p>
           </div>
         </div>
         <DialogFooter>
