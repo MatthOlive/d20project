@@ -315,8 +315,10 @@ export function SheetTabs(props: {
   );
 }
 
+const SLOT_DRAG_MIME = "application/x-pokerole-slot-move+json";
+
 function TabButton({
-  active, onClick, children, title, tone, onDragOver, onDrop,
+  active, onClick, children, title, tone, onDragOver, onDrop, draggable, onDragStart,
 }: {
   active: boolean;
   onClick: () => void;
@@ -325,6 +327,8 @@ function TabButton({
   tone: "primary" | "team" | "empty" | "pc";
   onDragOver?: React.DragEventHandler<HTMLButtonElement>;
   onDrop?: React.DragEventHandler<HTMLButtonElement>;
+  draggable?: boolean;
+  onDragStart?: React.DragEventHandler<HTMLButtonElement>;
 }) {
   return (
     <button
@@ -333,6 +337,8 @@ function TabButton({
       onClick={onClick}
       onDragOver={onDragOver}
       onDrop={onDrop}
+      draggable={draggable}
+      onDragStart={onDragStart}
       className={cn(
         "flex h-11 w-full items-center justify-center rounded-md border transition",
         active
