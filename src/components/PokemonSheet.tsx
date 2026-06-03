@@ -331,7 +331,21 @@ export function PokemonSheet({
                   Use {spDefUsesInsight ? "Vit" : "Ins"}
                 </Button>
               )}
-              {canEdit && <EvolveButton pokemonId={pokemonId} fromSprite={species.sprite_url} fromSpeciesId={species.id} currentName={species.name} evolutions={species.evolutions} evolutionMethod={species.evolution_method} victories={pokemon.victories} baseSpeciesId={(pokemon.modifiers as Record<string, unknown>)?._base_species as string | undefined} ownerTrainerId={pokemon.owner_trainer_id ?? null} heldItem={pokemon.held_item} />}
+              {canEdit && <EvolveButton
+                pokemonId={pokemonId}
+                fromSprite={species.sprite_url}
+                fromSpeciesId={species.id}
+                speciesName={species.name}
+                evolutions={species.evolutions}
+                attrLimits={species.attr_limits ?? {}}
+                currentAttrs={pokemon.current_attrs ?? {}}
+                victories={pokemon.victories}
+                happiness={pokemon.happiness}
+                loyalty={pokemon.loyalty}
+                baseSpeciesId={(pokemon.modifiers as Record<string, unknown>)?._base_species as string | undefined}
+                ownerTrainerId={pokemon.owner_trainer_id ?? null}
+                heldItem={pokemon.held_item}
+              />}
               {canEdit && <DynamaxToggle mode={dynaMode} onChange={setDynaMode} />}
               {dynaMode && <span className="rounded-full bg-red-500/20 px-2.5 py-0.5 text-xs font-bold uppercase text-red-500">{dynaMode === "gigantamax" ? "G-Max" : "Dynamax"}</span>}
             </div>
