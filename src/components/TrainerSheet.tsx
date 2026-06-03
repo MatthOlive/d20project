@@ -211,7 +211,11 @@ export function TrainerSheet({
     ...ATTRS.map((a) => ({ name: a, value: totalAttr(a) })),
     ...SOCIAL_ATTRS.map((a) => ({ name: a, value: totalSocial(a) })),
   ];
-  const allSkillsForRoll = TRAINER_SKILLS.map((s) => ({ name: s, value: trainer.skills?.[s] ?? 0 }));
+  const allSkillsForRoll = [
+    ...TRAINER_SKILLS.map((s) => ({ name: s, value: trainer.skills?.[s] ?? 0 })),
+    ...NOTORIETY_SKILLS.map((s) => ({ name: s, value: trainer.notoriety?.[s] ?? 0 })),
+    ...(trainer.custom_skills ?? []).map((c) => ({ name: c.name, value: c.value ?? 0 })),
+  ];
   const charName = trainer.name;
 
   const evasionPool = dex + (trainer.skills?.Evasion ?? 0);
