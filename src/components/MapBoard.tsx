@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { X } from "lucide-react";
 import { TokenActionBar } from "@/components/TokenActionBar";
+import { TokenStatsBar } from "@/components/TokenStatsBar";
 
 export type DragCharacterPayload = {
   kind: "pokemon" | "trainer";
@@ -52,6 +53,7 @@ export function MapBoard({
   const innerRef = useRef<HTMLDivElement>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
+  const [hoverTokenId, setHoverTokenId] = useState<string | null>(null);
   const [bgAspect, setBgAspect] = useState<number | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -206,6 +208,8 @@ export function MapBoard({
       {tokens.map((t) => {
         const canMove = isNarrator || t.owner_id === userId;
         const isSelected = selectedTokenId === t.id;
+        const isHover = hoverTokenId === t.id;
+        const showStats = isSelected || isHover;
         return (
           <div
             key={t.id}
@@ -217,6 +221,8 @@ export function MapBoard({
               const img = new Image();
               e.dataTransfer.setDragImage(img, 0, 0);
             }}
+            onMouseEnter={() => setHoverTokenId(t.id)}
+            onMouseLeave={() => setHoverTokenId((cur) => (cur === t.id ? null : cur))}
             onClick={(e) => {
               e.stopPropagation();
               setSelectedTokenId((cur) => (cur === t.id ? null : t.id));
@@ -228,10 +234,20 @@ export function MapBoard({
               width: t.size,
               height: t.size,
               cursor: canMove ? "grab" : "pointer",
-              zIndex: isSelected ? 20 : 1,
+              zIndex: isSelected || isHover ? 20 : 1,
             }}
             title={t.label}
           >
+            {showStats && (
+              <div className="pointer-events-none absolute left-1/2 -top-2 -translate-x-1/2 -translate-y-full">
+                <TokenStatsBar
+                  kind={t.character_kind}
+                  id={t.character_id}
+                  editable={canMove}
+                  expanded={isSelected}
+                />
+              </div>
+            )}
             <div className={`relative flex h-full w-full items-center justify-center rounded-full border-2 ${isSelected ? "border-amber-400 ring-2 ring-amber-400/50" : "border-primary ring-2 ring-background"} bg-card shadow-md`}>
               {t.image_url ? (
                 <img src={t.image_url} alt={t.label} className="h-full w-full rounded-full object-cover" draggable={false} />
