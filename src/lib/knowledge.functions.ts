@@ -112,7 +112,11 @@ export const deleteKnowledgeSource = createServerFn({ method: "POST" })
     const { data: games } = await supabase
       .from("games").select("id").eq("narrator_id", context.userId).limit(1);
     if (!games || games.length === 0) throw new Error("Only a narrator can delete knowledge.");
-    const { error } = await supabaseAdmin.from("knowledge_chunks").delete().eq("source", data.source);
+    const { error } = await supabaseAdmin
+      .from("knowledge_chunks")
+      .delete()
+      .eq("source", data.source)
+      .eq("owner_id", context.userId);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
