@@ -16,9 +16,14 @@ import { AttrFourField, SkillNumberInput } from "@/components/AttrFourField";
 import {
   ATTRS, SOCIAL_ATTRS, RANKS, RANK_LABELS, RANK_BONUS, TRAINER_SKILLS, HUMAN_ATTR_CAP, type Rank,
 } from "@/lib/pokerole";
+import {
+  CONTEST_RANKS, CONTEST_RANK_LABELS, CONTEST_RANK_UP, NEXT_CONTEST_RANK,
+  NOTORIETY_SKILLS, NOTORIETY_CAP, TRAININGS_PER_RANK, RETRAIN_CAP,
+} from "@/lib/contest";
+import { Progress } from "@/components/ui/progress";
 import { useDebouncedPatch } from "@/lib/use-debounced-patch";
 import { toast } from "sonner";
-import { Dices, ImagePlus, X as XIcon, Plus, Trash2 } from "lucide-react";
+import { Dices, ImagePlus, X as XIcon, Plus, Trash2, Award, Sparkles } from "lucide-react";
 import {
   HpAndStatusBlock, AttackRollButton, GenericRollButton, painPenaltyFor,
 } from "@/components/SheetRolls";
@@ -66,13 +71,17 @@ type Trainer = {
   current_hp: number | null;
   current_will: number | null;
   status_conditions: string[];
+  contest_rank: string;
+  notoriety: Record<string, number>;
+  trainings: Record<string, number>;
+  retrains: number;
 };
 
 type CustomSkill = { name: string; value: number };
 type Badge = { name: string; image_url?: string | null };
 
 type InventoryItem = { name: string; qty: number };
-type Achievement = { name: string; done: boolean; kind?: "rank" | "custom"; rankFor?: string };
+type Achievement = { name: string; done: boolean; kind?: "rank" | "custom" | "contest_rank"; rankFor?: string };
 
 // Requisitos para alcançar CADA rank (chave = rank de destino).
 // Quando o treinador está em X, mostramos os requisitos da chave NEXT_RANK[X].
@@ -80,46 +89,45 @@ const RANK_UP_REQUIREMENTS: Record<string, { label: string; items: string[] }> =
   beginner: {
     label: "Beginner",
     items: [
-      "Get your Trainer's License (Character Sheet)",
-      "Get your first Pokémon",
-    ],
-  },
-  amateur: {
-    label: "Amateur",
-    items: [
       "Successfully understand your Pokémon's gestures",
       "Train a Pokémon",
       "Catch your second Pokémon",
       "Win your first Official Battle against a Trainer",
     ],
   },
-  ace: {
-    label: "Ace",
+  amateur: {
+    label: "Amateur",
     items: [
       "Evolve a Pokémon",
       "Win your First Badge",
       "Increase a Pokémon's Loyalty & Happiness",
     ],
   },
-  pro: {
-    label: "Pro",
+  ace: {
+    label: "Ace",
     items: [
       "Win 8 Badges",
       "Get a full party of six evolved Pokémon",
       "Defeat your Rival",
     ],
   },
-  master: {
-    label: "Master",
+  pro: {
+    label: "Pro",
     items: [
       "Get a Pokémon-related job",
       "Clear the Victory Road",
       "Catch a Professional-Rank Pokémon",
     ],
   },
+  master: {
+    label: "Master",
+    items: [
+      "Find and study all Pokémon species in your Region",
+    ],
+  },
   champion: {
     label: "Champion",
-    items: ["Find and study all Pokémon species in your Region"],
+    items: ["Defeat the Champion in the League's Challenge"],
   },
 };
 
@@ -249,6 +257,14 @@ export function TrainerSheet({
                 <SheetPermissionsDialog kind="trainer" entityId={trainerId} gameId={trainer.game_id} isNarrator={isNarrator} />
               </div>
             </div>
+            <TrainingBars
+              rank={trainer.rank}
+              trainings={trainer.trainings ?? {}}
+              retrains={trainer.retrains ?? 0}
+              canEdit={canEdit}
+              onTrainings={(t) => patch({ trainings: t })}
+              onRetrains={(n) => patch({ retrains: n })}
+            />
             <div className="grid gap-2 sm:grid-cols-3">
               <div>
                 <Label className="text-[10px] uppercase text-muted-foreground">Sex</Label>
@@ -471,7 +487,21 @@ export function TrainerSheet({
         />
       </section>
 
-      {/* ============ BLOCO 5 — Badges + Achievements ============ */}
+      {/* ============ BLOCO 5 — Notoriety + Contest ============ */}
+      <NotorietySection
+        values={trainer.notoriety ?? {}}
+        canEdit={canEdit}
+        onChange={(v) => patch({ notoriety: v })}
+      />
+      <ContestSection
+        contestRank={trainer.contest_rank ?? ""}
+        achievements={trainer.achievements ?? []}
+        canEdit={canEdit}
+        onRankChange={(r) => patch({ contest_rank: r })}
+        onAchievements={(items) => patch({ achievements: items })}
+      />
+
+      {/* ============ BLOCO 6 — Badges + Achievements ============ */}
       <section className="grid gap-3 lg:grid-cols-2">
         <BadgesSection
           items={trainer.badges ?? []}
@@ -486,7 +516,7 @@ export function TrainerSheet({
         />
       </section>
 
-      {/* ============ BLOCO 6 — Pokédex ============ */}
+      {/* ============ BLOCO 7 — Pokédex ============ */}
       <PokedexSection
         trainer={trainer}
         canEdit={canEdit}
@@ -1024,14 +1054,15 @@ function AchievementsSection({
         return { name: n, done: existing?.done ?? false, kind: "rank", rankFor: nextRankKey };
       })
     : [];
-  const customItems = items.filter((a) => a.kind !== "rank");
+  const customItems = items.filter((a) => a.kind !== "rank" && a.kind !== "contest_rank");
+  const contestItems = items.filter((a) => a.kind === "contest_rank");
 
   function updateRankDone(idx: number, done: boolean) {
     const newRank = rankItems.map((x, j) => (j === idx ? { ...x, done } : x));
-    onChange([...newRank, ...customItems]);
+    onChange([...newRank, ...contestItems, ...customItems]);
   }
   function updateCustom(next: Achievement[]) {
-    onChange([...rankItems, ...next.map((x) => ({ ...x, kind: "custom" as const }))]);
+    onChange([...rankItems, ...contestItems, ...next.map((x) => ({ ...x, kind: "custom" as const }))]);
   }
   function add() {
     const n = name.trim(); if (!n) return;
@@ -1103,6 +1134,166 @@ function AchievementsSection({
           </div>
         )}
       </div>
+    </section>
+  );
+}
+
+// ============================================================
+// Training bars (below the trainer name)
+// ============================================================
+function TrainingBars({
+  rank, trainings, retrains, canEdit, onTrainings, onRetrains,
+}: {
+  rank: Rank;
+  trainings: Record<string, number>;
+  retrains: number;
+  canEdit: boolean;
+  onTrainings: (t: Record<string, number>) => void;
+  onRetrains: (n: number) => void;
+}) {
+  const required = TRAININGS_PER_RANK[rank] ?? 0;
+  const current = Math.max(0, trainings?.[rank] ?? 0);
+  const pct = required > 0 ? Math.min(100, (current / required) * 100) : 0;
+  const reCur = Math.max(0, Math.min(RETRAIN_CAP, retrains ?? 0));
+  const rePct = (reCur / RETRAIN_CAP) * 100;
+  function setT(n: number) {
+    onTrainings({ ...(trainings ?? {}), [rank]: Math.max(0, Math.min(required, n)) });
+  }
+  return (
+    <div className="space-y-1.5 rounded-md border border-border bg-background px-2 py-1.5">
+      {required > 0 && (
+        <div>
+          <div className="mb-0.5 flex items-center justify-between gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+            <span>Training · {RANK_LABELS[rank]}</span>
+            <span className="font-bold text-foreground tabular-nums">{current}/{required}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Progress value={pct} className="h-2 flex-1" />
+            {canEdit && (
+              <>
+                <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => setT(current - 1)} disabled={current <= 0}>−</Button>
+                <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => setT(current + 1)} disabled={current >= required}>+</Button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+      <div>
+        <div className="mb-0.5 flex items-center justify-between gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+          <span>Re-training</span>
+          <span className="font-bold text-foreground tabular-nums">{reCur}/{RETRAIN_CAP}</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Progress value={rePct} className="h-2 flex-1" />
+          {canEdit && (
+            <>
+              <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => onRetrains(reCur - 1)} disabled={reCur <= 0}>−</Button>
+              <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => onRetrains(reCur + 1)} disabled={reCur >= RETRAIN_CAP}>+</Button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Notoriety skills (Fame / Supporters / Connections / Sponsors, cap 5)
+// ============================================================
+function NotorietySection({
+  values, canEdit, onChange,
+}: {
+  values: Record<string, number>;
+  canEdit: boolean;
+  onChange: (v: Record<string, number>) => void;
+}) {
+  return (
+    <section className="rounded-lg border border-border bg-card p-3">
+      <h3 className="mb-2 inline-flex items-center gap-1 text-sm font-bold uppercase tracking-wider text-amber-500">
+        <Sparkles className="h-3.5 w-3.5" /> Notoriety
+      </h3>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        {NOTORIETY_SKILLS.map((k) => {
+          const v = values?.[k] ?? 0;
+          return (
+            <div key={k} className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-2 py-1.5">
+              <span className="text-xs font-medium">{k}</span>
+              <SkillNumberInput
+                value={v}
+                onChange={(n) => onChange({ ...(values ?? {}), [k]: Math.max(0, Math.min(NOTORIETY_CAP, n)) })}
+                disabled={!canEdit}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+// ============================================================
+// Contest section (rank + per-rank achievements)
+// ============================================================
+function ContestSection({
+  contestRank, achievements, canEdit, onRankChange, onAchievements,
+}: {
+  contestRank: string;
+  achievements: Achievement[];
+  canEdit: boolean;
+  onRankChange: (r: string) => void;
+  onAchievements: (items: Achievement[]) => void;
+}) {
+  const nextKey = NEXT_CONTEST_RANK[contestRank];
+  const req = nextKey ? CONTEST_RANK_UP[nextKey] : undefined;
+  const rankItems: Achievement[] = req
+    ? req.items.map((n) => {
+        const existing = achievements.find((a) => a.kind === "contest_rank" && a.rankFor === nextKey && a.name === n);
+        return { name: n, done: existing?.done ?? false, kind: "contest_rank" as Achievement["kind"], rankFor: nextKey };
+      })
+    : [];
+  const other = achievements.filter((a) => a.kind !== "contest_rank");
+  function updateDone(idx: number, done: boolean) {
+    const next = rankItems.map((x, j) => (j === idx ? { ...x, done } : x));
+    onAchievements([...other, ...next]);
+  }
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-3">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <h3 className="inline-flex items-center gap-1 text-sm font-bold uppercase tracking-wider text-pink-500">
+          <Award className="h-3.5 w-3.5" /> Contest
+        </h3>
+        <span className="text-[11px] uppercase text-muted-foreground">Rank</span>
+        <Select value={contestRank} onValueChange={onRankChange} disabled={!canEdit}>
+          <SelectTrigger className="h-7 w-44 text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {CONTEST_RANKS.map((r) => (
+              <SelectItem key={r || "none"} value={r}>{CONTEST_RANK_LABELS[r]}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {req ? (
+        <div className="space-y-1.5 rounded border border-dashed border-border/60 bg-muted/30 p-2">
+          <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Para subir para {req.label} Rank
+          </p>
+          {rankItems.map((a, i) => (
+            <div key={`cr-${i}`} className="flex items-center gap-2">
+              <Checkbox
+                checked={a.done}
+                disabled={!canEdit}
+                onCheckedChange={() => updateDone(i, !a.done)}
+              />
+              <span className={`flex-1 text-sm ${a.done ? "line-through text-muted-foreground" : ""}`}>
+                {a.name}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">Master Coordinator — sem próximo rank.</p>
+      )}
     </section>
   );
 }
