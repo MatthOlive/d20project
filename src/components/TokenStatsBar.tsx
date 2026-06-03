@@ -120,7 +120,8 @@ function PokemonStats({ id, editable, expanded }: { id: string; editable: boolea
 
   async function patch(field: "current_hp" | "current_will" | "confidence", value: number) {
     qc.setQueryData(["token-pokemon-stats", id], (old: typeof data) => old ? { ...old, [field]: value } : old);
-    const { error } = await supabase.from("pokemon").update({ [field]: value }).eq("id", id);
+    const upd = { [field]: value } as { current_hp?: number; current_will?: number; confidence?: number };
+    const { error } = await supabase.from("pokemon").update(upd).eq("id", id);
     if (error) toast.error(error.message);
     qc.invalidateQueries({ queryKey: ["token-pokemon", id] });
   }
