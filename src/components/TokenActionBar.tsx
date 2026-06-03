@@ -272,15 +272,20 @@ function MovesButton({
 }) {
   const [open, setOpen] = useState(false);
   if (moves.length === 0) return null;
-  const get = (k: string | null) => {
-    if (!k) return 0;
-    const key = k.toLowerCase();
+  const getOne = (k: string) => {
+    const key = k.toLowerCase().trim();
     if (key in skills) return skills[key];
     const titled = key.charAt(0).toUpperCase() + key.slice(1);
     if (titled in skills) return skills[titled];
     if (key in attrs) return attrs[key];
     if (key in baseAttrs) return attrs[key] ?? baseAttrs[key];
     return 0;
+  };
+  const get = (k: string | null) => {
+    if (!k) return 0;
+    const parts = k.split("/").map((s) => s.trim()).filter(Boolean);
+    if (parts.length === 0) return 0;
+    return Math.max(...parts.map(getOne));
   };
   return (
     <Dialog open={open} onOpenChange={setOpen}>
