@@ -571,4 +571,3 @@ function PcGrid({
     </div>
   );
 }
-}
