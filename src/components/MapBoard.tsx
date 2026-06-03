@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { X } from "lucide-react";
 import { TokenActionBar } from "@/components/TokenActionBar";
+import { TokenStatsBar } from "@/components/TokenStatsBar";
 
 export type DragCharacterPayload = {
   kind: "pokemon" | "trainer";
