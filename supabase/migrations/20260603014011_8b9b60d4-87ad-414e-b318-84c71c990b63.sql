@@ -1,0 +1,1 @@
+ALTER TABLE public.pokemon ADD COLUMN IF NOT EXISTS marked boolean NOT NULL DEFAULT false;

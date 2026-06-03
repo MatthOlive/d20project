@@ -344,6 +344,7 @@ export type Database = {
           is_overgrown: boolean
           is_shiny: boolean
           loyalty: number
+          marked: boolean
           modifiers: Json
           nature: string | null
           nickname: string | null
@@ -387,6 +388,7 @@ export type Database = {
           is_overgrown?: boolean
           is_shiny?: boolean
           loyalty?: number
+          marked?: boolean
           modifiers?: Json
           nature?: string | null
           nickname?: string | null
@@ -430,6 +432,7 @@ export type Database = {
           is_overgrown?: boolean
           is_shiny?: boolean
           loyalty?: number
+          marked?: boolean
           modifiers?: Json
           nature?: string | null
           nickname?: string | null
