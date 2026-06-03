@@ -142,27 +142,38 @@ function PokemonStats({ id, editable, expanded }: { id: string; editable: boolea
 function StatsRow({ stats, editable }: { stats: Stat[]; editable: boolean }) {
   return (
     <div
-      className="pointer-events-auto flex items-center gap-1.5 rounded-md border border-border bg-card/95 px-1.5 py-1 shadow-md backdrop-blur"
+      className="pointer-events-auto flex flex-col gap-1 rounded-md border border-border bg-card/95 px-2 py-1.5 shadow-md backdrop-blur"
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
       draggable={false}
     >
-      {stats.map((s) => (
-        <div key={s.label} className="flex items-center gap-1">
-          <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">{s.label}</span>
-          {editable ? (
-            <input
-              type="number"
-              value={s.cur}
-              onChange={(e) => s.onChange(parseInt(e.target.value) || 0)}
-              className="h-5 w-10 rounded border border-border bg-background px-1 text-center text-[10px] font-bold tabular-nums"
-            />
-          ) : (
-            <span className="text-[10px] font-bold tabular-nums">{s.cur}</span>
-          )}
-          <span className="text-[9px] text-muted-foreground tabular-nums">/{s.max}</span>
-        </div>
-      ))}
+      {stats.map((s) => {
+        const pct = Math.max(0, Math.min(100, (s.cur / s.max) * 100));
+        return (
+          <div key={s.label} className="flex items-center gap-2">
+            <span className="w-8 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+              {s.label}
+            </span>
+            <div className="h-3 w-20 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full transition-all duration-300"
+                style={{ width: `${pct}%`, backgroundColor: s.color }}
+              />
+            </div>
+            {editable ? (
+              <input
+                type="number"
+                value={s.cur}
+                onChange={(e) => s.onChange(parseInt(e.target.value) || 0)}
+                className="h-5 w-10 rounded border border-border bg-background px-1 text-center text-[10px] font-bold tabular-nums"
+              />
+            ) : (
+              <span className="text-[10px] font-bold tabular-nums">{s.cur}</span>
+            )}
+            <span className="text-[9px] text-muted-foreground tabular-nums">/{s.max}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }
