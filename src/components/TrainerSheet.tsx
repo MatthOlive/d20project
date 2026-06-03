@@ -1140,39 +1140,6 @@ function AchievementsSection({
 
 
 
-// ============================================================
-// Notoriety skills (Fame / Supporters / Connections / Sponsors, cap 5)
-// ============================================================
-function NotorietySection({
-  values, canEdit, onChange,
-}: {
-  values: Record<string, number>;
-  canEdit: boolean;
-  onChange: (v: Record<string, number>) => void;
-}) {
-  return (
-    <section className="rounded-lg border border-border bg-card p-3">
-      <h3 className="mb-2 inline-flex items-center gap-1 text-sm font-bold uppercase tracking-wider text-amber-500">
-        <Sparkles className="h-3.5 w-3.5" /> Notoriety
-      </h3>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        {NOTORIETY_SKILLS.map((k) => {
-          const v = values?.[k] ?? 0;
-          return (
-            <div key={k} className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-2 py-1.5">
-              <span className="text-xs font-medium">{k}</span>
-              <SkillNumberInput
-                value={v}
-                onChange={(n) => onChange({ ...(values ?? {}), [k]: Math.max(0, Math.min(NOTORIETY_CAP, n)) })}
-                disabled={!canEdit}
-              />
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
 
 // ============================================================
 // Contest section (rank + per-rank achievements)
