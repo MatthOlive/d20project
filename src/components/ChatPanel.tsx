@@ -153,6 +153,23 @@ export function ChatPanel({
     });
   }
 
+  async function drawContest() {
+    // Fetch game-level weight overrides (narrator can set in Settings)
+    const { data: g } = await supabase
+      .from("games")
+      .select("contest_weights")
+      .eq("id", gameId)
+      .single<{ contest_weights: Record<string, number> | null }>();
+    const card = drawReactionCard(g?.contest_weights ?? null);
+    await supabase.from("chat_messages").insert({
+      game_id: gameId,
+      user_id: userId,
+      kind: "contest",
+      body: card.name,
+      roll_data: { v: "contest-1", cardId: card.id, name: card.name, hearts: card.hearts, description: card.description },
+    });
+  }
+
   return (
     <div className="flex h-full flex-col">
       <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto p-3">
