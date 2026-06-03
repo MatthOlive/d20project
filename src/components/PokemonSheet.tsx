@@ -32,6 +32,7 @@ import {
 } from "@/components/SheetRolls";
 import { SheetPermissionsDialog } from "@/components/SheetPermissionsDialog";
 import { TRAININGS_PER_RANK, RETRAIN_CAP } from "@/lib/contest";
+import { getEvolutionRules, evaluateEvolution, type EvolutionRule, type EvolutionGate } from "@/lib/evolutions";
 
 // Z-Move names per type (Pokérole 2.0)
 const Z_MOVE_NAMES: Record<string, string> = {
