@@ -257,14 +257,6 @@ export function TrainerSheet({
                 <SheetPermissionsDialog kind="trainer" entityId={trainerId} gameId={trainer.game_id} isNarrator={isNarrator} />
               </div>
             </div>
-            <TrainingBars
-              rank={trainer.rank}
-              trainings={trainer.trainings ?? {}}
-              retrains={trainer.retrains ?? 0}
-              canEdit={canEdit}
-              onTrainings={(t) => patch({ trainings: t })}
-              onRetrains={(n) => patch({ retrains: n })}
-            />
             <div className="grid gap-2 sm:grid-cols-3">
               <div>
                 <Label className="text-[10px] uppercase text-muted-foreground">Sex</Label>
