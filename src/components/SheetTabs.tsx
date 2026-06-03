@@ -200,6 +200,7 @@ export function SheetTabs(props: {
                 .update({ owner_trainer_id: trainerId, team_slot: null })
                 .eq("id", p.id);
               if (error) { toast.error(error.message); return; }
+              await registerInPokedex(p.id);
               toast.success(`${p.label} guardado no PC`);
               invalidateRoster();
               setActive({ kind: "pc" });
