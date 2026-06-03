@@ -18,9 +18,9 @@ import {
 } from "@/lib/pokerole";
 import {
   CONTEST_RANKS, CONTEST_RANK_LABELS, CONTEST_RANK_UP, NEXT_CONTEST_RANK,
-  NOTORIETY_SKILLS, NOTORIETY_CAP, TRAININGS_PER_RANK, RETRAIN_CAP,
+  NOTORIETY_SKILLS, NOTORIETY_CAP,
 } from "@/lib/contest";
-import { Progress } from "@/components/ui/progress";
+
 import { useDebouncedPatch } from "@/lib/use-debounced-patch";
 import { toast } from "sonner";
 import { Dices, ImagePlus, X as XIcon, Plus, Trash2, Award, Sparkles } from "lucide-react";
@@ -257,14 +257,6 @@ export function TrainerSheet({
                 <SheetPermissionsDialog kind="trainer" entityId={trainerId} gameId={trainer.game_id} isNarrator={isNarrator} />
               </div>
             </div>
-            <TrainingBars
-              rank={trainer.rank}
-              trainings={trainer.trainings ?? {}}
-              retrains={trainer.retrains ?? 0}
-              canEdit={canEdit}
-              onTrainings={(t) => patch({ trainings: t })}
-              onRetrains={(n) => patch({ retrains: n })}
-            />
             <div className="grid gap-2 sm:grid-cols-3">
               <div>
                 <Label className="text-[10px] uppercase text-muted-foreground">Sex</Label>
@@ -1138,64 +1130,8 @@ function AchievementsSection({
   );
 }
 
-// ============================================================
-// Training bars (below the trainer name)
-// ============================================================
-function TrainingBars({
-  rank, trainings, retrains, canEdit, onTrainings, onRetrains,
-}: {
-  rank: Rank;
-  trainings: Record<string, number>;
-  retrains: number;
-  canEdit: boolean;
-  onTrainings: (t: Record<string, number>) => void;
-  onRetrains: (n: number) => void;
-}) {
-  const required = TRAININGS_PER_RANK[rank] ?? 0;
-  const current = Math.max(0, trainings?.[rank] ?? 0);
-  const pct = required > 0 ? Math.min(100, (current / required) * 100) : 0;
-  const reCur = Math.max(0, Math.min(RETRAIN_CAP, retrains ?? 0));
-  const rePct = (reCur / RETRAIN_CAP) * 100;
-  function setT(n: number) {
-    onTrainings({ ...(trainings ?? {}), [rank]: Math.max(0, Math.min(required, n)) });
-  }
-  return (
-    <div className="space-y-1.5 rounded-md border border-border bg-background px-2 py-1.5">
-      {required > 0 && (
-        <div>
-          <div className="mb-0.5 flex items-center justify-between gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
-            <span>Training · {RANK_LABELS[rank]}</span>
-            <span className="font-bold text-foreground tabular-nums">{current}/{required}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Progress value={pct} className="h-2 flex-1" />
-            {canEdit && (
-              <>
-                <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => setT(current - 1)} disabled={current <= 0}>−</Button>
-                <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => setT(current + 1)} disabled={current >= required}>+</Button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-      <div>
-        <div className="mb-0.5 flex items-center justify-between gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
-          <span>Re-training</span>
-          <span className="font-bold text-foreground tabular-nums">{reCur}/{RETRAIN_CAP}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Progress value={rePct} className="h-2 flex-1" />
-          {canEdit && (
-            <>
-              <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => onRetrains(reCur - 1)} disabled={reCur <= 0}>−</Button>
-              <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => onRetrains(reCur + 1)} disabled={reCur >= RETRAIN_CAP}>+</Button>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+
+
 
 // ============================================================
 // Notoriety skills (Fame / Supporters / Connections / Sponsors, cap 5)
