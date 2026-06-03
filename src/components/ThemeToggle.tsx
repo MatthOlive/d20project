@@ -31,8 +31,9 @@ export function ThemeToggle() {
     })();
   }, [theme]);
 
+  const nextLabel = theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
   return (
-    <Button size="icon" variant="ghost" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} title={theme === "dark" ? "Light mode" : "Dark mode"}>
+    <Button size="icon" variant="ghost" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} title={nextLabel} aria-label={nextLabel}>
       {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
     </Button>
   );

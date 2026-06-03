@@ -5,6 +5,18 @@ import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/")({
   component: Landing,
+  head: () => ({
+    meta: [
+      { title: "D20 Project — Virtual Tabletop for Multi-System RPGs" },
+      { name: "description", content: "Run online RPG campaigns with real-time rolls, dynamic sheets, integrated chat, maps, and an AI narrator trained on your system's rules. Free to start." },
+      { property: "og:title", content: "D20 Project — Virtual Tabletop for Multi-System RPGs" },
+      { property: "og:description", content: "Run online RPG campaigns with real-time rolls, dynamic sheets, integrated chat, maps, and an AI narrator trained on your system's rules." },
+      { property: "og:url", content: "https://d20project.lovable.app/" },
+    ],
+    links: [
+      { rel: "canonical", href: "https://d20project.lovable.app/" },
+    ],
+  }),
 });
 
 function Landing() {
@@ -44,18 +56,21 @@ function Landing() {
           </Link>
         </div>
 
-        <div className="mt-20 grid gap-6 sm:grid-cols-3">
-          {[
-            { title: "Multi-sistema", body: "Crie campanhas para qualquer sistema. Hoje Pokérole 2.0, em breve D&D e T20." },
-            { title: "Rolagens em tempo real", body: "Dados, sucessos e modificadores compartilhados com toda a mesa instantaneamente." },
-            { title: "Narrador de IA", body: "Treine a IA com os PDFs do seu sistema e tenha um co-mestre que conhece as regras." },
-          ].map((f) => (
-            <div key={f.title} className="rounded-xl border border-border bg-card p-5">
-              <h3 className="text-base font-bold text-foreground">{f.title}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">{f.body}</p>
-            </div>
-          ))}
-        </div>
+        <section className="mt-20">
+          <h2 className="text-2xl font-extrabold tracking-tight text-foreground">Recursos principais</h2>
+          <div className="mt-6 grid gap-6 sm:grid-cols-3">
+            {[
+              { title: "Multi-sistema", body: "Crie campanhas para qualquer sistema. Hoje Pokérole 2.0, em breve D&D e T20." },
+              { title: "Rolagens em tempo real", body: "Dados, sucessos e modificadores compartilhados com toda a mesa instantaneamente." },
+              { title: "Narrador de IA", body: "Treine a IA com os PDFs do seu sistema e tenha um co-mestre que conhece as regras." },
+            ].map((f) => (
+              <div key={f.title} className="rounded-xl border border-border bg-card p-5">
+                <h3 className="text-base font-bold text-foreground">{f.title}</h3>
+                <p className="mt-2 text-sm text-muted-foreground">{f.body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
       </main>
     </div>
   );

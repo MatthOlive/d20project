@@ -221,7 +221,7 @@ export function ChatPanel({
             onChange={(e) => setText(e.target.value)}
             placeholder="Message or /r 3d6"
           />
-          <Button type="submit" size="icon"><Send className="h-4 w-4" /></Button>
+          <Button type="submit" size="icon" aria-label="Send message"><Send className="h-4 w-4" /></Button>
         </form>
       </div>
     </div>
