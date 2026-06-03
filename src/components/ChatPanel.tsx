@@ -208,6 +208,9 @@ export function ChatPanel({
               <Dices className="mr-1 h-3 w-3" /> {n}d6
             </Button>
           ))}
+          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => void drawContest()} title="Sortear carta de reação de Contest">
+            <Award className="mr-1 h-3 w-3" /> Contest
+          </Button>
         </div>
         <form
           onSubmit={(e) => { e.preventDefault(); void send(); }}
