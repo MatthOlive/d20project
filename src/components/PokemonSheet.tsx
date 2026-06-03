@@ -23,6 +23,7 @@ import { useDebouncedPatch } from "@/lib/use-debounced-patch";
 import { toast } from "sonner";
 import { Plus, Dices, Trash2, ImagePlus, RotateCcw, Sparkles, Zap, Maximize2, X as XIcon } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
 import { EffectIcons } from "@/components/EffectIcons";
 import { MoveCard, type MoveRollMessage } from "@/components/MoveCard";
 import { rollD6 } from "@/lib/pokerole";
@@ -30,6 +31,7 @@ import {
   HpAndStatusBlock, AttackRollButton, GenericRollButton, painPenaltyFor,
 } from "@/components/SheetRolls";
 import { SheetPermissionsDialog } from "@/components/SheetPermissionsDialog";
+import { TRAININGS_PER_RANK, RETRAIN_CAP } from "@/lib/contest";
 
 // Z-Move names per type (Pokérole 2.0)
 const Z_MOVE_NAMES: Record<string, string> = {
