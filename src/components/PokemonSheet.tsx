@@ -578,6 +578,19 @@ export function PokemonSheet({
         </div>
       </section>
 
+      {/* ============ Training / Re-training ============ */}
+      <section className="rounded-lg border border-border bg-card p-3">
+        <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-primary">Training</h3>
+        <TrainingBars
+          rank={pokemon.rank}
+          trainings={pokemon.trainings ?? {}}
+          retrains={pokemon.retrains ?? 0}
+          canEdit={canEdit}
+          onTrainings={(t) => patch({ trainings: t })}
+          onRetrains={(n) => patch({ retrains: n })}
+        />
+      </section>
+
       {canEdit && (
         <section className="flex justify-end border-t border-border pt-3">
           <Button variant="destructive" size="sm" onClick={async () => {
