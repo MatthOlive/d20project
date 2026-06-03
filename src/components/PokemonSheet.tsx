@@ -501,15 +501,26 @@ export function PokemonSheet({
               if (gMaxMode && baseMove.power > 0) return { ...baseMove, name: `G-Max ${baseMove.name}`, power: baseMove.power + 3 };
               return baseMove;
             })();
-            const accStat = m.accuracy_stat ?? "dexterity";
-            const accAttrVal = pokemon.current_attrs[accStat] ?? 1;
+            const pickBestAttr = (raw: string): { name: string; value: number } => {
+              const parts = raw.split("/").map((p) => p.trim()).filter(Boolean);
+              let best: { name: string; value: number } | null = null;
+              for (const p of parts) {
+                const v = pokemon.current_attrs[p] ?? 1;
+                if (!best || v > best.value) best = { name: p, value: v };
+              }
+              return best ?? { name: raw, value: 1 };
+            };
+            const accPick = pickBestAttr(m.accuracy_stat ?? "dexterity");
+            const accStat = accPick.name;
+            const accAttrVal = accPick.value;
             const accSkill = resolveSkillValue(m.accuracy_skill, pokemon.skills);
             const accSkillVal = accSkill.value;
             const accPool = accAttrVal + accSkillVal;
             const cat = (m.category ?? "").toLowerCase();
             const isStatus = cat === "support" || cat === "status" || m.power <= 0 || !m.damage_stat;
-            const dmgStat = m.damage_stat ?? "strength";
-            const dmgAttrVal = pokemon.current_attrs[dmgStat] ?? 1;
+            const dmgPick = pickBestAttr(m.damage_stat ?? "strength");
+            const dmgStat = dmgPick.name;
+            const dmgAttrVal = dmgPick.value;
             const hasStab = !isStatus && (species.types ?? []).some((t) => String(t).toLowerCase() === String(m.type).toLowerCase());
             const stabBonus = hasStab ? 1 : 0;
             const dmgPool = isStatus ? 0 : m.power + dmgAttrVal + stabBonus;
