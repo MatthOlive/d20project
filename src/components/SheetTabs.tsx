@@ -6,11 +6,18 @@ import { Input } from "@/components/ui/input";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { TrainerSheet } from "@/components/TrainerSheet";
 import { PokemonSheet } from "@/components/PokemonSheet";
 import { Shop } from "@/components/Shop";
 import { DRAG_MIME, type DragCharacterPayload } from "@/components/MapBoard";
-import { User, Boxes, Plus, ShoppingCart } from "lucide-react";
+import { User, Boxes, Plus, ShoppingCart, FileText, ArrowUpFromLine, Flag, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +27,7 @@ type SlotPokemon = {
   team_slot: number | null;
   image_url: string | null;
   species_id: string;
+  marked: boolean;
 };
 
 type Tab =
@@ -50,7 +58,7 @@ export function SheetTabs(props: {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pokemon")
-        .select("id, nickname, team_slot, image_url, species_id")
+        .select("id, nickname, team_slot, image_url, species_id, marked")
         .eq("owner_trainer_id", trainerId);
       if (error) throw error;
       return (data ?? []) as SlotPokemon[];
@@ -260,6 +268,27 @@ export function SheetTabs(props: {
             sprite={(p) => spriteFor(p)}
             name={(p) => nameFor(p)}
             onOpen={(pid) => setActive({ kind: "pcPokemon", pokemonId: pid })}
+            onAddToTeam={async (pid) => {
+              const usedSlots = new Set(roster.filter((r) => r.team_slot != null).map((r) => r.team_slot!));
+              const nextSlot = SLOTS.find((s) => !usedSlots.has(s));
+              if (!nextSlot) { toast.error("Equipe cheia (6 Pokémon)."); return; }
+              const { error } = await supabase.from("pokemon").update({ team_slot: nextSlot }).eq("id", pid);
+              if (error) { toast.error(error.message); return; }
+              toast.success(`Adicionado ao slot ${nextSlot}`);
+              invalidateRoster();
+              setActive({ kind: "slot", slot: nextSlot, pokemonId: pid });
+            }}
+            onRelease={async (pid) => {
+              const { error } = await supabase.from("pokemon").delete().eq("id", pid);
+              if (error) { toast.error(error.message); return; }
+              toast.success("Pokémon liberado");
+              invalidateRoster();
+            }}
+            onToggleMark={async (pid, marked) => {
+              const { error } = await supabase.from("pokemon").update({ marked: !marked }).eq("id", pid);
+              if (error) { toast.error(error.message); return; }
+              invalidateRoster();
+            }}
           />
         )}
         {active.kind === "pcPokemon" && (
@@ -448,13 +477,17 @@ function EmptySlot({
 }
 
 function PcGrid({
-  pokemon, sprite, name, onOpen,
+  pokemon, sprite, name, onOpen, onAddToTeam, onRelease, onToggleMark,
 }: {
   pokemon: SlotPokemon[];
   sprite: (p: SlotPokemon) => string | null;
   name: (p: SlotPokemon) => string;
   onOpen: (pokemonId: string) => void;
+  onAddToTeam: (pokemonId: string) => void | Promise<void>;
+  onRelease: (pokemonId: string) => void | Promise<void>;
+  onToggleMark: (pokemonId: string, marked: boolean) => void | Promise<void>;
 }) {
+  const [releaseTarget, setReleaseTarget] = useState<SlotPokemon | null>(null);
   return (
     <div className="space-y-3 p-4">
       <div className="flex items-center gap-2">
@@ -471,22 +504,70 @@ function PcGrid({
           {pokemon.map((p) => {
             const s = sprite(p);
             return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => onOpen(p.id)}
-                title={name(p)}
-                className="flex aspect-square flex-col items-center justify-center gap-1 rounded-md border border-border bg-card p-1 hover:border-primary hover:bg-accent"
-              >
-                {s
-                  ? <img src={s} alt={name(p)} className="h-12 w-12 object-contain" />
-                  : <div className="h-12 w-12 rounded bg-muted" />}
-                <span className="line-clamp-1 text-[10px] font-medium">{name(p)}</span>
-              </button>
+              <DropdownMenu key={p.id}>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    title={name(p)}
+                    className={cn(
+                      "relative flex aspect-square flex-col items-center justify-center gap-1 rounded-md border bg-card p-1 hover:border-primary hover:bg-accent",
+                      p.marked ? "border-amber-500 ring-1 ring-amber-500/60" : "border-border",
+                    )}
+                  >
+                    {p.marked && (
+                      <Flag className="absolute right-0.5 top-0.5 h-3 w-3 fill-amber-500 text-amber-500" />
+                    )}
+                    {s
+                      ? <img src={s} alt={name(p)} className="h-12 w-12 object-contain" />
+                      : <div className="h-12 w-12 rounded bg-muted" />}
+                    <span className="line-clamp-1 text-[10px] font-medium">{name(p)}</span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-48">
+                  <DropdownMenuItem onClick={() => onAddToTeam(p.id)}>
+                    <ArrowUpFromLine className="mr-2 h-4 w-4" /> Adicionar ao time
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onOpen(p.id)}>
+                    <FileText className="mr-2 h-4 w-4" /> Ficha
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onToggleMark(p.id, p.marked)}>
+                    <Flag className="mr-2 h-4 w-4" /> {p.marked ? "Desmarcar" : "Marcar"}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => setReleaseTarget(p)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" /> Liberar
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             );
           })}
         </div>
       )}
+
+      <AlertDialog open={!!releaseTarget} onOpenChange={(o) => { if (!o) setReleaseTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Liberar {releaseTarget ? name(releaseTarget) : "Pokémon"}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação é permanente e não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (releaseTarget) await onRelease(releaseTarget.id);
+                setReleaseTarget(null);
+              }}
+            >
+              Liberar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
