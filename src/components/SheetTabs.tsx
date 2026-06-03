@@ -177,8 +177,13 @@ export function SheetTabs(props: {
               key={slot}
               active={isActive}
               onClick={() => setActive({ kind: "slot", slot, pokemonId: pokemon?.id ?? null })}
-              title={pokemon ? nameFor(pokemon) : `Slot ${slot}`}
+              title={pokemon ? `${nameFor(pokemon)} — arraste para o PC para guardar` : `Slot ${slot}`}
               tone={pokemon ? "team" : "empty"}
+              draggable={!!pokemon}
+              onDragStart={pokemon ? (e) => {
+                e.dataTransfer.effectAllowed = "move";
+                e.dataTransfer.setData(SLOT_DRAG_MIME, JSON.stringify({ id: pokemon.id, label: nameFor(pokemon) }));
+              } : undefined}
             >
               {sprite
                 ? <img src={sprite} alt={nameFor(pokemon)} className="h-7 w-7 object-contain" />
@@ -190,14 +195,29 @@ export function SheetTabs(props: {
           active={active.kind === "pc" || active.kind === "pcPokemon"}
           onClick={() => setActive({ kind: "pc" })}
           tone="pc"
-          title="PC (Box) — arraste um Pokémon dos Files aqui para guardar"
+          title="PC (Box) — arraste um Pokémon dos Files ou do seu time aqui para guardar"
           onDragOver={(e) => {
-            if (e.dataTransfer.types.includes(DRAG_MIME)) {
+            if (e.dataTransfer.types.includes(DRAG_MIME) || e.dataTransfer.types.includes(SLOT_DRAG_MIME)) {
               e.preventDefault();
               e.dataTransfer.dropEffect = "move";
             }
           }}
           onDrop={async (e) => {
+            // From team slot → PC
+            const slotRaw = e.dataTransfer.getData(SLOT_DRAG_MIME);
+            if (slotRaw) {
+              e.preventDefault();
+              try {
+                const p = JSON.parse(slotRaw) as { id: string; label: string };
+                const { error } = await supabase.from("pokemon").update({ team_slot: null }).eq("id", p.id);
+                if (error) { toast.error(error.message); return; }
+                toast.success(`${p.label} movido para o PC`);
+                invalidateRoster();
+                setActive({ kind: "pc" });
+              } catch { /* ignore */ }
+              return;
+            }
+            // From map/files → PC
             const raw = e.dataTransfer.getData(DRAG_MIME);
             if (!raw) return;
             e.preventDefault();
@@ -315,8 +335,10 @@ export function SheetTabs(props: {
   );
 }
 
+const SLOT_DRAG_MIME = "application/x-pokerole-slot-move+json";
+
 function TabButton({
-  active, onClick, children, title, tone, onDragOver, onDrop,
+  active, onClick, children, title, tone, onDragOver, onDrop, draggable, onDragStart,
 }: {
   active: boolean;
   onClick: () => void;
@@ -325,6 +347,8 @@ function TabButton({
   tone: "primary" | "team" | "empty" | "pc";
   onDragOver?: React.DragEventHandler<HTMLButtonElement>;
   onDrop?: React.DragEventHandler<HTMLButtonElement>;
+  draggable?: boolean;
+  onDragStart?: React.DragEventHandler<HTMLButtonElement>;
 }) {
   return (
     <button
@@ -333,6 +357,8 @@ function TabButton({
       onClick={onClick}
       onDragOver={onDragOver}
       onDrop={onDrop}
+      draggable={draggable}
+      onDragStart={onDragStart}
       className={cn(
         "flex h-11 w-full items-center justify-center rounded-md border transition",
         active
