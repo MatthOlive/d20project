@@ -32,6 +32,7 @@ import {
 } from "@/components/SheetRolls";
 import { SheetPermissionsDialog } from "@/components/SheetPermissionsDialog";
 import { TRAININGS_PER_RANK, RETRAIN_CAP } from "@/lib/contest";
+import { getEvolutionRules, evaluateEvolution, type EvolutionGate } from "@/lib/evolutions";
 
 // Z-Move names per type (Pokérole 2.0)
 const Z_MOVE_NAMES: Record<string, string> = {
@@ -244,16 +245,6 @@ export function PokemonSheet({
             <SelectContent>{RANKS.map((r) => <SelectItem key={r} value={r}>{RANK_LABELS[r]}</SelectItem>)}</SelectContent>
           </Select>
         </div>
-        <div className="px-3 pt-3">
-          <TrainingBars
-            rank={pokemon.rank}
-            trainings={pokemon.trainings ?? {}}
-            retrains={pokemon.retrains ?? 0}
-            canEdit={canEdit}
-            onTrainings={(t) => patch({ trainings: t })}
-            onRetrains={(n) => patch({ retrains: n })}
-          />
-        </div>
         <div className="grid gap-3 p-3 sm:grid-cols-[160px_1fr]">
           {/* Left: image + types */}
           <div className="space-y-2">
@@ -341,7 +332,21 @@ export function PokemonSheet({
                   Use {spDefUsesInsight ? "Vit" : "Ins"}
                 </Button>
               )}
-              {canEdit && <EvolveButton pokemonId={pokemonId} fromSprite={species.sprite_url} fromSpeciesId={species.id} currentName={species.name} evolutions={species.evolutions} evolutionMethod={species.evolution_method} victories={pokemon.victories} baseSpeciesId={(pokemon.modifiers as Record<string, unknown>)?._base_species as string | undefined} ownerTrainerId={pokemon.owner_trainer_id ?? null} heldItem={pokemon.held_item} />}
+              {canEdit && <EvolveButton
+                pokemonId={pokemonId}
+                fromSprite={species.sprite_url}
+                fromSpeciesId={species.id}
+                speciesName={species.name}
+                evolutions={species.evolutions}
+                attrLimits={species.attr_limits ?? {}}
+                currentAttrs={pokemon.current_attrs ?? {}}
+                victories={pokemon.victories}
+                happiness={pokemon.happiness}
+                loyalty={pokemon.loyalty}
+                baseSpeciesId={(pokemon.modifiers as Record<string, unknown>)?._base_species as string | undefined}
+                ownerTrainerId={pokemon.owner_trainer_id ?? null}
+                heldItem={pokemon.held_item}
+              />}
               {canEdit && <DynamaxToggle mode={dynaMode} onChange={setDynaMode} />}
               {dynaMode && <span className="rounded-full bg-red-500/20 px-2.5 py-0.5 text-xs font-bold uppercase text-red-500">{dynaMode === "gigantamax" ? "G-Max" : "Dynamax"}</span>}
             </div>
@@ -392,6 +397,7 @@ export function PokemonSheet({
                   baseEditable={false}
                   disabled={!canEdit}
                   cap={Math.max(limit, base)}
+                  showCapInTotal
                   onChange={(d) => setAttrBreakdown(a, d)}
                 />
               );
@@ -585,6 +591,19 @@ export function PokemonSheet({
           <Label className="text-[10px] uppercase text-muted-foreground">Notes</Label>
           <Textarea value={pokemon.notes} onChange={(e) => patch({ notes: e.target.value })} disabled={!canEdit} rows={3} />
         </div>
+      </section>
+
+      {/* ============ Training / Re-training ============ */}
+      <section className="rounded-lg border border-border bg-card p-3">
+        <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-primary">Training</h3>
+        <TrainingBars
+          rank={pokemon.rank}
+          trainings={pokemon.trainings ?? {}}
+          retrains={pokemon.retrains ?? 0}
+          canEdit={canEdit}
+          onTrainings={(t) => patch({ trainings: t })}
+          onRetrains={(n) => patch({ retrains: n })}
+        />
       </section>
 
       {canEdit && (
@@ -893,12 +912,24 @@ function NatureSelect({ value, disabled, onChange }: { value: string | null; dis
   );
 }
 
-const TIME_THRESHOLDS = { fast: 5, medium: 15, slow: 45 } as const;
-
-function EvolveButton({ pokemonId, fromSprite, fromSpeciesId, currentName, evolutions, evolutionMethod, victories, baseSpeciesId, ownerTrainerId, heldItem }: {
-  pokemonId: string; fromSprite: string | null; fromSpeciesId: string; currentName: string;
-  evolutions: string[]; evolutionMethod: EvolutionMethod | null; victories: number; baseSpeciesId?: string;
-  ownerTrainerId: string | null; heldItem: string | null;
+function EvolveButton({
+  pokemonId, fromSprite, fromSpeciesId, speciesName, evolutions,
+  attrLimits, currentAttrs, victories, happiness, loyalty,
+  baseSpeciesId, ownerTrainerId, heldItem,
+}: {
+  pokemonId: string;
+  fromSprite: string | null;
+  fromSpeciesId: string;
+  speciesName: string;
+  evolutions: string[];
+  attrLimits: Record<string, number>;
+  currentAttrs: Record<string, number>;
+  victories: number;
+  happiness: number;
+  loyalty: number;
+  baseSpeciesId?: string;
+  ownerTrainerId: string | null;
+  heldItem: string | null;
 }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -906,20 +937,17 @@ function EvolveButton({ pokemonId, fromSprite, fromSpeciesId, currentName, evolu
   const [showEvolved, setShowEvolved] = useState(false);
   const [toggle, setToggle] = useState(false);
   const isMegaForm = !!baseSpeciesId;
-  // Split: names containing "mega" (before or after the name) are mega forms.
   const isMegaName = (n: string) => /\bmega\b/i.test(n);
   const normalEvos = useMemo(() => evolutions.filter((e) => !isMegaName(e)), [evolutions]);
   const megaEvos = useMemo(() => evolutions.filter((e) => isMegaName(e)), [evolutions]);
   const hasNormal = normalEvos.length > 0;
   const hasMega = megaEvos.length > 0;
-  // Mode priority: revert if mega form; otherwise normal evolve if available; otherwise mega.
-  // When both exist, default to evolve; user can also pick a mega form from the dropdown.
   const mode: "revert" | "mega" | "evolve" = isMegaForm ? "revert" : hasNormal ? "evolve" : "mega";
 
-  // Trainer bag (for item-method gating)
+  // Trainer bag (for item gating) — pulled both for gating and dialog display.
   const { data: trainerBag = [] } = useQuery({
     queryKey: ["trainer-bag-evo", ownerTrainerId],
-    enabled: !!ownerTrainerId && open,
+    enabled: !!ownerTrainerId,
     queryFn: async () => {
       const { data } = await supabase.from("trainers").select("bag_list").eq("id", ownerTrainerId!).maybeSingle();
       const list = (data?.bag_list ?? []) as Array<{ name: string; qty: number }>;
@@ -932,45 +960,32 @@ function EvolveButton({ pokemonId, fromSprite, fromSpeciesId, currentName, evolu
     return list;
   }, [trainerBag, heldItem]);
 
-  // Parse required items from evolution_method.text (e.g. "Leaf/Sun Stone" → ["Leaf Stone","Sun Stone"])
-  const requiredItems = useMemo(() => {
-    if (evolutionMethod?.kind !== "item" || !evolutionMethod.text) return [];
-    const items: string[] = [];
-    const text = evolutionMethod.text;
-    // Expand "X/Y Suffix" → ["X Suffix","Y Suffix"]
-    const slashRe = /\b([A-Z][a-zA-Z]+(?:\/[A-Z][a-zA-Z]+)+)\s+([A-Z][a-zA-Z]+)\b/g;
-    const seen = new Set<string>();
-    let expanded = text;
-    let m: RegExpExecArray | null;
-    while ((m = slashRe.exec(text)) !== null) {
-      const parts = m[1].split("/");
-      for (const p of parts) {
-        const full = `${p} ${m[2]}`;
-        if (!seen.has(full.toLowerCase())) { items.push(full); seen.add(full.toLowerCase()); }
-      }
-      expanded = expanded.replace(m[0], "");
+  // Build evolution gates from the spreadsheet data.
+  const allRules = useMemo(() => getEvolutionRules(speciesName), [speciesName]);
+  const attrCtx = useMemo(() => {
+    const out: Record<string, { current: number; max: number }> = {};
+    for (const k of Object.keys(currentAttrs)) {
+      out[k.toLowerCase()] = { current: currentAttrs[k] ?? 0, max: attrLimits[k] ?? 5 };
     }
-    // Remaining capitalized multi-word phrases
-    const phraseRe = /\b[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)+\b/g;
-    let pm: RegExpExecArray | null;
-    while ((pm = phraseRe.exec(expanded)) !== null) {
-      const phrase = pm[0];
-      if (!seen.has(phrase.toLowerCase())) { items.push(phrase); seen.add(phrase.toLowerCase()); }
-    }
-    return items;
-  }, [evolutionMethod]);
+    return out;
+  }, [currentAttrs, attrLimits]);
+  const gates: EvolutionGate[] = useMemo(() => allRules.map((r) =>
+    evaluateEvolution(r, { victories, happiness, loyalty, inventoryItems, attrs: attrCtx })
+  ), [allRules, victories, happiness, loyalty, inventoryItems, attrCtx]);
 
-  const availableItems = useMemo(
-    () => requiredItems.filter((it) => inventoryItems.includes(it.toLowerCase())),
-    [requiredItems, inventoryItems],
-  );
-  const hasAnyRequiredItem = requiredItems.length === 0 || availableItems.length > 0;
+  // Eligible gates: ready OR alwaysShow.
+  const eligibleGates = useMemo(() => gates.filter((g) => g.ready || g.alwaysShow), [gates]);
+  const hasEligibleNormalRule = eligibleGates.some((g) => !isMegaName(g.rule.to));
 
   const [target, setTarget] = useState<string>(mode === "evolve" ? (normalEvos[0] ?? "") : (megaEvos[0] ?? ""));
   useEffect(() => {
-    if (mode === "evolve") setTarget(normalEvos[0] ?? "");
-    else if (mode === "mega") setTarget(megaEvos[0] ?? "");
-  }, [mode, normalEvos, megaEvos]);
+    if (mode === "evolve") {
+      // Prefer first eligible evolution target if any.
+      const first = eligibleGates.find((g) => !isMegaName(g.rule.to))?.rule.to ?? normalEvos[0] ?? "";
+      setTarget(first);
+    } else if (mode === "mega") setTarget(megaEvos[0] ?? "");
+  }, [mode, normalEvos, megaEvos, eligibleGates]);
+
   const { data: targetSpecies } = useQuery({
     queryKey: ["species-by-name", target], enabled: !!target && open && !isMegaForm,
     queryFn: async () => { const { data } = await supabase.from("species").select("*").eq("name", target).maybeSingle(); return data as Species | null; },
@@ -979,8 +994,14 @@ function EvolveButton({ pokemonId, fromSprite, fromSpeciesId, currentName, evolu
     queryKey: ["species-by-id", baseSpeciesId], enabled: !!baseSpeciesId && open,
     queryFn: async () => { const { data } = await supabase.from("species").select("*").eq("id", baseSpeciesId!).maybeSingle(); return data as Species | null; },
   });
+
   const label = mode === "revert" ? "Revert" : mode === "mega" ? "Mega Evolve" : "Evolve";
   const Icon = mode === "mega" ? Zap : Sparkles;
+
+  // Find the gate matching the currently-selected target (used to consume items and to display the
+  // method/condition description in the dialog and inline).
+  const selectedGate = useMemo(() => gates.find((g) => g.rule.to.toLowerCase() === target.toLowerCase()) ?? null, [gates, target]);
+
   async function transform(forceMega: boolean = false) {
     let next: Species | null = null;
     let newBaseSpecies: string | null | undefined = baseSpeciesId;
@@ -1001,47 +1022,46 @@ function EvolveButton({ pokemonId, fromSprite, fromSpeciesId, currentName, evolu
     if (newBaseSpecies === null) delete newMods._base_species; else if (newBaseSpecies) newMods._base_species = newBaseSpecies;
     const { error } = await supabase.from("pokemon").update({ species_id: next.id, current_attrs: next.base_attrs, hp: next.base_hp + (next.base_attrs.vitality ?? 1), modifiers: newMods }).eq("id", pokemonId);
     if (error) { toast.error(error.message); setAnimating(false); return; }
-    // Consume one of the required items from the trainer's bag (item-method evolutions only)
-    if (effectiveMode === "evolve" && evolutionMethod?.kind === "item" && ownerTrainerId && availableItems.length > 0) {
-      const consume = availableItems[0];
-      const { data: tData } = await supabase.from("trainers").select("bag_list").eq("id", ownerTrainerId).maybeSingle();
-      const bag = ((tData?.bag_list ?? []) as Array<{ name: string; qty: number }>).map((i) => ({ ...i }));
-      const idx = bag.findIndex((i) => i.name.toLowerCase() === consume.toLowerCase());
-      if (idx >= 0) {
-        bag[idx].qty = (bag[idx].qty ?? 1) - 1;
-        if (bag[idx].qty <= 0) bag.splice(idx, 1);
-        await supabase.from("trainers").update({ bag_list: bag }).eq("id", ownerTrainerId);
-        qc.invalidateQueries({ queryKey: ["trainer-bag-evo", ownerTrainerId] });
-        qc.invalidateQueries({ queryKey: ["trainer", ownerTrainerId] });
-        toast.success(`Item consumido: ${consume}`);
+
+    // Consume one of the required items from the trainer's bag (item-method evolutions only).
+    if (effectiveMode === "evolve" && ownerTrainerId && selectedGate?.rule.kinds.includes("item") && selectedGate.rule.items && selectedGate.rule.items.length > 0) {
+      const consume = selectedGate.rule.items.find((it) => inventoryItems.includes(it.toLowerCase()));
+      if (consume) {
+        const { data: tData } = await supabase.from("trainers").select("bag_list").eq("id", ownerTrainerId).maybeSingle();
+        const bag = ((tData?.bag_list ?? []) as Array<{ name: string; qty: number }>).map((i) => ({ ...i }));
+        const idx = bag.findIndex((i) => i.name.toLowerCase() === consume.toLowerCase());
+        if (idx >= 0) {
+          bag[idx].qty = (bag[idx].qty ?? 1) - 1;
+          if (bag[idx].qty <= 0) bag.splice(idx, 1);
+          await supabase.from("trainers").update({ bag_list: bag }).eq("id", ownerTrainerId);
+          qc.invalidateQueries({ queryKey: ["trainer-bag-evo", ownerTrainerId] });
+          qc.invalidateQueries({ queryKey: ["trainer", ownerTrainerId] });
+          toast.success(`Item consumido: ${consume}`);
+        }
       }
     }
-    qc.invalidateQueries({ queryKey: ["pokemon", pokemonId] }); qc.invalidateQueries({ queryKey: ["species", next.id] });
+    qc.invalidateQueries({ queryKey: ["pokemon", pokemonId] });
+    qc.invalidateQueries({ queryKey: ["species", next.id] });
   }
+
   const nextSprite = mode === "revert" ? baseSpecies?.sprite_url : targetSpecies?.sprite_url;
   const nextName = mode === "revert" ? (baseSpecies?.name ?? "base form") : target;
   const displayedSprite = showEvolved ? nextSprite : (toggle ? nextSprite : fromSprite);
-  // Hide the button entirely if there's nothing to do.
   if (!isMegaForm && !hasNormal && !hasMega) return null;
 
-  // Evolution method gating — only applies to normal evolve mode (not mega/revert).
-  const showMethodInfo = !isMegaForm && hasNormal && evolutionMethod;
-  const isTimeMethod = evolutionMethod?.kind === "time" && evolutionMethod.speed;
-  const isItemMethod = evolutionMethod?.kind === "item";
-  const threshold = isTimeMethod ? TIME_THRESHOLDS[evolutionMethod!.speed!] : 0;
-  const timeReady = !isTimeMethod || victories >= threshold;
-  const itemReady = !isItemMethod || hasAnyRequiredItem;
-  const showEvolveButton = mode !== "evolve" || (timeReady && itemReady);
-  const methodLabel = isTimeMethod
-    ? `Evolução: ${victories}/${threshold} vitórias (${evolutionMethod!.speed})`
-    : isItemMethod
-      ? `Evolução por item: ${evolutionMethod!.text ?? ""}${requiredItems.length > 0 ? ` (${availableItems.length}/${requiredItems.length} no inventário)` : ""}`
-      : evolutionMethod?.kind === "other" && evolutionMethod.text
-        ? `Evolução: ${evolutionMethod.text}`
-        : null;
+  // Show the button when: any evolution path is eligible (ready or always-show), or it's mega/revert.
+  const showEvolveButton = mode !== "evolve" || hasEligibleNormalRule;
+
+  // Inline method description above the button (covers all gates).
+  const inlineDescription = mode === "evolve" && gates.length > 0 ? gates.map((g) => g.description).join(" | ") : null;
 
   return (
     <>
+      {inlineDescription && (
+        <div className="basis-full rounded-md border border-dashed border-border bg-muted/40 px-2 py-1 text-[10px] font-medium text-muted-foreground">
+          <span className="font-bold uppercase text-primary">Evolução:</span> {inlineDescription}
+        </div>
+      )}
       {showEvolveButton && (
       <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setAnimating(false); setShowEvolved(false); setToggle(false); } }}>
         <DialogTrigger asChild><Button size="sm" variant="secondary" className="h-8"><Icon className="mr-1 h-3.5 w-3.5" /> {label}</Button></DialogTrigger>
@@ -1049,18 +1069,12 @@ function EvolveButton({ pokemonId, fromSprite, fromSpeciesId, currentName, evolu
           <DialogHeader><DialogTitle>{showEvolved ? `Transformed into ${nextName}!` : label}</DialogTitle></DialogHeader>
           {!animating && (
             <div className="space-y-3">
-              {mode === "evolve" && evolutionMethod && (
+              {mode === "evolve" && selectedGate && (
                 <div className="rounded-md border border-border bg-muted/40 p-2 text-xs">
-                  <p className="font-semibold">Método de evolução</p>
-                  <p className="text-muted-foreground">
-                    {isTimeMethod && `Tempo (${evolutionMethod.speed}) — ${victories}/${threshold} vitórias`}
-                    {isItemMethod && `Item — ${evolutionMethod.text ?? ""}`}
-                    {evolutionMethod.kind === "other" && (evolutionMethod.text ?? "Condição especial")}
-                  </p>
-                  {isItemMethod && requiredItems.length > 0 && (
-                    <p className="mt-1 text-[11px]">
-                      Disponíveis no inventário: {availableItems.length > 0 ? availableItems.join(", ") : "nenhum"}
-                    </p>
+                  <p className="font-semibold">Método e condição de evolução</p>
+                  <p className="text-muted-foreground">{selectedGate.description}</p>
+                  {!selectedGate.ready && !selectedGate.alwaysShow && (
+                    <p className="mt-1 text-[11px] text-destructive">Condição ainda não cumprida.</p>
                   )}
                 </div>
               )}
@@ -1087,7 +1101,13 @@ function EvolveButton({ pokemonId, fromSprite, fromSpeciesId, currentName, evolu
                 )
               )}
               {mode === "revert" && <p className="text-sm">Revert to <strong>{baseSpecies?.name ?? "base form"}</strong>?</p>}
-              <Button onClick={() => transform(false)} className="w-full"><Icon className="mr-1.5 h-4 w-4" /> {label}</Button>
+              <Button
+                onClick={() => transform(false)}
+                className="w-full"
+                disabled={mode === "evolve" && !!selectedGate && !selectedGate.ready && !selectedGate.alwaysShow}
+              >
+                <Icon className="mr-1.5 h-4 w-4" /> {label}
+              </Button>
             </div>
           )}
           {animating && (
@@ -1099,11 +1119,6 @@ function EvolveButton({ pokemonId, fromSprite, fromSpeciesId, currentName, evolu
           )}
         </DialogContent>
       </Dialog>
-      )}
-      {showMethodInfo && methodLabel && (
-        <span className="rounded-md border border-dashed border-border bg-muted/40 px-2 py-1 text-[10px] font-medium text-muted-foreground">
-          {methodLabel}
-        </span>
       )}
       {/* Extra dedicated Mega Evolve button when normal evolutions are available alongside mega forms */}
       {!isMegaForm && hasNormal && hasMega && (

@@ -15,6 +15,7 @@ export function AttrFourField({
   hideBase,
   disabled,
   cap,
+  showCapInTotal,
   onChange,
 }: {
   label: string;
@@ -25,6 +26,8 @@ export function AttrFourField({
   hideBase?: boolean;
   disabled?: boolean;
   cap?: number;
+  /** When true, the Total cell shows "X/cap". */
+  showCapInTotal?: boolean;
   onChange: (next: { base?: number; points?: number; bonus?: number }) => void;
 }) {
   const total = (base || 0) + (points || 0) + (bonus || 0);
@@ -68,9 +71,9 @@ export function AttrFourField({
         />
       </Cell>
 
-      <Cell title="Total">
-        <div className="flex h-6 items-center justify-center rounded-md border border-primary/40 bg-primary/10 px-1 text-xs font-bold text-primary">
-          {total}
+      <Cell title={showCapInTotal && cap !== undefined ? `Total / Max (${cap})` : "Total"}>
+        <div className="flex h-6 items-center justify-center rounded-md border border-primary/40 bg-primary/10 px-1 text-[11px] font-bold text-primary tabular-nums">
+          {total}{showCapInTotal && cap !== undefined ? <span className="opacity-60">/{cap}</span> : null}
         </div>
       </Cell>
     </div>
