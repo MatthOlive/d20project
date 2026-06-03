@@ -23,7 +23,7 @@ import {
 
 import { useDebouncedPatch } from "@/lib/use-debounced-patch";
 import { toast } from "sonner";
-import { Dices, ImagePlus, X as XIcon, Plus, Trash2, Award, Sparkles } from "lucide-react";
+import { Dices, ImagePlus, X as XIcon, Plus, Trash2, Award } from "lucide-react";
 import {
   HpAndStatusBlock, AttackRollButton, GenericRollButton, painPenaltyFor,
 } from "@/components/SheetRolls";
@@ -211,7 +211,11 @@ export function TrainerSheet({
     ...ATTRS.map((a) => ({ name: a, value: totalAttr(a) })),
     ...SOCIAL_ATTRS.map((a) => ({ name: a, value: totalSocial(a) })),
   ];
-  const allSkillsForRoll = TRAINER_SKILLS.map((s) => ({ name: s, value: trainer.skills?.[s] ?? 0 }));
+  const allSkillsForRoll = [
+    ...TRAINER_SKILLS.map((s) => ({ name: s, value: trainer.skills?.[s] ?? 0 })),
+    ...NOTORIETY_SKILLS.map((s) => ({ name: s, value: trainer.notoriety?.[s] ?? 0 })),
+    ...(trainer.custom_skills ?? []).map((c) => ({ name: c.name, value: c.value ?? 0 })),
+  ];
   const charName = trainer.name;
 
   const evasionPool = dex + (trainer.skills?.Evasion ?? 0);
@@ -431,7 +435,7 @@ export function TrainerSheet({
       {/* ============ BLOCO 3 — Skills (Fight / Survival / Social / Knowledge / Custom) ============ */}
       <section className="rounded-lg border border-border bg-card p-3">
         <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-primary">Skills</h3>
-        <div className="grid gap-3 lg:grid-cols-5">
+        <div className="grid gap-3 lg:grid-cols-6">
           <SkillGroup title="Fight" tint="bg-primary/15 text-primary"
             skills={["Brawl", "Throw", "Evasion", "Weapons"]}
             values={trainer.skills} canEdit={canEdit}
@@ -448,6 +452,14 @@ export function TrainerSheet({
             skills={["Crafts", "Lore", "Medicine", "Science"]}
             values={trainer.skills} canEdit={canEdit}
             onChange={(s) => patch({ skills: { ...trainer.skills, ...s } })} />
+          <SkillGroup title="Notoriety" tint="bg-amber-500/15 text-amber-500"
+            skills={[...NOTORIETY_SKILLS]}
+            values={trainer.notoriety ?? {}} canEdit={canEdit}
+            onChange={(s) => {
+              const merged = { ...(trainer.notoriety ?? {}), ...s };
+              for (const k of Object.keys(merged)) merged[k] = Math.max(0, Math.min(NOTORIETY_CAP, merged[k] ?? 0));
+              patch({ notoriety: merged });
+            }} />
           <CustomSkillsSection
             items={trainer.custom_skills ?? []}
             canEdit={canEdit}
@@ -479,12 +491,7 @@ export function TrainerSheet({
         />
       </section>
 
-      {/* ============ BLOCO 5 — Notoriety + Contest ============ */}
-      <NotorietySection
-        values={trainer.notoriety ?? {}}
-        canEdit={canEdit}
-        onChange={(v) => patch({ notoriety: v })}
-      />
+      {/* ============ BLOCO 5 — Contest ============ */}
       <ContestSection
         contestRank={trainer.contest_rank ?? ""}
         achievements={trainer.achievements ?? []}
@@ -1133,39 +1140,6 @@ function AchievementsSection({
 
 
 
-// ============================================================
-// Notoriety skills (Fame / Supporters / Connections / Sponsors, cap 5)
-// ============================================================
-function NotorietySection({
-  values, canEdit, onChange,
-}: {
-  values: Record<string, number>;
-  canEdit: boolean;
-  onChange: (v: Record<string, number>) => void;
-}) {
-  return (
-    <section className="rounded-lg border border-border bg-card p-3">
-      <h3 className="mb-2 inline-flex items-center gap-1 text-sm font-bold uppercase tracking-wider text-amber-500">
-        <Sparkles className="h-3.5 w-3.5" /> Notoriety
-      </h3>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        {NOTORIETY_SKILLS.map((k) => {
-          const v = values?.[k] ?? 0;
-          return (
-            <div key={k} className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-2 py-1.5">
-              <span className="text-xs font-medium">{k}</span>
-              <SkillNumberInput
-                value={v}
-                onChange={(n) => onChange({ ...(values ?? {}), [k]: Math.max(0, Math.min(NOTORIETY_CAP, n)) })}
-                disabled={!canEdit}
-              />
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
 
 // ============================================================
 // Contest section (rank + per-rank achievements)
