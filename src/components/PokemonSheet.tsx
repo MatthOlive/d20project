@@ -82,6 +82,8 @@ type Pokemon = {
   is_shiny: boolean;
   is_overgrown: boolean;
   owner_trainer_id: string | null;
+  trainings: Record<string, number>;
+  retrains: number;
 };
 
 
