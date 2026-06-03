@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { z } from "zod";
+
 
 // Chunk text into ~1200-char passages with 200-char overlap.
 function chunkText(text: string, size = 1200, overlap = 200): string[] {
@@ -51,7 +53,7 @@ export const ingestKnowledge = createServerFn({ method: "POST" })
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
 
     // Only allow ingest if the caller is a narrator of at least one game.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -98,7 +100,6 @@ export const deleteKnowledgeSource = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ source: z.string().min(1).max(120) }).parse(d))
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = context.supabase as any;
     const { data: games } = await supabase

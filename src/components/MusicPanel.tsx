@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import { lookupYouTubeVideo } from "@/lib/youtube.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Play, Pause, Trash2, Music as MusicIcon, SkipForward } from "lucide-react";
+
 
 type Track = {
   id: string;
@@ -28,8 +30,10 @@ export function MusicPanel({
   isNarrator: boolean;
 }) {
   const qc = useQueryClient();
+  const { user } = useAuth();
   const [input, setInput] = useState("");
   const lookup = useServerFn(lookupYouTubeVideo);
+
 
   const { data: tracks = [] } = useQuery<Track[]>({
     queryKey: ["music-tracks", gameId],
@@ -100,7 +104,10 @@ export function MusicPanel({
     else await stopAll();
   }
   async function deleteTrack(id: string) {
-    await supabase.from("music_tracks" as never).delete().eq("id", id);
+    // RLS already restricts delete to narrator or the user who added the track;
+    // surface failures so users know when they aren't allowed.
+    const { error } = await supabase.from("music_tracks" as never).delete().eq("id", id);
+    if (error) toast.error("Você não tem permissão para remover esta música.");
   }
 
   return (
@@ -161,9 +168,11 @@ export function MusicPanel({
                 <Play className="h-3.5 w-3.5" />
               </Button>
             )}
-            <Button size="sm" variant="ghost" onClick={() => deleteTrack(t.id)} title="Remover">
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
+            {(isNarrator || t.added_by === user?.id) && (
+              <Button size="sm" variant="ghost" onClick={() => deleteTrack(t.id)} title="Remover">
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
           </div>
         ))}
       </div>

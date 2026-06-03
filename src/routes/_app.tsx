@@ -6,8 +6,10 @@ import { LogOut } from "lucide-react";
 
 export const Route = createFileRoute("/_app")({
   beforeLoad: async () => {
-    const { data } = await supabase.auth.getSession();
-    if (!data.session) throw redirect({ to: "/auth" });
+    // Use getUser() to revalidate the JWT with the Auth server,
+    // not the locally-cached getSession() which can be stale/forged.
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) throw redirect({ to: "/auth" });
   },
   component: AppLayout,
 });
