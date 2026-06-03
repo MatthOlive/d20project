@@ -18,7 +18,7 @@ import {
 } from "@/lib/pokerole";
 import {
   CONTEST_RANKS, CONTEST_RANK_LABELS, CONTEST_RANK_UP, NEXT_CONTEST_RANK,
-  NOTORIETY_SKILLS, NOTORIETY_CAP, TRAININGS_PER_RANK, RETRAIN_CAP,
+  NOTORIETY_SKILLS, NOTORIETY_CAP,
 } from "@/lib/contest";
 import { Progress } from "@/components/ui/progress";
 import { useDebouncedPatch } from "@/lib/use-debounced-patch";
