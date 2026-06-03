@@ -1209,3 +1209,62 @@ function AbilityRollDialog({ name, effect, pokemonName, onRoll, onChat }: {
     </Dialog>
   );
 }
+
+// ============================================================
+// Training bars (per-Pokémon rank-up progress)
+// ============================================================
+function TrainingBars({
+  rank, trainings, retrains, canEdit, onTrainings, onRetrains,
+}: {
+  rank: Rank;
+  trainings: Record<string, number>;
+  retrains: number;
+  canEdit: boolean;
+  onTrainings: (t: Record<string, number>) => void;
+  onRetrains: (n: number) => void;
+}) {
+  const required = TRAININGS_PER_RANK[rank] ?? 0;
+  const current = Math.max(0, trainings?.[rank] ?? 0);
+  const pct = required > 0 ? Math.min(100, (current / required) * 100) : 0;
+  const reCur = Math.max(0, Math.min(RETRAIN_CAP, retrains ?? 0));
+  const rePct = (reCur / RETRAIN_CAP) * 100;
+  function setT(n: number) {
+    onTrainings({ ...(trainings ?? {}), [rank]: Math.max(0, Math.min(required, n)) });
+  }
+  return (
+    <div className="space-y-1.5 rounded-md border border-border bg-background px-2 py-1.5">
+      {required > 0 && (
+        <div>
+          <div className="mb-0.5 flex items-center justify-between gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+            <span>Training · {RANK_LABELS[rank]}</span>
+            <span className="font-bold text-foreground tabular-nums">{current}/{required}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Progress value={pct} className="h-2 flex-1" />
+            {canEdit && (
+              <>
+                <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => setT(current - 1)} disabled={current <= 0}>−</Button>
+                <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => setT(current + 1)} disabled={current >= required}>+</Button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+      <div>
+        <div className="mb-0.5 flex items-center justify-between gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+          <span>Re-training</span>
+          <span className="font-bold text-foreground tabular-nums">{reCur}/{RETRAIN_CAP}</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Progress value={rePct} className="h-2 flex-1" />
+          {canEdit && (
+            <>
+              <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => onRetrains(reCur - 1)} disabled={reCur <= 0}>−</Button>
+              <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => onRetrains(reCur + 1)} disabled={reCur >= RETRAIN_CAP}>+</Button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
