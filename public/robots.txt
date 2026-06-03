@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://d20project.lovable.app/sitemap.xml

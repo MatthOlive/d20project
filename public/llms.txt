@@ -1,0 +1,10 @@
+# D20 Project
+
+> Virtual tabletop for multi-system tabletop RPGs. Real-time rolls, dynamic character sheets, integrated chat, maps, and an AI narrator that can be trained on your system's rules.
+
+D20 Project is a browser-based virtual tabletop (VTT) designed for online tabletop RPG sessions. It supports Pokérole 2.0 today, with D&D and Tormenta 20 (T20) coming soon. Game masters can run human-narrated or AI-narrated tables, share rolls and tokens in real time, manage character sheets, and play music together.
+
+## Pages
+
+- [Home](/): Overview of D20 Project — features, supported systems, and how to start a campaign.
+- [Sign in](/auth): Create an account or sign in to start playing.

@@ -146,6 +146,7 @@ function GameRoom() {
 
   return (
     <div className="mx-auto grid h-[calc(100vh-4rem)] max-w-7xl grid-cols-1 gap-3 px-3 py-3 md:grid-cols-[1fr_360px]">
+      <h1 className="sr-only">{game.name ? `${game.name} — D20 Project game room` : "D20 Project game room"}</h1>
       <MusicPlayer gameId={gameId} />
       {/* Center: background + characters */}
       <div className="flex min-h-0 flex-col gap-3">
@@ -240,6 +241,8 @@ function InviteButton({ url }: { url: string }) {
         <div className="flex gap-2">
           <Input value={url} readOnly />
           <Button
+            aria-label="Copy invite link"
+            title="Copy invite link"
             onClick={() => {
               navigator.clipboard.writeText(url);
               toast.success("Invite link copied");

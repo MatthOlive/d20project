@@ -12,6 +12,18 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
   component: AuthPage,
+  head: () => ({
+    meta: [
+      { title: "Sign in or create an account — D20 Project" },
+      { name: "description", content: "Sign in to D20 Project or create a free account to start running and joining online tabletop RPG campaigns in real time." },
+      { property: "og:title", content: "Sign in or create an account — D20 Project" },
+      { property: "og:description", content: "Sign in to D20 Project or create a free account to start running and joining online tabletop RPG campaigns in real time." },
+      { property: "og:url", content: "https://d20project.lovable.app/auth" },
+    ],
+    links: [
+      { rel: "canonical", href: "https://d20project.lovable.app/auth" },
+    ],
+  }),
 });
 
 function AuthPage() {
@@ -83,7 +95,7 @@ function AuthPage() {
         </Link>
         <Card>
           <CardHeader>
-            <CardTitle>Welcome</CardTitle>
+            <CardTitle asChild><h1 className="text-2xl font-semibold">Welcome to D20 Project</h1></CardTitle>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="signin">

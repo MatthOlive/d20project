@@ -22,6 +22,18 @@ import { SettingsDialog, RPG_SYSTEMS } from "@/components/SettingsDialog";
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: Dashboard,
+  head: () => ({
+    meta: [
+      { title: "Your campaigns — D20 Project" },
+      { name: "description", content: "Manage your tabletop RPG campaigns on D20 Project. Create new games, join existing ones, and jump back into your virtual tabletop sessions." },
+      { property: "og:title", content: "Your campaigns — D20 Project" },
+      { property: "og:description", content: "Manage your tabletop RPG campaigns on D20 Project. Create new games, join existing ones, and jump back into your virtual tabletop sessions." },
+      { property: "og:url", content: "https://d20project.lovable.app/dashboard" },
+    ],
+    links: [
+      { rel: "canonical", href: "https://d20project.lovable.app/dashboard" },
+    ],
+  }),
 });
 
 function Dashboard() {
@@ -197,7 +209,8 @@ function Dashboard() {
                   <button
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteGame(g.id, g.name); }}
                     className="absolute right-2 top-2 z-10 hidden h-7 w-7 items-center justify-center rounded-full bg-destructive/90 text-destructive-foreground shadow group-hover:flex"
-                    title={t("delete")}
+                    title={`${t("delete")} ${g.name}`}
+                    aria-label={`${t("delete")} ${g.name}`}
                   ><Trash2 className="h-3.5 w-3.5" /></button>
                 )}
                 <div
