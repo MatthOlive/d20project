@@ -491,12 +491,7 @@ export function TrainerSheet({
         />
       </section>
 
-      {/* ============ BLOCO 5 — Notoriety + Contest ============ */}
-      <NotorietySection
-        values={trainer.notoriety ?? {}}
-        canEdit={canEdit}
-        onChange={(v) => patch({ notoriety: v })}
-      />
+      {/* ============ BLOCO 5 — Contest ============ */}
       <ContestSection
         contestRank={trainer.contest_rank ?? ""}
         achievements={trainer.achievements ?? []}
