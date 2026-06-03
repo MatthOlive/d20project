@@ -268,6 +268,27 @@ export function SheetTabs(props: {
             sprite={(p) => spriteFor(p)}
             name={(p) => nameFor(p)}
             onOpen={(pid) => setActive({ kind: "pcPokemon", pokemonId: pid })}
+            onAddToTeam={async (pid) => {
+              const usedSlots = new Set(roster.filter((r) => r.team_slot != null).map((r) => r.team_slot!));
+              const nextSlot = SLOTS.find((s) => !usedSlots.has(s));
+              if (!nextSlot) { toast.error("Equipe cheia (6 Pokémon)."); return; }
+              const { error } = await supabase.from("pokemon").update({ team_slot: nextSlot }).eq("id", pid);
+              if (error) { toast.error(error.message); return; }
+              toast.success(`Adicionado ao slot ${nextSlot}`);
+              invalidateRoster();
+              setActive({ kind: "slot", slot: nextSlot, pokemonId: pid });
+            }}
+            onRelease={async (pid) => {
+              const { error } = await supabase.from("pokemon").delete().eq("id", pid);
+              if (error) { toast.error(error.message); return; }
+              toast.success("Pokémon liberado");
+              invalidateRoster();
+            }}
+            onToggleMark={async (pid, marked) => {
+              const { error } = await supabase.from("pokemon").update({ marked: !marked }).eq("id", pid);
+              if (error) { toast.error(error.message); return; }
+              invalidateRoster();
+            }}
           />
         )}
         {active.kind === "pcPokemon" && (
