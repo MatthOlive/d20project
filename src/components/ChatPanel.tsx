@@ -239,6 +239,21 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
       </div>
     );
   }
+  if (msg.kind === "contest" && msg.roll_data) {
+    const c = msg.roll_data as unknown as { name: string; hearts: number; description: string };
+    const tone = c.hearts > 0 ? "border-success/40 bg-success/10 text-success" : c.hearts < 0 ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-border bg-muted/40 text-foreground";
+    return (
+      <div className={`rounded-lg border p-3 ${tone}`}>
+        <div className="mb-1 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wide">
+          <span className="opacity-80">{authorName} drew</span>
+          <span className="rounded bg-background/40 px-1.5 py-0.5">Contest · Reaction</span>
+          <span className="ml-auto tabular-nums">{c.hearts > 0 ? `+${c.hearts}` : c.hearts} ♥</span>
+        </div>
+        <p className="text-sm font-bold">{c.name}</p>
+        <p className="mt-0.5 text-xs opacity-90">{c.description}</p>
+      </div>
+    );
+  }
   if (msg.kind === "move" && msg.roll_data && (msg.roll_data as MoveRollMessage).v === "move-1") {
     const m = msg.roll_data as MoveRollMessage;
     return (
