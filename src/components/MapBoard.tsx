@@ -53,6 +53,7 @@ export function MapBoard({
   const innerRef = useRef<HTMLDivElement>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
+  const [hoverTokenId, setHoverTokenId] = useState<string | null>(null);
   const [bgAspect, setBgAspect] = useState<number | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
