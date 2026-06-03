@@ -63,7 +63,7 @@ function GameRoom() {
   });
 
   const [windows, setWindows] = useState<OpenWindow[]>([]);
-  const [turnOrderOpen, setTurnOrderOpen] = useState(true);
+  const [turnOrderOpen, setTurnOrderOpen] = useState(false);
 
   function openWindow(w: OpenWindow) {
     if (!windows.find((x) => x.kind === w.kind && x.id === w.id)) {
@@ -915,6 +915,7 @@ function InitiativePanel({ gameId, isNarrator, open, onClose }: { gameId: string
     queryFn: async () => {
       const { data } = await supabase
         .from("initiative").select("*").eq("game_id", gameId)
+        .order("position", { ascending: true })
         .order("successes", { ascending: false })
         .order("created_at", { ascending: true });
       return (data ?? []) as InitRow[];
@@ -938,6 +939,14 @@ function InitiativePanel({ gameId, isNarrator, open, onClose }: { gameId: string
     await supabase.from("initiative").delete().eq("game_id", gameId);
   }
 
+  async function nextTurn() {
+    if (rows.length < 2) return;
+    const top = rows[0];
+    const maxPos = rows.reduce((m, r) => Math.max(m, r.position ?? 0), 0);
+    await supabase.from("initiative").update({ position: maxPos + 1 }).eq("id", top.id);
+    qc.invalidateQueries({ queryKey: ["initiative", gameId] });
+  }
+
   return (
     <FloatingWindow
       title="Turn Order"
@@ -950,11 +959,16 @@ function InitiativePanel({ gameId, isNarrator, open, onClose }: { gameId: string
       minHeight={160}
     >
       <div className="p-3">
-        {isNarrator && rows.length > 0 && (
-          <div className="mb-2 flex justify-end">
-            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={clearInit} title="End combat">
-              <Trash2 className="mr-1 h-3 w-3" /> End combat
+        {rows.length > 0 && (
+          <div className="mb-2 flex flex-wrap items-center justify-end gap-1">
+            <Button size="sm" variant="default" className="h-7 text-xs" onClick={nextTurn} disabled={rows.length < 2} title="Próximo turno">
+              <ChevronRight className="mr-1 h-3 w-3" /> Próximo turno
             </Button>
+            {isNarrator && (
+              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={clearInit} title="End combat">
+                <Trash2 className="mr-1 h-3 w-3" /> End combat
+              </Button>
+            )}
           </div>
         )}
         {rows.length === 0 ? (
