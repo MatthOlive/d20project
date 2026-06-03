@@ -435,7 +435,7 @@ export function TrainerSheet({
       {/* ============ BLOCO 3 — Skills (Fight / Survival / Social / Knowledge / Custom) ============ */}
       <section className="rounded-lg border border-border bg-card p-3">
         <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-primary">Skills</h3>
-        <div className="grid gap-3 lg:grid-cols-5">
+        <div className="grid gap-3 lg:grid-cols-6">
           <SkillGroup title="Fight" tint="bg-primary/15 text-primary"
             skills={["Brawl", "Throw", "Evasion", "Weapons"]}
             values={trainer.skills} canEdit={canEdit}
@@ -452,6 +452,15 @@ export function TrainerSheet({
             skills={["Crafts", "Lore", "Medicine", "Science"]}
             values={trainer.skills} canEdit={canEdit}
             onChange={(s) => patch({ skills: { ...trainer.skills, ...s } })} />
+          <SkillGroup title="Notoriety" tint="bg-amber-500/15 text-amber-500"
+            skills={[...NOTORIETY_SKILLS]}
+            values={trainer.notoriety ?? {}} canEdit={canEdit}
+            cap={NOTORIETY_CAP}
+            onChange={(s) => {
+              const merged = { ...(trainer.notoriety ?? {}), ...s };
+              for (const k of Object.keys(merged)) merged[k] = Math.max(0, Math.min(NOTORIETY_CAP, merged[k] ?? 0));
+              patch({ notoriety: merged });
+            }} />
           <CustomSkillsSection
             items={trainer.custom_skills ?? []}
             canEdit={canEdit}
