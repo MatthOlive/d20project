@@ -3766,3 +3766,119 @@ export const EVOLUTION_RULES: EvolutionRule[] = [
     "time": "slow"
   }
 ];
+
+const RULE_INDEX: Record<string, EvolutionRule[]> = (() => {
+  const idx: Record<string, EvolutionRule[]> = {};
+  for (const r of EVOLUTION_RULES) {
+    const key = r.from.trim().toLowerCase();
+    (idx[key] ||= []).push(r);
+  }
+  return idx;
+})();
+
+export function getEvolutionRules(speciesName: string | null | undefined): EvolutionRule[] {
+  if (!speciesName) return [];
+  return RULE_INDEX[speciesName.trim().toLowerCase()] ?? [];
+}
+
+export const TIME_THRESHOLDS = { fast: 5, medium: 15, slow: 45 } as const;
+
+export type EvolutionGate = {
+  rule: EvolutionRule;
+  ready: boolean;
+  /** Human-readable description of the method + current progress. */
+  description: string;
+  /** When true, button is always shown regardless of `ready` (e.g. trade, specific-only). */
+  alwaysShow: boolean;
+};
+
+export type EvolutionContext = {
+  victories: number;
+  happiness: number;
+  loyalty: number;
+  /** lowercased item names available to the trainer (bag + held). */
+  inventoryItems: string[];
+  /** map of pokemon attribute name → { current, max }. Used for attribute-max gating. */
+  attrs: Record<string, { current: number; max: number }>;
+};
+
+const ATTR_ALIAS: Record<string, string[]> = {
+  atk: ["strength"],
+  str: ["strength"],
+  strength: ["strength"],
+  dex: ["dexterity"],
+  dexterity: ["dexterity"],
+  vit: ["vitality"],
+  vitality: ["vitality"],
+  spe: ["special"],
+  special: ["special"],
+  ins: ["insight"],
+  insight: ["insight"],
+};
+
+export function evaluateEvolution(rule: EvolutionRule, ctx: EvolutionContext): EvolutionGate {
+  const parts: string[] = [];
+  let ready = true;
+  let alwaysShow = false;
+
+  const hasKind = (k: EvolutionKind) => rule.kinds.includes(k);
+
+  if (hasKind("time") && rule.time) {
+    const need = TIME_THRESHOLDS[rule.time];
+    parts.push(`Tempo (${rule.time}) — ${ctx.victories}/${need} vitórias`);
+    if (ctx.victories < need) ready = false;
+  }
+  if (hasKind("item") && rule.items && rule.items.length > 0) {
+    const available = rule.items.filter((it) => ctx.inventoryItems.includes(it.toLowerCase()));
+    parts.push(`Item — ${rule.items.join(" ou ")} (${available.length}/${rule.items.length} no inventário)`);
+    if (available.length === 0) ready = false;
+  }
+  if (hasKind("happiness_loyalty")) {
+    const needH = rule.happiness ?? 0;
+    const needL = rule.loyalty ?? 0;
+    if (needH > 0 && needL > 0) {
+      parts.push(`Felicidade ${ctx.happiness}/${needH} ou Lealdade ${ctx.loyalty}/${needL}`);
+      if (ctx.happiness < needH && ctx.loyalty < needL) ready = false;
+    } else if (needH > 0) {
+      parts.push(`Felicidade ${ctx.happiness}/${needH}`);
+      if (ctx.happiness < needH) ready = false;
+    } else if (needL > 0) {
+      parts.push(`Lealdade ${ctx.loyalty}/${needL}`);
+      if (ctx.loyalty < needL) ready = false;
+    } else {
+      parts.push(`Felicidade ou Lealdade altas`);
+    }
+  }
+  if (hasKind("attribute") && rule.attribute) {
+    const aliases = ATTR_ALIAS[rule.attribute.toLowerCase()] ?? [rule.attribute.toLowerCase()];
+    const match = aliases.map((a) => ctx.attrs[a]).find(Boolean);
+    if (match) {
+      parts.push(`${rule.attribute.toUpperCase()} maximizado (${match.current}/${match.max})`);
+      if (match.current < match.max) ready = false;
+    } else {
+      parts.push(`${rule.attribute.toUpperCase()} maximizado`);
+      ready = false;
+    }
+  }
+  if (hasKind("trade")) {
+    alwaysShow = true;
+    parts.push(rule.items && rule.items.length > 0 ? `Troca segurando ${rule.items.join(" ou ")}` : `Evolui por troca`);
+  }
+  if (hasKind("specific") && rule.specific) {
+    // If specific is the ONLY kind, the button always shows.
+    if (rule.kinds.length === 1) alwaysShow = true;
+    parts.push(`Condição: ${rule.specific}`);
+  }
+
+  if (parts.length === 0) {
+    parts.push("Sem condição registrada");
+    alwaysShow = true;
+  }
+
+  return {
+    rule,
+    ready,
+    alwaysShow,
+    description: parts.join(" · "),
+  };
+}
