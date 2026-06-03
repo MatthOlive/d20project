@@ -244,6 +244,16 @@ export function PokemonSheet({
             <SelectContent>{RANKS.map((r) => <SelectItem key={r} value={r}>{RANK_LABELS[r]}</SelectItem>)}</SelectContent>
           </Select>
         </div>
+        <div className="px-3 pt-3">
+          <TrainingBars
+            rank={pokemon.rank}
+            trainings={pokemon.trainings ?? {}}
+            retrains={pokemon.retrains ?? 0}
+            canEdit={canEdit}
+            onTrainings={(t) => patch({ trainings: t })}
+            onRetrains={(n) => patch({ retrains: n })}
+          />
+        </div>
         <div className="grid gap-3 p-3 sm:grid-cols-[160px_1fr]">
           {/* Left: image + types */}
           <div className="space-y-2">
