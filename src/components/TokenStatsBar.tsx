@@ -130,9 +130,9 @@ function PokemonStats({ id, editable, expanded }: { id: string; editable: boolea
   return (
     <StatsRow
       stats={[
-        { label: "HP", cur: curHp, max: hpMax, onChange: (n) => patch("current_hp", n) },
-        { label: "Will", cur: curWill, max: willMax, onChange: (n) => patch("current_will", n) },
-        { label: "Conf", cur: conf, max: confMax, onChange: (n) => patch("confidence", n) },
+        { label: "HP", cur: curHp, max: hpMax, color: "#22c55e", onChange: (n) => patch("current_hp", n) },
+        { label: "Will", cur: curWill, max: willMax, color: "#3b82f6", onChange: (n) => patch("current_will", n) },
+        { label: "Conf", cur: conf, max: confMax, color: "#ef4444", onChange: (n) => patch("confidence", n) },
       ]}
       editable={editable && expanded}
     />
