@@ -88,13 +88,15 @@ function PokemonBar({ id, label, onRoll, onClose, onOpenSheet }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pokemon")
-        .select("current_attrs, social_attrs, skills, rank, image_url, species:species_id(abilities, base_attrs, sprite_url)")
+        .select("current_attrs, social_attrs, social_attr_points, social_attr_bonus, skills, rank, image_url, species:species_id(abilities, base_attrs, sprite_url)")
         .eq("id", id)
         .single();
       if (error) throw error;
       return data as {
         current_attrs: Record<string, number>;
         social_attrs: Record<string, number>;
+        social_attr_points: Record<string, number>;
+        social_attr_bonus: Record<string, number>;
         skills: Record<string, number>;
         rank: keyof typeof RANK_BONUS;
         image_url: string | null;
@@ -121,6 +123,7 @@ function PokemonBar({ id, label, onRoll, onClose, onOpenSheet }: Props) {
   if (!p) return <Shell onClose={onClose} title={label} loading />;
 
   const attrOf = (k: string) => (p.current_attrs?.[k] ?? p.species?.base_attrs?.[k] ?? 1);
+  const socialAttrOf = (k: string) => (p.social_attrs?.[k] ?? 1) + (p.social_attr_points?.[k] ?? 0) + (p.social_attr_bonus?.[k] ?? 0);
   const dex = attrOf("dexterity");
   const str = attrOf("strength");
   const alert = p.skills?.Alert ?? 0;
@@ -130,7 +133,7 @@ function PokemonBar({ id, label, onRoll, onClose, onOpenSheet }: Props) {
 
   const attrList = [
     ...POKEMON_ATTRS.map((a) => ({ name: cap(a), value: attrOf(a) })),
-    ...SOCIAL_ATTRS.map((a) => ({ name: cap(a), value: p.social_attrs?.[a] ?? 1 })),
+    ...SOCIAL_ATTRS.map((a) => ({ name: cap(a), value: socialAttrOf(a) })),
   ];
   const skillList = SKILLS.map((s) => ({ name: s, value: p.skills?.[s] ?? 0 }));
 
@@ -150,7 +153,7 @@ function PokemonBar({ id, label, onRoll, onClose, onOpenSheet }: Props) {
         onRoll={onRoll}
       />
       <AbilitiesButton abilities={p.species?.abilities ?? []} label={label} onRoll={onRoll} />
-      <MovesButton moves={moves} label={label} attrs={p.current_attrs} skills={p.skills} baseAttrs={p.species?.base_attrs ?? {}} onRoll={onRoll} />
+      <MovesButton moves={moves} label={label} attrs={{ ...Object.fromEntries(SOCIAL_ATTRS.map((a) => [a, socialAttrOf(a)])), ...(p.current_attrs ?? {}) }} skills={p.skills} baseAttrs={p.species?.base_attrs ?? {}} onRoll={onRoll} />
     </Shell>
   );
 }
