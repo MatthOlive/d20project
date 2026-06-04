@@ -60,6 +60,11 @@ export function MapBoard({
   const panOrigin = useRef<{ mx: number; my: number; ox: number; oy: number } | null>(null);
 
   useEffect(() => {
+    function onClickAway(e: MouseEvent) {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("[data-map-token], [data-token-action-bar]")) return;
+      setSelectedTokenId(null);
+    }
     function onMove(e: MouseEvent) {
       if (panOrigin.current) {
         setPan({
@@ -69,9 +74,11 @@ export function MapBoard({
       }
     }
     function onUp() { panOrigin.current = null; }
+    window.addEventListener("click", onClickAway);
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
     return () => {
+      window.removeEventListener("click", onClickAway);
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
@@ -213,6 +220,7 @@ export function MapBoard({
         return (
           <div
             key={t.id}
+              data-map-token
             draggable={canMove}
             onDragStart={(e) => {
               if (!canMove) return;
@@ -267,6 +275,7 @@ export function MapBoard({
             </div>
             {isSelected && onRoll && (
               <div
+                data-token-action-bar
                 className="absolute left-1/2 top-full mt-6 -translate-x-1/2"
                 onClick={(e) => e.stopPropagation()}
               >
