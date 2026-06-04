@@ -10,6 +10,8 @@ type Stat = {
   onChange: (n: number) => void;
 };
 
+type Defenses = { def: number; spDef: number; spDefUsesInsight: boolean };
+
 export function TokenStatsBar({
   kind, id, editable, expanded,
 }: {
@@ -29,7 +31,7 @@ function TrainerStats({ id, editable, expanded }: { id: string; editable: boolea
     queryFn: async () => {
       const { data, error } = await supabase
         .from("trainers")
-        .select("attrs, attr_points, attr_bonus, current_hp, current_will, confidence, nature")
+        .select("attrs, attr_points, attr_bonus, current_hp, current_will, confidence, nature, modifiers")
         .eq("id", id)
         .single();
       if (error) throw error;
@@ -41,6 +43,7 @@ function TrainerStats({ id, editable, expanded }: { id: string; editable: boolea
         current_will: number | null;
         confidence: number;
         nature: string | null;
+        modifiers: Record<string, unknown> | null;
       };
     },
   });
@@ -60,6 +63,9 @@ function TrainerStats({ id, editable, expanded }: { id: string; editable: boolea
   const curWill = data.current_will ?? willMax;
   const conf = data.confidence ?? 0;
   const confMax = natureMax ?? Math.max(conf, 5);
+  const spDefUsesInsight = Boolean(data.modifiers?._spdef_uses_insight);
+  const def = total("vitality");
+  const spDef = spDefUsesInsight ? total("insight") : total("vitality");
 
   async function patch(field: "current_hp" | "current_will" | "confidence", value: number) {
     qc.setQueryData(["token-trainer-stats", id], (old: typeof data) => old ? { ...old, [field]: value } : old);
@@ -76,6 +82,7 @@ function TrainerStats({ id, editable, expanded }: { id: string; editable: boolea
         { label: "Will", cur: curWill, max: willMax, color: "#3b82f6", onChange: (n) => patch("current_will", n) },
         { label: "Conf", cur: conf, max: confMax, color: "#ef4444", onChange: (n) => patch("confidence", n) },
       ]}
+      defenses={{ def, spDef, spDefUsesInsight }}
       editable={editable && expanded}
     />
   );
@@ -88,7 +95,7 @@ function PokemonStats({ id, editable, expanded }: { id: string; editable: boolea
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pokemon")
-        .select("hp, will, current_hp, current_will, confidence, nature, current_attrs")
+        .select("hp, will, current_hp, current_will, confidence, nature, current_attrs, modifiers")
         .eq("id", id)
         .single();
       if (error) throw error;
@@ -100,6 +107,7 @@ function PokemonStats({ id, editable, expanded }: { id: string; editable: boolea
         confidence: number;
         nature: string | null;
         current_attrs: Record<string, number>;
+        modifiers: Record<string, unknown> | null;
       };
     },
   });
@@ -118,6 +126,11 @@ function PokemonStats({ id, editable, expanded }: { id: string; editable: boolea
   const curWill = data.current_will ?? willMax;
   const conf = data.confidence ?? 0;
   const confMax = natureMax ?? Math.max(conf, 5);
+  const vit = data.current_attrs?.vitality ?? 0;
+  const ins = data.current_attrs?.insight ?? 0;
+  const spDefUsesInsight = Boolean(data.modifiers?._spdef_uses_insight);
+  const def = vit;
+  const spDef = spDefUsesInsight ? ins : vit;
 
   async function patch(field: "current_hp" | "current_will" | "confidence", value: number) {
     qc.setQueryData(["token-pokemon-stats", id], (old: typeof data) => old ? { ...old, [field]: value } : old);
@@ -134,12 +147,13 @@ function PokemonStats({ id, editable, expanded }: { id: string; editable: boolea
         { label: "Will", cur: curWill, max: willMax, color: "#3b82f6", onChange: (n) => patch("current_will", n) },
         { label: "Conf", cur: conf, max: confMax, color: "#ef4444", onChange: (n) => patch("confidence", n) },
       ]}
+      defenses={{ def, spDef, spDefUsesInsight }}
       editable={editable && expanded}
     />
   );
 }
 
-function StatsRow({ stats, editable }: { stats: Stat[]; editable: boolean }) {
+function StatsRow({ stats, defenses, editable }: { stats: Stat[]; defenses?: Defenses; editable: boolean }) {
   return (
     <div
       className="pointer-events-auto flex flex-col gap-1 rounded-md border border-border bg-card/95 px-2 py-1.5 shadow-md backdrop-blur"
@@ -174,6 +188,19 @@ function StatsRow({ stats, editable }: { stats: Stat[]; editable: boolean }) {
           </div>
         );
       })}
+      {defenses && (
+        <div className="mt-1 flex items-center justify-around gap-2 border-t border-border pt-1 text-[10px] font-bold">
+          <span className="flex items-baseline gap-1">
+            <span className="uppercase tracking-wider text-muted-foreground">Def</span>
+            <span className="tabular-nums">{defenses.def}</span>
+          </span>
+          <span className="flex items-baseline gap-1">
+            <span className="uppercase tracking-wider text-muted-foreground">SpDef</span>
+            <span className="tabular-nums">{defenses.spDef}</span>
+            <span className="text-[8px] uppercase opacity-60">({defenses.spDefUsesInsight ? "Ins" : "Vit"})</span>
+          </span>
+        </div>
+      )}
     </div>
   );
 }
