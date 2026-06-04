@@ -501,11 +501,20 @@ export function PokemonSheet({
               if (gMaxMode && baseMove.power > 0) return { ...baseMove, name: `G-Max ${baseMove.name}`, power: baseMove.power + 3 };
               return baseMove;
             })();
+            const attrValue = (raw: string): number => {
+              const key = raw.toLowerCase().trim();
+              if (SOCIAL_ATTRS.includes(key as (typeof SOCIAL_ATTRS)[number])) {
+                return (pokemon.social_attrs?.[key] ?? 1)
+                  + (pokemon.social_attr_points?.[key] ?? 0)
+                  + (pokemon.social_attr_bonus?.[key] ?? 0);
+              }
+              return pokemon.current_attrs?.[key] ?? 1;
+            };
             const pickBestAttr = (raw: string): { name: string; value: number } => {
               const parts = raw.split("/").map((p) => p.trim()).filter(Boolean);
               let best: { name: string; value: number } | null = null;
               for (const p of parts) {
-                const v = pokemon.current_attrs[p] ?? 1;
+                const v = attrValue(p);
                 if (!best || v > best.value) best = { name: p, value: v };
               }
               return best ?? { name: raw, value: 1 };
