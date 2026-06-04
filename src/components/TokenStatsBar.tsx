@@ -31,7 +31,7 @@ function TrainerStats({ id, editable, expanded }: { id: string; editable: boolea
     queryFn: async () => {
       const { data, error } = await supabase
         .from("trainers")
-        .select("attrs, attr_points, attr_bonus, current_hp, current_will, confidence, nature, modifiers")
+        .select("attrs, attr_points, attr_bonus, current_hp, current_will, confidence, nature")
         .eq("id", id)
         .single();
       if (error) throw error;
@@ -43,7 +43,6 @@ function TrainerStats({ id, editable, expanded }: { id: string; editable: boolea
         current_will: number | null;
         confidence: number;
         nature: string | null;
-        modifiers: Record<string, unknown> | null;
       };
     },
   });
