@@ -148,16 +148,22 @@ export function ChatPanel({
     }
   }
 
-  async function quickRoll(n: number) {
-    const result = rollD6(n);
+  async function rollFromPanel(faces: number, count: number, modifier: number, successMode: boolean) {
+    const n = Math.max(1, Math.min(50, Math.floor(count)));
+    const mod = Math.floor(modifier) || 0;
+    const result = rollDice(n, faces);
+    const mode: "sum" | "success" = faces === 6 && successMode ? "success" : "sum";
+    const modStr = mod === 0 ? "" : mod > 0 ? ` +${mod}` : ` ${mod}`;
+    const body = `${n}d${faces}${modStr}`;
     await supabase.from("chat_messages").insert({
       game_id: gameId,
       user_id: userId,
       kind: "roll",
-      body: `${n}d6`,
-      roll_data: { ...result, label: `${n}d6` },
+      body,
+      roll_data: { ...result, label: body, modifier: mod, mode },
     });
   }
+
 
   async function drawContest() {
     // Fetch game-level weight overrides (narrator can set in Settings)
