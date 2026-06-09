@@ -5,12 +5,13 @@ import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dices, Send, Bot, Sparkles, Award } from "lucide-react";
-import { rollD6, rollDice, parseRollCommand } from "@/lib/pokerole";
-import { drawReactionCard, REACTION_DECK } from "@/lib/contest";
+import { rollDice, parseRollCommand } from "@/lib/pokerole";
+import { drawReactionCard } from "@/lib/contest";
 import { cn } from "@/lib/utils";
 import { narratorTurn } from "@/lib/narrator.functions";
 import { toast } from "sonner";
 import { MoveCard, SuccessHover, type MoveRollMessage } from "@/components/MoveCard";
+import { FloatingWindow } from "@/components/FloatingWindow";
 
 type Msg = {
   id: string;
@@ -18,9 +19,14 @@ type Msg = {
   user_id: string;
   kind: string;
   body: string;
-  roll_data: { dice: number[]; successes: number; ones: number; label?: string; faces?: number } | MoveRollMessage | null;
+  roll_data:
+    | { dice: number[]; successes: number; ones: number; label?: string; faces?: number; modifier?: number; mode?: "sum" | "success" }
+    | MoveRollMessage
+    | null;
   created_at: string;
 };
+
+const DICE_FACES = [2, 4, 6, 8, 10, 12, 20, 100] as const;
 
 
 export function ChatPanel({
