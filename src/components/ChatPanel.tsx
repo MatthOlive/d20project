@@ -5,12 +5,13 @@ import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dices, Send, Bot, Sparkles, Award } from "lucide-react";
-import { rollD6, rollDice, parseRollCommand } from "@/lib/pokerole";
-import { drawReactionCard, REACTION_DECK } from "@/lib/contest";
+import { rollDice, parseRollCommand } from "@/lib/pokerole";
+import { drawReactionCard } from "@/lib/contest";
 import { cn } from "@/lib/utils";
 import { narratorTurn } from "@/lib/narrator.functions";
 import { toast } from "sonner";
 import { MoveCard, SuccessHover, type MoveRollMessage } from "@/components/MoveCard";
+import { FloatingWindow } from "@/components/FloatingWindow";
 
 type Msg = {
   id: string;
@@ -18,9 +19,14 @@ type Msg = {
   user_id: string;
   kind: string;
   body: string;
-  roll_data: { dice: number[]; successes: number; ones: number; label?: string; faces?: number } | MoveRollMessage | null;
+  roll_data:
+    | { dice: number[]; successes: number; ones: number; label?: string; faces?: number; modifier?: number; mode?: "sum" | "success" }
+    | MoveRollMessage
+    | null;
   created_at: string;
 };
+
+const DICE_FACES = [2, 4, 6, 8, 10, 12, 20, 100] as const;
 
 
 export function ChatPanel({
@@ -142,16 +148,22 @@ export function ChatPanel({
     }
   }
 
-  async function quickRoll(n: number) {
-    const result = rollD6(n);
+  async function rollFromPanel(faces: number, count: number, modifier: number, successMode: boolean) {
+    const n = Math.max(1, Math.min(50, Math.floor(count)));
+    const mod = Math.floor(modifier) || 0;
+    const result = rollDice(n, faces);
+    const mode: "sum" | "success" = faces === 6 && successMode ? "success" : "sum";
+    const modStr = mod === 0 ? "" : mod > 0 ? ` +${mod}` : ` ${mod}`;
+    const body = `${n}d${faces}${modStr}`;
     await supabase.from("chat_messages").insert({
       game_id: gameId,
       user_id: userId,
       kind: "roll",
-      body: `${n}d6`,
-      roll_data: { ...result, label: `${n}d6` },
+      body,
+      roll_data: { ...result, label: body, modifier: mod, mode },
     });
   }
+
 
   async function drawContest() {
     // Fetch game-level weight overrides (narrator can set in Settings)
@@ -170,9 +182,15 @@ export function ChatPanel({
     });
   }
 
+  const [diceOpen, setDiceOpen] = useState(false);
+  const [successMode, setSuccessMode] = useState(false);
+  const [diceRows, setDiceRows] = useState<Record<number, { count: number; mod: number }>>(() =>
+    Object.fromEntries(DICE_FACES.map((f) => [f, { count: 1, mod: 0 }])) as Record<number, { count: number; mod: number }>,
+  );
+
   return (
-    <div className="flex h-full flex-col">
-      <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto p-3">
+    <div className="flex h-full min-h-0 flex-col">
+      <div ref={scrollRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
         {messages.map((m) => (
           <MessageBubble key={m.id} msg={m} authorName={profiles[m.user_id] ?? "…"} isMe={m.user_id === userId} />
         ))}
@@ -187,7 +205,7 @@ export function ChatPanel({
           <p className="text-center text-xs italic text-muted-foreground"><Bot className="inline h-3 w-3" /> Narrator is thinking…</p>
         )}
       </div>
-      <div className="border-t border-border p-3">
+      <div className="shrink-0 border-t border-border bg-card p-3">
         {aiNarrator && (
           <div className="mb-2 flex flex-wrap gap-1">
             <Button
@@ -203,11 +221,9 @@ export function ChatPanel({
           </div>
         )}
         <div className="mb-2 flex flex-wrap gap-1">
-          {[2, 3, 4, 5, 6, 7].map((n) => (
-            <Button key={n} variant="outline" size="sm" className="h-7 text-xs" onClick={() => quickRoll(n)}>
-              <Dices className="mr-1 h-3 w-3" /> {n}d6
-            </Button>
-          ))}
+          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setDiceOpen(true)}>
+            <Dices className="mr-1 h-3 w-3" /> Dados
+          </Button>
           <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => void drawContest()} title="Sortear carta de reação de Contest">
             <Award className="mr-1 h-3 w-3" /> Contest
           </Button>
@@ -224,9 +240,70 @@ export function ChatPanel({
           <Button type="submit" size="icon" aria-label="Send message"><Send className="h-4 w-4" /></Button>
         </form>
       </div>
+      {diceOpen && (
+        <FloatingWindow
+          title="Dados"
+          onClose={() => setDiceOpen(false)}
+          width={360}
+          height={480}
+          initialX={typeof window !== "undefined" ? Math.max(20, window.innerWidth - 400) : 100}
+          initialY={120}
+        >
+          <div className="space-y-3 p-3">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={successMode}
+                onChange={(e) => setSuccessMode(e.target.checked)}
+                className="h-4 w-4 rounded-full accent-primary"
+              />
+              <span className="font-medium">Sucesso</span>
+              <span className="text-xs text-muted-foreground">(d6: 4-6 = sucesso)</span>
+            </label>
+            <div className="space-y-2">
+              {DICE_FACES.map((faces) => {
+                const row = diceRows[faces];
+                return (
+                  <div key={faces} className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={50}
+                      value={row.count}
+                      onChange={(e) =>
+                        setDiceRows((prev) => ({ ...prev, [faces]: { ...prev[faces], count: parseInt(e.target.value || "1", 10) } }))
+                      }
+                      className="h-8 w-16"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-16 text-xs font-bold"
+                      onClick={() => void rollFromPanel(faces, row.count, row.mod, successMode)}
+                    >
+                      d{faces}
+                    </Button>
+                    <span className="text-xs text-muted-foreground">+</span>
+                    <Input
+                      type="number"
+                      value={row.mod}
+                      onChange={(e) =>
+                        setDiceRows((prev) => ({ ...prev, [faces]: { ...prev[faces], mod: parseInt(e.target.value || "0", 10) } }))
+                      }
+                      className="h-8 w-16"
+                      placeholder="0"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </FloatingWindow>
+      )}
     </div>
   );
 }
+
 
 function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string; isMe: boolean }) {
   if (msg.kind === "narrator") {
@@ -304,11 +381,14 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
     );
   }
   // Legacy simple roll message
-  const rd = msg.roll_data as unknown as { dice: number[]; successes: number; ones: number; faces?: number } | null;
+  const rd = msg.roll_data as unknown as { dice: number[]; successes: number; ones: number; faces?: number; modifier?: number; mode?: "sum" | "success" } | null;
   if (msg.kind === "roll" && rd) {
     const faces = rd.faces ?? 6;
     const isD6 = faces === 6;
+    const mod = rd.modifier ?? 0;
+    const mode = rd.mode ?? (isD6 ? "success" : "sum");
     const sum = rd.dice.reduce((a, b) => a + b, 0);
+    const total = sum + mod;
 
     return (
       <div className="rounded-lg border border-border bg-card p-3">
@@ -322,15 +402,15 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
               key={i}
               className={cn(
                 "inline-flex h-7 min-w-7 items-center justify-center rounded-md border px-1.5 text-sm font-bold tabular-nums",
-                isD6 && d >= 4
+                isD6 && mode === "success" && d >= 4
                   ? "border-success bg-success text-success-foreground"
-                  : isD6 && d === 1
+                  : isD6 && mode === "success" && d === 1
                     ? "border-destructive/30 bg-destructive/10 text-destructive"
                     : "border-border bg-muted text-foreground",
               )}
             >{d}</span>
           ))}
-          {isD6 ? (
+          {mode === "success" ? (
             <>
               <span className="ml-2 rounded-full bg-success/15 px-2.5 py-0.5 text-xs font-bold text-success">
                 {rd.successes} success{rd.successes === 1 ? "" : "es"}
@@ -343,13 +423,14 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
             </>
           ) : (
             <span className="ml-2 rounded-full bg-primary/15 px-2.5 py-0.5 text-xs font-bold text-primary">
-              total {sum}
+              total {total}{mod !== 0 ? ` (${sum}${mod > 0 ? ` +${mod}` : ` ${mod}`})` : ""}
             </span>
           )}
         </div>
       </div>
     );
   }
+
   return (
     <div className={cn("flex flex-col", isMe ? "items-end" : "items-start")}>
       <span className="px-1 text-xs text-muted-foreground">{authorName}</span>
