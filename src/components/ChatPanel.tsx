@@ -381,11 +381,14 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
     );
   }
   // Legacy simple roll message
-  const rd = msg.roll_data as unknown as { dice: number[]; successes: number; ones: number; faces?: number } | null;
+  const rd = msg.roll_data as unknown as { dice: number[]; successes: number; ones: number; faces?: number; modifier?: number; mode?: "sum" | "success" } | null;
   if (msg.kind === "roll" && rd) {
     const faces = rd.faces ?? 6;
     const isD6 = faces === 6;
+    const mod = rd.modifier ?? 0;
+    const mode = rd.mode ?? (isD6 ? "success" : "sum");
     const sum = rd.dice.reduce((a, b) => a + b, 0);
+    const total = sum + mod;
 
     return (
       <div className="rounded-lg border border-border bg-card p-3">
@@ -399,15 +402,15 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
               key={i}
               className={cn(
                 "inline-flex h-7 min-w-7 items-center justify-center rounded-md border px-1.5 text-sm font-bold tabular-nums",
-                isD6 && d >= 4
+                isD6 && mode === "success" && d >= 4
                   ? "border-success bg-success text-success-foreground"
-                  : isD6 && d === 1
+                  : isD6 && mode === "success" && d === 1
                     ? "border-destructive/30 bg-destructive/10 text-destructive"
                     : "border-border bg-muted text-foreground",
               )}
             >{d}</span>
           ))}
-          {isD6 ? (
+          {mode === "success" ? (
             <>
               <span className="ml-2 rounded-full bg-success/15 px-2.5 py-0.5 text-xs font-bold text-success">
                 {rd.successes} success{rd.successes === 1 ? "" : "es"}
@@ -420,13 +423,14 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
             </>
           ) : (
             <span className="ml-2 rounded-full bg-primary/15 px-2.5 py-0.5 text-xs font-bold text-primary">
-              total {sum}
+              total {total}{mod !== 0 ? ` (${sum}${mod > 0 ? ` +${mod}` : ` ${mod}`})` : ""}
             </span>
           )}
         </div>
       </div>
     );
   }
+
   return (
     <div className={cn("flex flex-col", isMe ? "items-end" : "items-start")}>
       <span className="px-1 text-xs text-muted-foreground">{authorName}</span>
