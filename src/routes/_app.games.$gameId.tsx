@@ -193,27 +193,27 @@ function GameRoom() {
 
       {/* Right: tabs */}
       <Card className="flex min-h-0 flex-col overflow-hidden p-0">
-        <div className="p-2">
+        <div className="shrink-0 p-2">
           <OnlinePresence gameId={gameId} userId={user.id} isNarrator={isNarrator} />
         </div>
-        <Tabs defaultValue="chat" className="flex h-full flex-col">
+        <Tabs defaultValue="chat" className="flex min-h-0 flex-1 flex-col">
 
-          <TabsList className="m-2 grid grid-cols-4">
+          <TabsList className="m-2 grid shrink-0 grid-cols-4">
             <TabsTrigger value="chat">Chat</TabsTrigger>
             <TabsTrigger value="compendium">Compendium</TabsTrigger>
             <TabsTrigger value="files">Files</TabsTrigger>
             <TabsTrigger value="music">Music</TabsTrigger>
           </TabsList>
-          <TabsContent value="chat" className="flex-1 overflow-hidden">
+          <TabsContent value="chat" className="mt-0 min-h-0 flex-1 overflow-hidden">
             <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} isGameOwner={isNarrator} />
           </TabsContent>
-          <TabsContent value="compendium" className="flex-1 overflow-auto p-3">
+          <TabsContent value="compendium" className="mt-0 min-h-0 flex-1 overflow-auto p-3">
             <CompendiumPanel />
           </TabsContent>
-          <TabsContent value="files" className="flex-1 overflow-auto p-3">
+          <TabsContent value="files" className="mt-0 min-h-0 flex-1 overflow-auto p-3">
             <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindow} />
           </TabsContent>
-          <TabsContent value="music" className="flex-1 overflow-hidden">
+          <TabsContent value="music" className="mt-0 min-h-0 flex-1 overflow-hidden">
             <MusicPanel gameId={gameId} isNarrator={isNarrator} />
           </TabsContent>
         </Tabs>
