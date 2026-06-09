@@ -182,9 +182,15 @@ export function ChatPanel({
     });
   }
 
+  const [diceOpen, setDiceOpen] = useState(false);
+  const [successMode, setSuccessMode] = useState(false);
+  const [diceRows, setDiceRows] = useState<Record<number, { count: number; mod: number }>>(() =>
+    Object.fromEntries(DICE_FACES.map((f) => [f, { count: 1, mod: 0 }])) as Record<number, { count: number; mod: number }>,
+  );
+
   return (
-    <div className="flex h-full flex-col">
-      <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto p-3">
+    <div className="flex h-full min-h-0 flex-col">
+      <div ref={scrollRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
         {messages.map((m) => (
           <MessageBubble key={m.id} msg={m} authorName={profiles[m.user_id] ?? "…"} isMe={m.user_id === userId} />
         ))}
@@ -199,7 +205,7 @@ export function ChatPanel({
           <p className="text-center text-xs italic text-muted-foreground"><Bot className="inline h-3 w-3" /> Narrator is thinking…</p>
         )}
       </div>
-      <div className="border-t border-border p-3">
+      <div className="shrink-0 border-t border-border bg-card p-3">
         {aiNarrator && (
           <div className="mb-2 flex flex-wrap gap-1">
             <Button
@@ -215,11 +221,9 @@ export function ChatPanel({
           </div>
         )}
         <div className="mb-2 flex flex-wrap gap-1">
-          {[2, 3, 4, 5, 6, 7].map((n) => (
-            <Button key={n} variant="outline" size="sm" className="h-7 text-xs" onClick={() => quickRoll(n)}>
-              <Dices className="mr-1 h-3 w-3" /> {n}d6
-            </Button>
-          ))}
+          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setDiceOpen(true)}>
+            <Dices className="mr-1 h-3 w-3" /> Dados
+          </Button>
           <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => void drawContest()} title="Sortear carta de reação de Contest">
             <Award className="mr-1 h-3 w-3" /> Contest
           </Button>
@@ -236,9 +240,70 @@ export function ChatPanel({
           <Button type="submit" size="icon" aria-label="Send message"><Send className="h-4 w-4" /></Button>
         </form>
       </div>
+      {diceOpen && (
+        <FloatingWindow
+          title="Dados"
+          onClose={() => setDiceOpen(false)}
+          width={360}
+          height={480}
+          initialX={typeof window !== "undefined" ? Math.max(20, window.innerWidth - 400) : 100}
+          initialY={120}
+        >
+          <div className="space-y-3 p-3">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={successMode}
+                onChange={(e) => setSuccessMode(e.target.checked)}
+                className="h-4 w-4 rounded-full accent-primary"
+              />
+              <span className="font-medium">Sucesso</span>
+              <span className="text-xs text-muted-foreground">(d6: 4-6 = sucesso)</span>
+            </label>
+            <div className="space-y-2">
+              {DICE_FACES.map((faces) => {
+                const row = diceRows[faces];
+                return (
+                  <div key={faces} className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={50}
+                      value={row.count}
+                      onChange={(e) =>
+                        setDiceRows((prev) => ({ ...prev, [faces]: { ...prev[faces], count: parseInt(e.target.value || "1", 10) } }))
+                      }
+                      className="h-8 w-16"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-16 text-xs font-bold"
+                      onClick={() => void rollFromPanel(faces, row.count, row.mod, successMode)}
+                    >
+                      d{faces}
+                    </Button>
+                    <span className="text-xs text-muted-foreground">+</span>
+                    <Input
+                      type="number"
+                      value={row.mod}
+                      onChange={(e) =>
+                        setDiceRows((prev) => ({ ...prev, [faces]: { ...prev[faces], mod: parseInt(e.target.value || "0", 10) } }))
+                      }
+                      className="h-8 w-16"
+                      placeholder="0"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </FloatingWindow>
+      )}
     </div>
   );
 }
+
 
 function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string; isMe: boolean }) {
   if (msg.kind === "narrator") {
