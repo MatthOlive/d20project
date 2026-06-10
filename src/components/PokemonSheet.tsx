@@ -286,6 +286,18 @@ export function PokemonSheet({
               <Input disabled={!canEdit} value={pokemon.nickname ?? ""} placeholder={species.name} onChange={(e) => patch({ nickname: e.target.value })} className="h-9 text-base font-bold" />
               <SheetPermissionsDialog kind="pokemon" entityId={pokemonId} gameId={_gameId} isNarrator={isNarrator} />
               {canEdit && (
+                <Button size="icon" variant="ghost" className="h-9 w-9" title="Duplicar ficha" onClick={async () => {
+                  const { data: row, error: fetchErr } = await supabase.from("pokemon").select("*").eq("id", pokemonId).single();
+                  if (fetchErr || !row) { toast.error(fetchErr?.message ?? "Falha ao copiar"); return; }
+                  const { id: _id, created_at: _c, updated_at: _u, owner_trainer_id: _o, team_slot: _t, ...rest } = row as Record<string, unknown>;
+                  void _id; void _c; void _u; void _o; void _t;
+                  const copy = { ...rest, nickname: `${(row as { nickname?: string }).nickname ?? species.name} (cópia)`, owner_trainer_id: null, team_slot: null };
+                  const { error } = await supabase.from("pokemon").insert(copy as never);
+                  if (error) { toast.error(error.message); return; }
+                  toast.success("Pokémon duplicado");
+                }}><Copy className="h-4 w-4" /></Button>
+              )}
+              {canEdit && (
                 <Button size="icon" variant="ghost" className="h-9 w-9 text-destructive hover:bg-destructive/10" title="Delete sheet" onClick={async () => {
                   if (!confirm("Delete this Pokémon sheet? This cannot be undone.")) return;
                   const { error } = await supabase.from("pokemon").delete().eq("id", pokemonId);
