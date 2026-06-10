@@ -79,6 +79,20 @@ function GameRoom() {
     setWindows((p) => p.filter((x) => !(x.kind === kind && x.id === id)));
   }
 
+  // Auto-open a sheet from a `?sheet=kind:id:label` URL param (used by the
+  // "open in new window" button in floating sheets).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get("sheet");
+    if (!raw) return;
+    const [kind, id, ...labelParts] = raw.split(":");
+    if ((kind === "trainer" || kind === "pokemon") && id) {
+      openWindow({ kind, id, title: decodeURIComponent(labelParts.join(":") || id) });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const isNarrator = !!game && !!user && game.narrator_id === user.id;
 
   async function rollFromSheet(
