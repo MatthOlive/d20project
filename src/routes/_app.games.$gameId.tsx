@@ -240,6 +240,12 @@ function GameRoom() {
             key={`${w.kind}-${w.id}`}
             title={w.title}
             onClose={() => closeWindow(w.kind, w.id)}
+            onPopOut={() => {
+              const params = new URLSearchParams();
+              params.set("sheet", `${w.kind}:${w.id}:${encodeURIComponent(w.title)}`);
+              const url = `${window.location.pathname}?${params.toString()}`;
+              window.open(url, "_blank", "noopener,width=1200,height=800");
+            }}
             initialX={120 + i * 30}
             initialY={80 + i * 30}
             width={w.kind === "trainer" ? 760 : 560}
