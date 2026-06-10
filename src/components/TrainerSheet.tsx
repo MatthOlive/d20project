@@ -530,7 +530,23 @@ export function TrainerSheet({
       </section>
 
       {canEdit && (
-        <section className="flex justify-end border-t border-border pt-3">
+        <section className="flex justify-end gap-2 border-t border-border pt-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              const { data: row, error: fetchErr } = await supabase.from("trainers").select("*").eq("id", trainerId).single();
+              if (fetchErr || !row) { toast.error(fetchErr?.message ?? "Falha ao copiar"); return; }
+              const { id: _id, created_at: _c, updated_at: _u, ...rest } = row as Record<string, unknown>;
+              void _id; void _c; void _u;
+              const copy = { ...rest, name: `${(row as { name?: string }).name ?? "Trainer"} (cópia)` };
+              const { error } = await supabase.from("trainers").insert(copy as never);
+              if (error) { toast.error(error.message); return; }
+              toast.success("Treinador duplicado");
+            }}
+          >
+            <Plus className="mr-1 h-3.5 w-3.5" /> Duplicar ficha
+          </Button>
           <Button
             variant="destructive"
             size="sm"
