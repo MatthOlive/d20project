@@ -110,7 +110,7 @@ export function MapBoard({
       window.removeEventListener("mouseup", onUp);
       window.removeEventListener("map-zoom", onZoom as EventListener);
     };
-  }, []);
+  }, [resizeTokenId, localSize]);
 
 
   useEffect(() => {
