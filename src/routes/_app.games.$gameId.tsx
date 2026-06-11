@@ -301,6 +301,7 @@ function RightOverlayPanel({ children }: { children: React.ReactNode }) {
 }
 
 
+function InviteButton({ url }: { url: string }) {
   const [open, setOpen] = useState(false);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
