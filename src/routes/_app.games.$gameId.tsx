@@ -26,7 +26,7 @@ import { MapBoard, DRAG_MIME, type DragCharacterPayload } from "@/components/Map
 import { MusicPanel } from "@/components/MusicPanel";
 import { MusicPlayer } from "@/components/MusicPlayer";
 import { toast } from "sonner";
-import { Copy, Crown, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Swords, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, Dices, Menu } from "lucide-react";
+import { Copy, Crown, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Swords, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, Dices, Menu, ZoomIn, ZoomOut, RotateCcw, MessageSquare } from "lucide-react";
 import { rollD6, rollShiny, POKEMON_TYPES, TYPE_COLORS, type PokemonType } from "@/lib/pokerole";
 import { REACTION_DECK } from "@/lib/contest";
 
