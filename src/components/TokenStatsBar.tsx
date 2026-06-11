@@ -13,15 +13,28 @@ type Stat = {
 type Defenses = { def: number; spDef: number; spDefUsesInsight: boolean };
 
 export function TokenStatsBar({
-  kind, id, editable, expanded,
+  kind, id, gameId, editable, expanded,
 }: {
   kind: "trainer" | "pokemon";
   id: string;
+  gameId?: string;
   editable: boolean;
   expanded: boolean;
 }) {
-  if (kind === "trainer") return <TrainerStats id={id} editable={editable} expanded={expanded} />;
-  return <PokemonStats id={id} editable={editable} expanded={expanded} />;
+  if (kind === "trainer") return <TrainerStats id={id} gameId={gameId} editable={editable} expanded={expanded} />;
+  return <PokemonStats id={id} gameId={gameId} editable={editable} expanded={expanded} />;
+}
+
+function useGameSpdefUsesInsight(gameId?: string) {
+  const { data } = useQuery({
+    queryKey: ["game-spdef-uses-insight", gameId ?? null],
+    enabled: !!gameId,
+    queryFn: async () => {
+      const { data } = await supabase.from("games").select("spdef_uses_insight").eq("id", gameId!).maybeSingle();
+      return Boolean((data as { spdef_uses_insight?: boolean } | null)?.spdef_uses_insight);
+    },
+  });
+  return Boolean(data);
 }
 
 function TrainerStats({ id, editable, expanded }: { id: string; editable: boolean; expanded: boolean }) {
