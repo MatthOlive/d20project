@@ -100,7 +100,7 @@ function TrainerStats({ id, gameId, editable, expanded }: { id: string; gameId?:
   );
 }
 
-function PokemonStats({ id, editable, expanded }: { id: string; editable: boolean; expanded: boolean }) {
+function PokemonStats({ id, gameId, editable, expanded }: { id: string; gameId?: string; editable: boolean; expanded: boolean }) {
   const qc = useQueryClient();
   const { data } = useQuery({
     queryKey: ["token-pokemon-stats", id],
