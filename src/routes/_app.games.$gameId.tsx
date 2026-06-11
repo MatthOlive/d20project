@@ -172,66 +172,63 @@ function GameRoom() {
   if (!game || !user) return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
 
   return (
-    <div className="mx-auto grid h-[calc(100vh-4rem)] max-w-7xl grid-cols-1 gap-3 px-3 py-3 md:grid-cols-[1fr_360px]">
+    <div className="relative h-[calc(100vh-4rem)] w-full px-3 py-3">
       <h1 className="sr-only">{game.name ? `${game.name} — D20 Project game room` : "D20 Project game room"}</h1>
       <MusicPlayer gameId={gameId} />
-      {/* Center: background + characters */}
-      <div className="flex min-h-0 flex-col gap-3">
-        <div className="relative flex-1 min-h-0">
-          <MapBoard
+      {/* Fullscreen map */}
+      <div className="relative h-full w-full">
+        <MapBoard
+          gameId={gameId}
+          backgroundUrl={game.background_url}
+          userId={user.id}
+          isNarrator={isNarrator}
+          onRoll={rollFromSheet}
+          onOpenSheet={(kind, id, label) => openWindow({ kind, id, title: label })}
+        />
+        <MapLeftDisclosure
+          isNarrator={isNarrator}
+          inviteUrl={inviteUrl}
+          gameId={gameId}
+          onToggleTurnOrder={() => setTurnOrderOpen((v) => !v)}
+        />
+        {isNarrator && (
+          <MapTopDisclosure
             gameId={gameId}
-            backgroundUrl={game.background_url}
-            userId={user.id}
-            isNarrator={isNarrator}
-            onRoll={rollFromSheet}
-            onOpenSheet={(kind, id, label) => openWindow({ kind, id, title: label })}
+            currentBg={game.background_url}
+            uploadBackground={uploadBackground}
           />
-          {/* Left side disclosure (toggled like Map tools) */}
-          <MapLeftDisclosure
-            isNarrator={isNarrator}
-            inviteUrl={inviteUrl}
-            gameId={gameId}
-            onToggleTurnOrder={() => setTurnOrderOpen((v) => !v)}
-          />
-          {/* Top "lingueta" disclosure (narrator only) */}
-          {isNarrator && (
-            <MapTopDisclosure
-              gameId={gameId}
-              currentBg={game.background_url}
-              uploadBackground={uploadBackground}
-            />
-          )}
-          <InitiativePanel gameId={gameId} isNarrator={isNarrator} open={turnOrderOpen} onClose={() => setTurnOrderOpen(false)} />
-        </div>
+        )}
+        <InitiativePanel gameId={gameId} isNarrator={isNarrator} open={turnOrderOpen} onClose={() => setTurnOrderOpen(false)} />
+
+        {/* Right: floating chat/files/etc overlay */}
+        <RightOverlayPanel>
+          <Card className="flex h-full min-h-0 flex-col overflow-hidden p-0">
+            <div className="shrink-0 p-2">
+              <OnlinePresence gameId={gameId} userId={user.id} isNarrator={isNarrator} />
+            </div>
+            <Tabs defaultValue="chat" className="flex min-h-0 flex-1 flex-col">
+              <TabsList className="m-2 grid shrink-0 grid-cols-4">
+                <TabsTrigger value="chat">Chat</TabsTrigger>
+                <TabsTrigger value="compendium">Compendium</TabsTrigger>
+                <TabsTrigger value="files">Files</TabsTrigger>
+                <TabsTrigger value="music">Music</TabsTrigger>
+              </TabsList>
+              <TabsContent value="chat" className="mt-0 min-h-0 flex-1 overflow-hidden">
+                <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} isGameOwner={isNarrator} />
+              </TabsContent>
+              <TabsContent value="compendium" className="mt-0 min-h-0 flex-1 overflow-auto p-3">
+                <CompendiumPanel />
+              </TabsContent>
+              <TabsContent value="files" className="mt-0 min-h-0 flex-1 overflow-auto p-3">
+                <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindow} />
+              </TabsContent>
+              <TabsContent value="music" className="mt-0 min-h-0 flex-1 overflow-hidden">
+                <MusicPanel gameId={gameId} isNarrator={isNarrator} />
+              </TabsContent>
+            </Tabs>
+          </Card>
+        </RightOverlayPanel>
       </div>
-
-      {/* Right: tabs */}
-      <Card className="flex min-h-0 flex-col overflow-hidden p-0">
-        <div className="shrink-0 p-2">
-          <OnlinePresence gameId={gameId} userId={user.id} isNarrator={isNarrator} />
-        </div>
-        <Tabs defaultValue="chat" className="flex min-h-0 flex-1 flex-col">
-
-          <TabsList className="m-2 grid shrink-0 grid-cols-4">
-            <TabsTrigger value="chat">Chat</TabsTrigger>
-            <TabsTrigger value="compendium">Compendium</TabsTrigger>
-            <TabsTrigger value="files">Files</TabsTrigger>
-            <TabsTrigger value="music">Music</TabsTrigger>
-          </TabsList>
-          <TabsContent value="chat" className="mt-0 min-h-0 flex-1 overflow-hidden">
-            <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} isGameOwner={isNarrator} />
-          </TabsContent>
-          <TabsContent value="compendium" className="mt-0 min-h-0 flex-1 overflow-auto p-3">
-            <CompendiumPanel />
-          </TabsContent>
-          <TabsContent value="files" className="mt-0 min-h-0 flex-1 overflow-auto p-3">
-            <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindow} />
-          </TabsContent>
-          <TabsContent value="music" className="mt-0 min-h-0 flex-1 overflow-hidden">
-            <MusicPanel gameId={gameId} isNarrator={isNarrator} />
-          </TabsContent>
-        </Tabs>
-      </Card>
 
       {/* Floating sheet windows */}
       <div className="pointer-events-none">
