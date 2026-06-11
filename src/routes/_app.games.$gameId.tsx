@@ -258,7 +258,49 @@ function GameRoom() {
   );
 }
 
-function InviteButton({ url }: { url: string }) {
+function RightOverlayPanel({ children }: { children: React.ReactNode }) {
+  const [open, setOpen] = useState(true);
+  const [width, setWidth] = useState(360);
+  const dragRef = useRef<{ mx: number; ow: number } | null>(null);
+  useEffect(() => {
+    function move(e: MouseEvent) {
+      if (dragRef.current) {
+        const next = dragRef.current.ow - (e.clientX - dragRef.current.mx);
+        setWidth(Math.max(280, Math.min(640, next)));
+      }
+    }
+    function up() { dragRef.current = null; }
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+    return () => { window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); };
+  }, []);
+  return (
+    <div className="pointer-events-none absolute right-3 top-3 bottom-3 z-30 flex items-start gap-1">
+      {open && (
+        <div
+          className="pointer-events-auto relative h-full"
+          style={{ width }}
+        >
+          <div
+            className="absolute -left-1 top-0 bottom-0 z-10 w-1.5 cursor-ew-resize bg-transparent hover:bg-primary/40"
+            onMouseDown={(e) => { dragRef.current = { mx: e.clientX, ow: width }; e.preventDefault(); }}
+            title="Drag to resize"
+          />
+          <div className="h-full opacity-95">{children}</div>
+        </div>
+      )}
+      <button
+        className="pointer-events-auto mt-1 rounded-l-md bg-card/95 px-1.5 py-2 text-xs shadow backdrop-blur hover:bg-accent"
+        onClick={() => setOpen((v) => !v)}
+        title={open ? "Hide panel" : "Show panel"}
+      >
+        {open ? <ChevronRight className="h-3.5 w-3.5" /> : <MessageSquare className="h-3.5 w-3.5" />}
+      </button>
+    </div>
+  );
+}
+
+
   const [open, setOpen] = useState(false);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
