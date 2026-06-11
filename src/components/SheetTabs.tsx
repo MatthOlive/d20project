@@ -177,13 +177,42 @@ export function SheetTabs(props: {
               key={slot}
               active={isActive}
               onClick={() => setActive({ kind: "slot", slot, pokemonId: pokemon?.id ?? null })}
-              title={pokemon ? `${nameFor(pokemon)} — arraste para o PC para guardar` : `Slot ${slot}`}
+              title={pokemon ? `${nameFor(pokemon)} — arraste para o PC para guardar, ou para outro slot para trocar` : `Slot ${slot}`}
               tone={pokemon ? "team" : "empty"}
               draggable={!!pokemon}
               onDragStart={pokemon ? (e) => {
                 e.dataTransfer.effectAllowed = "move";
-                e.dataTransfer.setData(SLOT_DRAG_MIME, JSON.stringify({ id: pokemon.id, label: nameFor(pokemon) }));
+                e.dataTransfer.setData(SLOT_DRAG_MIME, JSON.stringify({ id: pokemon.id, label: nameFor(pokemon), fromSlot: slot }));
               } : undefined}
+              onDragOver={(e) => {
+                if (e.dataTransfer.types.includes(SLOT_DRAG_MIME)) {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                }
+              }}
+              onDrop={async (e) => {
+                const raw = e.dataTransfer.getData(SLOT_DRAG_MIME);
+                if (!raw) return;
+                e.preventDefault();
+                e.stopPropagation();
+                try {
+                  const p = JSON.parse(raw) as { id: string; label: string; fromSlot?: number };
+                  if (p.fromSlot == null || p.fromSlot === slot) return;
+                  const target = roster.find((r) => r.team_slot === slot);
+                  // Temporarily park source in null to dodge unique-slot constraint
+                  const upd1 = await supabase.from("pokemon").update({ team_slot: null }).eq("id", p.id);
+                  if (upd1.error) { toast.error(upd1.error.message); return; }
+                  if (target) {
+                    const upd2 = await supabase.from("pokemon").update({ team_slot: p.fromSlot }).eq("id", target.id);
+                    if (upd2.error) { toast.error(upd2.error.message); return; }
+                  }
+                  const upd3 = await supabase.from("pokemon").update({ team_slot: slot }).eq("id", p.id);
+                  if (upd3.error) { toast.error(upd3.error.message); return; }
+                  toast.success(`Slot ${p.fromSlot} ⇄ ${slot}`);
+                  invalidateRoster();
+                  setActive({ kind: "slot", slot, pokemonId: p.id });
+                } catch { /* ignore */ }
+              }}
             >
               {sprite
                 ? <img src={sprite} alt={nameFor(pokemon)} className="h-7 w-7 object-contain" />
