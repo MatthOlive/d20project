@@ -340,17 +340,7 @@ export function PokemonSheet({
               <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-bold text-primary">
                 SpDef {spDef} <span className="ml-1 text-[9px] uppercase opacity-70">({spDefUsesInsight ? "Ins" : "Vit"})</span>
               </span>
-              {isNarrator && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-6 px-2 text-[10px]"
-                  title="Toggle SpDef rule (Vitality default / Insight house rule)"
-                  onClick={() => patch({ modifiers: { ...(pokemon.modifiers as Record<string, number>), _spdef_uses_insight: (!spDefUsesInsight) as unknown as number } })}
-                >
-                  Use {spDefUsesInsight ? "Vit" : "Ins"}
-                </Button>
-              )}
+              {/* SpDef rule é configurada globalmente nas Settings da mesa */}
               {canEdit && <EvolveButton
                 pokemonId={pokemonId}
                 fromSprite={species.sprite_url}
