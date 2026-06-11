@@ -85,11 +85,13 @@ export function MapBoard({
     async function onUp() {
       panOrigin.current = null;
       if (resizeOrigin.current && resizeTokenId) {
-        const finalSize = localSize[resizeTokenId];
+        const id = resizeTokenId;
+        const finalSize = localSize[id];
         resizeOrigin.current = null;
+        setResizeTokenId(null);
         if (finalSize) {
-          const id = resizeTokenId;
           await supabase.from("tokens").update({ size: Math.round(finalSize) }).eq("id", id);
+          setLocalSize((s) => { const n = { ...s }; delete n[id]; return n; });
         }
       }
     }
