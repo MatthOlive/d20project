@@ -37,7 +37,7 @@ function useGameSpdefUsesInsight(gameId?: string) {
   return Boolean(data);
 }
 
-function TrainerStats({ id, editable, expanded }: { id: string; editable: boolean; expanded: boolean }) {
+function TrainerStats({ id, gameId, editable, expanded }: { id: string; gameId?: string; editable: boolean; expanded: boolean }) {
   const qc = useQueryClient();
   const { data } = useQuery({
     queryKey: ["token-trainer-stats", id],
