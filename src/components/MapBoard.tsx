@@ -267,10 +267,11 @@ export function MapBoard({
             style={{
               left: `${t.x * 100}%`,
               top: `${t.y * 100}%`,
-              width: t.size,
-              height: t.size,
+              width: localSize[t.id] ?? t.size,
+              height: localSize[t.id] ?? t.size,
               cursor: canMove ? "grab" : "pointer",
               zIndex: isSelected || isHover ? 20 : 1,
+              transition: dragId === t.id || resizeTokenId === t.id ? "none" : "left 200ms ease, top 200ms ease, width 120ms ease, height 120ms ease",
             }}
             title={t.label}
           >
@@ -296,6 +297,18 @@ export function MapBoard({
                   className="absolute -right-1 -top-1 hidden h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow group-hover:flex"
                   aria-label="Remove token"
                 ><X className="h-3 w-3" /></button>
+              )}
+              {canMove && isSelected && (
+                <div
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setResizeTokenId(t.id);
+                    resizeOrigin.current = { mx: e.clientX, my: e.clientY, size: localSize[t.id] ?? t.size };
+                  }}
+                  className="absolute -bottom-1 -right-1 h-4 w-4 cursor-se-resize rounded-sm border-2 border-amber-400 bg-background shadow"
+                  title="Drag to resize"
+                />
               )}
             </div>
             <div className="pointer-events-none absolute left-1/2 top-full mt-0.5 -translate-x-1/2 whitespace-nowrap rounded bg-background/90 px-1.5 py-0.5 text-[10px] font-semibold shadow">
