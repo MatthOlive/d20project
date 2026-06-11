@@ -1,0 +1,1 @@
+ALTER TABLE public.games ADD COLUMN IF NOT EXISTS spdef_uses_insight boolean NOT NULL DEFAULT false;

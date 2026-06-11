@@ -115,6 +115,7 @@ export type Database = {
           narrator_type: string
           overgrown_chance: number
           shiny_chance: number
+          spdef_uses_insight: boolean
           system: string
         }
         Insert: {
@@ -129,6 +130,7 @@ export type Database = {
           narrator_type?: string
           overgrown_chance?: number
           shiny_chance?: number
+          spdef_uses_insight?: boolean
           system?: string
         }
         Update: {
@@ -143,6 +145,7 @@ export type Database = {
           narrator_type?: string
           overgrown_chance?: number
           shiny_chance?: number
+          spdef_uses_insight?: boolean
           system?: string
         }
         Relationships: []
