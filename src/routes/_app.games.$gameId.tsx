@@ -1327,6 +1327,7 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
   const [open, setOpen] = useState(false);
   const [shiny, setShiny] = useState<number>(10);
   const [over, setOver] = useState<number>(0);
+  const [spdefIns, setSpdefIns] = useState<boolean>(false);
   const [weights, setWeights] = useState<Record<string, number>>(() => {
     const m: Record<string, number> = {};
     for (const c of REACTION_DECK) m[c.id] = c.defaultWeight;
@@ -1338,12 +1339,13 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
     (async () => {
       const { data } = await supabase
         .from("games")
-        .select("shiny_chance,overgrown_chance,contest_weights")
+        .select("shiny_chance,overgrown_chance,contest_weights,spdef_uses_insight")
         .eq("id", gameId)
         .single();
-      const row = data as { shiny_chance?: number; overgrown_chance?: number; contest_weights?: Record<string, number> | null } | null;
+      const row = data as { shiny_chance?: number; overgrown_chance?: number; contest_weights?: Record<string, number> | null; spdef_uses_insight?: boolean } | null;
       setShiny(row?.shiny_chance ?? 10);
       setOver(row?.overgrown_chance ?? 0);
+      setSpdefIns(Boolean(row?.spdef_uses_insight));
       const w: Record<string, number> = {};
       for (const c of REACTION_DECK) w[c.id] = row?.contest_weights?.[c.id] ?? c.defaultWeight;
       setWeights(w);
@@ -1359,11 +1361,12 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
     for (const c of REACTION_DECK) cw[c.id] = Math.max(0, Math.min(100, Math.round(weights[c.id] ?? 0)));
     const { error } = await supabase
       .from("games")
-      .update({ shiny_chance: s, overgrown_chance: o, contest_weights: cw } as never)
+      .update({ shiny_chance: s, overgrown_chance: o, contest_weights: cw, spdef_uses_insight: spdefIns } as never)
       .eq("id", gameId);
     if (error) { toast.error(error.message); return; }
     toast.success("Configurações salvas");
     qc.invalidateQueries({ queryKey: ["game", gameId] });
+    qc.invalidateQueries({ queryKey: ["game-spdef-uses-insight", gameId] });
     setOpen(false);
   }
 
