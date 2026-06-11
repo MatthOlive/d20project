@@ -75,8 +75,24 @@ export function MapBoard({
           y: panOrigin.current.oy + e.clientY - panOrigin.current.my,
         });
       }
+      if (resizeOrigin.current && resizeTokenId) {
+        const dx = e.clientX - resizeOrigin.current.mx;
+        const dy = e.clientY - resizeOrigin.current.my;
+        const next = Math.max(24, Math.min(240, resizeOrigin.current.size + Math.max(dx, dy)));
+        setLocalSize((s) => ({ ...s, [resizeTokenId]: next }));
+      }
     }
-    function onUp() { panOrigin.current = null; }
+    async function onUp() {
+      panOrigin.current = null;
+      if (resizeOrigin.current && resizeTokenId) {
+        const finalSize = localSize[resizeTokenId];
+        resizeOrigin.current = null;
+        if (finalSize) {
+          const id = resizeTokenId;
+          await supabase.from("tokens").update({ size: Math.round(finalSize) }).eq("id", id);
+        }
+      }
+    }
     window.addEventListener("click", onClickAway);
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
