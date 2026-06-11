@@ -282,6 +282,7 @@ export function MapBoard({
                 <TokenStatsBar
                   kind={t.character_kind}
                   id={t.character_id}
+                  gameId={gameId}
                   editable={canMove}
                   expanded={isSelected}
                 />
