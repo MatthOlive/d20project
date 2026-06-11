@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -26,7 +26,7 @@ import { MapBoard, DRAG_MIME, type DragCharacterPayload } from "@/components/Map
 import { MusicPanel } from "@/components/MusicPanel";
 import { MusicPlayer } from "@/components/MusicPlayer";
 import { toast } from "sonner";
-import { Copy, Crown, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Swords, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, Dices, Menu } from "lucide-react";
+import { Copy, Crown, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Swords, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, Dices, Menu, ZoomIn, ZoomOut, RotateCcw, MessageSquare } from "lucide-react";
 import { rollD6, rollShiny, POKEMON_TYPES, TYPE_COLORS, type PokemonType } from "@/lib/pokerole";
 import { REACTION_DECK } from "@/lib/contest";
 
@@ -172,66 +172,63 @@ function GameRoom() {
   if (!game || !user) return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
 
   return (
-    <div className="mx-auto grid h-[calc(100vh-4rem)] max-w-7xl grid-cols-1 gap-3 px-3 py-3 md:grid-cols-[1fr_360px]">
+    <div className="relative h-[calc(100vh-4rem)] w-full px-3 py-3">
       <h1 className="sr-only">{game.name ? `${game.name} — D20 Project game room` : "D20 Project game room"}</h1>
       <MusicPlayer gameId={gameId} />
-      {/* Center: background + characters */}
-      <div className="flex min-h-0 flex-col gap-3">
-        <div className="relative flex-1 min-h-0">
-          <MapBoard
+      {/* Fullscreen map */}
+      <div className="relative h-full w-full">
+        <MapBoard
+          gameId={gameId}
+          backgroundUrl={game.background_url}
+          userId={user.id}
+          isNarrator={isNarrator}
+          onRoll={rollFromSheet}
+          onOpenSheet={(kind, id, label) => openWindow({ kind, id, title: label })}
+        />
+        <MapLeftDisclosure
+          isNarrator={isNarrator}
+          inviteUrl={inviteUrl}
+          gameId={gameId}
+          onToggleTurnOrder={() => setTurnOrderOpen((v) => !v)}
+        />
+        {isNarrator && (
+          <MapTopDisclosure
             gameId={gameId}
-            backgroundUrl={game.background_url}
-            userId={user.id}
-            isNarrator={isNarrator}
-            onRoll={rollFromSheet}
-            onOpenSheet={(kind, id, label) => openWindow({ kind, id, title: label })}
+            currentBg={game.background_url}
+            uploadBackground={uploadBackground}
           />
-          {/* Left side disclosure (toggled like Map tools) */}
-          <MapLeftDisclosure
-            isNarrator={isNarrator}
-            inviteUrl={inviteUrl}
-            gameId={gameId}
-            onToggleTurnOrder={() => setTurnOrderOpen((v) => !v)}
-          />
-          {/* Top "lingueta" disclosure (narrator only) */}
-          {isNarrator && (
-            <MapTopDisclosure
-              gameId={gameId}
-              currentBg={game.background_url}
-              uploadBackground={uploadBackground}
-            />
-          )}
-          <InitiativePanel gameId={gameId} isNarrator={isNarrator} open={turnOrderOpen} onClose={() => setTurnOrderOpen(false)} />
-        </div>
+        )}
+        <InitiativePanel gameId={gameId} isNarrator={isNarrator} open={turnOrderOpen} onClose={() => setTurnOrderOpen(false)} />
+
+        {/* Right: floating chat/files/etc overlay */}
+        <RightOverlayPanel>
+          <Card className="flex h-full min-h-0 flex-col overflow-hidden p-0">
+            <div className="shrink-0 p-2">
+              <OnlinePresence gameId={gameId} userId={user.id} isNarrator={isNarrator} />
+            </div>
+            <Tabs defaultValue="chat" className="flex min-h-0 flex-1 flex-col">
+              <TabsList className="m-2 grid shrink-0 grid-cols-4">
+                <TabsTrigger value="chat">Chat</TabsTrigger>
+                <TabsTrigger value="compendium">Compendium</TabsTrigger>
+                <TabsTrigger value="files">Files</TabsTrigger>
+                <TabsTrigger value="music">Music</TabsTrigger>
+              </TabsList>
+              <TabsContent value="chat" className="mt-0 min-h-0 flex-1 overflow-hidden">
+                <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} isGameOwner={isNarrator} />
+              </TabsContent>
+              <TabsContent value="compendium" className="mt-0 min-h-0 flex-1 overflow-auto p-3">
+                <CompendiumPanel />
+              </TabsContent>
+              <TabsContent value="files" className="mt-0 min-h-0 flex-1 overflow-auto p-3">
+                <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindow} />
+              </TabsContent>
+              <TabsContent value="music" className="mt-0 min-h-0 flex-1 overflow-hidden">
+                <MusicPanel gameId={gameId} isNarrator={isNarrator} />
+              </TabsContent>
+            </Tabs>
+          </Card>
+        </RightOverlayPanel>
       </div>
-
-      {/* Right: tabs */}
-      <Card className="flex min-h-0 flex-col overflow-hidden p-0">
-        <div className="shrink-0 p-2">
-          <OnlinePresence gameId={gameId} userId={user.id} isNarrator={isNarrator} />
-        </div>
-        <Tabs defaultValue="chat" className="flex min-h-0 flex-1 flex-col">
-
-          <TabsList className="m-2 grid shrink-0 grid-cols-4">
-            <TabsTrigger value="chat">Chat</TabsTrigger>
-            <TabsTrigger value="compendium">Compendium</TabsTrigger>
-            <TabsTrigger value="files">Files</TabsTrigger>
-            <TabsTrigger value="music">Music</TabsTrigger>
-          </TabsList>
-          <TabsContent value="chat" className="mt-0 min-h-0 flex-1 overflow-hidden">
-            <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} isGameOwner={isNarrator} />
-          </TabsContent>
-          <TabsContent value="compendium" className="mt-0 min-h-0 flex-1 overflow-auto p-3">
-            <CompendiumPanel />
-          </TabsContent>
-          <TabsContent value="files" className="mt-0 min-h-0 flex-1 overflow-auto p-3">
-            <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindow} />
-          </TabsContent>
-          <TabsContent value="music" className="mt-0 min-h-0 flex-1 overflow-hidden">
-            <MusicPanel gameId={gameId} isNarrator={isNarrator} />
-          </TabsContent>
-        </Tabs>
-      </Card>
 
       {/* Floating sheet windows */}
       <div className="pointer-events-none">
@@ -260,6 +257,49 @@ function GameRoom() {
     </div>
   );
 }
+
+function RightOverlayPanel({ children }: { children: React.ReactNode }) {
+  const [open, setOpen] = useState(true);
+  const [width, setWidth] = useState(360);
+  const dragRef = useRef<{ mx: number; ow: number } | null>(null);
+  useEffect(() => {
+    function move(e: MouseEvent) {
+      if (dragRef.current) {
+        const next = dragRef.current.ow - (e.clientX - dragRef.current.mx);
+        setWidth(Math.max(280, Math.min(640, next)));
+      }
+    }
+    function up() { dragRef.current = null; }
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+    return () => { window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); };
+  }, []);
+  return (
+    <div className="pointer-events-none absolute right-3 top-3 bottom-3 z-30 flex items-start gap-1">
+      {open && (
+        <div
+          className="pointer-events-auto relative h-full"
+          style={{ width }}
+        >
+          <div
+            className="absolute -left-1 top-0 bottom-0 z-10 w-1.5 cursor-ew-resize bg-transparent hover:bg-primary/40"
+            onMouseDown={(e) => { dragRef.current = { mx: e.clientX, ow: width }; e.preventDefault(); }}
+            title="Drag to resize"
+          />
+          <div className="h-full opacity-95">{children}</div>
+        </div>
+      )}
+      <button
+        className="pointer-events-auto mt-1 rounded-l-md bg-card/95 px-1.5 py-2 text-xs shadow backdrop-blur hover:bg-accent"
+        onClick={() => setOpen((v) => !v)}
+        title={open ? "Hide panel" : "Show panel"}
+      >
+        {open ? <ChevronRight className="h-3.5 w-3.5" /> : <MessageSquare className="h-3.5 w-3.5" />}
+      </button>
+    </div>
+  );
+}
+
 
 function InviteButton({ url }: { url: string }) {
   const [open, setOpen] = useState(false);
@@ -1062,6 +1102,26 @@ function MapTopDisclosure({
             <ImageIcon className="h-3.5 w-3.5" /> Set background
             <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadBackground(e.target.files[0])} />
           </label>
+          <div className="flex items-center gap-0.5 rounded-md border border-border bg-background px-1">
+            <button
+              type="button"
+              title="Zoom out background"
+              className="inline-flex h-7 w-7 items-center justify-center rounded hover:bg-accent"
+              onClick={() => window.dispatchEvent(new CustomEvent("map-zoom", { detail: { delta: -0.1 } }))}
+            ><ZoomOut className="h-3.5 w-3.5" /></button>
+            <button
+              type="button"
+              title="Zoom in background"
+              className="inline-flex h-7 w-7 items-center justify-center rounded hover:bg-accent"
+              onClick={() => window.dispatchEvent(new CustomEvent("map-zoom", { detail: { delta: 0.1 } }))}
+            ><ZoomIn className="h-3.5 w-3.5" /></button>
+            <button
+              type="button"
+              title="Reset background size"
+              className="inline-flex h-7 w-7 items-center justify-center rounded hover:bg-accent"
+              onClick={() => window.dispatchEvent(new CustomEvent("map-zoom", { detail: { reset: true } }))}
+            ><RotateCcw className="h-3.5 w-3.5" /></button>
+          </div>
           <ScenarioButtons gameId={gameId} currentBg={currentBg} />
         </div>
       )}

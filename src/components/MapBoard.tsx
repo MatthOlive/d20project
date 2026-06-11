@@ -52,6 +52,9 @@ export function MapBoard({
   const boardRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [resizeTokenId, setResizeTokenId] = useState<string | null>(null);
+  const resizeOrigin = useRef<{ mx: number; my: number; size: number } | null>(null);
+  const [localSize, setLocalSize] = useState<Record<string, number>>({});
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
   const [hoverTokenId, setHoverTokenId] = useState<string | null>(null);
   const [bgAspect, setBgAspect] = useState<number | null>(null);
@@ -72,17 +75,44 @@ export function MapBoard({
           y: panOrigin.current.oy + e.clientY - panOrigin.current.my,
         });
       }
+      if (resizeOrigin.current && resizeTokenId) {
+        const dx = e.clientX - resizeOrigin.current.mx;
+        const dy = e.clientY - resizeOrigin.current.my;
+        const next = Math.max(24, Math.min(240, resizeOrigin.current.size + Math.max(dx, dy)));
+        setLocalSize((s) => ({ ...s, [resizeTokenId]: next }));
+      }
     }
-    function onUp() { panOrigin.current = null; }
+    async function onUp() {
+      panOrigin.current = null;
+      if (resizeOrigin.current && resizeTokenId) {
+        const id = resizeTokenId;
+        const finalSize = localSize[id];
+        resizeOrigin.current = null;
+        setResizeTokenId(null);
+        if (finalSize) {
+          await supabase.from("tokens").update({ size: Math.round(finalSize) }).eq("id", id);
+          setLocalSize((s) => { const n = { ...s }; delete n[id]; return n; });
+        }
+      }
+    }
     window.addEventListener("click", onClickAway);
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
+    function onZoom(e: Event) {
+      const detail = (e as CustomEvent).detail as { delta?: number; reset?: boolean };
+      if (detail?.reset) { setZoom(1); setPan({ x: 0, y: 0 }); return; }
+      if (typeof detail?.delta === "number") {
+        setZoom((z) => Math.max(0.3, Math.min(4, z * (1 + detail.delta!))));
+      }
+    }
+    window.addEventListener("map-zoom", onZoom as EventListener);
     return () => {
       window.removeEventListener("click", onClickAway);
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("map-zoom", onZoom as EventListener);
     };
-  }, []);
+  }, [resizeTokenId, localSize]);
 
 
   useEffect(() => {
@@ -239,10 +269,11 @@ export function MapBoard({
             style={{
               left: `${t.x * 100}%`,
               top: `${t.y * 100}%`,
-              width: t.size,
-              height: t.size,
+              width: localSize[t.id] ?? t.size,
+              height: localSize[t.id] ?? t.size,
               cursor: canMove ? "grab" : "pointer",
               zIndex: isSelected || isHover ? 20 : 1,
+              transition: dragId === t.id || resizeTokenId === t.id ? "none" : "left 200ms ease, top 200ms ease, width 120ms ease, height 120ms ease",
             }}
             title={t.label}
           >
@@ -268,6 +299,18 @@ export function MapBoard({
                   className="absolute -right-1 -top-1 hidden h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow group-hover:flex"
                   aria-label="Remove token"
                 ><X className="h-3 w-3" /></button>
+              )}
+              {canMove && isSelected && (
+                <div
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setResizeTokenId(t.id);
+                    resizeOrigin.current = { mx: e.clientX, my: e.clientY, size: localSize[t.id] ?? t.size };
+                  }}
+                  className="absolute -bottom-1 -right-1 h-4 w-4 cursor-se-resize rounded-sm border-2 border-amber-400 bg-background shadow"
+                  title="Drag to resize"
+                />
               )}
             </div>
             <div className="pointer-events-none absolute left-1/2 top-full mt-0.5 -translate-x-1/2 whitespace-nowrap rounded bg-background/90 px-1.5 py-0.5 text-[10px] font-semibold shadow">
