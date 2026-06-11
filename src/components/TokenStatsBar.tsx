@@ -140,7 +140,7 @@ function PokemonStats({ id, gameId, editable, expanded }: { id: string; gameId?:
   const confMax = natureMax ?? Math.max(conf, 5);
   const vit = data.current_attrs?.vitality ?? 0;
   const ins = data.current_attrs?.insight ?? 0;
-  const spDefUsesInsight = Boolean(data.modifiers?._spdef_uses_insight);
+  const spDefUsesInsight = useGameSpdefUsesInsight(gameId);
   const def = vit;
   const spDef = spDefUsesInsight ? ins : vit;
 
