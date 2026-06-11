@@ -1102,6 +1102,26 @@ function MapTopDisclosure({
             <ImageIcon className="h-3.5 w-3.5" /> Set background
             <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadBackground(e.target.files[0])} />
           </label>
+          <div className="flex items-center gap-0.5 rounded-md border border-border bg-background px-1">
+            <button
+              type="button"
+              title="Zoom out background"
+              className="inline-flex h-7 w-7 items-center justify-center rounded hover:bg-accent"
+              onClick={() => window.dispatchEvent(new CustomEvent("map-zoom", { detail: { delta: -0.1 } }))}
+            ><ZoomOut className="h-3.5 w-3.5" /></button>
+            <button
+              type="button"
+              title="Zoom in background"
+              className="inline-flex h-7 w-7 items-center justify-center rounded hover:bg-accent"
+              onClick={() => window.dispatchEvent(new CustomEvent("map-zoom", { detail: { delta: 0.1 } }))}
+            ><ZoomIn className="h-3.5 w-3.5" /></button>
+            <button
+              type="button"
+              title="Reset background size"
+              className="inline-flex h-7 w-7 items-center justify-center rounded hover:bg-accent"
+              onClick={() => window.dispatchEvent(new CustomEvent("map-zoom", { detail: { reset: true } }))}
+            ><RotateCcw className="h-3.5 w-3.5" /></button>
+          </div>
           <ScenarioButtons gameId={gameId} currentBg={currentBg} />
         </div>
       )}
