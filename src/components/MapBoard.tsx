@@ -52,6 +52,9 @@ export function MapBoard({
   const boardRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [resizeTokenId, setResizeTokenId] = useState<string | null>(null);
+  const resizeOrigin = useRef<{ mx: number; my: number; size: number } | null>(null);
+  const [localSize, setLocalSize] = useState<Record<string, number>>({});
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
   const [hoverTokenId, setHoverTokenId] = useState<string | null>(null);
   const [bgAspect, setBgAspect] = useState<number | null>(null);
