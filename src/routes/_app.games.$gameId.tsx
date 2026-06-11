@@ -1390,6 +1390,13 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
               <p className="mt-1 text-[11px] text-muted-foreground">0 = só manual (checkbox na criação).</p>
             </div>
           </div>
+          <label className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-card p-3">
+            <Checkbox checked={spdefIns} onCheckedChange={(v) => setSpdefIns(!!v)} />
+            <div>
+              <span className="text-sm font-semibold">SpDef usa Insight (regra da casa)</span>
+              <p className="text-[11px] text-muted-foreground">Quando ligado, a Defesa Especial usa Insight no lugar de Vitality em toda a mesa.</p>
+            </div>
+          </label>
           <div>
             <div className="mb-1 flex items-center justify-between">
               <Label className="text-xs font-bold uppercase tracking-wider">Contest · Reaction deck weights</Label>
