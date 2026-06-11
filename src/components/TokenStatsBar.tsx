@@ -75,7 +75,7 @@ function TrainerStats({ id, gameId, editable, expanded }: { id: string; gameId?:
   const curWill = data.current_will ?? willMax;
   const conf = data.confidence ?? 0;
   const confMax = natureMax ?? Math.max(conf, 5);
-  const spDefUsesInsight = false;
+  const spDefUsesInsight = useGameSpdefUsesInsight(gameId);
   const def = total("vitality");
   const spDef = spDefUsesInsight ? total("insight") : total("vitality");
 
