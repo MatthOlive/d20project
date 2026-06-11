@@ -77,10 +77,19 @@ export function MapBoard({
     window.addEventListener("click", onClickAway);
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
+    function onZoom(e: Event) {
+      const detail = (e as CustomEvent).detail as { delta?: number; reset?: boolean };
+      if (detail?.reset) { setZoom(1); setPan({ x: 0, y: 0 }); return; }
+      if (typeof detail?.delta === "number") {
+        setZoom((z) => Math.max(0.3, Math.min(4, z * (1 + detail.delta!))));
+      }
+    }
+    window.addEventListener("map-zoom", onZoom as EventListener);
     return () => {
       window.removeEventListener("click", onClickAway);
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("map-zoom", onZoom as EventListener);
     };
   }, []);
 
