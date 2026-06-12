@@ -162,6 +162,14 @@ export function PokemonSheet({
       .filter(({ moves: m }) => !knownMoves.some((km) => km.id === m.id));
   }, [learnable, knownMoves, pokemon]);
 
+  const { data: gameRow } = useQuery({
+    queryKey: ["game-spdef-uses-insight", _gameId],
+    queryFn: async () => {
+      const { data } = await supabase.from("games").select("spdef_uses_insight").eq("id", _gameId).maybeSingle();
+      return Boolean((data as { spdef_uses_insight?: boolean } | null)?.spdef_uses_insight);
+    },
+  });
+
   if (!pokemon) return <div className="p-4 text-sm text-muted-foreground">Loading…</div>;
   if (!species) return <div className="p-4 text-sm text-muted-foreground">Loading species…</div>;
 
@@ -214,13 +222,6 @@ export function PokemonSheet({
   const ins = pokemon.current_attrs.insight ?? 1;
   const dex = pokemon.current_attrs.dexterity ?? 1;
   const str = pokemon.current_attrs.strength ?? 1;
-  const { data: gameRow } = useQuery({
-    queryKey: ["game-spdef-uses-insight", _gameId],
-    queryFn: async () => {
-      const { data } = await supabase.from("games").select("spdef_uses_insight").eq("id", _gameId).maybeSingle();
-      return Boolean((data as { spdef_uses_insight?: boolean } | null)?.spdef_uses_insight);
-    },
-  });
   const spDefUsesInsight = Boolean(gameRow);
   const spDef = spDefUsesInsight ? ins : vit;
   const alert = pokemon.skills?.Alert ?? 1;

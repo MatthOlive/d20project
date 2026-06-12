@@ -67,6 +67,7 @@ function TrainerStats({ id, gameId, editable, expanded }: { id: string; gameId?:
       return (n?.confidence as number | undefined) ?? null;
     },
   });
+  const spDefUsesInsight = useGameSpdefUsesInsight(gameId);
   if (!data) return null;
   const total = (k: string) => 1 + (data.attr_points?.[k] ?? 0) + (data.attr_bonus?.[k] ?? 0);
   const hpMax = 4 + total("vitality");
@@ -75,7 +76,6 @@ function TrainerStats({ id, gameId, editable, expanded }: { id: string; gameId?:
   const curWill = data.current_will ?? willMax;
   const conf = data.confidence ?? 0;
   const confMax = natureMax ?? Math.max(conf, 5);
-  const spDefUsesInsight = useGameSpdefUsesInsight(gameId);
   const def = total("vitality");
   const spDef = spDefUsesInsight ? total("insight") : total("vitality");
 
@@ -131,6 +131,7 @@ function PokemonStats({ id, gameId, editable, expanded }: { id: string; gameId?:
       return (n?.confidence as number | undefined) ?? null;
     },
   });
+  const spDefUsesInsight = useGameSpdefUsesInsight(gameId);
   if (!data) return null;
   const hpMax = data.hp ?? 0;
   const willMax = data.will ?? ((data.current_attrs?.insight ?? 1) + 2);
@@ -140,7 +141,6 @@ function PokemonStats({ id, gameId, editable, expanded }: { id: string; gameId?:
   const confMax = natureMax ?? Math.max(conf, 5);
   const vit = data.current_attrs?.vitality ?? 0;
   const ins = data.current_attrs?.insight ?? 0;
-  const spDefUsesInsight = useGameSpdefUsesInsight(gameId);
   const def = vit;
   const spDef = spDefUsesInsight ? ins : vit;
 
