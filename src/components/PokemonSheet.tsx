@@ -217,7 +217,7 @@ export function PokemonSheet({
   const ins = pokemon.current_attrs.insight ?? 1;
   const dex = pokemon.current_attrs.dexterity ?? 1;
   const str = pokemon.current_attrs.strength ?? 1;
-  const spDefUsesInsight = Boolean(gameRow);
+  const spDefUsesInsight = spDefUsesInsightGlobal;
   const spDef = spDefUsesInsight ? ins : vit;
   const alert = pokemon.skills?.Alert ?? 1;
   const init = dex + alert;
