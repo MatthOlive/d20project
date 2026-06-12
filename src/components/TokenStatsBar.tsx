@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useGameSpdefUsesInsight } from "@/hooks/use-game-spdef-uses-insight";
 import { toast } from "sonner";
 
 type Stat = {
@@ -25,17 +26,7 @@ export function TokenStatsBar({
   return <PokemonStats id={id} gameId={gameId} editable={editable} expanded={expanded} />;
 }
 
-function useGameSpdefUsesInsight(gameId?: string) {
-  const { data } = useQuery({
-    queryKey: ["game-spdef-uses-insight", gameId ?? null],
-    enabled: !!gameId,
-    queryFn: async () => {
-      const { data } = await supabase.from("games").select("spdef_uses_insight").eq("id", gameId!).maybeSingle();
-      return Boolean((data as { spdef_uses_insight?: boolean } | null)?.spdef_uses_insight);
-    },
-  });
-  return Boolean(data);
-}
+
 
 function TrainerStats({ id, gameId, editable, expanded }: { id: string; gameId?: string; editable: boolean; expanded: boolean }) {
   const qc = useQueryClient();
