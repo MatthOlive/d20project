@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useGameSpdefUsesInsight } from "@/hooks/use-game-spdef-uses-insight";
 import { toast } from "sonner";
 
 type Stat = {
