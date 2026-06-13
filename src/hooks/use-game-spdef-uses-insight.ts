@@ -23,14 +23,12 @@ export function useGameSpdefUsesInsight(gameId?: string): boolean {
 
   useEffect(() => {
     if (!gameId) return;
-    const ch = supabase
-      .channel(`game-settings-${gameId}`)
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "games", filter: `id=eq.${gameId}` },
-        () => qc.invalidateQueries({ queryKey }),
-      )
-      .subscribe();
+    const ch = supabase.channel(`game-settings-${gameId}-${Math.random().toString(36).slice(2)}`);
+    ch.on(
+      "postgres_changes",
+      { event: "UPDATE", schema: "public", table: "games", filter: `id=eq.${gameId}` },
+      () => qc.invalidateQueries({ queryKey }),
+    ).subscribe();
     return () => {
       void supabase.removeChannel(ch);
     };
