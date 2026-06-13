@@ -1,0 +1,1 @@
+GRANT SELECT (spdef_uses_insight) ON public.games TO authenticated;
