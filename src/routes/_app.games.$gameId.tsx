@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ChatPanel } from "@/components/ChatPanel";
+import { useGameSpdefUsesInsight } from "@/hooks/use-game-spdef-uses-insight";
 
 import { FloatingWindow } from "@/components/FloatingWindow";
 import { OnlinePresence } from "@/components/OnlinePresence";
@@ -1324,6 +1325,7 @@ function AbilitiesCompendium() {
 
 function GameSettingsButton({ gameId }: { gameId: string }) {
   const qc = useQueryClient();
+  const savedSpdefIns = useGameSpdefUsesInsight(gameId);
   const [open, setOpen] = useState(false);
   const [shiny, setShiny] = useState<number>(10);
   const [over, setOver] = useState<number>(0);
@@ -1337,11 +1339,16 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
   useEffect(() => {
     if (!open) return;
     (async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("games")
         .select("shiny_chance,overgrown_chance,contest_weights,spdef_uses_insight")
         .eq("id", gameId)
         .single();
+      if (error) {
+        toast.error(error.message);
+        setSpdefIns(savedSpdefIns);
+        return;
+      }
       const row = data as { shiny_chance?: number; overgrown_chance?: number; contest_weights?: Record<string, number> | null; spdef_uses_insight?: boolean } | null;
       setShiny(row?.shiny_chance ?? 10);
       setOver(row?.overgrown_chance ?? 0);
@@ -1350,7 +1357,7 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
       for (const c of REACTION_DECK) w[c.id] = row?.contest_weights?.[c.id] ?? c.defaultWeight;
       setWeights(w);
     })();
-  }, [open, gameId]);
+  }, [open, gameId, savedSpdefIns]);
 
   const weightTotal = REACTION_DECK.reduce((s, c) => s + (weights[c.id] ?? 0), 0);
 
