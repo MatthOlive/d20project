@@ -31,7 +31,9 @@ export function useGameSpdefUsesInsight(gameId?: string): boolean {
         () => qc.invalidateQueries({ queryKey }),
       )
       .subscribe();
-    return () => { void supabase.removeChannel(ch); };
+    return () => {
+      void supabase.removeChannel(ch);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId]);
 
