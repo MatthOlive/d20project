@@ -11,11 +11,12 @@ export function useGameSpdefUsesInsight(gameId?: string): boolean {
     enabled: !!gameId,
     staleTime: 0,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("games")
         .select("spdef_uses_insight")
         .eq("id", gameId!)
         .maybeSingle();
+      if (error) throw error;
       return Boolean((data as { spdef_uses_insight?: boolean } | null)?.spdef_uses_insight);
     },
   });

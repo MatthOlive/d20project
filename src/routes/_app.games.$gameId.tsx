@@ -1372,6 +1372,7 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
       .eq("id", gameId);
     if (error) { toast.error(error.message); return; }
     toast.success("Configurações salvas");
+    qc.setQueryData(["game-spdef-uses-insight", gameId], spdefIns);
     qc.invalidateQueries({ queryKey: ["game", gameId] });
     qc.invalidateQueries({ queryKey: ["game-spdef-uses-insight", gameId] });
     setOpen(false);
