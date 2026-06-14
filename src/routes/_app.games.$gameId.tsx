@@ -572,7 +572,7 @@ function FilesPanel({
         const remainder = r.folder === oldPath ? "" : r.folder.slice(oldPath.length);
         const newFolderPath = newPath + remainder;
         const table = r.kind === "trainer" ? "trainers" : "pokemon";
-        updates.push(supabase.from(table).update({ folder: newFolderPath }).eq("id", r.id));
+        updates.push(Promise.resolve(supabase.from(table).update({ folder: newFolderPath }).eq("id", r.id)));
       }
     }
     const results = await Promise.all(updates);
