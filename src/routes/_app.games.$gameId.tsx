@@ -333,6 +333,48 @@ type CharRow =
   | { kind: "pokemon"; id: string; label: string; owner_id: string; image_url: string | null; folder: string | null; sprite_url: string | null };
 
 const FOLDER_MIME = "application/x-pokerole-sheet";
+const FOLDER_PATH_MIME = "application/x-pokerole-folder-path";
+
+type FolderNode = {
+  path: string;      // full path, e.g. "Region/City"
+  name: string;      // last segment, e.g. "City"
+  items: CharRow[];
+  children: FolderNode[];
+};
+
+function buildFolderTree(paths: string[], rows: CharRow[]): FolderNode[] {
+  // Ensure all ancestors exist
+  const expanded = new Set<string>();
+  for (const p of paths) {
+    const parts = p.split("/").filter(Boolean);
+    for (let i = 1; i <= parts.length; i++) {
+      expanded.add(parts.slice(0, i).join("/"));
+    }
+  }
+  const root: FolderNode[] = [];
+  const byPath = new Map<string, FolderNode>();
+  const sorted = Array.from(expanded).sort();
+  for (const path of sorted) {
+    const parts = path.split("/");
+    const name = parts[parts.length - 1];
+    const parentPath = parts.slice(0, -1).join("/");
+    const node: FolderNode = { path, name, items: [], children: [] };
+    byPath.set(path, node);
+    if (parentPath) {
+      const parent = byPath.get(parentPath);
+      if (parent) parent.children.push(node);
+      else root.push(node);
+    } else {
+      root.push(node);
+    }
+  }
+  for (const r of rows) {
+    if (!r.folder) continue;
+    const node = byPath.get(r.folder);
+    if (node) node.items.push(r);
+  }
+  return root;
+}
 
 function FilesPanel({
   gameId,
