@@ -894,20 +894,21 @@ function FilesPanel({
           value={newFolder}
           onChange={(e) => setNewFolder(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && addFolder()}
-          placeholder="New folder name…"
+          placeholder="New top-level folder…"
           className="h-8 text-xs"
         />
-        <Button size="sm" variant="outline" onClick={addFolder} disabled={!newFolder.trim()}>
+        <Button size="sm" variant="outline" onClick={() => addFolder()} disabled={!newFolder.trim()}>
           <FolderPlus className="mr-1 h-3.5 w-3.5" /> Add
         </Button>
       </div>
 
       <p className="text-[11px] text-muted-foreground">
-        Tip: drag a character onto the map to place a token, or onto a folder to organize.
+        Tip: drag a character onto the map, drag sheets between folders, or drag a folder onto another to nest it. Use the + on a folder to add a subfolder.
       </p>
 
       <div className="space-y-2">
-        {groups.map((g) => <FolderGroup key={g.name ?? "__root__"} name={g.name} items={g.items} />)}
+        {tree.map((node) => <FolderNodeView key={node.path} node={node} depth={0} />)}
+        <UnfiledGroup />
         {rows.length === 0 && (
           <p className="text-xs text-muted-foreground">No characters yet. Create one to get started.</p>
         )}
