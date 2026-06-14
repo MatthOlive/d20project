@@ -6,13 +6,17 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Swords, Zap, Sparkles, Dices, X } from "lucide-react";
-import { GenericRollButton } from "@/components/SheetRolls";
+import { GenericRollButton, painPenaltyFor } from "@/components/SheetRolls";
 import { POKEMON_ATTRS, ATTRS, SOCIAL_ATTRS, TRAINER_SKILLS, SKILLS, RANK_BONUS } from "@/lib/pokerole";
+import { MoveCard } from "@/components/MoveCard";
+import { MoveRollDialog, computeMoveStats, type MoveData } from "@/components/MoveRollDialog";
 
 type Props = {
   kind: "trainer" | "pokemon";
   id: string;
   label: string;
+  gameId: string;
+  userId: string;
   onRoll: (label: string, n: number, penalty?: number, meta?: { characterKind: "trainer" | "pokemon"; characterId: string; imageUrl?: string | null }) => void;
   onClose: () => void;
   onOpenSheet: () => void;
@@ -53,7 +57,6 @@ function TrainerBar({ id, label, onRoll, onClose, onOpenSheet }: Props) {
   const evasion = t.skills?.Evasion ?? 0;
   const brawl = t.skills?.Brawl ?? 0;
   const throwSk = t.skills?.Throw ?? 0;
-  // pain penalty not stored here; default 0 (sheet handles full math)
   const pen = 0;
 
   const attrList = [
@@ -82,13 +85,13 @@ function TrainerBar({ id, label, onRoll, onClose, onOpenSheet }: Props) {
   );
 }
 
-function PokemonBar({ id, label, onRoll, onClose, onOpenSheet }: Props) {
+function PokemonBar({ id, label, gameId, userId, onRoll, onClose, onOpenSheet }: Props) {
   const { data: p } = useQuery({
     queryKey: ["token-pokemon", id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pokemon")
-        .select("current_attrs, social_attrs, social_attr_points, social_attr_bonus, skills, rank, image_url, species:species_id(abilities, base_attrs, sprite_url)")
+        .select("current_attrs, social_attrs, social_attr_points, social_attr_bonus, skills, rank, image_url, hp, current_hp, species:species_id(abilities, base_attrs, sprite_url, types)")
         .eq("id", id)
         .single();
       if (error) throw error;
@@ -100,7 +103,9 @@ function PokemonBar({ id, label, onRoll, onClose, onOpenSheet }: Props) {
         skills: Record<string, number>;
         rank: keyof typeof RANK_BONUS;
         image_url: string | null;
-        species: { abilities: string[]; base_attrs: Record<string, number>; sprite_url: string | null };
+        hp: number;
+        current_hp: number | null;
+        species: { abilities: string[]; base_attrs: Record<string, number>; sprite_url: string | null; types: string[] };
       };
     },
   });
@@ -109,14 +114,10 @@ function PokemonBar({ id, label, onRoll, onClose, onOpenSheet }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pokemon_moves")
-        .select("moves(id,name,type,power,accuracy_stat,accuracy_skill,damage_stat,category)")
+        .select("moves(id,name,type,power,accuracy_stat,accuracy_skill,damage_stat,effect,category)")
         .eq("pokemon_id", id);
       if (error) throw error;
-      return (data ?? []).map((r: any) => r.moves).filter(Boolean) as Array<{
-        id: string; name: string; type: string; power: number;
-        accuracy_stat: string | null; accuracy_skill: string | null;
-        damage_stat: string | null; category: string;
-      }>;
+      return (data ?? []).map((r: any) => r.moves).filter(Boolean) as MoveData[];
     },
   });
 
@@ -129,7 +130,9 @@ function PokemonBar({ id, label, onRoll, onClose, onOpenSheet }: Props) {
   const alert = p.skills?.Alert ?? 0;
   const evasion = p.skills?.Evasion ?? 0;
   const clash = p.skills?.Clash ?? 0;
-  const pen = 0;
+  const curHp = p.current_hp ?? p.hp ?? 0;
+  const pen = painPenaltyFor(curHp, p.hp ?? 0);
+  const displayImage = p.image_url ?? p.species?.sprite_url ?? null;
 
   const attrList = [
     ...POKEMON_ATTRS.map((a) => ({ name: cap(a), value: attrOf(a) })),
@@ -140,7 +143,7 @@ function PokemonBar({ id, label, onRoll, onClose, onOpenSheet }: Props) {
   return (
     <Shell onClose={onClose} title={label} onOpenSheet={onOpenSheet}>
       <ActionBtn icon={<Zap className="h-3.5 w-3.5" />} label="Initiative"
-        onClick={() => onRoll(`${label} · Initiative (Dex+Alert)`, dex + alert, pen, { characterKind: "pokemon", characterId: id, imageUrl: p.image_url ?? p.species?.sprite_url })} />
+        onClick={() => onRoll(`${label} · Initiative (Dex+Alert)`, dex + alert, pen, { characterKind: "pokemon", characterId: id, imageUrl: displayImage })} />
       <ActionBtn icon={<Swords className="h-3.5 w-3.5" />} label="Evasion"
         onClick={() => onRoll(`${label} · Evasion (Dex+Evasion)`, dex + evasion, pen)} />
       <ActionBtn icon={<Swords className="h-3.5 w-3.5" />} label="Clash"
@@ -153,7 +156,15 @@ function PokemonBar({ id, label, onRoll, onClose, onOpenSheet }: Props) {
         onRoll={onRoll}
       />
       <AbilitiesButton abilities={p.species?.abilities ?? []} label={label} onRoll={onRoll} />
-      <MovesButton moves={moves} label={label} attrs={{ ...Object.fromEntries(SOCIAL_ATTRS.map((a) => [a, socialAttrOf(a)])), ...(p.current_attrs ?? {}) }} skills={p.skills} baseAttrs={p.species?.base_attrs ?? {}} onRoll={onRoll} />
+      <MovesButton
+        moves={moves}
+        label={label}
+        pokemonData={p}
+        gameId={gameId}
+        userId={userId}
+        painPenalty={pen}
+        imageUrl={displayImage}
+      />
     </Shell>
   );
 }
@@ -264,56 +275,88 @@ function AbilitiesButton({
 }
 
 function MovesButton({
-  moves, label, attrs, skills, baseAttrs, onRoll,
+  moves, label, pokemonData, gameId, userId, painPenalty, imageUrl,
 }: {
-  moves: { id: string; name: string; type: string; power: number; accuracy_stat: string | null; accuracy_skill: string | null; damage_stat: string | null; category: string }[];
+  moves: MoveData[];
   label: string;
-  attrs: Record<string, number>;
-  skills: Record<string, number>;
-  baseAttrs: Record<string, number>;
-  onRoll: (l: string, n: number, p?: number) => void;
+  pokemonData: {
+    current_attrs: Record<string, number>;
+    social_attrs: Record<string, number>;
+    social_attr_points: Record<string, number>;
+    social_attr_bonus: Record<string, number>;
+    skills: Record<string, number>;
+    species: { base_attrs: Record<string, number>; types: string[] };
+  };
+  gameId: string;
+  userId: string;
+  painPenalty: number;
+  imageUrl: string | null;
 }) {
   const [open, setOpen] = useState(false);
   if (moves.length === 0) return null;
-  const getOne = (k: string) => {
-    const key = k.toLowerCase().trim();
-    if (key in skills) return skills[key];
-    const titled = key.charAt(0).toUpperCase() + key.slice(1);
-    if (titled in skills) return skills[titled];
-    if (key in attrs) return attrs[key];
-    if (key in baseAttrs) return attrs[key] ?? baseAttrs[key];
-    return 0;
-  };
-  const get = (k: string | null) => {
-    if (!k) return 0;
-    const parts = k.split("/").map((s) => s.trim()).filter(Boolean);
-    if (parts.length === 0) return 0;
-    return Math.max(...parts.map(getOne));
-  };
+  const types = pokemonData.species?.types ?? [];
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <Button size="sm" variant="outline" className="h-7" onClick={() => setOpen(true)}>
         <Dices className="h-3.5 w-3.5" /><span className="ml-1">Moves</span>
       </Button>
-      <DialogContent className="max-h-[80vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>Use move</DialogTitle></DialogHeader>
-        <div className="grid gap-1.5">
+      <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
+        <DialogHeader><DialogTitle>{label} — Moves</DialogTitle></DialogHeader>
+        <div className="grid gap-3 sm:grid-cols-2">
           {moves.map((m) => {
-            const accAttr = get(m.accuracy_stat);
-            const accSk = get(m.accuracy_skill);
-            const accuracy = accAttr + accSk;
+            const stats = computeMoveStats(m, {
+              current_attrs: pokemonData.current_attrs,
+              social_attrs: pokemonData.social_attrs,
+              social_attr_points: pokemonData.social_attr_points,
+              social_attr_bonus: pokemonData.social_attr_bonus,
+              skills: pokemonData.skills,
+              base_attrs: pokemonData.species?.base_attrs,
+            }, types);
             return (
-              <div key={m.id} className="flex items-center gap-2 rounded-md border border-border bg-card p-2">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold">{m.name}</p>
-                  <p className="text-[10px] uppercase text-muted-foreground">{m.type} · {m.category} · pow {m.power}</p>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => onRoll(`${label} · ${m.name} (accuracy)`, accuracy)}
-                >Acc {accuracy}d6</Button>
-              </div>
+              <MoveCard
+                key={m.id}
+                hasStab={stats.hasStab}
+                data={{
+                  name: m.name,
+                  type: m.type as string,
+                  power: m.power,
+                  accuracyText: stats.accuracyText,
+                  damagePoolText: stats.damagePoolText,
+                  effect: m.effect ?? "",
+                  category: m.category,
+                }}
+                accuracySlot={
+                  <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-bold text-primary">
+                    {stats.accPool}d6 <span className="opacity-70">({stats.accuracyText})</span>
+                  </span>
+                }
+                damageSlot={
+                  stats.isStatus ? (
+                    <span className="text-muted-foreground">Status (no damage)</span>
+                  ) : (
+                    <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-[11px] font-bold text-destructive">
+                      {stats.dmgPool}d6 <span className="opacity-70">({stats.damagePoolText})</span>
+                    </span>
+                  )
+                }
+                footer={
+                  <MoveRollDialog
+                    move={m}
+                    pokemonName={label}
+                    accPool={stats.accPool}
+                    dmgPool={stats.dmgPool}
+                    isStatus={stats.isStatus}
+                    isSpecial={stats.isSpecial}
+                    hasStab={stats.hasStab}
+                    accuracyText={stats.accuracyText}
+                    damagePoolText={stats.damagePoolText}
+                    gameId={gameId}
+                    userId={userId}
+                    painPenalty={painPenalty}
+                    imageUrl={imageUrl}
+                  />
+                }
+              />
             );
           })}
         </div>
