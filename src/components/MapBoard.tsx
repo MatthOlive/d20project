@@ -327,6 +327,8 @@ export function MapBoard({
                   kind={t.character_kind}
                   id={t.character_id}
                   label={t.label}
+                  gameId={gameId}
+                  userId={userId}
                   onRoll={onRoll}
                   onClose={() => setSelectedTokenId(null)}
                   onOpenSheet={() => onOpenSheet?.(t.character_kind, t.character_id, t.label)}
