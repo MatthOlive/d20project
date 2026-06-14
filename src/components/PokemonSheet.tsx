@@ -26,32 +26,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useGameSpdefUsesInsight } from "@/hooks/use-game-spdef-uses-insight";
 import { Progress } from "@/components/ui/progress";
 import { EffectIcons } from "@/components/EffectIcons";
-import { MoveCard, type MoveRollMessage } from "@/components/MoveCard";
-import { rollD6 } from "@/lib/pokerole";
+import { MoveCard } from "@/components/MoveCard";
 import {
   HpAndStatusBlock, AttackRollButton, GenericRollButton, painPenaltyFor,
 } from "@/components/SheetRolls";
 import { SheetPermissionsDialog } from "@/components/SheetPermissionsDialog";
 import { TRAININGS_PER_RANK, RETRAIN_CAP } from "@/lib/contest";
 import { getEvolutionRules, evaluateEvolution, type EvolutionGate } from "@/lib/evolutions";
-
-// Z-Move names per type (Pokérole 2.0)
-const Z_MOVE_NAMES: Record<string, string> = {
-  normal: "Breakneck Blitz", fire: "Inferno Overwhelming", water: "Hydro Vortex",
-  electric: "Gigavolt Havoc", grass: "Bloom Doom", ice: "Subzero Slammer",
-  fighting: "All-Out Pummeling", poison: "Acid Downpour", ground: "Tectonic Rage",
-  flying: "Supersonic Skystrike", psychic: "Shattered Psyche", bug: "Savage Spin-Out",
-  rock: "Continental Crush", ghost: "Never-Ending Nightmare", dragon: "Devastating Drake",
-  dark: "Black Hole Eclipse", steel: "Corkscrew Crash", fairy: "Twinkle Tackle",
-  typeless: "Breakneck Blitz",
-};
-function zMovePower(p: number): number {
-  if (p <= 0) return 0;
-  if (p <= 3) return p + 5;
-  if (p <= 5) return p + 4;
-  if (p <= 7) return p + 3;
-  return p + 2;
-}
+import {
+  MoveRollDialog, Z_MOVE_NAMES, zMovePower, cap,
+} from "@/components/MoveRollDialog";
 
 type EvolutionMethod = { kind: "time" | "other" | "item"; speed?: "fast" | "medium" | "slow"; text?: string };
 
