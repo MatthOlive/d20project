@@ -531,16 +531,14 @@ function FilesPanel({
     })),
   ];
 
-  const folderNames = Array.from(
+  const folderPaths = Array.from(
     new Set<string>([
       ...rows.map((r) => r.folder).filter((f): f is string => !!f),
       ...extraFolders,
     ]),
-  ).sort();
-  const groups: { name: string | null; items: CharRow[] }[] = [
-    ...folderNames.map((name) => ({ name, items: rows.filter((r) => r.folder === name) })),
-    { name: null, items: rows.filter((r) => !r.folder) },
-  ];
+  );
+  const tree = buildFolderTree(folderPaths, rows);
+  const unfiled = rows.filter((r) => !r.folder);
 
   async function moveToFolder(row: CharRow, folder: string | null) {
     if (row.folder === folder) return;
@@ -550,13 +548,66 @@ function FilesPanel({
     qc.invalidateQueries({ queryKey: ["characters", gameId] });
   }
 
-  function addFolder() {
+  async function moveFolderPath(oldPath: string, newParent: string | null) {
+    // Compute new path; reject moving into self or descendant
+    const lastSeg = oldPath.split("/").pop()!;
+    const newPath = newParent ? `${newParent}/${lastSeg}` : lastSeg;
+    if (newPath === oldPath) return;
+    if (newParent && (newParent === oldPath || newParent.startsWith(oldPath + "/"))) {
+      toast.error("Cannot move a folder into itself.");
+      return;
+    }
+    // Detect collision
+    const collides = folderPaths.some((p) => p === newPath || p.startsWith(newPath + "/"));
+    if (collides) {
+      toast.error(`A folder named "${lastSeg}" already exists in the destination.`);
+      return;
+    }
+    // Update all rows whose folder === oldPath or starts with oldPath + '/'
+    const prefix = oldPath + "/";
+    const updates: Promise<unknown>[] = [];
+    for (const r of rows) {
+      if (!r.folder) continue;
+      if (r.folder === oldPath || r.folder.startsWith(prefix)) {
+        const remainder = r.folder === oldPath ? "" : r.folder.slice(oldPath.length);
+        const newFolderPath = newPath + remainder;
+        const table = r.kind === "trainer" ? "trainers" : "pokemon";
+        updates.push(supabase.from(table).update({ folder: newFolderPath }).eq("id", r.id));
+      }
+    }
+    const results = await Promise.all(updates);
+    const err = (results as { error: unknown }[]).find((r) => r?.error);
+    if (err) { toast.error(String((err as { error: { message?: string } }).error?.message ?? "Failed to move folder")); return; }
+    // Update extraFolders state to mirror rename
+    setExtraFolders((prev) =>
+      Array.from(new Set(prev.map((p) => {
+        if (p === oldPath) return newPath;
+        if (p.startsWith(prefix)) return newPath + p.slice(oldPath.length);
+        return p;
+      }))),
+    );
+    qc.invalidateQueries({ queryKey: ["characters", gameId] });
+  }
+
+  function addFolder(parentPath?: string | null) {
     const name = newFolder.trim();
     if (!name) return;
-    if (!extraFolders.includes(name) && !folderNames.includes(name)) {
-      setExtraFolders((p) => [...p, name]);
+    if (name.includes("/")) { toast.error("Folder name cannot contain '/'"); return; }
+    const full = parentPath ? `${parentPath}/${name}` : name;
+    if (!extraFolders.includes(full) && !folderPaths.includes(full)) {
+      setExtraFolders((p) => [...p, full]);
     }
     setNewFolder("");
+  }
+
+  async function addSubfolder(parentPath: string) {
+    const name = prompt(`New subfolder name under "${parentPath}":`)?.trim();
+    if (!name) return;
+    if (name.includes("/")) { toast.error("Folder name cannot contain '/'"); return; }
+    const full = `${parentPath}/${name}`;
+    if (!extraFolders.includes(full) && !folderPaths.includes(full)) {
+      setExtraFolders((p) => [...p, full]);
+    }
   }
 
   function renderItem(r: CharRow) {
@@ -589,14 +640,15 @@ function FilesPanel({
     );
   }
 
-  function FolderGroup({ name, items }: { name: string | null; items: CharRow[] }) {
-    const key = name ?? "__root__";
+  function FolderNodeView({ node, depth }: { node: FolderNode; depth: number }) {
+    const key = node.path;
     const isHover = dropHover === key;
     const isCollapsed = !!collapsed[key];
+    const totalCount = node.items.length + node.children.reduce((acc, c) => acc + countDeep(c), 0);
     return (
       <div
         onDragOver={(e) => {
-          if (e.dataTransfer.types.includes(FOLDER_MIME)) {
+          if (e.dataTransfer.types.includes(FOLDER_MIME) || e.dataTransfer.types.includes(FOLDER_PATH_MIME)) {
             e.preventDefault();
             e.dataTransfer.dropEffect = "move";
             setDropHover(key);
@@ -604,13 +656,96 @@ function FilesPanel({
         }}
         onDragLeave={() => setDropHover((h) => (h === key ? null : h))}
         onDrop={(e) => {
-          const raw = e.dataTransfer.getData(FOLDER_MIME);
           setDropHover(null);
+          const folderPath = e.dataTransfer.getData(FOLDER_PATH_MIME);
+          if (folderPath) {
+            e.preventDefault();
+            e.stopPropagation();
+            moveFolderPath(folderPath, node.path);
+            return;
+          }
+          const raw = e.dataTransfer.getData(FOLDER_MIME);
+          if (!raw) return;
+          e.preventDefault();
+          e.stopPropagation();
+          const { kind, id } = JSON.parse(raw) as { kind: "trainer" | "pokemon"; id: string };
+          const row = rows.find((r) => r.kind === kind && r.id === id);
+          if (row) moveToFolder(row, node.path);
+        }}
+        className={`rounded-md border ${isHover ? "border-primary bg-accent/40" : "border-border bg-background"} p-2`}
+        style={{ marginLeft: depth > 0 ? 12 : 0 }}
+      >
+        <div className="mb-1.5 flex items-center gap-1.5">
+          <button
+            type="button"
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData(FOLDER_PATH_MIME, node.path);
+              e.dataTransfer.effectAllowed = "move";
+            }}
+            onClick={() => toggleFolder(key)}
+            className="flex flex-1 items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+            title="Drag to move this folder into another folder"
+          >
+            <span className="inline-block w-3 text-center">{isCollapsed ? "▸" : "▾"}</span>
+            <Folder className="h-3.5 w-3.5" />
+            <span className="truncate">{node.name}</span>
+            <span className="ml-1 text-[10px] opacity-60">({totalCount})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => addSubfolder(node.path)}
+            className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+            title="Add subfolder"
+          >
+            <FolderPlus className="h-3.5 w-3.5" />
+          </button>
+        </div>
+        {!isCollapsed && (
+          <div className="space-y-1.5">
+            {node.children.map((c) => <FolderNodeView key={c.path} node={c} depth={depth + 1} />)}
+            {node.items.map(renderItem)}
+            {node.items.length === 0 && node.children.length === 0 && (
+              <p className="px-2 py-1 text-[11px] text-muted-foreground">Drop a sheet or folder here.</p>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function countDeep(n: FolderNode): number {
+    return n.items.length + n.children.reduce((acc, c) => acc + countDeep(c), 0);
+  }
+
+  function UnfiledGroup() {
+    const key = "__root__";
+    const isHover = dropHover === key;
+    const isCollapsed = !!collapsed[key];
+    return (
+      <div
+        onDragOver={(e) => {
+          if (e.dataTransfer.types.includes(FOLDER_MIME) || e.dataTransfer.types.includes(FOLDER_PATH_MIME)) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            setDropHover(key);
+          }
+        }}
+        onDragLeave={() => setDropHover((h) => (h === key ? null : h))}
+        onDrop={(e) => {
+          setDropHover(null);
+          const folderPath = e.dataTransfer.getData(FOLDER_PATH_MIME);
+          if (folderPath) {
+            e.preventDefault();
+            moveFolderPath(folderPath, null);
+            return;
+          }
+          const raw = e.dataTransfer.getData(FOLDER_MIME);
           if (!raw) return;
           e.preventDefault();
           const { kind, id } = JSON.parse(raw) as { kind: "trainer" | "pokemon"; id: string };
           const row = rows.find((r) => r.kind === kind && r.id === id);
-          if (row) moveToFolder(row, name);
+          if (row) moveToFolder(row, null);
         }}
         className={`rounded-md border ${isHover ? "border-primary bg-accent/40" : "border-border bg-background"} p-2`}
       >
@@ -620,14 +755,14 @@ function FilesPanel({
           className="mb-1.5 flex w-full items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
         >
           <span className="inline-block w-3 text-center">{isCollapsed ? "▸" : "▾"}</span>
-          {name ? <Folder className="h-3.5 w-3.5" /> : <FolderOpen className="h-3.5 w-3.5" />}
-          {name ?? "Unfiled"}
-          <span className="ml-1 text-[10px] opacity-60">({items.length})</span>
+          <FolderOpen className="h-3.5 w-3.5" />
+          Unfiled
+          <span className="ml-1 text-[10px] opacity-60">({unfiled.length})</span>
         </button>
         {!isCollapsed && (
           <div className="space-y-1.5">
-            {items.map(renderItem)}
-            {items.length === 0 && (
+            {unfiled.map(renderItem)}
+            {unfiled.length === 0 && (
               <p className="px-2 py-1 text-[11px] text-muted-foreground">Drop a sheet here.</p>
             )}
           </div>
