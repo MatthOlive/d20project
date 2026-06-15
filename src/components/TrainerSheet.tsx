@@ -859,42 +859,56 @@ function PokedexSection({
 
   return (
     <section>
-      <div className="mb-2 flex items-center justify-between">
+      <div className="mb-2 flex items-center justify-between gap-2">
         <h3 className="text-sm font-bold">Pokédex <span className="text-muted-foreground font-normal">· Seen {seen} · Caught {caught}</span></h3>
-        {canEdit && (
-          <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
-            <Plus className="mr-1 h-3.5 w-3.5" /> Add
+        <div className="flex items-center gap-1.5">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7"
+            onClick={() => setCollapsed((v) => !v)}
+            title={collapsed ? "Expandir lista" : "Minimizar lista"}
+          >
+            {collapsed ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+            <span className="ml-1 text-xs">{collapsed ? "Expandir" : "Minimizar"}</span>
           </Button>
-        )}
-      </div>
-      {entries.length === 0 ? (
-        <p className="text-xs text-muted-foreground">No Pokémon recorded yet.</p>
-      ) : (
-        <div className="grid gap-1.5 sm:grid-cols-2">
-          {entries.map(([id, e]) => (
-            <div key={id} className="flex items-center gap-2 rounded-md border border-border bg-card px-2 py-1.5">
-              {e.sprite_url ? (
-                <img src={e.sprite_url} alt={e.name} className="h-8 w-8 object-contain" />
-              ) : (
-                <div className="h-8 w-8 rounded bg-muted" />
-              )}
-              <span className="flex-1 text-sm">{e.name}</span>
-              <label className="flex items-center gap-1.5 text-xs">
-                <Checkbox
-                  checked={e.captured}
-                  onCheckedChange={() => canEdit && toggleCaptured(id)}
-                  disabled={!canEdit}
-                />
-                Caught
-              </label>
-              {canEdit && (
-                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => removeEntry(id)}>
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              )}
-            </div>
-          ))}
+          {canEdit && (
+            <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+              <Plus className="mr-1 h-3.5 w-3.5" /> Add
+            </Button>
+          )}
         </div>
+      </div>
+      {!collapsed && (
+        entries.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No Pokémon recorded yet.</p>
+        ) : (
+          <div className="grid gap-1.5 sm:grid-cols-2">
+            {entries.map(([id, e]) => (
+              <div key={id} className="flex items-center gap-2 rounded-md border border-border bg-card px-2 py-1.5">
+                {e.sprite_url ? (
+                  <img src={e.sprite_url} alt={e.name} className="h-8 w-8 object-contain" />
+                ) : (
+                  <div className="h-8 w-8 rounded bg-muted" />
+                )}
+                <span className="flex-1 text-sm">{e.name}</span>
+                <label className="flex items-center gap-1.5 text-xs">
+                  <Checkbox
+                    checked={e.captured}
+                    onCheckedChange={() => canEdit && toggleCaptured(id)}
+                    disabled={!canEdit}
+                  />
+                  Caught
+                </label>
+                {canEdit && (
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => removeEntry(id)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        )
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
