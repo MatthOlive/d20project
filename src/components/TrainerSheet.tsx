@@ -23,7 +23,7 @@ import {
 
 import { useDebouncedPatch } from "@/lib/use-debounced-patch";
 import { toast } from "sonner";
-import { Dices, ImagePlus, X as XIcon, Plus, Trash2, Award } from "lucide-react";
+import { Dices, ImagePlus, X as XIcon, Plus, Trash2, Award, ChevronDown, ChevronUp } from "lucide-react";
 import {
   HpAndStatusBlock, AttackRollButton, GenericRollButton, painPenaltyFor,
 } from "@/components/SheetRolls";
