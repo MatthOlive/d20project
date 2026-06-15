@@ -300,10 +300,9 @@ export function PokemonSheet({
                 <Select value={pokemon.sex ?? ""} onValueChange={(v) => patch({ sex: v || null })} disabled={!canEdit}>
                   <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="male">Male</SelectItem>
-                    <SelectItem value="female">Female</SelectItem>
-                    <SelectItem value="nonbinary">Non-binary</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="male">Macho</SelectItem>
+                    <SelectItem value="female">Fêmea</SelectItem>
+                    <SelectItem value="none">Sem sexo</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
