@@ -131,7 +131,7 @@ const CAT_LABEL: Record<ShopItem["category"], string> = {
   gear: "Trainer Gear",
 };
 
-type InventoryItem = { name: string; qty: number };
+type InventoryItem = { name: string; qty: number; desc?: string };
 
 export function Shop({ trainerId }: { trainerId: string }) {
   const qc = useQueryClient();
