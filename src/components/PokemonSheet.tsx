@@ -661,6 +661,36 @@ export function PokemonSheet({
 
 /* ============ Shared sub-components ============ */
 
+function TypeEffectivenessBox({ types }: { types: string[] }) {
+  const eff = useMemo(() => computeDefensiveEffectiveness(types ?? []), [types]);
+  const TypeBadge = ({ t }: { t: string }) => (
+    <Badge style={{ backgroundColor: TYPE_COLORS[t as keyof typeof TYPE_COLORS]?.bg, color: TYPE_COLORS[t as keyof typeof TYPE_COLORS]?.fg }} className="border-none capitalize text-[10px] px-1.5 py-0">{t}</Badge>
+  );
+  const Row = ({ label, items, tone }: { label: string; items: string[]; tone: string }) => (
+    <div className="flex items-start gap-2">
+      <span className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${tone}`}>{label}</span>
+      <div className="flex flex-wrap gap-1">
+        {items.length === 0 ? <span className="text-[11px] text-muted-foreground">—</span> : items.map((t) => <TypeBadge key={t} t={t} />)}
+      </div>
+    </div>
+  );
+  return (
+    <section className="overflow-hidden rounded-lg border border-border bg-card">
+      <div className="border-b-2 border-primary bg-primary/10 px-3 py-1">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-primary">Efetividade de Tipos</span>
+      </div>
+      <div className="space-y-1.5 p-3">
+        <Row label="Super efetivo (+1)" items={eff.weak1} tone="bg-red-500/15 text-red-600" />
+        {eff.weak2.length > 0 && <Row label="Super efetivo (+2)" items={eff.weak2} tone="bg-red-500/25 text-red-700" />}
+        <Row label="Não muito efetivo (-1)" items={eff.resist1} tone="bg-emerald-500/15 text-emerald-600" />
+        {eff.resist2.length > 0 && <Row label="Não muito efetivo (-2)" items={eff.resist2} tone="bg-emerald-500/25 text-emerald-700" />}
+        <Row label="Imunidades" items={eff.immune} tone="bg-muted text-muted-foreground" />
+      </div>
+    </section>
+  );
+}
+
+
 function SkillGroup({ title, tint, skills, values, canEdit, onChange }: {
   title: string; tint: string; skills: string[];
   values: Record<string, number>; canEdit: boolean;
