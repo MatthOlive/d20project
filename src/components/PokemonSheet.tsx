@@ -709,12 +709,14 @@ function PokemonImage({ pokemon, species, canEdit, onChange }: {
 
 /* ============ Dialogs & helpers (kept from original) ============ */
 
-function AddMoveDialog({ available, onAdd, atCap, moveCap }: {
-  available: Move[]; onAdd: (id: string) => void; atCap: boolean; moveCap: number;
+function AddMoveDialog({ available, allMoves, onAdd, atCap, moveCap }: {
+  available: Move[]; allMoves?: Move[]; onAdd: (id: string) => void; atCap: boolean; moveCap: number;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const filtered = available.filter((m) => m.name.toLowerCase().includes(search.toLowerCase()));
+  const [showAll, setShowAll] = useState(false);
+  const source = showAll && allMoves ? allMoves : available;
+  const filtered = source.filter((m) => m.name.toLowerCase().includes(search.toLowerCase()));
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -723,7 +725,13 @@ function AddMoveDialog({ available, onAdd, atCap, moveCap }: {
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[70vh] overflow-hidden">
-        <DialogHeader><DialogTitle>Learnable moves</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{showAll ? "Todos os moves (Mestre)" : "Learnable moves"}</DialogTitle></DialogHeader>
+        {allMoves && (
+          <label className="flex cursor-pointer items-center gap-2 text-xs">
+            <Checkbox checked={showAll} onCheckedChange={(v) => setShowAll(!!v)} />
+            Mostrar todos os moves (override do Mestre)
+          </label>
+        )}
         <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search…" />
         <div className="max-h-[50vh] space-y-1 overflow-y-auto">
           {filtered.map((m) => (
@@ -732,7 +740,7 @@ function AddMoveDialog({ available, onAdd, atCap, moveCap }: {
               <Badge style={{ backgroundColor: TYPE_COLORS[m.type]?.bg, color: TYPE_COLORS[m.type]?.fg }} className="border-none capitalize">{m.type}</Badge>
             </button>
           ))}
-          {filtered.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">No moves available at this rank.</p>}
+          {filtered.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">{showAll ? "Nenhum move encontrado." : "No moves available at this rank."}</p>}
         </div>
       </DialogContent>
     </Dialog>
