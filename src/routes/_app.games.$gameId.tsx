@@ -150,23 +150,10 @@ function GameRoom() {
 
   // Character creation lives in <FilesPanel>.
 
-  async function uploadBackground(file: File) {
+  async function setBackgroundUrl(url: string) {
     if (!isNarrator) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please select an image file.");
-      return;
-    }
-    if (file.size > 5_000_000) {
-      toast.error("Image must be under 5 MB.");
-      return;
-    }
-    // Use data URL for v1 (file storage bucket can be added later)
-    const reader = new FileReader();
-    reader.onload = async () => {
-      await supabase.from("games").update({ background_url: reader.result as string }).eq("id", gameId);
-      qc.invalidateQueries({ queryKey: ["game", gameId] });
-    };
-    reader.readAsDataURL(file);
+    await supabase.from("games").update({ background_url: url }).eq("id", gameId);
+    qc.invalidateQueries({ queryKey: ["game", gameId] });
   }
 
 
