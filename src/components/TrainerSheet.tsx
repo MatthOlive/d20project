@@ -80,7 +80,7 @@ type Trainer = {
 type CustomSkill = { name: string; value: number };
 type Badge = { name: string; image_url?: string | null };
 
-type InventoryItem = { name: string; qty: number };
+type InventoryItem = { name: string; qty: number; desc?: string };
 type Achievement = { name: string; done: boolean; kind?: "rank" | "custom" | "contest_rank"; rankFor?: string };
 
 // Requisitos para alcançar CADA rank (chave = rank de destino).
