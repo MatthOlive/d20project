@@ -820,6 +820,7 @@ function PokedexSection({
   onChange: (pokedex: Record<string, PokedexEntry>) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const [search, setSearch] = useState("");
   const pokedex = (trainer.pokedex ?? {}) as Record<string, PokedexEntry>;
   const entries = Object.entries(pokedex).sort((a, b) => a[1].name.localeCompare(b[1].name));
