@@ -16,8 +16,9 @@ import { AttrFourField, SkillNumberInput } from "@/components/AttrFourField";
 import { Textarea } from "@/components/ui/textarea";
 import {
   POKEMON_ATTRS, SOCIAL_ATTRS, RANKS, RANK_LABELS, RANK_BONUS, TYPE_COLORS, type Rank,
-  rankAtLeast, resolveSkillValue, shinyize,
+  rankAtLeast, resolveSkillValue, shinyize, computeDefensiveEffectiveness,
 } from "@/lib/pokerole";
+import { ImageSourceDialog } from "@/components/ImageSourceDialog";
 
 import { useDebouncedPatch } from "@/lib/use-debounced-patch";
 import { toast } from "sonner";
