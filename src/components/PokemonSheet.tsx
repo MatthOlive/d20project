@@ -148,6 +148,19 @@ export function PokemonSheet({
       .filter(({ moves: m }) => !knownMoves.some((km) => km.id === m.id));
   }, [learnable, knownMoves, pokemon]);
 
+  // Narrator pode escolher entre todos os moves do banco
+  const { data: allMovesList = [] } = useQuery({
+    queryKey: ["all-moves"], enabled: isNarrator,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("moves").select("*").order("name");
+      if (error) throw error; return (data ?? []) as Move[];
+    },
+  });
+  const allMovesForNarrator = useMemo(
+    () => allMovesList.filter((m) => !knownMoves.some((km) => km.id === m.id)),
+    [allMovesList, knownMoves],
+  );
+
   const spDefUsesInsightGlobal = useGameSpdefUsesInsight(_gameId);
 
   if (!pokemon) return <div className="p-4 text-sm text-muted-foreground">Loading…</div>;
