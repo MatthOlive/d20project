@@ -370,6 +370,9 @@ export function PokemonSheet({
         </div>
       </section>
 
+      {/* ============ BLOCO 1.5 — Type Effectiveness ============ */}
+      <TypeEffectivenessBox types={species.types} />
+
       {/* ============ BLOCO 2 — Status + Physical + Social ============ */}
       <section className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
         <div className="rounded-lg border border-border bg-card p-3 min-w-0">
