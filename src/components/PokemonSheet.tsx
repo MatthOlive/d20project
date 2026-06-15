@@ -201,13 +201,8 @@ export function PokemonSheet({
     qc.invalidateQueries({ queryKey: ["pokemon-moves", pokemonId] });
   }
 
-  async function uploadImage(file: File) {
-    if (!canEdit) return;
-    if (file.size > 2_000_000) { toast.error("Image must be under 2 MB"); return; }
-    const reader = new FileReader();
-    reader.onload = () => patch({ image_url: reader.result as string });
-    reader.readAsDataURL(file);
-  }
+
+
 
   const displayImage = pokemon.image_url ?? species.sprite_url;
   const name = pokemon.nickname || species.name;
