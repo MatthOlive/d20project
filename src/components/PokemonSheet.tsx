@@ -492,7 +492,11 @@ export function PokemonSheet({
               <Checkbox checked={gMaxMode} onCheckedChange={(v) => { setGMaxMode(!!v); if (v) setZMode(false); }} /> G-Max
             </label>
             {canEdit && (
-              <AddMoveDialog available={filteredLearnable.map((l) => l.moves)} onAdd={addMove} atCap={knownMoves.length >= moveCap} moveCap={moveCap} />
+              <AddMoveDialog
+                available={filteredLearnable.map((l) => l.moves)}
+                allMoves={isNarrator ? allMovesForNarrator : undefined}
+                onAdd={addMove} atCap={knownMoves.length >= moveCap} moveCap={moveCap}
+              />
             )}
           </div>
         </div>
