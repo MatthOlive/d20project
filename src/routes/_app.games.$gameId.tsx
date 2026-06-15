@@ -15,6 +15,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ImageSourceDialog } from "@/components/ImageSourceDialog";
 import { ChatPanel } from "@/components/ChatPanel";
 import { useGameSpdefUsesInsight } from "@/hooks/use-game-spdef-uses-insight";
 
