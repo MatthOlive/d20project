@@ -592,9 +592,17 @@ export function PokemonSheet({
       <section className="space-y-3 rounded-lg border border-border bg-card p-3">
         <h3 className="text-sm font-bold uppercase tracking-wider text-primary">Details</h3>
         <div className="grid gap-3 sm:grid-cols-3">
-          <div className="space-y-1">
+          <div className="space-y-1 sm:col-span-3">
             <Label className="text-[10px] uppercase text-muted-foreground">Held item</Label>
             <Input value={pokemon.held_item ?? ""} onChange={(e) => patch({ held_item: e.target.value })} disabled={!canEdit} className="h-8 text-xs" />
+            <Label className="text-[10px] uppercase text-muted-foreground">Descrição do item</Label>
+            <Textarea
+              value={((pokemon.modifiers as Record<string, unknown>)?._held_item_desc as string) ?? ""}
+              onChange={(e) => patch({ modifiers: { ...(pokemon.modifiers as Record<string, unknown>), _held_item_desc: e.target.value } as Record<string, number> })}
+              disabled={!canEdit}
+              rows={2}
+              placeholder="Descrição do item segurado…"
+            />
           </div>
           <div className="space-y-1">
             <Label className="text-[10px] uppercase text-muted-foreground">Happiness</Label>
