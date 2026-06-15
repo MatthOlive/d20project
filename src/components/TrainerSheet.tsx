@@ -964,25 +964,35 @@ function ItemListSection({
           <p className="px-1 text-xs text-muted-foreground">No items.</p>
         )}
         {items.map((it, i) => (
-          <div key={i} className="flex items-center gap-1.5">
-            <Input
-              value={it.name}
-              onChange={(e) => update(i, { name: e.target.value })}
+          <div key={i} className="space-y-1 rounded-md border border-border/60 bg-background/40 p-1.5">
+            <div className="flex items-center gap-1.5">
+              <Input
+                value={it.name}
+                onChange={(e) => update(i, { name: e.target.value })}
+                disabled={!canEdit}
+                className="h-7 flex-1 text-sm"
+              />
+              <Input
+                type="number" min={0}
+                value={it.qty}
+                onChange={(e) => update(i, { qty: parseInt(e.target.value) || 0 })}
+                disabled={!canEdit}
+                className="h-7 w-14 text-center text-sm"
+              />
+              {canEdit && (
+                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => remove(i)}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+            <Textarea
+              value={it.desc ?? ""}
+              onChange={(e) => update(i, { desc: e.target.value })}
               disabled={!canEdit}
-              className="h-7 flex-1 text-sm"
+              rows={2}
+              placeholder="Descrição do item…"
+              className="text-xs"
             />
-            <Input
-              type="number" min={0}
-              value={it.qty}
-              onChange={(e) => update(i, { qty: parseInt(e.target.value) || 0 })}
-              disabled={!canEdit}
-              className="h-7 w-14 text-center text-sm"
-            />
-            {canEdit && (
-              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => remove(i)}>
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            )}
           </div>
         ))}
         {canEdit && (
