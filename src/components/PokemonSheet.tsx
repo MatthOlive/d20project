@@ -598,7 +598,7 @@ export function PokemonSheet({
             <Label className="text-[10px] uppercase text-muted-foreground">Descrição do item</Label>
             <Textarea
               value={((pokemon.modifiers as Record<string, unknown>)?._held_item_desc as string) ?? ""}
-              onChange={(e) => patch({ modifiers: { ...(pokemon.modifiers as Record<string, unknown>), _held_item_desc: e.target.value } as Record<string, number> })}
+              onChange={(e) => patch({ modifiers: { ...(pokemon.modifiers as Record<string, unknown>), _held_item_desc: e.target.value } as unknown as Record<string, number> })}
               disabled={!canEdit}
               rows={2}
               placeholder="Descrição do item segurado…"
