@@ -1246,11 +1246,11 @@ function InitiativePanel({ gameId, isNarrator, open, onClose }: { gameId: string
 function MapTopDisclosure({
   gameId,
   currentBg,
-  uploadBackground,
+  setBackgroundUrl,
 }: {
   gameId: string;
   currentBg: string | null;
-  uploadBackground: (file: File) => void;
+  setBackgroundUrl: (url: string) => void | Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -1264,10 +1264,16 @@ function MapTopDisclosure({
       </button>
       {open && (
         <div className="mt-1 flex flex-wrap items-center justify-center gap-1.5 rounded-lg border border-border bg-card/95 p-2 shadow-lg backdrop-blur">
-          <label className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-md border border-border bg-background px-2 text-xs font-semibold hover:bg-accent">
-            <ImageIcon className="h-3.5 w-3.5" /> Set background
-            <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadBackground(e.target.files[0])} />
-          </label>
+          <ImageSourceDialog
+            title="Definir background do mapa"
+            maxBytes={5_000_000}
+            onPick={(url) => setBackgroundUrl(url)}
+            trigger={
+              <button type="button" className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-background px-2 text-xs font-semibold hover:bg-accent">
+                <ImageIcon className="h-3.5 w-3.5" /> Set background
+              </button>
+            }
+          />
           <div className="flex items-center gap-0.5 rounded-md border border-border bg-background px-1">
             <button
               type="button"
