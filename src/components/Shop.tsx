@@ -178,8 +178,9 @@ export function Shop({ trainerId }: { trainerId: string }) {
     const existing = (trainer[targetList] ?? []) as InventoryItem[];
     const idx = existing.findIndex((i) => i.name.toLowerCase() === item.name.toLowerCase());
     const next = existing.slice();
-    if (idx >= 0) next[idx] = { ...next[idx], qty: (next[idx].qty ?? 1) + 1 };
-    else next.push({ name: item.name, qty: 1 });
+    const itemDesc = [item.desc, item.effect ? `Efeito: ${item.effect}` : null].filter(Boolean).join("\n");
+    if (idx >= 0) next[idx] = { ...next[idx], qty: (next[idx].qty ?? 1) + 1, desc: next[idx].desc ?? itemDesc };
+    else next.push({ name: item.name, qty: 1, desc: itemDesc });
 
     const patch = item.battle
       ? { money: money - item.price, battle_items_list: next }
