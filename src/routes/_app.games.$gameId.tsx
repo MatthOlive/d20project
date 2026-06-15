@@ -183,7 +183,7 @@ function GameRoom() {
           <MapTopDisclosure
             gameId={gameId}
             currentBg={game.background_url}
-            uploadBackground={uploadBackground}
+            setBackgroundUrl={setBackgroundUrl}
           />
         )}
         <InitiativePanel gameId={gameId} isNarrator={isNarrator} open={turnOrderOpen} onClose={() => setTurnOrderOpen(false)} />
