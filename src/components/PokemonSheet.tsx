@@ -16,8 +16,9 @@ import { AttrFourField, SkillNumberInput } from "@/components/AttrFourField";
 import { Textarea } from "@/components/ui/textarea";
 import {
   POKEMON_ATTRS, SOCIAL_ATTRS, RANKS, RANK_LABELS, RANK_BONUS, TYPE_COLORS, type Rank,
-  rankAtLeast, resolveSkillValue, shinyize,
+  rankAtLeast, resolveSkillValue, shinyize, computeDefensiveEffectiveness,
 } from "@/lib/pokerole";
+import { ImageSourceDialog } from "@/components/ImageSourceDialog";
 
 import { useDebouncedPatch } from "@/lib/use-debounced-patch";
 import { toast } from "sonner";
@@ -147,6 +148,19 @@ export function PokemonSheet({
       .filter(({ moves: m }) => !knownMoves.some((km) => km.id === m.id));
   }, [learnable, knownMoves, pokemon]);
 
+  // Narrator pode escolher entre todos os moves do banco
+  const { data: allMovesList = [] } = useQuery({
+    queryKey: ["all-moves"], enabled: isNarrator,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("moves").select("*").order("name");
+      if (error) throw error; return (data ?? []) as Move[];
+    },
+  });
+  const allMovesForNarrator = useMemo(
+    () => allMovesList.filter((m) => !knownMoves.some((km) => km.id === m.id)),
+    [allMovesList, knownMoves],
+  );
+
   const spDefUsesInsightGlobal = useGameSpdefUsesInsight(_gameId);
 
   if (!pokemon) return <div className="p-4 text-sm text-muted-foreground">Loading…</div>;
@@ -187,13 +201,8 @@ export function PokemonSheet({
     qc.invalidateQueries({ queryKey: ["pokemon-moves", pokemonId] });
   }
 
-  async function uploadImage(file: File) {
-    if (!canEdit) return;
-    if (file.size > 2_000_000) { toast.error("Image must be under 2 MB"); return; }
-    const reader = new FileReader();
-    reader.onload = () => patch({ image_url: reader.result as string });
-    reader.readAsDataURL(file);
-  }
+
+
 
   const displayImage = pokemon.image_url ?? species.sprite_url;
   const name = pokemon.nickname || species.name;
@@ -299,10 +308,9 @@ export function PokemonSheet({
                 <Select value={pokemon.sex ?? ""} onValueChange={(v) => patch({ sex: v || null })} disabled={!canEdit}>
                   <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="male">Male</SelectItem>
-                    <SelectItem value="female">Female</SelectItem>
-                    <SelectItem value="nonbinary">Non-binary</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="male">Macho</SelectItem>
+                    <SelectItem value="female">Fêmea</SelectItem>
+                    <SelectItem value="none">Sem sexo</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -356,6 +364,9 @@ export function PokemonSheet({
           </div>
         </div>
       </section>
+
+      {/* ============ BLOCO 1.5 — Type Effectiveness ============ */}
+      <TypeEffectivenessBox types={species.types} />
 
       {/* ============ BLOCO 2 — Status + Physical + Social ============ */}
       <section className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
@@ -479,7 +490,11 @@ export function PokemonSheet({
               <Checkbox checked={gMaxMode} onCheckedChange={(v) => { setGMaxMode(!!v); if (v) setZMode(false); }} /> G-Max
             </label>
             {canEdit && (
-              <AddMoveDialog available={filteredLearnable.map((l) => l.moves)} onAdd={addMove} atCap={knownMoves.length >= moveCap} moveCap={moveCap} />
+              <AddMoveDialog
+                available={filteredLearnable.map((l) => l.moves)}
+                allMoves={isNarrator ? allMovesForNarrator : undefined}
+                onAdd={addMove} atCap={knownMoves.length >= moveCap} moveCap={moveCap}
+              />
             )}
           </div>
         </div>
@@ -575,9 +590,17 @@ export function PokemonSheet({
       <section className="space-y-3 rounded-lg border border-border bg-card p-3">
         <h3 className="text-sm font-bold uppercase tracking-wider text-primary">Details</h3>
         <div className="grid gap-3 sm:grid-cols-3">
-          <div className="space-y-1">
+          <div className="space-y-1 sm:col-span-3">
             <Label className="text-[10px] uppercase text-muted-foreground">Held item</Label>
             <Input value={pokemon.held_item ?? ""} onChange={(e) => patch({ held_item: e.target.value })} disabled={!canEdit} className="h-8 text-xs" />
+            <Label className="text-[10px] uppercase text-muted-foreground">Descrição do item</Label>
+            <Textarea
+              value={((pokemon.modifiers as Record<string, unknown>)?._held_item_desc as string) ?? ""}
+              onChange={(e) => patch({ modifiers: { ...(pokemon.modifiers as Record<string, unknown>), _held_item_desc: e.target.value } as unknown as Record<string, number> })}
+              disabled={!canEdit}
+              rows={2}
+              placeholder="Descrição do item segurado…"
+            />
           </div>
           <div className="space-y-1">
             <Label className="text-[10px] uppercase text-muted-foreground">Happiness</Label>
@@ -633,6 +656,36 @@ export function PokemonSheet({
 
 /* ============ Shared sub-components ============ */
 
+function TypeEffectivenessBox({ types }: { types: string[] }) {
+  const eff = useMemo(() => computeDefensiveEffectiveness(types ?? []), [types]);
+  const TypeBadge = ({ t }: { t: string }) => (
+    <Badge style={{ backgroundColor: TYPE_COLORS[t as keyof typeof TYPE_COLORS]?.bg, color: TYPE_COLORS[t as keyof typeof TYPE_COLORS]?.fg }} className="border-none capitalize text-[10px] px-1.5 py-0">{t}</Badge>
+  );
+  const Row = ({ label, items, tone }: { label: string; items: string[]; tone: string }) => (
+    <div className="flex items-start gap-2">
+      <span className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${tone}`}>{label}</span>
+      <div className="flex flex-wrap gap-1">
+        {items.length === 0 ? <span className="text-[11px] text-muted-foreground">—</span> : items.map((t) => <TypeBadge key={t} t={t} />)}
+      </div>
+    </div>
+  );
+  return (
+    <section className="overflow-hidden rounded-lg border border-border bg-card">
+      <div className="border-b-2 border-primary bg-primary/10 px-3 py-1">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-primary">Efetividade de Tipos</span>
+      </div>
+      <div className="space-y-1.5 p-3">
+        <Row label="Super efetivo (+1)" items={eff.weak1} tone="bg-red-500/15 text-red-600" />
+        {eff.weak2.length > 0 && <Row label="Super efetivo (+2)" items={eff.weak2} tone="bg-red-500/25 text-red-700" />}
+        <Row label="Não muito efetivo (-1)" items={eff.resist1} tone="bg-emerald-500/15 text-emerald-600" />
+        {eff.resist2.length > 0 && <Row label="Não muito efetivo (-2)" items={eff.resist2} tone="bg-emerald-500/25 text-emerald-700" />}
+        <Row label="Imunidades" items={eff.immune} tone="bg-muted text-muted-foreground" />
+      </div>
+    </section>
+  );
+}
+
+
 function SkillGroup({ title, tint, skills, values, canEdit, onChange }: {
   title: string; tint: string; skills: string[];
   values: Record<string, number>; canEdit: boolean;
@@ -662,12 +715,8 @@ function PokemonImage({ pokemon, species, canEdit, onChange }: {
   const baseSprite = pokemon.image_url ?? species.sprite_url;
   const displayImage = pokemon.image_url ? baseSprite : (pokemon.is_shiny ? shinyize(species.sprite_url) ?? species.sprite_url : species.sprite_url);
 
-  function upload(file: File) {
-    if (file.size > 2_000_000) { toast.error("Image must be under 2 MB"); return; }
-    const reader = new FileReader();
-    reader.onload = () => onChange(reader.result as string);
-    reader.readAsDataURL(file);
-  }
+
+
   return (
     <div className="flex flex-col items-start gap-2">
       {displayImage ? (
@@ -677,10 +726,16 @@ function PokemonImage({ pokemon, species, canEdit, onChange }: {
       )}
       {canEdit && (
         <div className="flex w-full flex-wrap gap-1.5">
-          <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold hover:bg-accent">
-            <ImagePlus className="h-3 w-3" /> {pokemon.image_url ? "Replace" : "Upload"}
-            <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
-          </label>
+          <ImageSourceDialog
+            title={pokemon.image_url ? "Substituir imagem" : "Definir imagem"}
+            maxBytes={2_000_000}
+            onPick={(url) => onChange(url)}
+            trigger={
+              <button type="button" className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold hover:bg-accent">
+                <ImagePlus className="h-3 w-3" /> {pokemon.image_url ? "Substituir" : "Upload"}
+              </button>
+            }
+          />
           {pokemon.image_url && (
             <button onClick={() => onChange(null)} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold hover:bg-accent"><RotateCcw className="h-3 w-3" /> Reset</button>
           )}
@@ -692,12 +747,14 @@ function PokemonImage({ pokemon, species, canEdit, onChange }: {
 
 /* ============ Dialogs & helpers (kept from original) ============ */
 
-function AddMoveDialog({ available, onAdd, atCap, moveCap }: {
-  available: Move[]; onAdd: (id: string) => void; atCap: boolean; moveCap: number;
+function AddMoveDialog({ available, allMoves, onAdd, atCap, moveCap }: {
+  available: Move[]; allMoves?: Move[]; onAdd: (id: string) => void; atCap: boolean; moveCap: number;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const filtered = available.filter((m) => m.name.toLowerCase().includes(search.toLowerCase()));
+  const [showAll, setShowAll] = useState(false);
+  const source = showAll && allMoves ? allMoves : available;
+  const filtered = source.filter((m) => m.name.toLowerCase().includes(search.toLowerCase()));
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -706,7 +763,13 @@ function AddMoveDialog({ available, onAdd, atCap, moveCap }: {
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[70vh] overflow-hidden">
-        <DialogHeader><DialogTitle>Learnable moves</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{showAll ? "Todos os moves (Mestre)" : "Learnable moves"}</DialogTitle></DialogHeader>
+        {allMoves && (
+          <label className="flex cursor-pointer items-center gap-2 text-xs">
+            <Checkbox checked={showAll} onCheckedChange={(v) => setShowAll(!!v)} />
+            Mostrar todos os moves (override do Mestre)
+          </label>
+        )}
         <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search…" />
         <div className="max-h-[50vh] space-y-1 overflow-y-auto">
           {filtered.map((m) => (
@@ -715,7 +778,7 @@ function AddMoveDialog({ available, onAdd, atCap, moveCap }: {
               <Badge style={{ backgroundColor: TYPE_COLORS[m.type]?.bg, color: TYPE_COLORS[m.type]?.fg }} className="border-none capitalize">{m.type}</Badge>
             </button>
           ))}
-          {filtered.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">No moves available at this rank.</p>}
+          {filtered.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">{showAll ? "Nenhum move encontrado." : "No moves available at this rank."}</p>}
         </div>
       </DialogContent>
     </Dialog>

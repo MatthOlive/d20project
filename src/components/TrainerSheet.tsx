@@ -23,7 +23,7 @@ import {
 
 import { useDebouncedPatch } from "@/lib/use-debounced-patch";
 import { toast } from "sonner";
-import { Dices, ImagePlus, X as XIcon, Plus, Trash2, Award } from "lucide-react";
+import { Dices, ImagePlus, X as XIcon, Plus, Trash2, Award, ChevronDown, ChevronUp } from "lucide-react";
 import {
   HpAndStatusBlock, AttackRollButton, GenericRollButton, painPenaltyFor,
 } from "@/components/SheetRolls";
@@ -80,7 +80,7 @@ type Trainer = {
 type CustomSkill = { name: string; value: number };
 type Badge = { name: string; image_url?: string | null };
 
-type InventoryItem = { name: string; qty: number };
+type InventoryItem = { name: string; qty: number; desc?: string };
 type Achievement = { name: string; done: boolean; kind?: "rank" | "custom" | "contest_rank"; rankFor?: string };
 
 // Requisitos para alcançar CADA rank (chave = rank de destino).
@@ -820,6 +820,7 @@ function PokedexSection({
   onChange: (pokedex: Record<string, PokedexEntry>) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const [search, setSearch] = useState("");
   const pokedex = (trainer.pokedex ?? {}) as Record<string, PokedexEntry>;
   const entries = Object.entries(pokedex).sort((a, b) => a[1].name.localeCompare(b[1].name));
@@ -858,42 +859,56 @@ function PokedexSection({
 
   return (
     <section>
-      <div className="mb-2 flex items-center justify-between">
+      <div className="mb-2 flex items-center justify-between gap-2">
         <h3 className="text-sm font-bold">Pokédex <span className="text-muted-foreground font-normal">· Seen {seen} · Caught {caught}</span></h3>
-        {canEdit && (
-          <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
-            <Plus className="mr-1 h-3.5 w-3.5" /> Add
+        <div className="flex items-center gap-1.5">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7"
+            onClick={() => setCollapsed((v) => !v)}
+            title={collapsed ? "Expandir lista" : "Minimizar lista"}
+          >
+            {collapsed ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+            <span className="ml-1 text-xs">{collapsed ? "Expandir" : "Minimizar"}</span>
           </Button>
-        )}
-      </div>
-      {entries.length === 0 ? (
-        <p className="text-xs text-muted-foreground">No Pokémon recorded yet.</p>
-      ) : (
-        <div className="grid gap-1.5 sm:grid-cols-2">
-          {entries.map(([id, e]) => (
-            <div key={id} className="flex items-center gap-2 rounded-md border border-border bg-card px-2 py-1.5">
-              {e.sprite_url ? (
-                <img src={e.sprite_url} alt={e.name} className="h-8 w-8 object-contain" />
-              ) : (
-                <div className="h-8 w-8 rounded bg-muted" />
-              )}
-              <span className="flex-1 text-sm">{e.name}</span>
-              <label className="flex items-center gap-1.5 text-xs">
-                <Checkbox
-                  checked={e.captured}
-                  onCheckedChange={() => canEdit && toggleCaptured(id)}
-                  disabled={!canEdit}
-                />
-                Caught
-              </label>
-              {canEdit && (
-                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => removeEntry(id)}>
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              )}
-            </div>
-          ))}
+          {canEdit && (
+            <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+              <Plus className="mr-1 h-3.5 w-3.5" /> Add
+            </Button>
+          )}
         </div>
+      </div>
+      {!collapsed && (
+        entries.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No Pokémon recorded yet.</p>
+        ) : (
+          <div className="grid gap-1.5 sm:grid-cols-2">
+            {entries.map(([id, e]) => (
+              <div key={id} className="flex items-center gap-2 rounded-md border border-border bg-card px-2 py-1.5">
+                {e.sprite_url ? (
+                  <img src={e.sprite_url} alt={e.name} className="h-8 w-8 object-contain" />
+                ) : (
+                  <div className="h-8 w-8 rounded bg-muted" />
+                )}
+                <span className="flex-1 text-sm">{e.name}</span>
+                <label className="flex items-center gap-1.5 text-xs">
+                  <Checkbox
+                    checked={e.captured}
+                    onCheckedChange={() => canEdit && toggleCaptured(id)}
+                    disabled={!canEdit}
+                  />
+                  Caught
+                </label>
+                {canEdit && (
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => removeEntry(id)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        )
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -964,25 +979,35 @@ function ItemListSection({
           <p className="px-1 text-xs text-muted-foreground">No items.</p>
         )}
         {items.map((it, i) => (
-          <div key={i} className="flex items-center gap-1.5">
-            <Input
-              value={it.name}
-              onChange={(e) => update(i, { name: e.target.value })}
+          <div key={i} className="space-y-1 rounded-md border border-border/60 bg-background/40 p-1.5">
+            <div className="flex items-center gap-1.5">
+              <Input
+                value={it.name}
+                onChange={(e) => update(i, { name: e.target.value })}
+                disabled={!canEdit}
+                className="h-7 flex-1 text-sm"
+              />
+              <Input
+                type="number" min={0}
+                value={it.qty}
+                onChange={(e) => update(i, { qty: parseInt(e.target.value) || 0 })}
+                disabled={!canEdit}
+                className="h-7 w-14 text-center text-sm"
+              />
+              {canEdit && (
+                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => remove(i)}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+            <Textarea
+              value={it.desc ?? ""}
+              onChange={(e) => update(i, { desc: e.target.value })}
               disabled={!canEdit}
-              className="h-7 flex-1 text-sm"
+              rows={2}
+              placeholder="Descrição do item…"
+              className="text-xs"
             />
-            <Input
-              type="number" min={0}
-              value={it.qty}
-              onChange={(e) => update(i, { qty: parseInt(e.target.value) || 0 })}
-              disabled={!canEdit}
-              className="h-7 w-14 text-center text-sm"
-            />
-            {canEdit && (
-              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => remove(i)}>
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            )}
           </div>
         ))}
         {canEdit && (
