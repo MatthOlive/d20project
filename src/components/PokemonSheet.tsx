@@ -735,10 +735,16 @@ function PokemonImage({ pokemon, species, canEdit, onChange }: {
       )}
       {canEdit && (
         <div className="flex w-full flex-wrap gap-1.5">
-          <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold hover:bg-accent">
-            <ImagePlus className="h-3 w-3" /> {pokemon.image_url ? "Replace" : "Upload"}
-            <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
-          </label>
+          <ImageSourceDialog
+            title={pokemon.image_url ? "Substituir imagem" : "Definir imagem"}
+            maxBytes={2_000_000}
+            onPick={(url) => onChange(url)}
+            trigger={
+              <button type="button" className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold hover:bg-accent">
+                <ImagePlus className="h-3 w-3" /> {pokemon.image_url ? "Substituir" : "Upload"}
+              </button>
+            }
+          />
           {pokemon.image_url && (
             <button onClick={() => onChange(null)} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold hover:bg-accent"><RotateCcw className="h-3 w-3" /> Reset</button>
           )}
