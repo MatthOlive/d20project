@@ -153,13 +153,39 @@ export function SuccessHover({
   );
 }
 
+export type MoveRollTarget = {
+  name: string;
+  def: number;
+  defStat: "def" | "spdef";
+  effLabel: string;
+  effDelta: number;
+  immune: boolean;
+  finalDamage: number;
+};
+
 export type MoveRollMessage = {
   v: "move-1";
   card: MoveCardData;
   pokemonName: string;
   hasStab: boolean;
   imageUrl?: string | null;
-  accuracy: { pool: number; dice: number[]; successes: number; penalty: number };
-  damage: { pool: number; dice: number[]; successes: number; penalty: number; isStatus: boolean; targetDef: number } | null;
+  accuracy: {
+    pool: number;
+    dice: number[];
+    successes: number;
+    penalty: number;
+    crit?: { margin: number; actions: number; required: number; critRequired: number; isCrit: boolean };
+  };
+  damage: {
+    pool: number;
+    dice: number[];
+    successes: number;
+    penalty: number;
+    isStatus: boolean;
+    targetDef: number;
+    critBonus?: number;
+    targets?: MoveRollTarget[];
+  } | null;
   chance: { label: string; pool: number; dice: number[]; successes: number }[];
 };
+
