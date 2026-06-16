@@ -16,7 +16,6 @@ import {
 import { useGameSpdefUsesInsight } from "@/hooks/use-game-spdef-uses-insight";
 import type { MoveRollMessage, MoveRollTarget } from "@/components/MoveCard";
 
-
 export type MoveData = {
   id: string;
   name: string;
@@ -136,6 +135,83 @@ export function computeMoveStats(
   return { accPool, dmgPool, isStatus, isSpecial, hasStab, accuracyText, damagePoolText };
 }
 
+type TokenLite = {
+  id: string;
+  label: string;
+  character_kind: "trainer" | "pokemon";
+  character_id: string;
+};
+type TargetInfo = {
+  id: string;
+  name: string;
+  kind: "trainer" | "pokemon";
+  vit: number;
+  ins: number;
+  types: string[];
+};
+
+function useTargetsForGame(gameId: string, enabled: boolean) {
+  const tokensQ = useQuery({
+    queryKey: ["mrd-tokens", gameId],
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tokens")
+        .select("id,label,character_kind,character_id")
+        .eq("game_id", gameId);
+      if (error) throw error;
+      return (data ?? []) as TokenLite[];
+    },
+  });
+  const tokens = tokensQ.data ?? [];
+  const ids = tokens.map((t) => `${t.character_kind}:${t.character_id}`).sort().join(",");
+  const infoQ = useQuery({
+    queryKey: ["mrd-target-info", gameId, ids],
+    enabled: enabled && tokens.length > 0,
+    queryFn: async () => {
+      const pkIds = tokens.filter((t) => t.character_kind === "pokemon").map((t) => t.character_id);
+      const trIds = tokens.filter((t) => t.character_kind === "trainer").map((t) => t.character_id);
+      const [pkRes, trRes] = await Promise.all([
+        pkIds.length
+          ? supabase.from("pokemon").select("id,current_attrs,species:species_id(types,base_attrs)").in("id", pkIds)
+          : Promise.resolve({ data: [] as unknown[], error: null as unknown as null }),
+        trIds.length
+          ? supabase.from("trainers").select("id,attr_points,attr_bonus").in("id", trIds)
+          : Promise.resolve({ data: [] as unknown[], error: null as unknown as null }),
+      ]);
+      if (pkRes.error) throw pkRes.error;
+      if (trRes.error) throw trRes.error;
+      const map = new Map<string, TargetInfo>();
+      for (const t of tokens) {
+        if (t.character_kind === "pokemon") {
+          const row = (pkRes.data as Array<{
+            id: string;
+            current_attrs: Record<string, number> | null;
+            species: { types: string[]; base_attrs: Record<string, number> } | null;
+          }>).find((r) => r.id === t.character_id);
+          if (!row) continue;
+          const base = row.species?.base_attrs ?? {};
+          const vit = row.current_attrs?.vitality ?? base.vitality ?? 1;
+          const ins = row.current_attrs?.insight ?? base.insight ?? 1;
+          map.set(t.id, { id: t.id, name: t.label, kind: "pokemon", vit, ins, types: row.species?.types ?? [] });
+        } else {
+          const row = (trRes.data as Array<{
+            id: string;
+            attr_points: Record<string, number> | null;
+            attr_bonus: Record<string, number> | null;
+          }>).find((r) => r.id === t.character_id);
+          if (!row) continue;
+          const vit = 1 + (row.attr_points?.vitality ?? 0) + (row.attr_bonus?.vitality ?? 0);
+          const ins = 1 + (row.attr_points?.insight ?? 0) + (row.attr_bonus?.insight ?? 0);
+          map.set(t.id, { id: t.id, name: t.label, kind: "trainer", vit, ins, types: [] });
+        }
+      }
+      return map;
+    },
+  });
+  return { tokens, infoMap: infoQ.data ?? new Map<string, TargetInfo>() };
+}
+
 export function MoveRollDialog({
   move, pokemonName, accPool, dmgPool, isStatus, isSpecial, hasStab,
   accuracyText, damagePoolText, gameId, userId, painPenalty, imageUrl,
@@ -151,26 +227,72 @@ export function MoveRollDialog({
   const [accBonus, setAccBonus] = useState(0);
   const [dmgBonus, setDmgBonus] = useState(0);
   const [targetDef, setTargetDef] = useState(0);
+  const [critMargin, setCritMargin] = useState(0);
+  const [actions, setActions] = useState(0);
+  const [selectedTokenIds, setSelectedTokenIds] = useState<string[]>([]);
+  const spdefUsesInsight = useGameSpdefUsesInsight(gameId);
+  const { tokens, infoMap } = useTargetsForGame(gameId, open && !isStatus);
   const extras = useMemo(() => parseMoveExtras(move.effect), [move.effect]);
   const [extraOn, setExtraOn] = useState<boolean[]>(() => extras.extra.map(() => false));
+
+  useEffect(() => { if (!open) setSelectedTokenIds([]); }, [open]);
+
   const defLabel = isSpecial ? "Target Sp.Def" : "Target Def";
   const extraDmgBonus = extras.extra.reduce((acc, e, i) => acc + (extraOn[i] ? e.count : 0), 0);
-  const finalDmgPool = Math.max(0, dmgPool + dmgBonus + extraDmgBonus - targetDef);
+  const hasTargets = selectedTokenIds.length > 0;
+  const finalDmgPool = Math.max(0, dmgPool + dmgBonus + extraDmgBonus - (hasTargets ? 0 : targetDef));
   const finalAccPool = Math.max(0, accPool + accBonus);
+  const requiredSuccesses = actions + 1;
+  const critRequired = requiredSuccesses + Math.max(0, 3 - Math.max(0, critMargin));
+
+  function defValueFor(t: TargetInfo): number {
+    if (isSpecial) return spdefUsesInsight ? t.ins : t.vit;
+    return t.vit;
+  }
 
   async function confirm() {
     const accResult = rollD6(finalAccPool);
     const accSuccesses = Math.max(0, accResult.successes - painPenalty);
+    const isHit = accSuccesses >= requiredSuccesses;
+    const isCrit = isHit && accSuccesses >= critRequired;
+    const critBonus = isCrit && !isStatus ? 1 : 0;
+
     let dmg: MoveRollMessage["damage"] = null;
     if (!isStatus && finalDmgPool > 0) {
       const dmgResult = rollD6(finalDmgPool);
+      const dmgSuccesses = Math.max(0, dmgResult.successes - painPenalty);
+      let targets: MoveRollTarget[] | undefined;
+      if (hasTargets) {
+        targets = selectedTokenIds
+          .map((tid) => infoMap.get(tid))
+          .filter((x): x is TargetInfo => !!x)
+          .map((t) => {
+            const def = defValueFor(t);
+            const mult = damageMultiplierFor(move.type as string, t.types);
+            const eff = damageDeltaFromMultiplier(mult);
+            const finalDamage = eff.immune
+              ? 0
+              : Math.max(0, dmgSuccesses + critBonus + eff.delta - def);
+            return {
+              name: t.name,
+              def,
+              defStat: isSpecial ? ("spdef" as const) : ("def" as const),
+              effLabel: eff.label,
+              effDelta: eff.delta,
+              immune: eff.immune,
+              finalDamage,
+            };
+          });
+      }
       dmg = {
         pool: finalDmgPool,
         dice: dmgResult.dice,
-        successes: Math.max(0, dmgResult.successes - painPenalty),
+        successes: dmgSuccesses,
         penalty: painPenalty,
         isStatus: false,
-        targetDef,
+        targetDef: hasTargets ? 0 : targetDef,
+        critBonus,
+        targets,
       };
     }
     const chance = extras.chance.map((c) => {
@@ -201,6 +323,7 @@ export function MoveRollDialog({
         dice: accResult.dice,
         successes: accSuccesses,
         penalty: painPenalty,
+        crit: { margin: critMargin, actions, required: requiredSuccesses, critRequired, isCrit },
       },
       damage: dmg,
       chance,
@@ -213,7 +336,9 @@ export function MoveRollDialog({
       roll_data: payload as unknown as never,
     });
     if (error) toast.error(error.message);
-    setOpen(false); setAccBonus(0); setDmgBonus(0); setTargetDef(0);
+    setOpen(false);
+    setAccBonus(0); setDmgBonus(0); setTargetDef(0);
+    setCritMargin(0); setActions(0); setSelectedTokenIds([]);
     setExtraOn(extras.extra.map(() => false));
   }
 
@@ -222,30 +347,82 @@ export function MoveRollDialog({
       <DialogTrigger asChild>
         <Button size="sm"><Dices className="mr-1.5 h-3.5 w-3.5" /> {triggerLabel ?? `Roll ${accPool}d6${isStatus ? "" : ` / ${dmgPool}d6`}`}</Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{move.name}{hasStab ? <span className="ml-2 rounded bg-success/20 px-1.5 py-0.5 text-xs font-bold text-success">STAB +1</span> : null}</DialogTitle></DialogHeader>
         {move.effect && <p className="text-sm text-muted-foreground">{move.effect}</p>}
-        <p className="text-[11px] italic text-muted-foreground">Order: 1) Accuracy → 2) Damage{extras.chance.length > 0 ? " → 3) Chance Dice (only 6s succeed)" : ""}.{painPenalty > 0 ? ` Pain Penalty −${painPenalty} applies to Accuracy & Damage successes.` : ""}</p>
+        <p className="text-[11px] italic text-muted-foreground">Ordem: 1) Acurácia → 2) Dano{extras.chance.length > 0 ? " → 3) Chance Dice (apenas 6 contam)" : ""}.{painPenalty > 0 ? ` Penalidade de dor −${painPenalty} em Acurácia & Dano.` : ""}</p>
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
-            <div><Label className="text-xs">Accuracy bonus dice</Label><p className="text-[11px] text-muted-foreground">Pool: {accPool}d6 → rolling {finalAccPool}d6</p></div>
+            <div><Label className="text-xs">Bônus de acurácia (dados)</Label><p className="text-[11px] text-muted-foreground">Pool: {accPool}d6 → rolando {finalAccPool}d6</p></div>
             <Input type="number" value={accBonus} onChange={(e) => setAccBonus(parseInt(e.target.value) || 0)} className="h-9 w-20" />
           </div>
+
+          <div className="rounded-md border border-border bg-muted/30 p-2">
+            <Label className="text-xs font-semibold">Crítico & Ações</Label>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-[10px] text-muted-foreground">Margem de crítico</Label>
+                <Input type="number" min={0} value={critMargin} onChange={(e) => setCritMargin(Math.max(0, parseInt(e.target.value) || 0))} className="h-8" />
+              </div>
+              <div>
+                <Label className="text-[10px] text-muted-foreground">Ações já feitas no turno</Label>
+                <Input type="number" min={0} value={actions} onChange={(e) => setActions(Math.max(0, parseInt(e.target.value) || 0))} className="h-8" />
+              </div>
+            </div>
+            <p className="mt-1.5 text-[10px] text-muted-foreground">
+              Acertar: <b>{requiredSuccesses}</b> sucesso(s). Crítico: <b>{critRequired}</b> sucesso(s). Crítico dá +1 de dano.
+            </p>
+          </div>
+
           {!isStatus && dmgPool > 0 && (
             <>
               <div className="flex items-center justify-between gap-3">
-                <div><Label className="text-xs">Damage bonus dice</Label><p className="text-[11px] text-muted-foreground">Base: {dmgPool}d6{hasStab ? " (incl. STAB)" : ""}</p></div>
+                <div><Label className="text-xs">Bônus de dano (dados)</Label><p className="text-[11px] text-muted-foreground">Base: {dmgPool}d6{hasStab ? " (incl. STAB)" : ""}</p></div>
                 <Input type="number" value={dmgBonus} onChange={(e) => setDmgBonus(parseInt(e.target.value) || 0)} className="h-9 w-20" />
               </div>
-              <div className="flex items-center justify-between gap-3">
-                <div><Label className="text-xs">{defLabel} (subtracted from damage pool)</Label><p className="text-[11px] text-muted-foreground">Final damage pool: <b>{finalDmgPool}d6</b></p></div>
-                <Input type="number" min={0} value={targetDef} onChange={(e) => setTargetDef(Math.max(0, parseInt(e.target.value) || 0))} className="h-9 w-20" />
+
+              <div className="rounded-md border border-border bg-muted/30 p-2">
+                <Label className="text-xs font-semibold">Alvos no campo (opcional)</Label>
+                <p className="text-[10px] text-muted-foreground">Selecione um ou mais tokens. O dano é calculado por alvo usando {isSpecial ? "Sp.Def" : "Def"} e tipo.</p>
+                <div className="mt-2 max-h-40 space-y-1 overflow-y-auto">
+                  {tokens.length === 0 && <p className="text-[11px] text-muted-foreground">Nenhum token no campo.</p>}
+                  {tokens.map((tk) => {
+                    const info = infoMap.get(tk.id);
+                    const checked = selectedTokenIds.includes(tk.id);
+                    const def = info ? defValueFor(info) : null;
+                    const mult = info ? damageMultiplierFor(move.type as string, info.types) : 1;
+                    const eff = damageDeltaFromMultiplier(mult);
+                    return (
+                      <label key={tk.id} className="flex items-center gap-2 rounded border border-border bg-card/50 p-1.5 text-xs">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(ev) => setSelectedTokenIds((arr) => ev.target.checked ? [...arr, tk.id] : arr.filter((x) => x !== tk.id))}
+                        />
+                        <span className="flex-1 truncate font-semibold">{tk.label}</span>
+                        {info && (
+                          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                            <span>{isSpecial ? "SpDef" : "Def"} {def}</span>
+                            <span className="rounded bg-muted px-1">{eff.label}</span>
+                          </span>
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
+
+              {!hasTargets && (
+                <div className="flex items-center justify-between gap-3">
+                  <div><Label className="text-xs">{defLabel} manual</Label><p className="text-[11px] text-muted-foreground">Pool final: <b>{finalDmgPool}d6</b></p></div>
+                  <Input type="number" min={0} value={targetDef} onChange={(e) => setTargetDef(Math.max(0, parseInt(e.target.value) || 0))} className="h-9 w-20" />
+                </div>
+              )}
             </>
           )}
           {extras.extra.length > 0 && (
             <div className="rounded-md border border-border bg-muted/30 p-2">
-              <Label className="text-xs font-semibold">Conditional Extra Dice</Label>
+              <Label className="text-xs font-semibold">Dados extras condicionais</Label>
               <div className="mt-1.5 space-y-1.5">
                 {extras.extra.map((e, i) => (
                   <label key={i} className="flex items-start gap-2 text-xs">
@@ -263,7 +440,7 @@ export function MoveRollDialog({
           )}
           {extras.chance.length > 0 && (
             <div className="rounded-md border border-border bg-muted/30 p-2 text-xs">
-              <Label className="text-xs font-semibold">Chance Dice (auto-rolled, 6s only)</Label>
+              <Label className="text-xs font-semibold">Chance Dice (auto, apenas 6)</Label>
               <ul className="mt-1 list-disc space-y-0.5 pl-4">
                 {extras.chance.map((c, i) => (
                   <li key={i}><b>{c.count}d6</b> — {c.label}</li>
@@ -271,7 +448,7 @@ export function MoveRollDialog({
               </ul>
             </div>
           )}
-          <Button onClick={confirm} className="w-full"><Dices className="mr-1.5 h-4 w-4" /> Roll & Send Card</Button>
+          <Button onClick={confirm} className="w-full"><Dices className="mr-1.5 h-4 w-4" /> Rolar & Enviar Card</Button>
         </div>
       </DialogContent>
     </Dialog>
