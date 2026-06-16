@@ -220,5 +220,31 @@ export function computeDefensiveEffectiveness(defTypes: string[]): TypeEffective
   return result;
 }
 
+/** Damage multiplier of a single attacking type vs combined defender types. */
+export function damageMultiplierFor(moveType: string, defenderTypes: string[]): number {
+  const atk = String(moveType).toLowerCase() as PokemonType;
+  if (!(POKEMON_TYPES as readonly string[]).includes(atk)) return 1;
+  const defs = defenderTypes
+    .map((t) => String(t).toLowerCase() as PokemonType)
+    .filter((t) => (POKEMON_TYPES as readonly string[]).includes(t));
+  let mult = 1;
+  for (const def of defs) {
+    const m = TYPE_CHART_DEF[def]?.[atk];
+    if (m !== undefined) mult *= m;
+  }
+  return mult;
+}
+
+/** Translate a defensive multiplier into a Pokérole damage delta. */
+export function damageDeltaFromMultiplier(mult: number): { delta: number; label: string; immune: boolean } {
+  if (mult === 0) return { delta: 0, label: "Imune", immune: true };
+  if (mult >= 4) return { delta: 2, label: "Super efetivo +2", immune: false };
+  if (mult >= 2) return { delta: 1, label: "Super efetivo +1", immune: false };
+  if (mult <= 0.25) return { delta: -2, label: "Não efetivo -2", immune: false };
+  if (mult <= 0.5) return { delta: -1, label: "Não efetivo -1", immune: false };
+  return { delta: 0, label: "Neutro", immune: false };
+}
+
+
 
 
