@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,8 +9,13 @@ import {
 } from "@/components/ui/dialog";
 import { Dices } from "lucide-react";
 import { toast } from "sonner";
-import { resolveSkillValue, rollD6, SOCIAL_ATTRS, type TYPE_COLORS } from "@/lib/pokerole";
-import type { MoveRollMessage } from "@/components/MoveCard";
+import {
+  resolveSkillValue, rollD6, SOCIAL_ATTRS, damageMultiplierFor, damageDeltaFromMultiplier,
+  type TYPE_COLORS,
+} from "@/lib/pokerole";
+import { useGameSpdefUsesInsight } from "@/hooks/use-game-spdef-uses-insight";
+import type { MoveRollMessage, MoveRollTarget } from "@/components/MoveCard";
+
 
 export type MoveData = {
   id: string;
