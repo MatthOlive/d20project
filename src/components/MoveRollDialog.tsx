@@ -173,7 +173,7 @@ function useTargetsForGame(gameId: string, enabled: boolean) {
       const trIds = tokens.filter((t) => t.character_kind === "trainer").map((t) => t.character_id);
       const [pkRes, trRes] = await Promise.all([
         pkIds.length
-          ? supabase.from("pokemon").select("id,current_attrs,species:species_id(types,base_attrs)").in("id", pkIds)
+          ? supabase.from("pokemon").select("id,current_attrs,modifiers,species:species_id(types,base_attrs)").in("id", pkIds)
           : Promise.resolve({ data: [] as unknown[], error: null as unknown as null }),
         trIds.length
           ? supabase.from("trainers").select("id,attr_points,attr_bonus").in("id", trIds)
@@ -187,12 +187,15 @@ function useTargetsForGame(gameId: string, enabled: boolean) {
           const row = (pkRes.data as Array<{
             id: string;
             current_attrs: Record<string, number> | null;
+            modifiers: Record<string, unknown> | null;
             species: { types: string[]; base_attrs: Record<string, number> } | null;
           }>).find((r) => r.id === t.character_id);
           if (!row) continue;
           const base = row.species?.base_attrs ?? {};
-          const vit = row.current_attrs?.vitality ?? base.vitality ?? 1;
-          const ins = row.current_attrs?.insight ?? base.insight ?? 1;
+          const defBonus = Number(row.modifiers?._def_bonus ?? 0) || 0;
+          const spdefBonus = Number(row.modifiers?._spdef_bonus ?? 0) || 0;
+          const vit = (row.current_attrs?.vitality ?? base.vitality ?? 1) + defBonus;
+          const ins = (row.current_attrs?.insight ?? base.insight ?? 1) + spdefBonus;
           map.set(t.id, { id: t.id, name: t.label, kind: "pokemon", vit, ins, types: row.species?.types ?? [] });
         } else {
           const row = (trRes.data as Array<{
@@ -255,12 +258,18 @@ export function MoveRollDialog({
     const accSuccesses = Math.max(0, accResult.successes - painPenalty);
     const isHit = accSuccesses >= requiredSuccesses;
     const isCrit = isHit && accSuccesses >= critRequired;
-    const critBonus = isCrit && !isStatus ? 1 : 0;
 
     let dmg: MoveRollMessage["damage"] = null;
     if (!isStatus && finalDmgPool > 0) {
       const dmgResult = rollD6(finalDmgPool);
-      const dmgSuccesses = Math.max(0, dmgResult.successes - painPenalty);
+      const dice = [...dmgResult.dice];
+      // Crítico: rola 1 dado extra de dano (sem somar sucesso direto).
+      if (isCrit) {
+        const extra = 1 + Math.floor(Math.random() * 6);
+        dice.push(extra);
+      }
+      const rawSuccesses = dice.filter((d) => d >= 4).length;
+      const dmgSuccesses = Math.max(0, rawSuccesses - painPenalty);
       let targets: MoveRollTarget[] | undefined;
       if (hasTargets) {
         targets = selectedTokenIds
@@ -272,7 +281,7 @@ export function MoveRollDialog({
             const eff = damageDeltaFromMultiplier(mult);
             const finalDamage = eff.immune
               ? 0
-              : Math.max(0, dmgSuccesses + critBonus + eff.delta - def);
+              : Math.max(0, dmgSuccesses + eff.delta - def);
             return {
               name: t.name,
               def,
@@ -286,12 +295,12 @@ export function MoveRollDialog({
       }
       dmg = {
         pool: finalDmgPool,
-        dice: dmgResult.dice,
+        dice,
         successes: dmgSuccesses,
         penalty: painPenalty,
         isStatus: false,
         targetDef: hasTargets ? 0 : targetDef,
-        critBonus,
+        critBonus: isCrit ? 1 : 0,
         targets,
       };
     }
@@ -370,9 +379,10 @@ export function MoveRollDialog({
               </div>
             </div>
             <p className="mt-1.5 text-[10px] text-muted-foreground">
-              Acertar: <b>{requiredSuccesses}</b> sucesso(s). Crítico: <b>{critRequired}</b> sucesso(s). Crítico dá +1 de dano.
+              Acertar: <b>{requiredSuccesses}</b> sucesso(s). Crítico: <b>{critRequired}</b> sucesso(s). Crítico adiciona 1 dado extra ao dano.
             </p>
           </div>
+
 
           {!isStatus && dmgPool > 0 && (
             <>

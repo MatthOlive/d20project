@@ -324,11 +324,30 @@ export function PokemonSheet({
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-1.5 text-sm">
-              <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-bold text-primary">Def {vit}</span>
-              <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-bold text-primary">
-                SpDef {spDef} <span className="ml-1 text-[9px] uppercase opacity-70">({spDefUsesInsight ? "Ins" : "Vit"})</span>
-              </span>
-              {/* SpDef rule é configurada globalmente nas Settings da mesa */}
+              {(() => {
+                const mods = (pokemon.modifiers ?? {}) as Record<string, unknown>;
+                const defBonus = Number(mods._def_bonus ?? 0) || 0;
+                const spdefBonus = Number(mods._spdef_bonus ?? 0) || 0;
+                const updateBonus = (key: "_def_bonus" | "_spdef_bonus", v: number) =>
+                  patch({ modifiers: { ...(pokemon.modifiers as Record<string, unknown>), [key]: v } as unknown as Record<string, number> });
+                return (
+                  <>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-0.5 font-bold text-primary">
+                      Def {vit + defBonus}
+                      <Input type="number" value={defBonus} disabled={!canEdit}
+                        onChange={(e) => updateBonus("_def_bonus", parseInt(e.target.value) || 0)}
+                        className="h-5 w-12 px-1 py-0 text-[10px]" title="Bônus de Defesa" />
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-0.5 font-bold text-primary">
+                      SpDef {spDef + spdefBonus} <span className="text-[9px] uppercase opacity-70">({spDefUsesInsight ? "Ins" : "Vit"})</span>
+                      <Input type="number" value={spdefBonus} disabled={!canEdit}
+                        onChange={(e) => updateBonus("_spdef_bonus", parseInt(e.target.value) || 0)}
+                        className="h-5 w-12 px-1 py-0 text-[10px]" title="Bônus de SpDef" />
+                    </span>
+                  </>
+                );
+              })()}
+
               {canEdit && <EvolveButton
                 pokemonId={pokemonId}
                 fromSprite={species.sprite_url}

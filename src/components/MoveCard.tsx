@@ -23,6 +23,7 @@ export function MoveCard({
   hasStab,
   accuracySlot,
   damageSlot,
+  damageDetailsSlot,
   chanceSlot,
   rightExtras,
   footer,
@@ -30,17 +31,17 @@ export function MoveCard({
 }: {
   data: MoveCardData;
   hasStab?: boolean;
-  accuracySlot?: ReactNode; // optional override (e.g. successes tooltip)
+  accuracySlot?: ReactNode;
   damageSlot?: ReactNode;
+  damageDetailsSlot?: ReactNode;
   chanceSlot?: ReactNode;
-  rightExtras?: ReactNode; // optional content for the right header column
+  rightExtras?: ReactNode;
   footer?: ReactNode;
   className?: string;
 }) {
   const tcol = TYPE_COLORS[data.type as keyof typeof TYPE_COLORS] ?? { bg: "#888", fg: "#fff" };
   return (
     <div className={cn("overflow-hidden rounded-lg border-2 shadow-sm", className)} style={{ borderColor: tcol.bg }}>
-      {/* Top bar: name + POWER */}
       <div className="flex items-stretch">
         <div
           className="flex flex-1 items-center px-3 py-2"
@@ -57,7 +58,6 @@ export function MoveCard({
         </div>
       </div>
 
-      {/* Body: details (left) + right extras */}
       <div className="grid gap-2 bg-card px-3 py-2 sm:grid-cols-[1fr_auto]">
         <div className="space-y-1 text-[11px] leading-snug">
           <div>
@@ -72,6 +72,7 @@ export function MoveCard({
             <span className="font-bold uppercase tracking-wider text-muted-foreground">Damage Pool:</span>
             {damageSlot ?? <span>{data.damagePoolText}</span>}
           </div>
+          {damageDetailsSlot && <div className="pt-1">{damageDetailsSlot}</div>}
           {(data.effect || chanceSlot) && (
             <div className="flex flex-wrap items-start gap-1">
               <span className="font-bold uppercase tracking-wider text-muted-foreground">Added Effect:</span>
@@ -85,7 +86,6 @@ export function MoveCard({
         {rightExtras && <div className="flex flex-col items-end justify-start gap-1">{rightExtras}</div>}
       </div>
 
-      {/* Bottom: effect icons + footer (e.g. roll button) */}
       <div className="space-y-2 border-t border-border bg-card px-3 py-2">
         <EffectIcons effect={data.effect} />
         {footer}
