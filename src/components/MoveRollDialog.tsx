@@ -173,10 +173,10 @@ function useTargetsForGame(gameId: string, enabled: boolean) {
       const trIds = tokens.filter((t) => t.character_kind === "trainer").map((t) => t.character_id);
       const [pkRes, trRes] = await Promise.all([
         pkIds.length
-          ? supabase.from("pokemon").select("id,current_attrs,species:species_id(types,base_attrs)").in("id", pkIds)
+          ? supabase.from("pokemon").select("id,current_attrs,modifiers,species:species_id(types,base_attrs)").in("id", pkIds)
           : Promise.resolve({ data: [] as unknown[], error: null as unknown as null }),
         trIds.length
-          ? supabase.from("trainers").select("id,attr_points,attr_bonus").in("id", trIds)
+          ? supabase.from("trainers").select("id,attr_points,attr_bonus,modifiers").in("id", trIds)
           : Promise.resolve({ data: [] as unknown[], error: null as unknown as null }),
       ]);
       if (pkRes.error) throw pkRes.error;
@@ -187,22 +187,28 @@ function useTargetsForGame(gameId: string, enabled: boolean) {
           const row = (pkRes.data as Array<{
             id: string;
             current_attrs: Record<string, number> | null;
+            modifiers: Record<string, unknown> | null;
             species: { types: string[]; base_attrs: Record<string, number> } | null;
           }>).find((r) => r.id === t.character_id);
           if (!row) continue;
           const base = row.species?.base_attrs ?? {};
-          const vit = row.current_attrs?.vitality ?? base.vitality ?? 1;
-          const ins = row.current_attrs?.insight ?? base.insight ?? 1;
+          const defBonus = Number(row.modifiers?._def_bonus ?? 0) || 0;
+          const spdefBonus = Number(row.modifiers?._spdef_bonus ?? 0) || 0;
+          const vit = (row.current_attrs?.vitality ?? base.vitality ?? 1) + defBonus;
+          const ins = (row.current_attrs?.insight ?? base.insight ?? 1) + spdefBonus;
           map.set(t.id, { id: t.id, name: t.label, kind: "pokemon", vit, ins, types: row.species?.types ?? [] });
         } else {
           const row = (trRes.data as Array<{
             id: string;
             attr_points: Record<string, number> | null;
             attr_bonus: Record<string, number> | null;
+            modifiers: Record<string, unknown> | null;
           }>).find((r) => r.id === t.character_id);
           if (!row) continue;
-          const vit = 1 + (row.attr_points?.vitality ?? 0) + (row.attr_bonus?.vitality ?? 0);
-          const ins = 1 + (row.attr_points?.insight ?? 0) + (row.attr_bonus?.insight ?? 0);
+          const defBonus = Number(row.modifiers?._def_bonus ?? 0) || 0;
+          const spdefBonus = Number(row.modifiers?._spdef_bonus ?? 0) || 0;
+          const vit = 1 + (row.attr_points?.vitality ?? 0) + (row.attr_bonus?.vitality ?? 0) + defBonus;
+          const ins = 1 + (row.attr_points?.insight ?? 0) + (row.attr_bonus?.insight ?? 0) + spdefBonus;
           map.set(t.id, { id: t.id, name: t.label, kind: "trainer", vit, ins, types: [] });
         }
       }
