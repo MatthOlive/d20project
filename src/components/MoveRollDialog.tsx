@@ -379,9 +379,10 @@ export function MoveRollDialog({
               </div>
             </div>
             <p className="mt-1.5 text-[10px] text-muted-foreground">
-              Acertar: <b>{requiredSuccesses}</b> sucesso(s). Crítico: <b>{critRequired}</b> sucesso(s). Crítico dá +1 de dano.
+              Acertar: <b>{requiredSuccesses}</b> sucesso(s). Crítico: <b>{critRequired}</b> sucesso(s). Crítico adiciona 1 dado extra ao dano.
             </p>
           </div>
+
 
           {!isStatus && dmgPool > 0 && (
             <>
