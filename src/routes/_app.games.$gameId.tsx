@@ -29,7 +29,7 @@ import { MusicPanel } from "@/components/MusicPanel";
 import { MusicPlayer } from "@/components/MusicPlayer";
 import { toast } from "sonner";
 import { Copy, Crown, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Swords, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, Dices, Menu, ZoomIn, ZoomOut, RotateCcw, MessageSquare } from "lucide-react";
-import { rollD6, rollShiny, POKEMON_TYPES, TYPE_COLORS, type PokemonType } from "@/lib/pokerole";
+import { rollD6, rollShiny, POKEMON_ATTRS, SOCIAL_ATTRS, POKEMON_TYPES, RANKS, RANK_LABELS, TYPE_COLORS, type PokemonType, type Rank } from "@/lib/pokerole";
 import { REACTION_DECK } from "@/lib/contest";
 
 export const Route = createFileRoute("/_app/games/$gameId")({
