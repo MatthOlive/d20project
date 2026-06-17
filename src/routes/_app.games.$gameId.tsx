@@ -951,6 +951,16 @@ function FilesPanel({
                         </SelectContent>
                       </Select>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <span className="whitespace-nowrap">Rank do Pokémon:</span>
+                      <Select value={randomGenRank} onValueChange={(v) => setRandomGenRank(v as Rank)}>
+                        <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {RANKS.map((r) => <SelectItem key={r} value={r}>{RANK_LABELS[r]}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">Atributos, skills, sexo, nature, habilidade e moves serão sorteados conforme o rank.</p>
                     <Button size="sm" className="w-full" onClick={roll}>
                       <Dices className="mr-1 h-3.5 w-3.5" /> Sortear
                     </Button>
