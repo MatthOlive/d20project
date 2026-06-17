@@ -387,6 +387,7 @@ function FilesPanel({
   const [fLast, setFLast] = useState(false);
   const [fLegend, setFLegend] = useState(false);
   const [fRank, setFRank] = useState<string>("");
+  const [randomGenRank, setRandomGenRank] = useState<Rank>("starter");
 
   const [newFolder, setNewFolder] = useState("");
   const [extraFolders, setExtraFolders] = useState<string[]>([]);
