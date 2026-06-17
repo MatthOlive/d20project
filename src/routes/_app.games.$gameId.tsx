@@ -467,10 +467,10 @@ function FilesPanel({
   });
 
   const createPokemon = useMutation({
-    mutationFn: async (overrideSpeciesId?: string) => {
-      const speciesId = overrideSpeciesId || newPkmSpecies;
+    mutationFn: async (arg?: string | { speciesId: string; random?: { rank: Rank } }) => {
+      const speciesId = typeof arg === "string" ? arg : (arg?.speciesId || newPkmSpecies);
+      const random = typeof arg === "object" && arg ? arg.random : undefined;
       if (!speciesId) throw new Error("Pick a species");
-      // Read configured chances from the game (defaults 10/0)
       const { data: gameRow } = await supabase
         .from("games")
         .select("shiny_chance,overgrown_chance")
@@ -481,16 +481,129 @@ function FilesPanel({
       const isShiny = Math.floor(Math.random() * 100) + 1 <= shinyChance;
       const rolledOver = overgrownChance > 0 && Math.floor(Math.random() * 100) + 1 <= overgrownChance;
       const finalOvergrown = newPkmOvergrown || rolledOver;
+
+      const basePayload: Record<string, unknown> = {
+        game_id: gameId,
+        owner_id: userId,
+        species_id: speciesId,
+        rank: random?.rank ?? "starter",
+        is_shiny: isShiny,
+        is_overgrown: finalOvergrown,
+      };
+
+      if (random) {
+        // Fetch species data + natures + learnable moves
+        const [spRes, natRes, mvRes] = await Promise.all([
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (supabase.from("species") as any).select("base_attrs,attr_limits,base_hp,abilities").eq("id", speciesId).single(),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (supabase.from("natures") as any).select("name,confidence"),
+          supabase.from("species_moves").select("min_rank,move_id").eq("species_id", speciesId),
+        ]);
+        const sp = (spRes.data ?? {}) as { base_attrs: Record<string, number>; attr_limits: Record<string, number>; base_hp: number; abilities: string[] };
+        const natures = (natRes.data ?? []) as { name: string; confidence: number }[];
+        const learnable = (mvRes.data ?? []) as { min_rank: Rank; move_id: string }[];
+
+        // Pools
+        const physPool: Record<Rank, number> = { starter: 0, beginner: 2, amateur: 4, ace: 6, pro: 8, master: 10 };
+        const skillPool: Record<Rank, number> = { starter: 5, beginner: 9, amateur: 12, ace: 2, pro: 1, master: 0 };
+        const r = random.rank;
+
+        // Distribute physical attr points (cap = attr_limits)
+        const attrPoints: Record<string, number> = {};
+        for (const a of POKEMON_ATTRS) attrPoints[a] = 0;
+        const curAttrs: Record<string, number> = { ...sp.base_attrs };
+        let physRemaining = physPool[r];
+        const eligiblePhys = () => POKEMON_ATTRS.filter((a) => (curAttrs[a] ?? sp.base_attrs[a] ?? 1) < (sp.attr_limits[a] ?? 5));
+        while (physRemaining > 0) {
+          const opts = eligiblePhys();
+          if (opts.length === 0) break;
+          const pick = opts[Math.floor(Math.random() * opts.length)];
+          attrPoints[pick] = (attrPoints[pick] ?? 0) + 1;
+          curAttrs[pick] = (curAttrs[pick] ?? sp.base_attrs[pick] ?? 1) + 1;
+          physRemaining--;
+        }
+        // Distribute social attr points (base 1, cap 5)
+        const socialAttrs: Record<string, number> = {};
+        const socialPoints: Record<string, number> = {};
+        for (const a of SOCIAL_ATTRS) { socialAttrs[a] = 1; socialPoints[a] = 0; }
+        let socRemaining = physPool[r];
+        const eligibleSoc = () => SOCIAL_ATTRS.filter((a) => (socialAttrs[a] + socialPoints[a]) < 5);
+        while (socRemaining > 0) {
+          const opts = eligibleSoc();
+          if (opts.length === 0) break;
+          const pick = opts[Math.floor(Math.random() * opts.length)];
+          socialPoints[pick]++;
+          socRemaining--;
+        }
+        // Distribute skills (cap 5 each)
+        const SKILL_NAMES = ["Brawl","Channel","Clash","Evasion","Alert","Athletic","Nature","Stealth","Allure","Etiquette","Intimidate","Perform"];
+        const skills: Record<string, number> = {};
+        for (const s of SKILL_NAMES) skills[s] = 0;
+        let skRemaining = skillPool[r];
+        const eligibleSkill = () => SKILL_NAMES.filter((s) => skills[s] < 5);
+        while (skRemaining > 0) {
+          const opts = eligibleSkill();
+          if (opts.length === 0) break;
+          const pick = opts[Math.floor(Math.random() * opts.length)];
+          skills[pick]++;
+          skRemaining--;
+        }
+        // Sex
+        const sex = ["male", "female", "none"][Math.floor(Math.random() * 3)];
+        // Nature
+        const nat = natures.length > 0 ? natures[Math.floor(Math.random() * natures.length)] : null;
+        // Ability: pick random selected
+        const abilities = sp.abilities ?? [];
+        const selectedAbility = abilities.length > 0 ? abilities[Math.floor(Math.random() * abilities.length)] : null;
+        const modifiers: Record<string, unknown> = {};
+        if (selectedAbility) modifiers._selected_ability = selectedAbility;
+        // HP
+        const baseHp = (sp.base_hp ?? 0) + (finalOvergrown ? 1 : 0);
+        const vit = curAttrs.vitality ?? 1;
+        const ins = curAttrs.insight ?? 1;
+
+        Object.assign(basePayload, {
+          current_attrs: curAttrs,
+          attr_points: attrPoints,
+          social_attrs: socialAttrs,
+          social_attr_points: socialPoints,
+          skills,
+          modifiers,
+          sex,
+          nature: nat?.name ?? null,
+          confidence: nat?.confidence ?? 0,
+          hp: baseHp + vit,
+          will: ins + 2,
+        });
+
+        const { data, error } = await supabase
+          .from("pokemon")
+          .insert(basePayload as never)
+          .select().single();
+        if (error) throw error;
+        // Add random moves (up to Insight + 2) from learnable filtered by rank
+        const rankOrder = RANKS.indexOf(r);
+        const allowedMoves = learnable
+          .filter((l) => RANKS.indexOf(l.min_rank) <= rankOrder)
+          .map((l) => l.move_id);
+        const moveCap = ins + 2;
+        // Shuffle and take up to cap
+        const shuffled = [...allowedMoves].sort(() => Math.random() - 0.5).slice(0, moveCap);
+        if (shuffled.length > 0) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (supabase.from("pokemon_moves") as any).insert(
+            shuffled.map((mid) => ({ pokemon_id: (data as { id: string }).id, move_id: mid })),
+          );
+        }
+        if (isShiny) toast.success("✨ Shiny rolled!");
+        if (rolledOver && !newPkmOvergrown) toast.success("🌿 Overgrown rolled!");
+        return data;
+      }
+
       const { data, error } = await supabase
         .from("pokemon")
-        .insert({
-          game_id: gameId,
-          owner_id: userId,
-          species_id: speciesId,
-          rank: "starter",
-          is_shiny: isShiny,
-          is_overgrown: finalOvergrown,
-        })
+        .insert(basePayload as never)
         .select().single();
       if (error) throw error;
       if (isShiny) toast.success("✨ Shiny rolled!");
