@@ -202,13 +202,10 @@ function useTargetsForGame(gameId: string, enabled: boolean) {
             id: string;
             attr_points: Record<string, number> | null;
             attr_bonus: Record<string, number> | null;
-            modifiers: Record<string, unknown> | null;
           }>).find((r) => r.id === t.character_id);
           if (!row) continue;
-          const defBonus = Number(row.modifiers?._def_bonus ?? 0) || 0;
-          const spdefBonus = Number(row.modifiers?._spdef_bonus ?? 0) || 0;
-          const vit = 1 + (row.attr_points?.vitality ?? 0) + (row.attr_bonus?.vitality ?? 0) + defBonus;
-          const ins = 1 + (row.attr_points?.insight ?? 0) + (row.attr_bonus?.insight ?? 0) + spdefBonus;
+          const vit = 1 + (row.attr_points?.vitality ?? 0) + (row.attr_bonus?.vitality ?? 0);
+          const ins = 1 + (row.attr_points?.insight ?? 0) + (row.attr_bonus?.insight ?? 0);
           map.set(t.id, { id: t.id, name: t.label, kind: "trainer", vit, ins, types: [] });
         }
       }
