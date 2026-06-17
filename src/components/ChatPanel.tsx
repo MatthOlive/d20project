@@ -338,7 +338,7 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
       <div className="space-y-1">
         <div className="px-1 text-[11px] text-muted-foreground">
           <span className="font-semibold text-foreground">{authorName}</span> · {m.pokemonName} used <b>{m.card.name}</b>
-          {crit?.isCrit && <span className="ml-2 rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-bold uppercase text-amber-600">CRÍTICO +1 dmg</span>}
+          {crit?.isCrit && <span className="ml-2 rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-bold uppercase text-amber-600">CRÍTICO +1 dado</span>}
         </div>
         <MoveCard
           data={m.card}
@@ -364,11 +364,34 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
                   dice={m.damage.dice}
                   tone="danger"
                 />
-                {m.damage.critBonus ? <span className="text-[10px] font-bold text-amber-600">+{m.damage.critBonus} crit</span> : null}
+                {m.damage.critBonus ? <span className="text-[10px] font-bold text-amber-600">+{m.damage.critBonus} dado crit</span> : null}
               </span>
             ) : (
               <span className="text-muted-foreground">Status</span>
             )
+          }
+          damageDetailsSlot={
+            m.damage?.targets && m.damage.targets.length > 0 ? (
+              <div className="rounded-md border border-border bg-muted/30 p-2">
+                <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Dano por alvo</div>
+                <ul className="space-y-0.5">
+                  {m.damage.targets.map((t, i) => (
+                    <li key={i} className="flex items-center justify-between gap-2">
+                      <span className="truncate font-semibold">{t.name}</span>
+                      <span className="flex items-center gap-1 tabular-nums">
+                        <span className="rounded bg-muted px-1 text-[10px]">{t.defStat === "spdef" ? "SpDef" : "Def"} {t.def}</span>
+                        <span className="rounded bg-muted/60 px-1 text-[10px]">{t.effLabel}</span>
+                        {t.immune ? (
+                          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">Imune (0)</span>
+                        ) : (
+                          <span className="rounded bg-destructive/15 px-1.5 py-0.5 font-bold text-destructive">{t.finalDamage} dmg</span>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null
           }
           chanceSlot={
             m.chance.length > 0 ? (
@@ -387,27 +410,6 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
             ) : null
           }
         />
-        {m.damage?.targets && m.damage.targets.length > 0 && (
-          <div className="rounded-md border border-border bg-card/60 p-2 text-[11px]">
-            <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Dano por alvo</div>
-            <ul className="space-y-0.5">
-              {m.damage.targets.map((t, i) => (
-                <li key={i} className="flex items-center justify-between gap-2">
-                  <span className="truncate font-semibold">{t.name}</span>
-                  <span className="flex items-center gap-1 tabular-nums">
-                    <span className="rounded bg-muted px-1 text-[10px]">{t.defStat === "spdef" ? "SpDef" : "Def"} {t.def}</span>
-                    <span className="rounded bg-muted/60 px-1 text-[10px]">{t.effLabel}</span>
-                    {t.immune ? (
-                      <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">Imune (0)</span>
-                    ) : (
-                      <span className="rounded bg-destructive/15 px-1.5 py-0.5 font-bold text-destructive">{t.finalDamage} dmg</span>
-                    )}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
       </div>
     );
   }
