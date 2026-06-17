@@ -925,7 +925,7 @@ function FilesPanel({
                   if (pool.length === 0) { toast.error("Nenhum Pokémon corresponde aos filtros"); return; }
                   const pick = pool[Math.floor(Math.random() * pool.length)];
                   toast.success(`🎲 ${pick.name}`);
-                  createPokemon.mutate(pick.id);
+                  createPokemon.mutate({ speciesId: pick.id, random: { rank: randomGenRank } });
                 }
                 return (
                   <div className="space-y-2 rounded-md border border-border bg-muted/30 p-2.5 text-xs">
