@@ -258,12 +258,18 @@ export function MoveRollDialog({
     const accSuccesses = Math.max(0, accResult.successes - painPenalty);
     const isHit = accSuccesses >= requiredSuccesses;
     const isCrit = isHit && accSuccesses >= critRequired;
-    const critBonus = isCrit && !isStatus ? 1 : 0;
 
     let dmg: MoveRollMessage["damage"] = null;
     if (!isStatus && finalDmgPool > 0) {
       const dmgResult = rollD6(finalDmgPool);
-      const dmgSuccesses = Math.max(0, dmgResult.successes - painPenalty);
+      const dice = [...dmgResult.dice];
+      // Crítico: rola 1 dado extra de dano (sem somar sucesso direto).
+      if (isCrit) {
+        const extra = 1 + Math.floor(Math.random() * 6);
+        dice.push(extra);
+      }
+      const rawSuccesses = dice.filter((d) => d >= 4).length;
+      const dmgSuccesses = Math.max(0, rawSuccesses - painPenalty);
       let targets: MoveRollTarget[] | undefined;
       if (hasTargets) {
         targets = selectedTokenIds
@@ -275,7 +281,7 @@ export function MoveRollDialog({
             const eff = damageDeltaFromMultiplier(mult);
             const finalDamage = eff.immune
               ? 0
-              : Math.max(0, dmgSuccesses + critBonus + eff.delta - def);
+              : Math.max(0, dmgSuccesses + eff.delta - def);
             return {
               name: t.name,
               def,
@@ -289,12 +295,12 @@ export function MoveRollDialog({
       }
       dmg = {
         pool: finalDmgPool,
-        dice: dmgResult.dice,
+        dice,
         successes: dmgSuccesses,
         penalty: painPenalty,
         isStatus: false,
         targetDef: hasTargets ? 0 : targetDef,
-        critBonus,
+        critBonus: isCrit ? 1 : 0,
         targets,
       };
     }
