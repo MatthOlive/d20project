@@ -176,7 +176,7 @@ function useTargetsForGame(gameId: string, enabled: boolean) {
           ? supabase.from("pokemon").select("id,current_attrs,modifiers,species:species_id(types,base_attrs)").in("id", pkIds)
           : Promise.resolve({ data: [] as unknown[], error: null as unknown as null }),
         trIds.length
-          ? supabase.from("trainers").select("id,attr_points,attr_bonus,modifiers").in("id", trIds)
+          ? supabase.from("trainers").select("id,attr_points,attr_bonus").in("id", trIds)
           : Promise.resolve({ data: [] as unknown[], error: null as unknown as null }),
       ]);
       if (pkRes.error) throw pkRes.error;
