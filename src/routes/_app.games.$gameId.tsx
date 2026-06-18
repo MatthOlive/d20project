@@ -506,8 +506,10 @@ function FilesPanel({
 
         // Pools
         const physPool: Record<Rank, number> = { starter: 0, beginner: 2, amateur: 4, ace: 6, pro: 8, master: 10 };
-        const skillPool: Record<Rank, number> = { starter: 5, beginner: 9, amateur: 12, ace: 2, pro: 1, master: 0 };
+        const skillPool: Record<Rank, number> = { starter: 5, beginner: 9, amateur: 12, ace: 14, pro: 15, master: 16 };
+        const skillCapByRank: Record<Rank, number> = { starter: 1, beginner: 2, amateur: 3, ace: 4, pro: 5, master: 5 };
         const r = random.rank;
+        const skillCap = skillCapByRank[r];
 
         // Distribute physical attr points (cap = attr_limits)
         const attrPoints: Record<string, number> = {};
@@ -536,12 +538,12 @@ function FilesPanel({
           socialPoints[pick]++;
           socRemaining--;
         }
-        // Distribute skills (cap 5 each)
+        // Distribute skills (per-rank cap)
         const SKILL_NAMES = ["Brawl","Channel","Clash","Evasion","Alert","Athletic","Nature","Stealth","Allure","Etiquette","Intimidate","Perform"];
         const skills: Record<string, number> = {};
         for (const s of SKILL_NAMES) skills[s] = 0;
         let skRemaining = skillPool[r];
-        const eligibleSkill = () => SKILL_NAMES.filter((s) => skills[s] < 5);
+        const eligibleSkill = () => SKILL_NAMES.filter((s) => skills[s] < skillCap);
         while (skRemaining > 0) {
           const opts = eligibleSkill();
           if (opts.length === 0) break;
