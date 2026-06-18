@@ -822,6 +822,14 @@ function FilesPanel({
           >
             <FolderPlus className="h-3.5 w-3.5" />
           </button>
+          <button
+            type="button"
+            onClick={() => deleteFolder(node.path)}
+            className="rounded p-0.5 text-muted-foreground hover:bg-destructive/20 hover:text-destructive"
+            title="Apagar pasta"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
         </div>
         {!isCollapsed && (
           <div className="space-y-1.5">
