@@ -14,6 +14,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { TrainerSheet } from "@/components/TrainerSheet";
+import { ImageSourceDialog } from "@/components/ImageSourceDialog";
 import { PokemonSheet } from "@/components/PokemonSheet";
 import { Shop } from "@/components/Shop";
 import { DRAG_MIME, type DragCharacterPayload } from "@/components/MapBoard";
@@ -721,7 +722,7 @@ function MinimalSheetView({
 
 function MinimalImagePicker({ currentUrl, onPick }: { currentUrl: string | null; onPick: (url: string | null) => void }) {
   // Lazy import to avoid circular issues in stricter bundlers; keep simple inline.
-  const { ImageSourceDialog } = require("@/components/ImageSourceDialog") as typeof import("@/components/ImageSourceDialog");
+  
   return (
     <div className="flex gap-1.5">
       <ImageSourceDialog title="Imagem da ficha" onPick={(u: string) => onPick(u)} />
