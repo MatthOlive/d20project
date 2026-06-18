@@ -727,7 +727,7 @@ function TrainerImage({
         <div className="flex w-full flex-wrap gap-1.5">
           <ImageSourceDialog
             title="Imagem do treinador"
-            onPick={(url) => onChange(url)}
+            onPick={(url: string) => onChange(url)}
             trigger={
               <button
                 type="button"
