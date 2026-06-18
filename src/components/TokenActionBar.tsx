@@ -1,12 +1,15 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Swords, Zap, Sparkles, Dices, X } from "lucide-react";
-import { GenericRollButton, painPenaltyFor } from "@/components/SheetRolls";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Swords, Zap, Sparkles, Dices, X, Heart, Activity } from "lucide-react";
+import { GenericRollButton, painPenaltyFor, STATUS_CONDITIONS } from "@/components/SheetRolls";
 import { POKEMON_ATTRS, ATTRS, SOCIAL_ATTRS, TRAINER_SKILLS, SKILLS, RANK_BONUS } from "@/lib/pokerole";
 import { MoveCard } from "@/components/MoveCard";
 import { MoveRollDialog, computeMoveStats, type MoveData } from "@/components/MoveRollDialog";
