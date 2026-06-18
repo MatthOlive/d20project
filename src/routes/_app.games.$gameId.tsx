@@ -506,8 +506,10 @@ function FilesPanel({
 
         // Pools
         const physPool: Record<Rank, number> = { starter: 0, beginner: 2, amateur: 4, ace: 6, pro: 8, master: 10 };
-        const skillPool: Record<Rank, number> = { starter: 5, beginner: 9, amateur: 12, ace: 2, pro: 1, master: 0 };
+        const skillPool: Record<Rank, number> = { starter: 5, beginner: 9, amateur: 12, ace: 14, pro: 15, master: 16 };
+        const skillCapByRank: Record<Rank, number> = { starter: 1, beginner: 2, amateur: 3, ace: 4, pro: 5, master: 5 };
         const r = random.rank;
+        const skillCap = skillCapByRank[r];
 
         // Distribute physical attr points (cap = attr_limits)
         const attrPoints: Record<string, number> = {};
@@ -536,12 +538,12 @@ function FilesPanel({
           socialPoints[pick]++;
           socRemaining--;
         }
-        // Distribute skills (cap 5 each)
+        // Distribute skills (per-rank cap)
         const SKILL_NAMES = ["Brawl","Channel","Clash","Evasion","Alert","Athletic","Nature","Stealth","Allure","Etiquette","Intimidate","Perform"];
         const skills: Record<string, number> = {};
         for (const s of SKILL_NAMES) skills[s] = 0;
         let skRemaining = skillPool[r];
-        const eligibleSkill = () => SKILL_NAMES.filter((s) => skills[s] < 5);
+        const eligibleSkill = () => SKILL_NAMES.filter((s) => skills[s] < skillCap);
         while (skRemaining > 0) {
           const opts = eligibleSkill();
           if (opts.length === 0) break;
@@ -712,6 +714,24 @@ function FilesPanel({
     }
   }
 
+  async function deleteFolder(path: string) {
+    const prefix = path + "/";
+    const inFolder = rows.filter((r) => r.folder === path || (r.folder?.startsWith(prefix) ?? false));
+    const msg = inFolder.length > 0
+      ? `Apagar a pasta "${path}"? ${inFolder.length} ficha(s) serão movidas para "Unfiled".`
+      : `Apagar a pasta "${path}"?`;
+    if (!confirm(msg)) return;
+    const updates: Promise<unknown>[] = [];
+    for (const r of inFolder) {
+      const table = r.kind === "trainer" ? "trainers" : "pokemon";
+      updates.push(Promise.resolve(supabase.from(table).update({ folder: null }).eq("id", r.id)));
+    }
+    await Promise.all(updates);
+    setExtraFolders((prev) => prev.filter((p) => p !== path && !p.startsWith(prefix)));
+    qc.invalidateQueries({ queryKey: ["characters", gameId] });
+    toast.success("Pasta removida");
+  }
+
   function renderItem(r: CharRow) {
     const key = `${r.kind}:${r.id}`;
     const mapPayload: DragCharacterPayload = {
@@ -802,6 +822,14 @@ function FilesPanel({
           >
             <FolderPlus className="h-3.5 w-3.5" />
           </button>
+          <button
+            type="button"
+            onClick={() => deleteFolder(node.path)}
+            className="rounded p-0.5 text-muted-foreground hover:bg-destructive/20 hover:text-destructive"
+            title="Apagar pasta"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
         </div>
         {!isCollapsed && (
           <div className="space-y-1.5">
@@ -881,6 +909,7 @@ function FilesPanel({
           <Button size="sm" variant="outline" onClick={() => createTrainer.mutate()}>
             <User className="mr-1 h-3.5 w-3.5" /> Trainer
           </Button>
+          <MinimalSheetButton gameId={gameId} userId={userId} onCreated={(id: string, name: string) => { qc.invalidateQueries({ queryKey: ["characters", gameId] }); onOpen({ kind: "trainer", id, title: name }); }} />
           <Dialog open={pkmDialogOpen} onOpenChange={setPkmDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm"><Sparkles className="mr-1 h-3.5 w-3.5" /> Pokémon</Button>
@@ -1738,6 +1767,74 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
         </div>
         <DialogFooter>
           <Button onClick={save}>Salvar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function MinimalSheetButton({
+  gameId, userId, onCreated,
+}: {
+  gameId: string;
+  userId: string;
+  onCreated: (id: string, name: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [image, setImage] = useState<string | null>(null);
+  const [desc, setDesc] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function create() {
+    if (!name.trim()) { toast.error("Dê um nome para a ficha"); return; }
+    setBusy(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("trainers") as any)
+      .insert({ game_id: gameId, owner_id: userId, name: name.trim(), is_minimal: true, image_url: image, description: desc || null })
+      .select().single();
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    setOpen(false); setName(""); setImage(null); setDesc("");
+    onCreated((data as { id: string; name: string }).id, (data as { id: string; name: string }).name);
+  }
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline">
+          <Plus className="mr-1 h-3.5 w-3.5" /> Simples
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Nova ficha simples</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label className="text-xs">Nome</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex.: NPC Mestre Bug" />
+          </div>
+          <div className="flex items-start gap-3">
+            {image ? (
+              <img src={image} alt="" className="h-20 w-20 rounded-md border border-border object-cover" />
+            ) : (
+              <div className="flex h-20 w-20 items-center justify-center rounded-md border border-dashed border-border text-xs text-muted-foreground">Imagem</div>
+            )}
+            <div className="flex flex-col gap-1.5">
+              <ImageSourceDialog title="Imagem" onPick={(u: string) => setImage(u)} />
+              {image && <Button size="sm" variant="outline" onClick={() => setImage(null)}>Remover</Button>}
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs">Descrição</Label>
+            <textarea
+              value={desc}
+              onChange={(e) => setDesc(e.target.value)}
+              rows={6}
+              className="mt-1 w-full rounded-md border border-border bg-background p-2 text-sm"
+              placeholder="Texto livre…"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button onClick={create} disabled={busy}>Criar</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

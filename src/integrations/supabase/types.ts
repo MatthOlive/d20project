@@ -747,10 +747,12 @@ export type Database = {
           current_hp: number | null
           current_will: number | null
           custom_skills: Json
+          description: string | null
           folder: string | null
           game_id: string
           id: string
           image_url: string | null
+          is_minimal: boolean
           money: number
           name: string
           nature: string | null
@@ -792,10 +794,12 @@ export type Database = {
           current_hp?: number | null
           current_will?: number | null
           custom_skills?: Json
+          description?: string | null
           folder?: string | null
           game_id: string
           id?: string
           image_url?: string | null
+          is_minimal?: boolean
           money?: number
           name?: string
           nature?: string | null
@@ -837,10 +841,12 @@ export type Database = {
           current_hp?: number | null
           current_will?: number | null
           custom_skills?: Json
+          description?: string | null
           folder?: string | null
           game_id?: string
           id?: string
           image_url?: string | null
+          is_minimal?: boolean
           money?: number
           name?: string
           nature?: string | null

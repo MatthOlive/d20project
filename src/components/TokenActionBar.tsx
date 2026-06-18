@@ -1,12 +1,15 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Swords, Zap, Sparkles, Dices, X } from "lucide-react";
-import { GenericRollButton, painPenaltyFor } from "@/components/SheetRolls";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Swords, Zap, Sparkles, Dices, X, Heart, Activity } from "lucide-react";
+import { GenericRollButton, painPenaltyFor, STATUS_CONDITIONS } from "@/components/SheetRolls";
 import { POKEMON_ATTRS, ATTRS, SOCIAL_ATTRS, TRAINER_SKILLS, SKILLS, RANK_BONUS } from "@/lib/pokerole";
 import { MoveCard } from "@/components/MoveCard";
 import { MoveRollDialog, computeMoveStats, type MoveData } from "@/components/MoveRollDialog";
@@ -81,6 +84,8 @@ function TrainerBar({ id, label, onRoll, onClose, onOpenSheet }: Props) {
         painPenalty={pen}
         onRoll={onRoll}
       />
+      <StatusDialogButton kind="trainer" id={id} label={label} status={t.status_conditions ?? []} />
+      <AttrsDialogButton kind="trainer" id={id} label={label} />
     </Shell>
   );
 }
@@ -91,7 +96,7 @@ function PokemonBar({ id, label, gameId, userId, onRoll, onClose, onOpenSheet }:
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pokemon")
-        .select("current_attrs, social_attrs, social_attr_points, social_attr_bonus, skills, rank, image_url, hp, current_hp, species:species_id(abilities, base_attrs, sprite_url, types)")
+        .select("current_attrs, social_attrs, social_attr_points, social_attr_bonus, attr_bonus, skills, rank, image_url, hp, current_hp, status, species:species_id(abilities, base_attrs, sprite_url, types)")
         .eq("id", id)
         .single();
       if (error) throw error;
@@ -165,6 +170,8 @@ function PokemonBar({ id, label, gameId, userId, onRoll, onClose, onOpenSheet }:
         painPenalty={pen}
         imageUrl={displayImage}
       />
+      <StatusDialogButton kind="pokemon" id={id} label={label} status={(p as unknown as { status?: string[] }).status ?? []} />
+      <AttrsDialogButton kind="pokemon" id={id} label={label} />
     </Shell>
   );
 }
@@ -366,3 +373,145 @@ function MovesButton({
 }
 
 function cap(s: string) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+function StatusDialogButton({
+  kind, id, label, status,
+}: { kind: "trainer" | "pokemon"; id: string; label: string; status: string[] }) {
+  const [open, setOpen] = useState(false);
+  const [local, setLocal] = useState<string[]>(status);
+  const qc = useQueryClient();
+  const col = kind === "trainer" ? "status_conditions" : "status";
+  async function save(next: string[]) {
+    setLocal(next);
+    const table = kind === "trainer" ? "trainers" : "pokemon";
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from(table) as any).update({ [col]: next }).eq("id", id);
+    qc.invalidateQueries({ queryKey: [kind === "trainer" ? "token-trainer" : "token-pokemon", id] });
+    qc.invalidateQueries({ queryKey: [kind === "trainer" ? "trainer" : "pokemon", id] });
+  }
+  function toggle(name: string, on: boolean) {
+    const set = new Set(local);
+    if (on) set.add(name); else set.delete(name);
+    save(Array.from(set));
+  }
+  return (
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (v) setLocal(status); }}>
+      <Button size="sm" variant="outline" className="h-7" onClick={() => setOpen(true)}>
+        <Heart className="h-3.5 w-3.5" /><span className="ml-1">Status</span>
+        {local.length > 0 && <span className="ml-1 rounded-full bg-destructive/20 px-1 text-[10px] text-destructive">{local.length}</span>}
+      </Button>
+      <DialogContent>
+        <DialogHeader><DialogTitle>{label} — Status conditions</DialogTitle></DialogHeader>
+        <div className="grid grid-cols-2 gap-1.5">
+          {STATUS_CONDITIONS.map((c) => (
+            <label key={c} className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5 text-xs">
+              <Checkbox checked={local.includes(c)} onCheckedChange={(v) => toggle(c, !!v)} />
+              <span className="truncate">{c}</span>
+            </label>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AttrsDialogButton({
+  kind, id, label,
+}: { kind: "trainer" | "pokemon"; id: string; label: string }) {
+  const [open, setOpen] = useState(false);
+  const qc = useQueryClient();
+  const table = kind === "trainer" ? "trainers" : "pokemon";
+  const attrCol = kind === "trainer" ? "attrs" : "current_attrs";
+  const physAttrs = kind === "trainer" ? ATTRS : POKEMON_ATTRS;
+
+  const { data, refetch } = useQuery({
+    queryKey: ["token-attrs", kind, id, open],
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase.from(table) as any)
+        .select(`${attrCol}, attr_bonus, social_attrs, social_attr_bonus`)
+        .eq("id", id)
+        .single();
+      if (error) throw error;
+      return data as {
+        [k: string]: Record<string, number> | null;
+      };
+    },
+    enabled: open,
+  });
+
+  async function patchBonus(field: "attr_bonus" | "social_attr_bonus", key: string, value: number) {
+    const cur = (data?.[field] ?? {}) as Record<string, number>;
+    const next = { ...cur, [key]: value };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from(table) as any).update({ [field]: next }).eq("id", id);
+    refetch();
+    qc.invalidateQueries({ queryKey: [kind === "trainer" ? "token-trainer" : "token-pokemon", id] });
+    qc.invalidateQueries({ queryKey: [kind === "trainer" ? "trainer" : "pokemon", id] });
+  }
+
+  const attrs = (data?.[attrCol] ?? {}) as Record<string, number>;
+  const attrBonus = (data?.attr_bonus ?? {}) as Record<string, number>;
+  const social = (data?.social_attrs ?? {}) as Record<string, number>;
+  const socialBonus = (data?.social_attr_bonus ?? {}) as Record<string, number>;
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <Button size="sm" variant="outline" className="h-7" onClick={() => setOpen(true)}>
+        <Activity className="h-3.5 w-3.5" /><span className="ml-1">Attrs</span>
+      </Button>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>{label} — Atributos</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label className="text-xs font-bold">Físicos</Label>
+            <div className="mt-1 space-y-1">
+              {physAttrs.map((a) => (
+                <BonusRow
+                  key={a}
+                  name={cap(a)}
+                  base={attrs[a] ?? 1}
+                  bonus={attrBonus[a] ?? 0}
+                  onBonus={(v) => patchBonus("attr_bonus", a, v)}
+                />
+              ))}
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs font-bold">Sociais</Label>
+            <div className="mt-1 space-y-1">
+              {SOCIAL_ATTRS.map((a) => (
+                <BonusRow
+                  key={a}
+                  name={cap(a)}
+                  base={social[a] ?? 1}
+                  bonus={socialBonus[a] ?? 0}
+                  onBonus={(v) => patchBonus("social_attr_bonus", a, v)}
+                />
+              ))}
+            </div>
+          </div>
+          <p className="text-[10px] text-muted-foreground">Bônus rápido (positivo ou negativo). Salvo automaticamente na ficha.</p>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function BonusRow({
+  name, base, bonus, onBonus,
+}: { name: string; base: number; bonus: number; onBonus: (v: number) => void }) {
+  return (
+    <div className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1 text-xs">
+      <span className="flex-1 truncate font-semibold">{name}</span>
+      <span className="opacity-60">base {base}</span>
+      <Input
+        type="number"
+        value={bonus}
+        onChange={(e) => onBonus(parseInt(e.target.value) || 0)}
+        className="h-7 w-16 text-xs"
+      />
+      <span className="text-[10px] opacity-60">= {base + bonus}</span>
+    </div>
+  );
+}

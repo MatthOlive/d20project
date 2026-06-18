@@ -20,6 +20,7 @@ import {
   CONTEST_RANKS, CONTEST_RANK_LABELS, CONTEST_RANK_UP, NEXT_CONTEST_RANK,
   NOTORIETY_SKILLS, NOTORIETY_CAP,
 } from "@/lib/contest";
+import { ImageSourceDialog } from "@/components/ImageSourceDialog";
 
 import { useDebouncedPatch } from "@/lib/use-debounced-patch";
 import { toast } from "sonner";
@@ -715,12 +716,6 @@ function TrainerImage({
   canEdit: boolean;
   onChange: (url: string | null) => void;
 }) {
-  function upload(file: File) {
-    if (file.size > 2_000_000) { toast.error("Image must be under 2 MB"); return; }
-    const reader = new FileReader();
-    reader.onload = () => onChange(reader.result as string);
-    reader.readAsDataURL(file);
-  }
   return (
     <div className="flex flex-col items-start gap-2">
       {trainer.image_url ? (
@@ -730,11 +725,18 @@ function TrainerImage({
       )}
       {canEdit && (
         <div className="flex w-full flex-wrap gap-1.5">
-          <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold hover:bg-accent">
-            <ImagePlus className="h-3 w-3" /> {trainer.image_url ? "Replace" : "Upload"}
-            <input type="file" accept="image/*" className="hidden"
-              onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
-          </label>
+          <ImageSourceDialog
+            title="Imagem do treinador"
+            onPick={(url: string) => onChange(url)}
+            trigger={
+              <button
+                type="button"
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold hover:bg-accent"
+              >
+                <ImagePlus className="h-3 w-3" /> {trainer.image_url ? "Replace" : "Upload"}
+              </button>
+            }
+          />
           {trainer.image_url && (
             <button
               onClick={() => onChange(null)}
