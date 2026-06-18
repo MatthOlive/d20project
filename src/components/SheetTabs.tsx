@@ -645,3 +645,89 @@ function PcGrid({
     </div>
   );
 }
+
+function MinimalSheetView({
+  trainerId, meta, canEdit, onDeleted,
+}: {
+  trainerId: string;
+  meta: { name: string; image_url: string | null; description: string | null };
+  canEdit: boolean;
+  onDeleted?: () => void;
+}) {
+  const qc = useQueryClient();
+  const [name, setName] = useState(meta.name);
+  const [desc, setDesc] = useState(meta.description ?? "");
+  const [confirmDel, setConfirmDel] = useState(false);
+  async function patch(fields: Record<string, unknown>) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.from("trainers") as any).update(fields).eq("id", trainerId);
+    if (error) { toast.error(error.message); return; }
+    qc.invalidateQueries({ queryKey: ["trainer-meta", trainerId] });
+    qc.invalidateQueries({ queryKey: ["characters"] });
+  }
+  return (
+    <div className="space-y-3 p-4">
+      <div className="flex items-start gap-3">
+        {meta.image_url ? (
+          <img src={meta.image_url} alt={meta.name} className="h-40 w-40 rounded-xl border border-border object-cover" />
+        ) : (
+          <div className="flex h-40 w-40 items-center justify-center rounded-xl border border-dashed border-border bg-muted text-xs text-muted-foreground">Sem imagem</div>
+        )}
+        <div className="flex flex-1 flex-col gap-2">
+          <Input value={name} disabled={!canEdit} onChange={(e) => setName(e.target.value)} onBlur={() => name !== meta.name && patch({ name })} className="text-lg font-bold" />
+          {canEdit && (
+            <MinimalImagePicker currentUrl={meta.image_url} onPick={(url) => patch({ image_url: url })} />
+          )}
+        </div>
+      </div>
+      <div>
+        <label className="text-xs font-bold">Descrição</label>
+        <textarea
+          value={desc}
+          disabled={!canEdit}
+          onChange={(e) => setDesc(e.target.value)}
+          onBlur={() => desc !== (meta.description ?? "") && patch({ description: desc })}
+          rows={12}
+          className="mt-1 w-full rounded-md border border-border bg-background p-2 text-sm"
+          placeholder="Notas livres, descrição, anotações…"
+        />
+      </div>
+      {canEdit && (
+        <div className="flex justify-end">
+          <AlertDialog open={confirmDel} onOpenChange={setConfirmDel}>
+            <Button size="sm" variant="destructive" onClick={() => setConfirmDel(true)}>
+              <Trash2 className="mr-1 h-3.5 w-3.5" /> Apagar ficha
+            </Button>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Apagar esta ficha?</AlertDialogTitle>
+                <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={async () => {
+                  await supabase.from("trainers").delete().eq("id", trainerId);
+                  toast.success("Ficha apagada");
+                  onDeleted?.();
+                }}>Apagar</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MinimalImagePicker({ currentUrl, onPick }: { currentUrl: string | null; onPick: (url: string | null) => void }) {
+  // Lazy import to avoid circular issues in stricter bundlers; keep simple inline.
+  const { ImageSourceDialog } = require("@/components/ImageSourceDialog") as typeof import("@/components/ImageSourceDialog");
+  return (
+    <div className="flex gap-1.5">
+      <ImageSourceDialog title="Imagem da ficha" onPick={(u: string) => onPick(u)} />
+      {currentUrl && (
+        <Button size="sm" variant="outline" onClick={() => onPick(null)}>Remover imagem</Button>
+      )}
+    </div>
+  );
+}
