@@ -84,6 +84,8 @@ function TrainerBar({ id, label, onRoll, onClose, onOpenSheet }: Props) {
         painPenalty={pen}
         onRoll={onRoll}
       />
+      <StatusDialogButton kind="trainer" id={id} label={label} status={t.status_conditions ?? []} />
+      <AttrsDialogButton kind="trainer" id={id} label={label} />
     </Shell>
   );
 }
