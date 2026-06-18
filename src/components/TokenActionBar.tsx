@@ -96,7 +96,7 @@ function PokemonBar({ id, label, gameId, userId, onRoll, onClose, onOpenSheet }:
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pokemon")
-        .select("current_attrs, social_attrs, social_attr_points, social_attr_bonus, skills, rank, image_url, hp, current_hp, species:species_id(abilities, base_attrs, sprite_url, types)")
+        .select("current_attrs, social_attrs, social_attr_points, social_attr_bonus, attr_bonus, skills, rank, image_url, hp, current_hp, status, species:species_id(abilities, base_attrs, sprite_url, types)")
         .eq("id", id)
         .single();
       if (error) throw error;
