@@ -714,6 +714,24 @@ function FilesPanel({
     }
   }
 
+  async function deleteFolder(path: string) {
+    const prefix = path + "/";
+    const inFolder = rows.filter((r) => r.folder === path || (r.folder?.startsWith(prefix) ?? false));
+    const msg = inFolder.length > 0
+      ? `Apagar a pasta "${path}"? ${inFolder.length} ficha(s) serão movidas para "Unfiled".`
+      : `Apagar a pasta "${path}"?`;
+    if (!confirm(msg)) return;
+    const updates: Promise<unknown>[] = [];
+    for (const r of inFolder) {
+      const table = r.kind === "trainer" ? "trainers" : "pokemon";
+      updates.push(Promise.resolve(supabase.from(table).update({ folder: null }).eq("id", r.id)));
+    }
+    await Promise.all(updates);
+    setExtraFolders((prev) => prev.filter((p) => p !== path && !p.startsWith(prefix)));
+    qc.invalidateQueries({ queryKey: ["characters", gameId] });
+    toast.success("Pasta removida");
+  }
+
   function renderItem(r: CharRow) {
     const key = `${r.kind}:${r.id}`;
     const mapPayload: DragCharacterPayload = {
