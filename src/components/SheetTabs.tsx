@@ -171,6 +171,11 @@ export function SheetTabs(props: {
     }
   }
 
+  if (trainerMeta?.is_minimal) {
+    const canEdit = isNarrator || trainerMeta.owner_id === userId;
+    return <MinimalSheetView trainerId={trainerId} meta={trainerMeta} canEdit={canEdit} onDeleted={props.onDeleted} />;
+  }
+
   return (
     <div className="flex h-full min-h-0 w-full" onDragOver={handleSheetDragOver} onDrop={handleSheetDrop}>
       {/* Vertical tab rail */}
