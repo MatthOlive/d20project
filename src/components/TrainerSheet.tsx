@@ -20,6 +20,7 @@ import {
   CONTEST_RANKS, CONTEST_RANK_LABELS, CONTEST_RANK_UP, NEXT_CONTEST_RANK,
   NOTORIETY_SKILLS, NOTORIETY_CAP,
 } from "@/lib/contest";
+import { ImageSourceDialog } from "@/components/ImageSourceDialog";
 
 import { useDebouncedPatch } from "@/lib/use-debounced-patch";
 import { toast } from "sonner";
