@@ -1,0 +1,1 @@
+ALTER TABLE public.trainers ADD COLUMN IF NOT EXISTS is_minimal boolean NOT NULL DEFAULT false; ALTER TABLE public.trainers ADD COLUMN IF NOT EXISTS description text;
