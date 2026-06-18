@@ -909,6 +909,7 @@ function FilesPanel({
           <Button size="sm" variant="outline" onClick={() => createTrainer.mutate()}>
             <User className="mr-1 h-3.5 w-3.5" /> Trainer
           </Button>
+          <MinimalSheetButton gameId={gameId} userId={userId} onCreated={(id, name) => { qc.invalidateQueries({ queryKey: ["characters", gameId] }); onOpen({ kind: "trainer", id, title: name }); }} />
           <Dialog open={pkmDialogOpen} onOpenChange={setPkmDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm"><Sparkles className="mr-1 h-3.5 w-3.5" /> Pokémon</Button>
