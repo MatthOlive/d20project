@@ -41,11 +41,11 @@ type Rank = (typeof RANK_ORDER)[number];
 // attrPoints = ADDITIONAL points beyond starter baseline (the species/base trainer already has its starting stats).
 const RANK_TABLE: Record<Rank, { attrPoints: number; socialPoints: number; skillPoints: number; skillCap: number; attrCap: number }> = {
   starter:  { attrPoints: 0,  socialPoints: 0,  skillPoints: 5,  skillCap: 1, attrCap: 3 },
-  beginner: { attrPoints: 2,  socialPoints: 2,  skillPoints: 10, skillCap: 2, attrCap: 4 },
-  amateur:  { attrPoints: 4,  socialPoints: 4,  skillPoints: 15, skillCap: 3, attrCap: 4 },
-  ace:      { attrPoints: 6,  socialPoints: 6,  skillPoints: 20, skillCap: 4, attrCap: 5 },
-  pro:      { attrPoints: 8,  socialPoints: 8,  skillPoints: 25, skillCap: 5, attrCap: 5 },
-  master:   { attrPoints: 10, socialPoints: 10, skillPoints: 30, skillCap: 5, attrCap: 5 },
+  beginner: { attrPoints: 2,  socialPoints: 2,  skillPoints: 9,  skillCap: 2, attrCap: 4 },
+  amateur:  { attrPoints: 4,  socialPoints: 4,  skillPoints: 12, skillCap: 3, attrCap: 4 },
+  ace:      { attrPoints: 6,  socialPoints: 6,  skillPoints: 14, skillCap: 4, attrCap: 5 },
+  pro:      { attrPoints: 8,  socialPoints: 8,  skillPoints: 15, skillCap: 5, attrCap: 5 },
+  master:   { attrPoints: 10, socialPoints: 10, skillPoints: 16, skillCap: 5, attrCap: 5 },
 };
 
 const AGE_TABLE: Record<string, { phys: number; social: number }> = {
