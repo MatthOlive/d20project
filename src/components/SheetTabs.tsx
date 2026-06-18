@@ -52,6 +52,19 @@ export function SheetTabs(props: {
   const qc = useQueryClient();
   const [active, setActive] = useState<Tab>({ kind: "trainer" });
 
+  // Detect minimal sheet (just image + description)
+  const { data: trainerMeta } = useQuery({
+    queryKey: ["trainer-meta", trainerId],
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase.from("trainers") as any)
+        .select("is_minimal, name, image_url, description, owner_id")
+        .eq("id", trainerId).single();
+      if (error) throw error;
+      return data as { is_minimal: boolean; name: string; image_url: string | null; description: string | null; owner_id: string };
+    },
+  });
+
   // Pokemon owned by this trainer (team + PC)
   const { data: roster = [] } = useQuery({
     queryKey: ["trainer-roster", trainerId],
@@ -63,6 +76,7 @@ export function SheetTabs(props: {
       if (error) throw error;
       return (data ?? []) as SlotPokemon[];
     },
+    enabled: !trainerMeta?.is_minimal,
   });
 
   // Species sprite map (for fallback)
