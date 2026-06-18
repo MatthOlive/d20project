@@ -1772,3 +1772,71 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
     </Dialog>
   );
 }
+
+function MinimalSheetButton({
+  gameId, userId, onCreated,
+}: {
+  gameId: string;
+  userId: string;
+  onCreated: (id: string, name: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [image, setImage] = useState<string | null>(null);
+  const [desc, setDesc] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function create() {
+    if (!name.trim()) { toast.error("Dê um nome para a ficha"); return; }
+    setBusy(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("trainers") as any)
+      .insert({ game_id: gameId, owner_id: userId, name: name.trim(), is_minimal: true, image_url: image, description: desc || null })
+      .select().single();
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    setOpen(false); setName(""); setImage(null); setDesc("");
+    onCreated((data as { id: string; name: string }).id, (data as { id: string; name: string }).name);
+  }
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline">
+          <Plus className="mr-1 h-3.5 w-3.5" /> Simples
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Nova ficha simples</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label className="text-xs">Nome</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex.: NPC Mestre Bug" />
+          </div>
+          <div className="flex items-start gap-3">
+            {image ? (
+              <img src={image} alt="" className="h-20 w-20 rounded-md border border-border object-cover" />
+            ) : (
+              <div className="flex h-20 w-20 items-center justify-center rounded-md border border-dashed border-border text-xs text-muted-foreground">Imagem</div>
+            )}
+            <div className="flex flex-col gap-1.5">
+              <ImageSourceDialog title="Imagem" onPick={(u: string) => setImage(u)} />
+              {image && <Button size="sm" variant="outline" onClick={() => setImage(null)}>Remover</Button>}
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs">Descrição</Label>
+            <textarea
+              value={desc}
+              onChange={(e) => setDesc(e.target.value)}
+              rows={6}
+              className="mt-1 w-full rounded-md border border-border bg-background p-2 text-sm"
+              placeholder="Texto livre…"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button onClick={create} disabled={busy}>Criar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
