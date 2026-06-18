@@ -170,6 +170,8 @@ function PokemonBar({ id, label, gameId, userId, onRoll, onClose, onOpenSheet }:
         painPenalty={pen}
         imageUrl={displayImage}
       />
+      <StatusDialogButton kind="pokemon" id={id} label={label} status={(p as unknown as { status?: string[] }).status ?? []} />
+      <AttrsDialogButton kind="pokemon" id={id} label={label} />
     </Shell>
   );
 }
