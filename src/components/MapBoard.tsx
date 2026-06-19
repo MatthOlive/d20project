@@ -1308,3 +1308,56 @@ function ToolBtn({ active, onClick, title, children }: { active?: boolean; onCli
     </button>
   );
 }
+
+function BgUrlAdd({ onAdd }: { onAdd: (url: string) => void | Promise<void> }) {
+  const [url, setUrl] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  async function submitUrl() {
+    const u = url.trim();
+    if (!u) return;
+    await onAdd(u);
+    setUrl("");
+  }
+  function handleFile(file: File) {
+    if (!file.type.startsWith("image/")) { toast.error("Selecione uma imagem"); return; }
+    if (file.size > 5_000_000) { toast.error("Imagem muito grande (>5MB)"); return; }
+    const reader = new FileReader();
+    reader.onload = () => { void onAdd(String(reader.result)); };
+    reader.readAsDataURL(file);
+  }
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex gap-1">
+        <input
+          type="text"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="URL da imagem"
+          className="h-7 flex-1 rounded border border-input bg-background px-2 text-[11px]"
+        />
+        <button
+          type="button"
+          onClick={() => void submitUrl()}
+          className="inline-flex h-7 items-center justify-center rounded bg-primary px-2 text-[11px] font-semibold text-primary-foreground hover:opacity-90"
+          title="Adicionar"
+        >
+          <Plus className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.currentTarget.value = ""; }}
+      />
+      <button
+        type="button"
+        onClick={() => fileInputRef.current?.click()}
+        className="inline-flex h-7 items-center justify-center gap-1 rounded border border-border bg-background px-2 text-[11px] font-semibold hover:bg-accent"
+      >
+        <ImageIcon className="h-3.5 w-3.5" /> Enviar arquivo
+      </button>
+    </div>
+  );
+}
