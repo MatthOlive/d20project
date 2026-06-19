@@ -279,6 +279,8 @@ export function MapBoard({
     | null
   >(null);
   const [bgLocal, setBgLocal] = useState<Record<string, Partial<MapBg>>>({});
+  const bgLocalRef = useRef(bgLocal);
+  useEffect(() => { bgLocalRef.current = bgLocal; }, [bgLocal]);
 
   const { data: mapBgsRaw = [] } = useQuery({
     queryKey: ["map_backgrounds", gameId],
