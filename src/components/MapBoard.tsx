@@ -1249,9 +1249,9 @@ function MapToolbar({
               <BgUrlAdd onAdd={onAddBackground} />
               {selectedBgId && (
                 <div className="flex flex-wrap gap-1">
-                  <ToolBtn onClick={onBringBgFront} title="Trazer para frente"><ArrowUp className="h-3.5 w-3.5" /></ToolBtn>
-                  <ToolBtn onClick={onSendBgBack} title="Enviar para trás"><ArrowDown className="h-3.5 w-3.5" /></ToolBtn>
-                  <ToolBtn onClick={onDeleteSelectedBg} title="Excluir background selecionado"><Trash2 className="h-3.5 w-3.5" /></ToolBtn>
+                  {onBringBgFront && <ToolBtn onClick={onBringBgFront} title="Trazer para frente"><ArrowUp className="h-3.5 w-3.5" /></ToolBtn>}
+                  {onSendBgBack && <ToolBtn onClick={onSendBgBack} title="Enviar para trás"><ArrowDown className="h-3.5 w-3.5" /></ToolBtn>}
+                  {onDeleteSelectedBg && <ToolBtn onClick={onDeleteSelectedBg} title="Excluir background selecionado"><Trash2 className="h-3.5 w-3.5" /></ToolBtn>}
                 </div>
               )}
             </div>
