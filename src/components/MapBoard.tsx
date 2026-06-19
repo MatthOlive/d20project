@@ -438,11 +438,38 @@ export function MapBoard({
       }
       setDrawingShape(base);
     }
+    if (mode === "fog" && isNarrator) {
+      const p = pointToRelRaw(e.clientX, e.clientY);
+      setFogRect({ ax: p.x, ay: p.y, bx: p.x, by: p.y });
+      return;
+    }
+    if (mode === "walls" && isNarrator) {
+      const p = pointToRelRaw(e.clientX, e.clientY);
+      if (!wallStart) {
+        setWallStart({ x: p.x, y: p.y });
+        setWallCursor({ x: p.x, y: p.y });
+      } else {
+        void insertWall(wallStart.x, wallStart.y, p.x, p.y);
+        setWallStart(null);
+        setWallCursor(null);
+      }
+      return;
+    }
   }
   function onMouseMoveBoard(e: React.MouseEvent) {
     if (mode === "ruler" && ruler) {
       const p = pointToRelRaw(e.clientX, e.clientY);
       setRuler({ ...ruler, bx: p.x, by: p.y });
+      return;
+    }
+    if (mode === "fog" && fogRect) {
+      const p = pointToRelRaw(e.clientX, e.clientY);
+      setFogRect({ ...fogRect, bx: p.x, by: p.y });
+      return;
+    }
+    if (mode === "walls" && wallStart) {
+      const p = pointToRelRaw(e.clientX, e.clientY);
+      setWallCursor({ x: p.x, y: p.y });
       return;
     }
     if (mode === "draw" && drawingShape) {
@@ -471,13 +498,16 @@ export function MapBoard({
   }
   async function onMouseUpBoard() {
     if (mode === "ruler") {
-      // Keep the ruler visible until user clicks again or changes mode
+      return;
+    }
+    if (mode === "fog" && fogRect) {
+      await insertFogRegion(fogRect.ax, fogRect.ay, fogRect.bx, fogRect.by, fogTool === "reveal");
+      setFogRect(null);
       return;
     }
     if (mode === "draw" && drawingShape) {
       const d = drawingShape;
       setDrawingShape(null);
-      // Discard zero-size shapes (accidental clicks)
       if (d.kind === "rect" && ((d.geometry.w ?? 0) < 0.005 || (d.geometry.h ?? 0) < 0.005)) return;
       if (d.kind === "circle" && (d.geometry.r ?? 0) < 0.005) return;
       if (d.kind === "line") {
