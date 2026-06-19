@@ -641,7 +641,7 @@ export function MapBoard({
         cursor: mode === "ruler" || mode === "draw" || mode === "fog" || mode === "walls" ? "crosshair" : undefined,
       }}
     >
-      {topLeftSlot && <div className="absolute left-3 top-3 z-30 flex items-center gap-2">{topLeftSlot}</div>}
+      {topLeftSlot && <div className="absolute right-3 top-3 z-30 flex items-center gap-2">{topLeftSlot}</div>}
 
       {/* Map toolbar (top-left, collapsible) */}
       <MapToolbar
