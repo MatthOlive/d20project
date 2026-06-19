@@ -163,29 +163,112 @@ function GameRoom() {
 
   if (!game || !user) return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
 
+  const mapBoard = (
+    <MapBoard
+      gameId={gameId}
+      backgroundUrl={game.background_url}
+      userId={user.id}
+      isNarrator={isNarrator}
+      onRoll={rollFromSheet}
+      onOpenSheet={(kind, id, label) => openWindow({ kind, id, title: label })}
+      gridSettings={{
+        enabled: (game as never as { grid_enabled?: boolean }).grid_enabled ?? true,
+        snap: (game as never as { grid_snap?: boolean }).grid_snap ?? true,
+        size: (game as never as { grid_size?: number }).grid_size ?? 56,
+        color: (game as never as { grid_color?: string }).grid_color ?? "#000000",
+        opacity: (game as never as { grid_opacity?: number }).grid_opacity ?? 30,
+        unitMeters: Number((game as never as { grid_unit_m?: number }).grid_unit_m ?? 1.5),
+        unitLabel: (game as never as { grid_unit_label?: string }).grid_unit_label ?? "m",
+      }}
+    />
+  );
+
+  const sheetWindows = (
+    <div className="pointer-events-none">
+      {windows.map((w, i) => (
+        <FloatingWindow
+          key={`${w.kind}-${w.id}`}
+          title={w.title}
+          onClose={() => closeWindow(w.kind, w.id)}
+          onPopOut={() => {
+            const params = new URLSearchParams();
+            params.set("sheet", `${w.kind}:${w.id}:${encodeURIComponent(w.title)}`);
+            const url = `${window.location.pathname}?${params.toString()}`;
+            window.open(url, "_blank", "noopener,width=1200,height=800");
+          }}
+          initialX={isMobile ? 8 : 120 + i * 30}
+          initialY={isMobile ? 56 : 80 + i * 30}
+          width={isMobile ? Math.min(window.innerWidth - 16, 480) : (w.kind === "trainer" ? 760 : 560)}
+          height={isMobile ? Math.min(window.innerHeight - 80, 700) : 640}
+        >
+          {w.kind === "pokemon"
+            ? <PokemonSheet pokemonId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(w.kind, w.id); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
+            : <SheetTabs trainerId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(w.kind, w.id); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />}
+        </FloatingWindow>
+      ))}
+    </div>
+  );
+
+  if (isMobile) {
+    return (
+      <div className="relative flex h-[calc(100vh-4rem)] w-full flex-col">
+        <h1 className="sr-only">{game.name ? `${game.name} — D20 Project game room` : "D20 Project game room"}</h1>
+        <div className="grid shrink-0 grid-cols-4 gap-1 border-b border-border bg-card p-1">
+          {(["map", "chat", "compendium", "files"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setMobileTab(t)}
+              className={`rounded-md px-2 py-2 text-xs font-bold uppercase ${mobileTab === t ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
+            >
+              {t === "map" ? "Mapa" : t === "chat" ? "Chat" : t === "compendium" ? "Compendium" : "Files"}
+            </button>
+          ))}
+        </div>
+        <div className="relative min-h-0 flex-1 overflow-hidden">
+          <div className={`absolute inset-0 ${mobileTab === "map" ? "" : "hidden"}`}>
+            {mapBoard}
+            <MapLeftDisclosure
+              isNarrator={isNarrator}
+              inviteUrl={inviteUrl}
+              gameId={gameId}
+              onToggleTurnOrder={() => setTurnOrderOpen((v) => !v)}
+            />
+            {isNarrator && (
+              <MapTopDisclosure
+                gameId={gameId}
+                currentBg={game.background_url}
+                setBackgroundUrl={setBackgroundUrl}
+              />
+            )}
+            <InitiativePanel gameId={gameId} isNarrator={isNarrator} open={turnOrderOpen} onClose={() => setTurnOrderOpen(false)} />
+          </div>
+          {mobileTab === "chat" && (
+            <div className="h-full overflow-hidden">
+              <div className="p-2"><OnlinePresence gameId={gameId} userId={user.id} isNarrator={isNarrator} /></div>
+              <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} isGameOwner={isNarrator} />
+            </div>
+          )}
+          {mobileTab === "compendium" && (
+            <div className="h-full overflow-auto p-3"><CompendiumPanel /></div>
+          )}
+          {mobileTab === "files" && (
+            <div className="h-full overflow-auto p-3">
+              <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindow} isMobile />
+            </div>
+          )}
+        </div>
+        {sheetWindows}
+      </div>
+    );
+  }
+
   return (
     <div className="relative h-[calc(100vh-4rem)] w-full px-3 py-3">
       <h1 className="sr-only">{game.name ? `${game.name} — D20 Project game room` : "D20 Project game room"}</h1>
       {/* <MusicPlayer gameId={gameId} /> — desativado temporariamente; reativar quando a aba Music voltar. */}
       {/* Fullscreen map */}
       <div className="relative h-full w-full">
-        <MapBoard
-          gameId={gameId}
-          backgroundUrl={game.background_url}
-          userId={user.id}
-          isNarrator={isNarrator}
-          onRoll={rollFromSheet}
-          onOpenSheet={(kind, id, label) => openWindow({ kind, id, title: label })}
-          gridSettings={{
-            enabled: (game as never as { grid_enabled?: boolean }).grid_enabled ?? true,
-            snap: (game as never as { grid_snap?: boolean }).grid_snap ?? true,
-            size: (game as never as { grid_size?: number }).grid_size ?? 56,
-            color: (game as never as { grid_color?: string }).grid_color ?? "#000000",
-            opacity: (game as never as { grid_opacity?: number }).grid_opacity ?? 30,
-            unitMeters: Number((game as never as { grid_unit_m?: number }).grid_unit_m ?? 1.5),
-            unitLabel: (game as never as { grid_unit_label?: string }).grid_unit_label ?? "m",
-          }}
-        />
+        {mapBoard}
         <MapLeftDisclosure
           isNarrator={isNarrator}
           inviteUrl={inviteUrl}
@@ -208,13 +291,10 @@ function GameRoom() {
               <OnlinePresence gameId={gameId} userId={user.id} isNarrator={isNarrator} />
             </div>
             <Tabs defaultValue="chat" className="flex min-h-0 flex-1 flex-col">
-              {/* Music tab temporariamente removida — manter MusicPanel/MusicPlayer intactos para reativar depois.
-                  Para reativar: trocar grid-cols-3 por grid-cols-4 e descomentar TabsTrigger/TabsContent abaixo. */}
               <TabsList className="m-2 grid shrink-0 grid-cols-3">
                 <TabsTrigger value="chat">Chat</TabsTrigger>
                 <TabsTrigger value="compendium">Compendium</TabsTrigger>
                 <TabsTrigger value="files">Files</TabsTrigger>
-                {/* <TabsTrigger value="music">Music</TabsTrigger> */}
               </TabsList>
               <TabsContent value="chat" className="mt-0 min-h-0 flex-1 overflow-hidden">
                 <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} isGameOwner={isNarrator} />
@@ -225,38 +305,12 @@ function GameRoom() {
               <TabsContent value="files" className="mt-0 min-h-0 flex-1 overflow-auto p-3">
                 <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindow} />
               </TabsContent>
-              {/* <TabsContent value="music" className="mt-0 min-h-0 flex-1 overflow-hidden">
-                <MusicPanel gameId={gameId} isNarrator={isNarrator} />
-              </TabsContent> */}
             </Tabs>
           </Card>
         </RightOverlayPanel>
       </div>
 
-      {/* Floating sheet windows */}
-      <div className="pointer-events-none">
-        {windows.map((w, i) => (
-          <FloatingWindow
-            key={`${w.kind}-${w.id}`}
-            title={w.title}
-            onClose={() => closeWindow(w.kind, w.id)}
-            onPopOut={() => {
-              const params = new URLSearchParams();
-              params.set("sheet", `${w.kind}:${w.id}:${encodeURIComponent(w.title)}`);
-              const url = `${window.location.pathname}?${params.toString()}`;
-              window.open(url, "_blank", "noopener,width=1200,height=800");
-            }}
-            initialX={120 + i * 30}
-            initialY={80 + i * 30}
-            width={w.kind === "trainer" ? 760 : 560}
-            height={640}
-          >
-            {w.kind === "pokemon"
-              ? <PokemonSheet pokemonId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(w.kind, w.id); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
-              : <SheetTabs trainerId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(w.kind, w.id); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />}
-          </FloatingWindow>
-        ))}
-      </div>
+      {sheetWindows}
     </div>
   );
 }
