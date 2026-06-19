@@ -1556,7 +1556,7 @@ function InitiativePanel({ gameId, isNarrator, open, onClose }: { gameId: string
     <FloatingWindow
       title="Turn Order"
       onClose={onClose}
-      initialX={typeof window !== "undefined" ? window.innerWidth - 320 : 800}
+      initialX={16}
       initialY={80}
       width={280}
       height={420}
