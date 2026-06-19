@@ -1121,6 +1121,22 @@ export function MapBoard({
                         <Lightbulb className="h-3 w-3" />
                         Visão{(t.vision_radius ?? 0) > 0 ? `: ${t.vision_radius}` : ""}
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setAppearanceToken({
+                          id: t.id, label: t.label,
+                          aura1_radius: t.aura1_radius, aura1_color: t.aura1_color,
+                          aura2_radius: t.aura2_radius, aura2_color: t.aura2_color,
+                          tint_color: t.tint_color,
+                          bar_label: t.bar_label, bar_value: t.bar_value, bar_max: t.bar_max,
+                          bar_color: t.bar_color,
+                        })}
+                        className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-background px-2 text-[11px] font-semibold hover:bg-accent"
+                        title="Auras, tinting e barra customizada"
+                      >
+                        <Palette className="h-3 w-3" />
+                        Aparência
+                      </button>
                     </>
                   ) : undefined}
                 />
@@ -1132,6 +1148,12 @@ export function MapBoard({
       </div>
     </div>
     </div>
+    <TokenAppearanceDialog
+      token={appearanceToken}
+      open={!!appearanceToken}
+      onOpenChange={(v) => { if (!v) setAppearanceToken(null); }}
+    />
+    </>
   );
 }
 
