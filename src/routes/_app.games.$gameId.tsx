@@ -26,6 +26,7 @@ import { OnlinePresence } from "@/components/OnlinePresence";
 import { PokemonSheet } from "@/components/PokemonSheet";
 import { SheetTabs } from "@/components/SheetTabs";
 import { MapBoard, DRAG_MIME, type DragCharacterPayload } from "@/components/MapBoard";
+import { MacroBar } from "@/components/MacroBar";
 import { MusicPanel } from "@/components/MusicPanel";
 import { MusicPlayer } from "@/components/MusicPlayer";
 import { toast } from "sonner";
@@ -253,6 +254,7 @@ function GameRoom() {
               />
             )}
             <InitiativePanel gameId={gameId} isNarrator={isNarrator} open={turnOrderOpen} onClose={() => setTurnOrderOpen(false)} />
+            <MacroBar gameId={gameId} userId={user.id} />
           </div>
           {mobileTab === "chat" && (
             <div className="h-full overflow-hidden">
@@ -295,6 +297,7 @@ function GameRoom() {
           />
         )}
         <InitiativePanel gameId={gameId} isNarrator={isNarrator} open={turnOrderOpen} onClose={() => setTurnOrderOpen(false)} />
+        <MacroBar gameId={gameId} userId={user.id} />
 
         {/* Right: floating chat/files/etc overlay */}
         <RightOverlayPanel>
