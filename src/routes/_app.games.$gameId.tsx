@@ -180,6 +180,10 @@ function GameRoom() {
         unitMeters: Number((game as never as { grid_unit_m?: number }).grid_unit_m ?? 1.5),
         unitLabel: (game as never as { grid_unit_label?: string }).grid_unit_label ?? "m",
       }}
+      visibility={{
+        fogEnabled: (game as never as { fog_enabled?: boolean }).fog_enabled ?? false,
+        dynamicLighting: (game as never as { dynamic_lighting?: boolean }).dynamic_lighting ?? false,
+      }}
     />
   );
 
