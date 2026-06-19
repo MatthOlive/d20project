@@ -223,19 +223,61 @@ function GameRoom() {
   );
 
   if (isMobile) {
+    const baseTabs = ["map", "chat", "compendium", "files"] as const;
+    type BaseTab = (typeof baseTabs)[number];
+    const sheetTabKey = (w: OpenWindow) => `sheet:${w.kind}:${w.id}`;
+    const isSheetTab = mobileTab.startsWith("sheet:");
+    const activeSheet = isSheetTab ? windows.find((w) => sheetTabKey(w) === mobileTab) ?? null : null;
+
+    // If user opened a sheet from another tab, auto-switch to its tab.
+    // If the active sheet was closed, fall back to map.
+    function onClickBaseTab(t: BaseTab) {
+      // Switching to a base tab closes any open sheet tabs (as requested).
+      if (windows.length > 0) setWindows([]);
+      setMobileTab(t);
+    }
+
+    const openWindowMobile = (w: OpenWindow) => {
+      openWindow(w);
+      setMobileTab(sheetTabKey(w));
+    };
+
     return (
       <div className="relative flex h-[calc(100vh-4rem)] w-full flex-col">
         <h1 className="sr-only">{game.name ? `${game.name} — D20 Project game room` : "D20 Project game room"}</h1>
-        <div className="grid shrink-0 grid-cols-4 gap-1 border-b border-border bg-card p-1">
-          {(["map", "chat", "compendium", "files"] as const).map((t) => (
+        <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border bg-card p-1">
+          {baseTabs.map((t) => (
             <button
               key={t}
-              onClick={() => setMobileTab(t)}
-              className={`rounded-md px-2 py-2 text-xs font-bold uppercase ${mobileTab === t ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
+              onClick={() => onClickBaseTab(t)}
+              className={`shrink-0 rounded-md px-2 py-2 text-xs font-bold uppercase ${mobileTab === t ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
             >
               {t === "map" ? "Mapa" : t === "chat" ? "Chat" : t === "compendium" ? "Compendium" : "Files"}
             </button>
           ))}
+          {windows.map((w) => {
+            const key = sheetTabKey(w);
+            return (
+              <button
+                key={key}
+                onClick={() => setMobileTab(key)}
+                className={`group flex shrink-0 items-center gap-1 rounded-md px-2 py-2 text-xs font-bold uppercase ${mobileTab === key ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
+                title={w.title}
+              >
+                <span className="max-w-[7rem] truncate">{w.title}</span>
+                <span
+                  role="button"
+                  aria-label="Fechar ficha"
+                  className="rounded p-0.5 opacity-70 hover:bg-background/30 hover:opacity-100"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    closeWindow(w.kind, w.id);
+                    if (mobileTab === key) setMobileTab("map");
+                  }}
+                >×</span>
+              </button>
+            );
+          })}
         </div>
         <div className="relative min-h-0 flex-1 overflow-hidden">
           <div className={`absolute inset-0 ${mobileTab === "map" ? "" : "hidden"}`}>
@@ -267,11 +309,23 @@ function GameRoom() {
           )}
           {mobileTab === "files" && (
             <div className="h-full overflow-auto p-3">
-              <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindow} isMobile />
+              <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindowMobile} isMobile />
+            </div>
+          )}
+          {mobileTab === "music" && (
+            <div className="h-full overflow-hidden">
+              <MusicPanel gameId={gameId} isNarrator={isNarrator} />
+            </div>
+          )}
+          {activeSheet && (
+            <div className="absolute inset-0 overflow-auto bg-background">
+              {activeSheet.kind === "pokemon"
+                ? <PokemonSheet pokemonId={activeSheet.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(activeSheet.kind, activeSheet.id); setMobileTab("map"); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
+                : <SheetTabs trainerId={activeSheet.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(activeSheet.kind, activeSheet.id); setMobileTab("map"); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />}
             </div>
           )}
         </div>
-        {sheetWindows}
+        <MusicPlayer gameId={gameId} />
       </div>
     );
   }
