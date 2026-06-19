@@ -1076,7 +1076,7 @@ function MapToolbar({
 
       {collapsed ? (
         <div className="flex flex-col items-center gap-1">
-          {(["select", "ruler", "draw", ...(isNarrator ? ["fog", "walls"] : [])] as Mode[]).map((m) => (
+          {(["select", "ruler", "draw", ...(isNarrator ? ["fog", "walls", "background"] : [])] as Mode[]).map((m) => (
             <ToolBtn key={m} active={mode === m} onClick={() => setMode(m)} title={modeTitle(m)}>
               {modeIcon(m)}
             </ToolBtn>
