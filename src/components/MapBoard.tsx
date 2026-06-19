@@ -37,6 +37,15 @@ type Token = {
   layer?: "tokens" | "gm";
   vision_radius?: number;
   light_radius?: number;
+  aura1_radius?: number;
+  aura1_color?: string;
+  aura2_radius?: number;
+  aura2_color?: string;
+  tint_color?: string | null;
+  bar_label?: string | null;
+  bar_value?: number | null;
+  bar_max?: number | null;
+  bar_color?: string;
 };
 
 type DrawKind = "freehand" | "rect" | "circle" | "line" | "text";
