@@ -87,6 +87,7 @@ function TrainerBar({ id, label, onRoll, onClose, onOpenSheet, extra }: Props) {
       />
       <StatusDialogButton kind="trainer" id={id} label={label} status={t.status_conditions ?? []} />
       <AttrsDialogButton kind="trainer" id={id} label={label} />
+      {extra}
     </Shell>
   );
 }
