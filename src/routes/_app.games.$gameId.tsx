@@ -1732,6 +1732,13 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
   const [shiny, setShiny] = useState<number>(10);
   const [over, setOver] = useState<number>(0);
   const [spdefIns, setSpdefIns] = useState<boolean>(false);
+  const [gridEnabled, setGridEnabled] = useState(true);
+  const [gridSnap, setGridSnap] = useState(true);
+  const [gridSize, setGridSize] = useState(56);
+  const [gridColor, setGridColor] = useState("#000000");
+  const [gridOpacity, setGridOpacity] = useState(30);
+  const [gridUnitM, setGridUnitM] = useState(1.5);
+  const [gridUnitLabel, setGridUnitLabel] = useState("m");
   const [weights, setWeights] = useState<Record<string, number>>(() => {
     const m: Record<string, number> = {};
     for (const c of REACTION_DECK) m[c.id] = c.defaultWeight;
