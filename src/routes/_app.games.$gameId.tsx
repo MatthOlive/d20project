@@ -1750,7 +1750,7 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
     (async () => {
       const { data, error } = await supabase
         .from("games")
-        .select("shiny_chance,overgrown_chance,contest_weights,spdef_uses_insight")
+        .select("shiny_chance,overgrown_chance,contest_weights,spdef_uses_insight,grid_enabled,grid_snap,grid_size,grid_color,grid_opacity,grid_unit_m,grid_unit_label")
         .eq("id", gameId)
         .single();
       if (error) {
@@ -1758,10 +1758,22 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
         setSpdefIns(savedSpdefIns);
         return;
       }
-      const row = data as { shiny_chance?: number; overgrown_chance?: number; contest_weights?: Record<string, number> | null; spdef_uses_insight?: boolean } | null;
+      const row = data as {
+        shiny_chance?: number; overgrown_chance?: number;
+        contest_weights?: Record<string, number> | null; spdef_uses_insight?: boolean;
+        grid_enabled?: boolean; grid_snap?: boolean; grid_size?: number;
+        grid_color?: string; grid_opacity?: number; grid_unit_m?: number; grid_unit_label?: string;
+      } | null;
       setShiny(row?.shiny_chance ?? 10);
       setOver(row?.overgrown_chance ?? 0);
       setSpdefIns(Boolean(row?.spdef_uses_insight));
+      setGridEnabled(row?.grid_enabled ?? true);
+      setGridSnap(row?.grid_snap ?? true);
+      setGridSize(row?.grid_size ?? 56);
+      setGridColor(row?.grid_color ?? "#000000");
+      setGridOpacity(row?.grid_opacity ?? 30);
+      setGridUnitM(Number(row?.grid_unit_m ?? 1.5));
+      setGridUnitLabel(row?.grid_unit_label ?? "m");
       const w: Record<string, number> = {};
       for (const c of REACTION_DECK) w[c.id] = row?.contest_weights?.[c.id] ?? c.defaultWeight;
       setWeights(w);
