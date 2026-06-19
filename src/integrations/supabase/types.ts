@@ -342,6 +342,59 @@ export type Database = {
           },
         ]
       }
+      map_backgrounds: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          game_id: string
+          height: number
+          id: string
+          image_url: string
+          rotation: number
+          updated_at: string
+          width: number
+          x: number
+          y: number
+          z_index: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          game_id: string
+          height?: number
+          id?: string
+          image_url: string
+          rotation?: number
+          updated_at?: string
+          width?: number
+          x?: number
+          y?: number
+          z_index?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          game_id?: string
+          height?: number
+          id?: string
+          image_url?: string
+          rotation?: number
+          updated_at?: string
+          width?: number
+          x?: number
+          y?: number
+          z_index?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "map_backgrounds_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       map_drawings: {
         Row: {
           author_id: string

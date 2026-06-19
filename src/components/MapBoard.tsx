@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import {
   X, MousePointer2, Ruler, Pencil, Square, Circle as CircleIcon,
   Minus, Type as TypeIcon, Eraser, Eye, EyeOff, CloudFog, Box, Lightbulb, Trash2,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Image as ImageIcon, Plus, RotateCw, ArrowUp, ArrowDown,
 } from "lucide-react";
 import { TokenActionBar } from "@/components/TokenActionBar";
 import { TokenStatsBar } from "@/components/TokenStatsBar";
@@ -69,10 +69,11 @@ export type GridSettings = {
   unitLabel: string;
 };
 
-type Mode = "select" | "ruler" | "draw" | "fog" | "walls";
+type Mode = "select" | "ruler" | "draw" | "fog" | "walls" | "background";
 
 type FogRegion = { id: string; game_id: string; x: number; y: number; w: number; h: number; revealed: boolean; author_id: string };
 type Wall = { id: string; game_id: string; x1: number; y1: number; x2: number; y2: number };
+type MapBg = { id: string; game_id: string; image_url: string; x: number; y: number; width: number; height: number; rotation: number; z_index: number };
 
 export type Visibility = { fogEnabled: boolean; dynamicLighting: boolean };
 
@@ -113,7 +114,7 @@ export function MapBoard({
   const [localSize, setLocalSize] = useState<Record<string, number>>({});
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
   const [hoverTokenId, setHoverTokenId] = useState<string | null>(null);
-  const [bgAspect, setBgAspect] = useState<number | null>(null);
+  // (background image now rendered full-screen; no aspect-ratio coupling)
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const panOrigin = useRef<{ mx: number; my: number; ox: number; oy: number } | null>(null);
@@ -151,6 +152,24 @@ export function MapBoard({
         const next = Math.max(24, Math.min(240, resizeOrigin.current.size + Math.max(dx, dy)));
         setLocalSize((s) => ({ ...s, [resizeTokenId]: next }));
       }
+      // Background interactions
+      const drag = bgDragRef.current;
+      const rect = boardRef.current?.getBoundingClientRect();
+      if (drag && rect) {
+        if (drag.kind === "move") {
+          const dx = (e.clientX - drag.sx) / rect.width / zoom;
+          const dy = (e.clientY - drag.sy) / rect.height / zoom;
+          setBgLocal((s) => ({ ...s, [drag.id]: { ...(s[drag.id] ?? {}), x: drag.ox + dx, y: drag.oy + dy } }));
+        } else if (drag.kind === "resize") {
+          const dx = (e.clientX - drag.sx) / rect.width / zoom;
+          const dy = (e.clientY - drag.sy) / rect.height / zoom;
+          setBgLocal((s) => ({ ...s, [drag.id]: { ...(s[drag.id] ?? {}), width: Math.max(0.03, drag.ow + dx), height: Math.max(0.03, drag.oh + dy) } }));
+        } else if (drag.kind === "rotate") {
+          const angle = Math.atan2(e.clientY - drag.cy, e.clientX - drag.cx) * 180 / Math.PI;
+          const delta = angle - drag.startAngle;
+          setBgLocal((s) => ({ ...s, [drag.id]: { ...(s[drag.id] ?? {}), rotation: drag.baseRotation + delta } }));
+        }
+      }
     }
     async function onUp() {
       panOrigin.current = null;
@@ -162,6 +181,17 @@ export function MapBoard({
         if (finalSize) {
           await supabase.from("tokens").update({ size: Math.round(finalSize) }).eq("id", id);
           setLocalSize((s) => { const n = { ...s }; delete n[id]; return n; });
+        }
+      }
+      // Persist bg edit
+      const drag = bgDragRef.current;
+      if (drag) {
+        const local = bgLocalRef.current[drag.id];
+        bgDragRef.current = null;
+        if (local) {
+          const { error } = await (supabase.from("map_backgrounds" as never).update(local as never).eq("id", drag.id) as unknown as Promise<{ error: { message: string } | null }>);
+          if (error) toast.error(error.message);
+          setBgLocal((s) => { const n = { ...s }; delete n[drag.id]; return n; });
         }
       }
     }
@@ -182,15 +212,11 @@ export function MapBoard({
       window.removeEventListener("mouseup", onUp);
       window.removeEventListener("map-zoom", onZoom as EventListener);
     };
-  }, [resizeTokenId, localSize, mode]);
+  }, [resizeTokenId, localSize, mode, zoom]);
 
 
-  useEffect(() => {
-    if (!backgroundUrl) { setBgAspect(null); return; }
-    const img = new Image();
-    img.onload = () => setBgAspect(img.naturalWidth / img.naturalHeight);
-    img.src = backgroundUrl;
-  }, [backgroundUrl]);
+
+
 
   const { data: tokensRaw = [] } = useQuery({
     queryKey: ["tokens", gameId],
@@ -243,6 +269,70 @@ export function MapBoard({
     () => drawings.filter((d) => d.layer !== "gm" || (isNarrator && showGMLayer)),
     [drawings, isNarrator, showGMLayer],
   );
+
+  // ───────────── Map Backgrounds (multi-image layer) ─────────────
+  const [selectedBgId, setSelectedBgId] = useState<string | null>(null);
+  const bgDragRef = useRef<
+    | { id: string; kind: "move"; sx: number; sy: number; ox: number; oy: number }
+    | { id: string; kind: "resize"; sx: number; sy: number; ow: number; oh: number }
+    | { id: string; kind: "rotate"; cx: number; cy: number; startAngle: number; baseRotation: number }
+    | null
+  >(null);
+  const [bgLocal, setBgLocal] = useState<Record<string, Partial<MapBg>>>({});
+  const bgLocalRef = useRef(bgLocal);
+  useEffect(() => { bgLocalRef.current = bgLocal; }, [bgLocal]);
+
+  const { data: mapBgsRaw = [] } = useQuery({
+    queryKey: ["map_backgrounds", gameId],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("map_backgrounds" as never).select("*").eq("game_id", gameId).order("z_index", { ascending: true }) as unknown as Promise<{ data: MapBg[] | null; error: { message: string } | null }>);
+      if (error) throw new Error(error.message);
+      return (data ?? []) as MapBg[];
+    },
+  });
+  useEffect(() => {
+    const ch = supabase
+      .channel(`map_backgrounds:${gameId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "map_backgrounds", filter: `game_id=eq.${gameId}` },
+        () => qc.invalidateQueries({ queryKey: ["map_backgrounds", gameId] }),
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [gameId, qc]);
+
+  const mapBgs = useMemo<MapBg[]>(
+    () => mapBgsRaw.map((b) => ({ ...b, ...(bgLocal[b.id] ?? {}) })),
+    [mapBgsRaw, bgLocal],
+  );
+
+  async function addBackground(url: string) {
+    if (!isNarrator || !url) return;
+    const maxZ = mapBgsRaw.reduce((m, b) => Math.max(m, b.z_index), 0);
+    const { error } = await (supabase.from("map_backgrounds" as never).insert({
+      game_id: gameId, image_url: url, x: 0.2, y: 0.2, width: 0.4, height: 0.4, rotation: 0, z_index: maxZ + 1, created_by: userId,
+    } as never) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+  async function deleteBackground(id: string) {
+    const { error } = await (supabase.from("map_backgrounds" as never).delete().eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+    if (selectedBgId === id) setSelectedBgId(null);
+  }
+  async function persistBg(id: string, patch: Partial<MapBg>) {
+    const { error } = await (supabase.from("map_backgrounds" as never).update(patch as never).eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+    setBgLocal((s) => { const n = { ...s }; delete n[id]; return n; });
+  }
+  async function reorderBg(id: string, dir: "front" | "back") {
+    const bg = mapBgsRaw.find((b) => b.id === id);
+    if (!bg) return;
+    const maxZ = mapBgsRaw.reduce((m, b) => Math.max(m, b.z_index), 0);
+    const minZ = mapBgsRaw.reduce((m, b) => Math.min(m, b.z_index), 0);
+    await persistBg(id, { z_index: dir === "front" ? maxZ + 1 : minZ - 1 });
+  }
+
 
   // ───────────── Fog of War + Walls (Phase 2) ─────────────
   const [fogTool, setFogTool] = useState<"reveal" | "hide">("reveal");
@@ -635,9 +725,8 @@ export function MapBoard({
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMoveBoard}
       onMouseUp={onMouseUpBoard}
-      className={`relative overflow-hidden rounded-xl border border-border bg-muted ${bgAspect ? "max-h-full max-w-full" : "h-full w-full"}`}
+      className="relative h-full w-full overflow-hidden rounded-xl border border-border bg-muted"
       style={{
-        ...(bgAspect ? { aspectRatio: String(bgAspect), height: "100%", width: "auto" } : {}),
         cursor: mode === "ruler" || mode === "draw" || mode === "fog" || mode === "walls" ? "crosshair" : undefined,
       }}
     >
@@ -662,6 +751,11 @@ export function MapBoard({
         onToggleFog={(v) => toggleGameFlag("fog_enabled", v)}
         onToggleLighting={(v) => toggleGameFlag("dynamic_lighting", v)}
         visEnabled={visEnabled} setVisEnabled={setVisEnabled}
+        onAddBackground={addBackground}
+        onDeleteSelectedBg={selectedBgId ? () => void deleteBackground(selectedBgId) : undefined}
+        onSendBgBack={selectedBgId ? () => void reorderBg(selectedBgId, "back") : undefined}
+        onBringBgFront={selectedBgId ? () => void reorderBg(selectedBgId, "front") : undefined}
+        selectedBgId={selectedBgId}
       />
 
       <div
@@ -674,6 +768,67 @@ export function MapBoard({
             : {}),
         }}
       >
+      {/* Multi-image background layer */}
+      {mapBgs.map((bg) => {
+        const isSel = selectedBgId === bg.id;
+        const editable = isNarrator && mode === "background";
+        return (
+          <div
+            key={bg.id}
+            className={`absolute ${editable ? "cursor-move" : "pointer-events-none"} ${isSel ? "outline-2 outline-amber-400 outline-dashed" : ""}`}
+            style={{
+              left: `${bg.x * 100}%`,
+              top: `${bg.y * 100}%`,
+              width: `${bg.width * 100}%`,
+              height: `${bg.height * 100}%`,
+              transform: `rotate(${bg.rotation}deg)`,
+              transformOrigin: "center center",
+              zIndex: 0,
+            }}
+            onMouseDown={(e) => {
+              if (!editable) return;
+              e.stopPropagation();
+              setSelectedBgId(bg.id);
+              bgDragRef.current = { id: bg.id, kind: "move", sx: e.clientX, sy: e.clientY, ox: bg.x, oy: bg.y };
+            }}
+          >
+            <img
+              src={bg.image_url}
+              alt=""
+              draggable={false}
+              className="pointer-events-none h-full w-full select-none"
+              style={{ objectFit: "fill" }}
+            />
+            {editable && isSel && (
+              <>
+                {/* resize handle (bottom-right) */}
+                <div
+                  className="absolute -bottom-2 -right-2 h-4 w-4 cursor-se-resize rounded-sm border-2 border-amber-400 bg-background shadow"
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    bgDragRef.current = { id: bg.id, kind: "resize", sx: e.clientX, sy: e.clientY, ow: bg.width, oh: bg.height };
+                  }}
+                />
+                {/* rotate handle (top) */}
+                <div
+                  className="absolute -top-8 left-1/2 -translate-x-1/2 cursor-grab rounded-full border-2 border-amber-400 bg-background p-1 shadow"
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    const target = (e.currentTarget as HTMLElement).parentElement!.getBoundingClientRect();
+                    const cx = target.left + target.width / 2;
+                    const cy = target.top + target.height / 2;
+                    const startAngle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI;
+                    bgDragRef.current = { id: bg.id, kind: "rotate", cx, cy, startAngle, baseRotation: bg.rotation };
+                  }}
+                >
+                  <RotateCw className="h-3 w-3" />
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })}
+
       {/* grid overlay */}
       {gridSettings.enabled && (
         <div
@@ -1022,6 +1177,8 @@ function MapToolbar({
   onClearFog, onRevealAll, onClearWalls,
   onToggleFog, onToggleLighting,
   visEnabled, setVisEnabled,
+  onAddBackground,
+  onDeleteSelectedBg, onSendBgBack, onBringBgFront, selectedBgId,
 }: {
   mode: Mode; setMode: (m: Mode) => void;
   drawTool: DrawKind; setDrawTool: (k: DrawKind) => void;
@@ -1040,6 +1197,11 @@ function MapToolbar({
   onToggleFog: (v: boolean) => void;
   onToggleLighting: (v: boolean) => void;
   visEnabled: boolean; setVisEnabled: (b: boolean) => void;
+  onAddBackground: (url: string) => void | Promise<void>;
+  onDeleteSelectedBg?: () => void;
+  onSendBgBack?: () => void;
+  onBringBgFront?: () => void;
+  selectedBgId: string | null;
 }) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -1050,6 +1212,7 @@ function MapToolbar({
       case "draw": return <Pencil className="h-3.5 w-3.5" />;
       case "fog": return <CloudFog className="h-3.5 w-3.5" />;
       case "walls": return <Box className="h-3.5 w-3.5" />;
+      case "background": return <ImageIcon className="h-3.5 w-3.5" />;
     }
   };
 
@@ -1074,7 +1237,7 @@ function MapToolbar({
 
       {collapsed ? (
         <div className="flex flex-col items-center gap-1">
-          {(["select", "ruler", "draw", ...(isNarrator ? ["fog", "walls"] : [])] as Mode[]).map((m) => (
+          {(["select", "ruler", "draw", ...(isNarrator ? ["fog", "walls", "background"] : [])] as Mode[]).map((m) => (
             <ToolBtn key={m} active={mode === m} onClick={() => setMode(m)} title={modeTitle(m)}>
               {modeIcon(m)}
             </ToolBtn>
@@ -1090,6 +1253,7 @@ function MapToolbar({
               <>
                 <ToolBtn active={mode === "fog"} onClick={() => setMode("fog")} title="Fog of War (manual)"><CloudFog className="h-3.5 w-3.5" /></ToolBtn>
                 <ToolBtn active={mode === "walls"} onClick={() => setMode("walls")} title="Paredes (bloqueiam visão)"><Box className="h-3.5 w-3.5" /></ToolBtn>
+                <ToolBtn active={mode === "background"} onClick={() => setMode("background")} title="Backgrounds (mover/redimensionar/rotacionar imagens)"><ImageIcon className="h-3.5 w-3.5" /></ToolBtn>
               </>
             )}
           </div>
@@ -1136,6 +1300,19 @@ function MapToolbar({
               <ToolBtn onClick={onClearWalls} title="Apagar todas as paredes"><Trash2 className="h-3.5 w-3.5" /></ToolBtn>
             </div>
           )}
+          {mode === "background" && isNarrator && (
+            <div className="flex flex-col gap-1 border-t border-border pt-1">
+              <p className="px-1 text-[10px] text-muted-foreground">Clique numa imagem para mover/redimensionar/rotacionar</p>
+              <BgUrlAdd onAdd={onAddBackground} />
+              {selectedBgId && (
+                <div className="flex flex-wrap gap-1">
+                  {onBringBgFront && <ToolBtn onClick={onBringBgFront} title="Trazer para frente"><ArrowUp className="h-3.5 w-3.5" /></ToolBtn>}
+                  {onSendBgBack && <ToolBtn onClick={onSendBgBack} title="Enviar para trás"><ArrowDown className="h-3.5 w-3.5" /></ToolBtn>}
+                  {onDeleteSelectedBg && <ToolBtn onClick={onDeleteSelectedBg} title="Excluir background selecionado"><Trash2 className="h-3.5 w-3.5" /></ToolBtn>}
+                </div>
+              )}
+            </div>
+          )}
           {isNarrator && (
             <div className="flex flex-wrap gap-1 border-t border-border pt-1">
               <ToolBtn active={visibility.fogEnabled} onClick={() => onToggleFog(!visibility.fogEnabled)} title={visibility.fogEnabled ? "Desativar Fog of War" : "Ativar Fog of War"}>
@@ -1172,6 +1349,7 @@ function modeTitle(m: Mode) {
     case "draw": return "Desenhar";
     case "fog": return "Fog of War";
     case "walls": return "Paredes";
+    case "background": return "Backgrounds";
   }
 }
 
@@ -1185,5 +1363,58 @@ function ToolBtn({ active, onClick, title, children }: { active?: boolean; onCli
     >
       {children}
     </button>
+  );
+}
+
+function BgUrlAdd({ onAdd }: { onAdd: (url: string) => void | Promise<void> }) {
+  const [url, setUrl] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  async function submitUrl() {
+    const u = url.trim();
+    if (!u) return;
+    await onAdd(u);
+    setUrl("");
+  }
+  function handleFile(file: File) {
+    if (!file.type.startsWith("image/")) { toast.error("Selecione uma imagem"); return; }
+    if (file.size > 5_000_000) { toast.error("Imagem muito grande (>5MB)"); return; }
+    const reader = new FileReader();
+    reader.onload = () => { void onAdd(String(reader.result)); };
+    reader.readAsDataURL(file);
+  }
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex gap-1">
+        <input
+          type="text"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="URL da imagem"
+          className="h-7 flex-1 rounded border border-input bg-background px-2 text-[11px]"
+        />
+        <button
+          type="button"
+          onClick={() => void submitUrl()}
+          className="inline-flex h-7 items-center justify-center rounded bg-primary px-2 text-[11px] font-semibold text-primary-foreground hover:opacity-90"
+          title="Adicionar"
+        >
+          <Plus className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.currentTarget.value = ""; }}
+      />
+      <button
+        type="button"
+        onClick={() => fileInputRef.current?.click()}
+        className="inline-flex h-7 items-center justify-center gap-1 rounded border border-border bg-background px-2 text-[11px] font-semibold hover:bg-accent"
+      >
+        <ImageIcon className="h-3.5 w-3.5" /> Enviar arquivo
+      </button>
+    </div>
   );
 }
