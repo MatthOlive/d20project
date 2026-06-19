@@ -1243,6 +1243,19 @@ function MapToolbar({
               <ToolBtn onClick={onClearWalls} title="Apagar todas as paredes"><Trash2 className="h-3.5 w-3.5" /></ToolBtn>
             </div>
           )}
+          {mode === "background" && isNarrator && (
+            <div className="flex flex-col gap-1 border-t border-border pt-1">
+              <p className="px-1 text-[10px] text-muted-foreground">Clique numa imagem para mover/redimensionar/rotacionar</p>
+              <BgUrlAdd onAdd={onAddBackground} />
+              {selectedBgId && (
+                <div className="flex flex-wrap gap-1">
+                  <ToolBtn onClick={onBringBgFront} title="Trazer para frente"><ArrowUp className="h-3.5 w-3.5" /></ToolBtn>
+                  <ToolBtn onClick={onSendBgBack} title="Enviar para trás"><ArrowDown className="h-3.5 w-3.5" /></ToolBtn>
+                  <ToolBtn onClick={onDeleteSelectedBg} title="Excluir background selecionado"><Trash2 className="h-3.5 w-3.5" /></ToolBtn>
+                </div>
+              )}
+            </div>
+          )}
           {isNarrator && (
             <div className="flex flex-wrap gap-1 border-t border-border pt-1">
               <ToolBtn active={visibility.fogEnabled} onClick={() => onToggleFog(!visibility.fogEnabled)} title={visibility.fogEnabled ? "Desativar Fog of War" : "Ativar Fog of War"}>
