@@ -93,6 +93,7 @@ export function MapBoard({
   gridSettings?: GridSettings;
 }) {
   const qc = useQueryClient();
+  const isMobile = useIsMobile();
   const boardRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
   const [dragId, setDragId] = useState<string | null>(null);
