@@ -437,11 +437,13 @@ function FilesPanel({
   userId,
   isNarrator,
   onOpen,
+  isMobile = false,
 }: {
   gameId: string;
   userId: string;
   isNarrator: boolean;
   onOpen: (w: OpenWindow) => void;
+  isMobile?: boolean;
 }) {
 
   const qc = useQueryClient();
