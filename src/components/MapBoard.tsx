@@ -1005,6 +1005,11 @@ function MapToolbar({
   showGMLayer, setShowGMLayer,
   onClearMine,
   isMobile,
+  visibility,
+  fogTool, setFogTool,
+  onClearFog, onRevealAll, onClearWalls,
+  onToggleFog, onToggleLighting,
+  visEnabled, setVisEnabled,
 }: {
   mode: Mode; setMode: (m: Mode) => void;
   drawTool: DrawKind; setDrawTool: (k: DrawKind) => void;
@@ -1015,6 +1020,14 @@ function MapToolbar({
   showGMLayer: boolean; setShowGMLayer: (b: boolean) => void;
   onClearMine: () => void;
   isMobile?: boolean;
+  visibility: Visibility;
+  fogTool: "reveal" | "hide"; setFogTool: (t: "reveal" | "hide") => void;
+  onClearFog: () => void;
+  onRevealAll: () => void;
+  onClearWalls: () => void;
+  onToggleFog: (v: boolean) => void;
+  onToggleLighting: (v: boolean) => void;
+  visEnabled: boolean; setVisEnabled: (b: boolean) => void;
 }) {
   return (
     <div
@@ -1026,6 +1039,12 @@ function MapToolbar({
         <ToolBtn active={mode === "select"} onClick={() => setMode("select")} title="Selecionar (clique e arraste tokens)"><MousePointer2 className="h-3.5 w-3.5" /></ToolBtn>
         <ToolBtn active={mode === "ruler"} onClick={() => setMode("ruler")} title="Régua (medir distância)"><Ruler className="h-3.5 w-3.5" /></ToolBtn>
         <ToolBtn active={mode === "draw"} onClick={() => setMode("draw")} title="Desenhar"><Pencil className="h-3.5 w-3.5" /></ToolBtn>
+        {isNarrator && (
+          <>
+            <ToolBtn active={mode === "fog"} onClick={() => setMode("fog")} title="Fog of War (manual)"><CloudFog className="h-3.5 w-3.5" /></ToolBtn>
+            <ToolBtn active={mode === "walls"} onClick={() => setMode("walls")} title="Paredes (bloqueiam visão)"><Box className="h-3.5 w-3.5" /></ToolBtn>
+          </>
+        )}
       </div>
       {mode === "draw" && (
         <>
@@ -1051,6 +1070,39 @@ function MapToolbar({
             </div>
           )}
         </>
+      )}
+      {mode === "fog" && isNarrator && (
+        <div className="flex flex-col gap-1 border-t border-border pt-1">
+          <div className="flex gap-1">
+            <ToolBtn active={fogTool === "reveal"} onClick={() => setFogTool("reveal")} title="Pincel: revelar área">Revelar</ToolBtn>
+            <ToolBtn active={fogTool === "hide"} onClick={() => setFogTool("hide")} title="Pincel: ocultar área">Ocultar</ToolBtn>
+          </div>
+          <div className="flex gap-1">
+            <ToolBtn onClick={onRevealAll} title="Revelar mapa inteiro">Tudo</ToolBtn>
+            <ToolBtn onClick={onClearFog} title="Apagar toda a fog"><Trash2 className="h-3.5 w-3.5" /></ToolBtn>
+          </div>
+        </div>
+      )}
+      {mode === "walls" && isNarrator && (
+        <div className="flex flex-col gap-1 border-t border-border pt-1">
+          <p className="px-1 text-[10px] text-muted-foreground">Clique 2x para criar parede</p>
+          <ToolBtn onClick={onClearWalls} title="Apagar todas as paredes"><Trash2 className="h-3.5 w-3.5" /></ToolBtn>
+        </div>
+      )}
+      {isNarrator && (
+        <div className="flex gap-1 border-t border-border pt-1">
+          <ToolBtn active={visibility.fogEnabled} onClick={() => onToggleFog(!visibility.fogEnabled)} title={visibility.fogEnabled ? "Desativar Fog of War" : "Ativar Fog of War"}>
+            <CloudFog className="h-3.5 w-3.5" />
+          </ToolBtn>
+          <ToolBtn active={visibility.dynamicLighting} onClick={() => onToggleLighting(!visibility.dynamicLighting)} title={visibility.dynamicLighting ? "Desativar visão dinâmica" : "Ativar visão dinâmica"}>
+            <Lightbulb className="h-3.5 w-3.5" />
+          </ToolBtn>
+          {(visibility.fogEnabled || visibility.dynamicLighting) && (
+            <ToolBtn active={!visEnabled} onClick={() => setVisEnabled(!visEnabled)} title={visEnabled ? "Esconder fog localmente (narrador)" : "Mostrar fog"}>
+              {visEnabled ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+            </ToolBtn>
+          )}
+        </div>
       )}
       <div className="flex gap-1 border-t border-border pt-1">
         {isNarrator && (
