@@ -70,6 +70,50 @@ export type Database = {
           },
         ]
       }
+      fog_regions: {
+        Row: {
+          author_id: string
+          created_at: string
+          game_id: string
+          h: number
+          id: string
+          revealed: boolean
+          w: number
+          x: number
+          y: number
+        }
+        Insert: {
+          author_id: string
+          created_at?: string
+          game_id: string
+          h: number
+          id?: string
+          revealed?: boolean
+          w: number
+          x: number
+          y: number
+        }
+        Update: {
+          author_id?: string
+          created_at?: string
+          game_id?: string
+          h?: number
+          id?: string
+          revealed?: boolean
+          w?: number
+          x?: number
+          y?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fog_regions_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_members: {
         Row: {
           display_name: string | null
@@ -107,6 +151,8 @@ export type Database = {
           background_url: string | null
           contest_weights: Json | null
           created_at: string
+          dynamic_lighting: boolean
+          fog_enabled: boolean
           grid_color: string
           grid_enabled: boolean
           grid_opacity: number
@@ -129,6 +175,8 @@ export type Database = {
           background_url?: string | null
           contest_weights?: Json | null
           created_at?: string
+          dynamic_lighting?: boolean
+          fog_enabled?: boolean
           grid_color?: string
           grid_enabled?: boolean
           grid_opacity?: number
@@ -151,6 +199,8 @@ export type Database = {
           background_url?: string | null
           contest_weights?: Json | null
           created_at?: string
+          dynamic_lighting?: boolean
+          fog_enabled?: boolean
           grid_color?: string
           grid_enabled?: boolean
           grid_opacity?: number
@@ -742,8 +792,10 @@ export type Database = {
           image_url: string | null
           label: string
           layer: string
+          light_radius: number
           owner_id: string
           size: number
+          vision_radius: number
           x: number
           y: number
         }
@@ -756,8 +808,10 @@ export type Database = {
           image_url?: string | null
           label?: string
           layer?: string
+          light_radius?: number
           owner_id: string
           size?: number
+          vision_radius?: number
           x?: number
           y?: number
         }
@@ -770,8 +824,10 @@ export type Database = {
           image_url?: string | null
           label?: string
           layer?: string
+          light_radius?: number
           owner_id?: string
           size?: number
+          vision_radius?: number
           x?: number
           y?: number
         }
@@ -952,6 +1008,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "trainers_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      walls: {
+        Row: {
+          author_id: string
+          created_at: string
+          game_id: string
+          id: string
+          x1: number
+          x2: number
+          y1: number
+          y2: number
+        }
+        Insert: {
+          author_id: string
+          created_at?: string
+          game_id: string
+          id?: string
+          x1: number
+          x2: number
+          y1: number
+          y2: number
+        }
+        Update: {
+          author_id?: string
+          created_at?: string
+          game_id?: string
+          id?: string
+          x1?: number
+          x2?: number
+          y1?: number
+          y2?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "walls_game_id_fkey"
             columns: ["game_id"]
             isOneToOne: false
             referencedRelation: "games"
