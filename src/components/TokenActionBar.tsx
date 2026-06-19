@@ -23,6 +23,7 @@ type Props = {
   onRoll: (label: string, n: number, penalty?: number, meta?: { characterKind: "trainer" | "pokemon"; characterId: string; imageUrl?: string | null }) => void;
   onClose: () => void;
   onOpenSheet: () => void;
+  extra?: React.ReactNode;
 };
 
 export function TokenActionBar(p: Props) {
