@@ -41,12 +41,14 @@ Visão por token (LoS)           FALTA
 Importar mapa por grid/tiles    FALTA
 ```
 
-## Fase 1 — Mapa: paridade tática (alto impacto)
+## Fase 1 — Mapa: paridade tática (parcial)
 
-1. **Grid configurável por cena**: tamanho da célula (px), cor, on/off, snap-to-grid ao mover token. Persistir em `scenarios.grid_size` e `grid_snap`.
-2. **Régua / medição**: ferramenta "Ruler" para arrastar e ver distância em células/m. Suporte a polyline (segmentos) e auto-limpeza ao soltar.
-3. **Camadas (Layers)**: Map / Tokens / GM-only / Drawing. Toggle visível só para narrador. Tokens da camada GM-only ficam ocultos para jogadores.
-4. **Drawing tools**: caneta livre, retângulo, círculo, linha, texto livre, com paleta de cores. Persistir em nova tabela `map_drawings` (game_id, scenario_id, layer, geometry jsonb, stroke, fill).
+1. **Grid configurável por cena** ✅: tamanho, cor, snap-to-grid (persistido em `scenarios`).
+2. **Régua / medição** ✅: ferramenta Ruler com cells/m.
+3. **Camadas (Layers)**: parcial — drawing/GM já existe; falta toggle Map/Tokens isolado.
+4. **Drawing tools** ✅: caneta, retângulo, círculo, linha, texto, cor/espessura.
+5. **Grid em tela cheia** ✅: grid cobre todo o viewport independente do tamanho do background.
+6. **Múltiplos backgrounds** ✅: nova tabela `map_backgrounds`, camada "Backgrounds" no toolbar (narrador) para adicionar (URL ou arquivo), mover, redimensionar e rotacionar várias imagens; bring/send + delete por seleção.
 
 ## Fase 2 — Visibilidade: Fog of War e Dynamic Lighting ✅
 
