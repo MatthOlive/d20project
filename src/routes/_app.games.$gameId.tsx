@@ -1180,6 +1180,47 @@ function FilesPanel({
           <p className="text-xs text-muted-foreground">No characters yet. Create one to get started.</p>
         )}
       </div>
+
+      {ctxMenu && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setCtxMenu(null)} />
+          <div
+            className="fixed z-50 w-56 overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-xl"
+            style={{
+              left: Math.min(ctxMenu.x, (typeof window !== "undefined" ? window.innerWidth : 9999) - 232),
+              top: Math.min(ctxMenu.y, (typeof window !== "undefined" ? window.innerHeight : 9999) - 280),
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="border-b border-border bg-muted/50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              {ctxMenu.row.label}
+            </div>
+            {ctxMenu.mode === "main" ? (
+              <div className="flex flex-col">
+                <button className="px-3 py-2.5 text-left text-sm hover:bg-accent" onClick={async () => { await sendRowToMap(ctxMenu.row); setCtxMenu(null); }}>📍 Enviar para mapa</button>
+                <button className="px-3 py-2.5 text-left text-sm hover:bg-accent" onClick={() => setCtxMenu({ ...ctxMenu, mode: "move" })}>📁 Mover para pasta</button>
+                <button className="px-3 py-2.5 text-left text-sm hover:bg-accent" onClick={() => { setSelectMode(true); setSelected((p) => { const n = new Set(p); n.add(`${ctxMenu.row.kind}:${ctxMenu.row.id}`); return n; }); setCtxMenu(null); }}>☑️ Selecionar</button>
+                <button className="px-3 py-2.5 text-left text-sm text-destructive hover:bg-destructive/10" onClick={async () => { const row = ctxMenu.row; setCtxMenu(null); await deleteRow(row); }}>🗑️ Deletar</button>
+              </div>
+            ) : (
+              <div className="max-h-72 overflow-auto">
+                <button className="block w-full px-3 py-2 text-left text-sm hover:bg-accent" onClick={async () => { const row = ctxMenu.row; setCtxMenu(null); await moveToFolder(row, null); }}>
+                  📂 Unfiled
+                </button>
+                {folderPaths.length === 0 && (
+                  <p className="px-3 py-2 text-xs text-muted-foreground">Nenhuma pasta criada.</p>
+                )}
+                {folderPaths.sort().map((p) => (
+                  <button key={p} className="block w-full px-3 py-2 text-left text-sm hover:bg-accent" onClick={async () => { const row = ctxMenu.row; setCtxMenu(null); await moveToFolder(row, p); }}>
+                    📁 {p}
+                  </button>
+                ))}
+                <button className="block w-full border-t border-border px-3 py-2 text-left text-xs text-muted-foreground hover:bg-accent" onClick={() => setCtxMenu({ ...ctxMenu, mode: "main" })}>← Voltar</button>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
