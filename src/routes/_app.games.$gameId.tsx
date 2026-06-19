@@ -1805,7 +1805,7 @@ function MinimalSheetButton({
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogHeader><DialogTitle>Nova ficha simples</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Novo Handout</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div>
             <Label className="text-xs">Nome</Label>
