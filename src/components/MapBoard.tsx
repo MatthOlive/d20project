@@ -1056,7 +1056,7 @@ function MapToolbar({
   return (
     <div
       data-map-toolbar
-      className={`pointer-events-auto absolute left-3 top-3 z-30 flex flex-col gap-1.5 rounded-lg border border-border bg-card/95 p-1.5 shadow-lg backdrop-blur transition-all ${collapsed ? "w-10 items-center" : "w-56"}`}
+      className={`pointer-events-auto absolute left-3 top-16 z-30 flex flex-col gap-1.5 rounded-lg border border-border bg-card/95 p-1.5 shadow-lg backdrop-blur transition-all ${collapsed ? "w-10 items-center" : "w-56"}`}
       onMouseDown={(e) => e.stopPropagation()}
     >
       {/* Header / toggle */}
