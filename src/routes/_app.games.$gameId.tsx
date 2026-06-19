@@ -44,6 +44,8 @@ type OpenWindow =
 function GameRoom() {
   const { gameId } = Route.useParams();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
+  const [mobileTab, setMobileTab] = useState<"map" | "chat" | "compendium" | "files">("map");
   const qc = useQueryClient();
 
   const { data: game } = useQuery({
