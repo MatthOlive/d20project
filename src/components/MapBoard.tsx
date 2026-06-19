@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import {
   X, MousePointer2, Ruler, Pencil, Square, Circle as CircleIcon,
   Minus, Type as TypeIcon, Eraser, Eye, EyeOff, CloudFog, Box, Lightbulb, Trash2,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Image as ImageIcon, Plus, RotateCw, ArrowUp, ArrowDown,
 } from "lucide-react";
 import { TokenActionBar } from "@/components/TokenActionBar";
 import { TokenStatsBar } from "@/components/TokenStatsBar";
