@@ -66,12 +66,18 @@ export type GridSettings = {
   unitLabel: string;
 };
 
-type Mode = "select" | "ruler" | "draw";
+type Mode = "select" | "ruler" | "draw" | "fog" | "walls";
+
+type FogRegion = { id: string; game_id: string; x: number; y: number; w: number; h: number; revealed: boolean; author_id: string };
+type Wall = { id: string; game_id: string; x1: number; y1: number; x2: number; y2: number };
+
+export type Visibility = { fogEnabled: boolean; dynamicLighting: boolean };
 
 const DEFAULT_GRID: GridSettings = {
   enabled: true, snap: true, size: 56, color: "#000000",
   opacity: 30, unitMeters: 1.5, unitLabel: "m",
 };
+const DEFAULT_VIS: Visibility = { fogEnabled: false, dynamicLighting: false };
 
 export function MapBoard({
   gameId,
@@ -82,6 +88,7 @@ export function MapBoard({
   onRoll,
   onOpenSheet,
   gridSettings = DEFAULT_GRID,
+  visibility = DEFAULT_VIS,
 }: {
   gameId: string;
   backgroundUrl: string | null;
@@ -91,6 +98,7 @@ export function MapBoard({
   onRoll?: (label: string, n: number, penalty?: number, meta?: { characterKind: "trainer" | "pokemon"; characterId: string; imageUrl?: string | null }) => void;
   onOpenSheet?: (kind: "trainer" | "pokemon", id: string, label: string) => void;
   gridSettings?: GridSettings;
+  visibility?: Visibility;
 }) {
   const qc = useQueryClient();
   const isMobile = useIsMobile();
