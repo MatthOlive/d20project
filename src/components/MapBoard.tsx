@@ -738,6 +738,7 @@ function MapToolbar({
   isNarrator,
   showGMLayer, setShowGMLayer,
   onClearMine,
+  isMobile,
 }: {
   mode: Mode; setMode: (m: Mode) => void;
   drawTool: DrawKind; setDrawTool: (k: DrawKind) => void;
@@ -747,11 +748,12 @@ function MapToolbar({
   isNarrator: boolean;
   showGMLayer: boolean; setShowGMLayer: (b: boolean) => void;
   onClearMine: () => void;
+  isMobile?: boolean;
 }) {
   return (
     <div
       data-map-toolbar
-      className="pointer-events-auto absolute right-3 top-3 z-30 flex flex-col gap-1 rounded-lg border border-border bg-card/95 p-1.5 shadow-lg backdrop-blur"
+      className={`pointer-events-auto absolute z-30 flex flex-col gap-1 rounded-lg border border-border bg-card/95 p-1.5 shadow-lg backdrop-blur ${isMobile ? "left-1/2 bottom-3 -translate-x-1/2" : "right-3 top-3"}`}
       onMouseDown={(e) => e.stopPropagation()}
     >
       <div className="flex gap-1">
