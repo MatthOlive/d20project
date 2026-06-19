@@ -1,0 +1,10 @@
+ALTER TABLE public.tokens
+  ADD COLUMN IF NOT EXISTS aura1_radius numeric NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS aura1_color text NOT NULL DEFAULT '#22c55e',
+  ADD COLUMN IF NOT EXISTS aura2_radius numeric NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS aura2_color text NOT NULL DEFAULT '#3b82f6',
+  ADD COLUMN IF NOT EXISTS tint_color text,
+  ADD COLUMN IF NOT EXISTS bar_label text,
+  ADD COLUMN IF NOT EXISTS bar_value integer,
+  ADD COLUMN IF NOT EXISTS bar_max integer,
+  ADD COLUMN IF NOT EXISTS bar_color text NOT NULL DEFAULT '#f59e0b';
