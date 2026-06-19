@@ -188,7 +188,11 @@ export function MapBoard({
       if (drag) {
         const local = bgLocalRef.current[drag.id];
         bgDragRef.current = null;
-        if (local) await persistBg(drag.id, local);
+        if (local) {
+          const { error } = await (supabase.from("map_backgrounds" as never).update(local as never).eq("id", drag.id) as unknown as Promise<{ error: { message: string } | null }>);
+          if (error) toast.error(error.message);
+          setBgLocal((s) => { const n = { ...s }; delete n[drag.id]; return n; });
+        }
       }
     }
     window.addEventListener("click", onClickAway);
