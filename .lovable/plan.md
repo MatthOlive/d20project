@@ -66,11 +66,12 @@ Hoje `scenarios` é só background. Roll20 tem páginas independentes com tokens
 2. Narrador troca a "página ativa do jogador" sem afetar a "página visualizada pelo GM" (preview de mapa).
 3. Migração: adicionar `page_id` em `tokens`, `map_drawings`, fog mask.
 
-## Fase 4 — Macros e rolagens salvas
+## Fase 4 — Macros e rolagens salvas ✅
 
-1. Tabela `macros` (user_id, game_id?, name, command, color, visible_in_bar bool).
-2. Barra inferior de macros (toggle), com sintaxe `/r 2d6+3 Ataque` reaproveitando o parser do `ChatPanel`.
-3. Macros por ficha: já existem botões de move; adicionar slot livre por ficha ("ações customizadas").
+1. Tabela `macros` ✅ (user_id, game_id nullable, name, command, color, visible_in_bar, sort_order). RLS por dono.
+2. Barra flutuante de macros ✅ (`MacroBar`) na parte inferior do mapa, colapsável, com botões coloridos e diálogo de gerenciamento (criar/editar/excluir).
+3. Suporta múltiplas linhas por macro; cada linha vira `/r XdY rótulo` (rolagem) ou mensagem de chat, reutilizando `parseRollCommand`/`rollDice`.
+4. Macros podem ser locais do jogo ou globais (todos os jogos do usuário).
 
 ## Fase 5 — Tokens turbinados
 
