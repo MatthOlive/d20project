@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { TokenActionBar } from "@/components/TokenActionBar";
 import { TokenStatsBar } from "@/components/TokenStatsBar";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export type DragCharacterPayload = {
   kind: "pokemon" | "trainer";
