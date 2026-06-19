@@ -1051,6 +1051,7 @@ function MapToolbar({
       case "draw": return <Pencil className="h-3.5 w-3.5" />;
       case "fog": return <CloudFog className="h-3.5 w-3.5" />;
       case "walls": return <Box className="h-3.5 w-3.5" />;
+      case "background": return <ImageIcon className="h-3.5 w-3.5" />;
     }
   };
 
