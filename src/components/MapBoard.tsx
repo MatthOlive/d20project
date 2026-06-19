@@ -636,9 +636,8 @@ export function MapBoard({
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMoveBoard}
       onMouseUp={onMouseUpBoard}
-      className={`relative overflow-hidden rounded-xl border border-border bg-muted ${bgAspect ? "max-h-full max-w-full" : "h-full w-full"}`}
+      className="relative h-full w-full overflow-hidden rounded-xl border border-border bg-muted"
       style={{
-        ...(bgAspect ? { aspectRatio: String(bgAspect), height: "100%", width: "auto" } : {}),
         cursor: mode === "ruler" || mode === "draw" || mode === "fog" || mode === "walls" ? "crosshair" : undefined,
       }}
     >
