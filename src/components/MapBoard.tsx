@@ -32,6 +32,8 @@ type Token = {
   size: number;
   owner_id: string;
   layer?: "tokens" | "gm";
+  vision_radius?: number;
+  light_radius?: number;
 };
 
 type DrawKind = "freehand" | "rect" | "circle" | "line" | "text";
