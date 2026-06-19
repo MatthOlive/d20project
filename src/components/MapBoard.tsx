@@ -6,9 +6,11 @@ import {
   X, MousePointer2, Ruler, Pencil, Square, Circle as CircleIcon,
   Minus, Type as TypeIcon, Eraser, Eye, EyeOff, CloudFog, Box, Lightbulb, Trash2,
   ChevronLeft, ChevronRight, Image as ImageIcon, Plus, RotateCw, ArrowUp, ArrowDown,
+  Palette,
 } from "lucide-react";
 import { TokenActionBar } from "@/components/TokenActionBar";
 import { TokenStatsBar } from "@/components/TokenStatsBar";
+import { TokenAppearanceDialog, type AppearanceToken } from "@/components/TokenAppearanceDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export type DragCharacterPayload = {
@@ -35,6 +37,15 @@ type Token = {
   layer?: "tokens" | "gm";
   vision_radius?: number;
   light_radius?: number;
+  aura1_radius?: number;
+  aura1_color?: string;
+  aura2_radius?: number;
+  aura2_color?: string;
+  tint_color?: string | null;
+  bar_label?: string | null;
+  bar_value?: number | null;
+  bar_max?: number | null;
+  bar_color?: string;
 };
 
 type DrawKind = "freehand" | "rect" | "circle" | "line" | "text";
@@ -114,6 +125,7 @@ export function MapBoard({
   const [localSize, setLocalSize] = useState<Record<string, number>>({});
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
   const [hoverTokenId, setHoverTokenId] = useState<string | null>(null);
+  const [appearanceToken, setAppearanceToken] = useState<AppearanceToken | null>(null);
   // (background image now rendered full-screen; no aspect-ratio coupling)
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -715,6 +727,7 @@ export function MapBoard({
   }, [ruler, gridSettings.size, gridSettings.unitMeters]);
 
   return (
+    <>
     <div className="flex h-full w-full items-center justify-center">
     <div
       ref={boardRef}
@@ -990,6 +1003,24 @@ export function MapBoard({
             }}
             title={t.label}
           >
+            {/* Auras (rendered behind the avatar, sized in grid cells) */}
+            {[
+              { r: t.aura1_radius ?? 0, c: t.aura1_color ?? "#22c55e" },
+              { r: t.aura2_radius ?? 0, c: t.aura2_color ?? "#3b82f6" },
+            ].map((a, i) => a.r > 0 ? (
+              <div
+                key={`aura-${i}`}
+                className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+                style={{
+                  width: a.r * gridSettings.size * 2,
+                  height: a.r * gridSettings.size * 2,
+                  backgroundColor: a.c,
+                  opacity: 0.18,
+                  border: `2px solid ${a.c}`,
+                  zIndex: -1,
+                }}
+              />
+            ) : null)}
             {showStats && (
               <div className="pointer-events-none absolute left-1/2 -top-2 -translate-x-1/2 -translate-y-full">
                 <TokenStatsBar
@@ -1001,11 +1032,34 @@ export function MapBoard({
                 />
               </div>
             )}
+            {/* Custom bar (always visible above token when configured) */}
+            {(t.bar_label && t.bar_max && t.bar_max > 0) && (
+              <div className="pointer-events-none absolute left-1/2 -top-3 -translate-x-1/2 -translate-y-full flex flex-col items-center gap-0.5">
+                <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted/70 ring-1 ring-background/80">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.max(0, Math.min(100, ((t.bar_value ?? 0) / t.bar_max) * 100))}%`,
+                      backgroundColor: t.bar_color ?? "#f59e0b",
+                    }}
+                  />
+                </div>
+                <span className="rounded bg-background/80 px-1 text-[8px] font-bold uppercase tracking-wider text-foreground/80">
+                  {t.bar_label}
+                </span>
+              </div>
+            )}
             <div className={`relative flex h-full w-full items-center justify-center rounded-full border-2 ${isSelected ? "border-amber-400 ring-2 ring-amber-400/50" : onGmLayer ? "border-purple-500 ring-2 ring-purple-500/40 border-dashed" : "border-primary ring-2 ring-background"} bg-card shadow-md`}>
               {t.image_url ? (
                 <img src={t.image_url} alt={t.label} className="h-full w-full rounded-full object-cover" draggable={false} />
               ) : (
                 <span className="text-xs font-bold">{t.label.slice(0, 2).toUpperCase()}</span>
+              )}
+              {t.tint_color && (
+                <div
+                  className="pointer-events-none absolute inset-0 rounded-full"
+                  style={{ backgroundColor: t.tint_color, opacity: 0.45, mixBlendMode: "multiply" }}
+                />
               )}
               {onGmLayer && isNarrator && (
                 <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded bg-purple-600 px-1.5 py-0.5 text-[8px] font-bold uppercase text-white shadow">GM</span>
@@ -1068,6 +1122,22 @@ export function MapBoard({
                         <Lightbulb className="h-3 w-3" />
                         Visão{(t.vision_radius ?? 0) > 0 ? `: ${t.vision_radius}` : ""}
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setAppearanceToken({
+                          id: t.id, label: t.label,
+                          aura1_radius: t.aura1_radius, aura1_color: t.aura1_color,
+                          aura2_radius: t.aura2_radius, aura2_color: t.aura2_color,
+                          tint_color: t.tint_color,
+                          bar_label: t.bar_label, bar_value: t.bar_value, bar_max: t.bar_max,
+                          bar_color: t.bar_color,
+                        })}
+                        className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-background px-2 text-[11px] font-semibold hover:bg-accent"
+                        title="Auras, tinting e barra customizada"
+                      >
+                        <Palette className="h-3 w-3" />
+                        Aparência
+                      </button>
                     </>
                   ) : undefined}
                 />
@@ -1079,6 +1149,12 @@ export function MapBoard({
       </div>
     </div>
     </div>
+    <TokenAppearanceDialog
+      token={appearanceToken}
+      open={!!appearanceToken}
+      onOpenChange={(v) => { if (!v) setAppearanceToken(null); }}
+    />
+    </>
   );
 }
 

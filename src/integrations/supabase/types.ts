@@ -884,6 +884,14 @@ export type Database = {
       }
       tokens: {
         Row: {
+          aura1_color: string
+          aura1_radius: number
+          aura2_color: string
+          aura2_radius: number
+          bar_color: string
+          bar_label: string | null
+          bar_max: number | null
+          bar_value: number | null
           character_id: string
           character_kind: string
           created_at: string
@@ -895,11 +903,20 @@ export type Database = {
           light_radius: number
           owner_id: string
           size: number
+          tint_color: string | null
           vision_radius: number
           x: number
           y: number
         }
         Insert: {
+          aura1_color?: string
+          aura1_radius?: number
+          aura2_color?: string
+          aura2_radius?: number
+          bar_color?: string
+          bar_label?: string | null
+          bar_max?: number | null
+          bar_value?: number | null
           character_id: string
           character_kind: string
           created_at?: string
@@ -911,11 +928,20 @@ export type Database = {
           light_radius?: number
           owner_id: string
           size?: number
+          tint_color?: string | null
           vision_radius?: number
           x?: number
           y?: number
         }
         Update: {
+          aura1_color?: string
+          aura1_radius?: number
+          aura2_color?: string
+          aura2_radius?: number
+          bar_color?: string
+          bar_label?: string | null
+          bar_max?: number | null
+          bar_value?: number | null
           character_id?: string
           character_kind?: string
           created_at?: string
@@ -927,6 +953,7 @@ export type Database = {
           light_radius?: number
           owner_id?: string
           size?: number
+          tint_color?: string | null
           vision_radius?: number
           x?: number
           y?: number
