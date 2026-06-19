@@ -75,12 +75,13 @@ Hoje `scenarios` é só background. Roll20 tem páginas independentes com tokens
 3. Suporta múltiplas linhas por macro; cada linha vira `/r XdY rótulo` (rolagem) ou mensagem de chat, reutilizando `parseRollCommand`/`rollDice`.
 4. Macros podem ser locais do jogo ou globais (todos os jogos do usuário).
 
-## Fase 5 — Tokens turbinados
+## Fase 5 — Tokens turbinados ✅
 
-1. **Auras** (círculo colorido translúcido configurável, 1 ou 2 auras por token — útil para alcance de move).
-2. **Tinting** (overlay de cor para indicar "selecionado por GM", time A/B).
-3. **Barras** extras (3 barras configuráveis: HP, Will, custom) já que hoje só HP é visível.
-4. **Linha de visão** por jogador quando dynamic lighting estiver ativo.
+1. **Auras** ✅: duas auras configuráveis por token (raio em células + cor), renderizadas como círculos translúcidos atrás do avatar.
+2. **Tinting** ✅: overlay de cor (multiply blend) aplicado ao avatar — útil para marcar time A/B ou alvo do GM.
+3. **Barra customizada** ✅: nome + valor/máximo + cor, exibida acima do token quando configurada (HP/Will/Conf já existiam via `TokenStatsBar`).
+4. **Linha de visão por jogador** ✅: já implementada na Fase 2 via `vision_radius` + máscara SVG por jogador com raycasting.
+5. Diálogo "Aparência" no `TokenActionBar` (narrador) reúne todos os controles. Persistido em colunas novas em `tokens`.
 
 ## Fase 6 — Música (quando reativar)
 
