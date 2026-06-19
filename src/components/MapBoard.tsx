@@ -688,6 +688,78 @@ export function MapBoard({
         {drawingShape && renderDrawing(drawingShape, true, isNarrator, userId, deleteDrawing)}
       </svg>
 
+      {/* Walls layer — visible to narrator only */}
+      {isNarrator && (walls.length > 0 || (wallStart && wallCursor)) && (
+        <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1000 1000" preserveAspectRatio="none">
+          {walls.map((w) => (
+            <g key={w.id}>
+              <line
+                x1={w.x1 * 1000} y1={w.y1 * 1000} x2={w.x2 * 1000} y2={w.y2 * 1000}
+                stroke="#ef4444" strokeWidth={3} strokeDasharray="4 3" strokeLinecap="round"
+                vectorEffect="non-scaling-stroke" opacity={0.85}
+              />
+              {mode === "walls" && (
+                <g style={{ cursor: "pointer", pointerEvents: "auto" }} onClick={() => deleteWall(w.id)}>
+                  <circle cx={(w.x1 + w.x2) / 2 * 1000} cy={(w.y1 + w.y2) / 2 * 1000} r={8} fill="hsl(0 84% 60%)" />
+                  <text x={(w.x1 + w.x2) / 2 * 1000} y={(w.y1 + w.y2) / 2 * 1000 + 4} fontSize={11} textAnchor="middle" fill="white" fontWeight="bold">×</text>
+                </g>
+              )}
+            </g>
+          ))}
+          {wallStart && wallCursor && (
+            <line
+              x1={wallStart.x * 1000} y1={wallStart.y * 1000}
+              x2={wallCursor.x * 1000} y2={wallCursor.y * 1000}
+              stroke="#fbbf24" strokeWidth={2} vectorEffect="non-scaling-stroke"
+            />
+          )}
+        </svg>
+      )}
+
+      {/* Fog of War + Dynamic Lighting */}
+      {fogActive && visEnabled && (
+        <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1000 1000" preserveAspectRatio="none">
+          <defs>
+            <mask id={`fog-mask-${gameId}`}>
+              {/* Start fully covered */}
+              <rect x="0" y="0" width="1000" height="1000" fill="white" />
+              {/* Subtract revealed regions (manual fog) */}
+              {visibility.fogEnabled && fogRegions.filter((r) => r.revealed).map((r) => (
+                <rect key={r.id} x={r.x * 1000} y={r.y * 1000} width={r.w * 1000} height={r.h * 1000} fill="black" />
+              ))}
+              {/* Subtract visibility polygons (dynamic lighting) */}
+              {visibilityPolygons.map((d, i) => (
+                <path key={`vis-${i}`} d={d} fill="black" />
+              ))}
+              {/* Re-cover hidden regions on top */}
+              {visibility.fogEnabled && fogRegions.filter((r) => !r.revealed).map((r) => (
+                <rect key={r.id} x={r.x * 1000} y={r.y * 1000} width={r.w * 1000} height={r.h * 1000} fill="white" />
+              ))}
+            </mask>
+          </defs>
+          <rect
+            x="0" y="0" width="1000" height="1000"
+            fill="#000000"
+            opacity={isNarrator ? 0.5 : 1}
+            mask={`url(#fog-mask-${gameId})`}
+          />
+          {/* Live fog rectangle preview */}
+          {isNarrator && mode === "fog" && fogRect && (() => {
+            const x = Math.min(fogRect.ax, fogRect.bx) * 1000;
+            const y = Math.min(fogRect.ay, fogRect.by) * 1000;
+            const w = Math.abs(fogRect.bx - fogRect.ax) * 1000;
+            const h = Math.abs(fogRect.by - fogRect.ay) * 1000;
+            return (
+              <rect x={x} y={y} width={w} height={h}
+                fill={fogTool === "reveal" ? "rgba(34,197,94,0.25)" : "rgba(239,68,68,0.25)"}
+                stroke={fogTool === "reveal" ? "#22c55e" : "#ef4444"} strokeWidth={2}
+                strokeDasharray="4 3" vectorEffect="non-scaling-stroke"
+              />
+            );
+          })()}
+        </svg>
+      )}
+
       {/* Ruler overlay */}
       {ruler && rulerInfo && (
         <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1000 1000" preserveAspectRatio="none">
