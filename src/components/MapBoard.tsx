@@ -186,7 +186,7 @@ export function MapBoard({
       // Persist bg edit
       const drag = bgDragRef.current;
       if (drag) {
-        const local = bgLocal[drag.id];
+        const local = bgLocalRef.current[drag.id];
         bgDragRef.current = null;
         if (local) await persistBg(drag.id, local);
       }
