@@ -755,6 +755,11 @@ export function MapBoard({
         onToggleFog={(v) => toggleGameFlag("fog_enabled", v)}
         onToggleLighting={(v) => toggleGameFlag("dynamic_lighting", v)}
         visEnabled={visEnabled} setVisEnabled={setVisEnabled}
+        onAddBackground={addBackground}
+        onDeleteSelectedBg={selectedBgId ? () => void deleteBackground(selectedBgId) : undefined}
+        onSendBgBack={selectedBgId ? () => void reorderBg(selectedBgId, "back") : undefined}
+        onBringBgFront={selectedBgId ? () => void reorderBg(selectedBgId, "front") : undefined}
+        selectedBgId={selectedBgId}
       />
 
       <div
