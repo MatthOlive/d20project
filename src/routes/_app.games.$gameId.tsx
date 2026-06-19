@@ -464,6 +464,8 @@ function FilesPanel({
   const [dropHover, setDropHover] = useState<string | null>(null);
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [ctxMenu, setCtxMenu] = useState<{ row: CharRow; x: number; y: number; mode: "main" | "move" } | null>(null);
+  const longPressRef = useRef<{ timer: ReturnType<typeof setTimeout> | null; sx: number; sy: number } | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
     if (typeof window === "undefined") return {};
     try { return JSON.parse(localStorage.getItem(`folders:${gameId}`) ?? "{}"); } catch { return {}; }
