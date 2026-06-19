@@ -46,7 +46,7 @@ function GameRoom() {
   const { gameId } = Route.useParams();
   const { user } = useAuth();
   const isMobile = useIsMobile();
-  const [mobileTab, setMobileTab] = useState<"map" | "chat" | "compendium" | "files">("map");
+  const [mobileTab, setMobileTab] = useState<string>("map");
   const qc = useQueryClient();
 
   const { data: game, error: gameError, isLoading: gameLoading } = useQuery({
@@ -55,7 +55,7 @@ function GameRoom() {
       // Note: invite_code is intentionally excluded — narrator fetches it via get_game_invite_code RPC.
       const { data, error } = await supabase
         .from("games")
-        .select("id,narrator_id,name,background_url,created_at,system,language,narrator_type,shiny_chance,overgrown_chance,contest_weights,grid_enabled,grid_snap,grid_size,grid_color,grid_opacity,grid_unit_m,grid_unit_label,fog_enabled,dynamic_lighting")
+        .select("id,narrator_id,name,background_url,created_at,system,language,narrator_type,shiny_chance,overgrown_chance,contest_weights,grid_enabled,grid_snap,grid_size,grid_color,grid_opacity,grid_unit_m,grid_unit_label,fog_enabled,dynamic_lighting,master_volume,current_scenario_id")
         .eq("id", gameId)
         .single();
       if (error) throw error;
@@ -223,19 +223,61 @@ function GameRoom() {
   );
 
   if (isMobile) {
+    const baseTabs = ["map", "chat", "compendium", "files", "music"] as const;
+    type BaseTab = (typeof baseTabs)[number];
+    const sheetTabKey = (w: OpenWindow) => `sheet:${w.kind}:${w.id}`;
+    const isSheetTab = mobileTab.startsWith("sheet:");
+    const activeSheet = isSheetTab ? windows.find((w) => sheetTabKey(w) === mobileTab) ?? null : null;
+
+    // If user opened a sheet from another tab, auto-switch to its tab.
+    // If the active sheet was closed, fall back to map.
+    function onClickBaseTab(t: BaseTab) {
+      // Switching to a base tab closes any open sheet tabs (as requested).
+      if (windows.length > 0) setWindows([]);
+      setMobileTab(t);
+    }
+
+    const openWindowMobile = (w: OpenWindow) => {
+      openWindow(w);
+      setMobileTab(sheetTabKey(w));
+    };
+
     return (
       <div className="relative flex h-[calc(100vh-4rem)] w-full flex-col">
         <h1 className="sr-only">{game.name ? `${game.name} — D20 Project game room` : "D20 Project game room"}</h1>
-        <div className="grid shrink-0 grid-cols-4 gap-1 border-b border-border bg-card p-1">
-          {(["map", "chat", "compendium", "files"] as const).map((t) => (
+        <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border bg-card p-1">
+          {baseTabs.map((t) => (
             <button
               key={t}
-              onClick={() => setMobileTab(t)}
-              className={`rounded-md px-2 py-2 text-xs font-bold uppercase ${mobileTab === t ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
+              onClick={() => onClickBaseTab(t)}
+              className={`shrink-0 rounded-md px-2 py-2 text-xs font-bold uppercase ${mobileTab === t ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
             >
-              {t === "map" ? "Mapa" : t === "chat" ? "Chat" : t === "compendium" ? "Compendium" : "Files"}
+              {t === "map" ? "Mapa" : t === "chat" ? "Chat" : t === "compendium" ? "Compendium" : t === "files" ? "Files" : "Música"}
             </button>
           ))}
+          {windows.map((w) => {
+            const key = sheetTabKey(w);
+            return (
+              <button
+                key={key}
+                onClick={() => setMobileTab(key)}
+                className={`group flex shrink-0 items-center gap-1 rounded-md px-2 py-2 text-xs font-bold uppercase ${mobileTab === key ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
+                title={w.title}
+              >
+                <span className="max-w-[7rem] truncate">{w.title}</span>
+                <span
+                  role="button"
+                  aria-label="Fechar ficha"
+                  className="rounded p-0.5 opacity-70 hover:bg-background/30 hover:opacity-100"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    closeWindow(w.kind, w.id);
+                    if (mobileTab === key) setMobileTab("map");
+                  }}
+                >×</span>
+              </button>
+            );
+          })}
         </div>
         <div className="relative min-h-0 flex-1 overflow-hidden">
           <div className={`absolute inset-0 ${mobileTab === "map" ? "" : "hidden"}`}>
@@ -267,11 +309,23 @@ function GameRoom() {
           )}
           {mobileTab === "files" && (
             <div className="h-full overflow-auto p-3">
-              <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindow} isMobile />
+              <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindowMobile} isMobile />
+            </div>
+          )}
+          {mobileTab === "music" && (
+            <div className="h-full overflow-hidden">
+              <MusicPanel gameId={gameId} isNarrator={isNarrator} />
+            </div>
+          )}
+          {activeSheet && (
+            <div className="absolute inset-0 overflow-auto bg-background">
+              {activeSheet.kind === "pokemon"
+                ? <PokemonSheet pokemonId={activeSheet.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(activeSheet.kind, activeSheet.id); setMobileTab("map"); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
+                : <SheetTabs trainerId={activeSheet.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(activeSheet.kind, activeSheet.id); setMobileTab("map"); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />}
             </div>
           )}
         </div>
-        {sheetWindows}
+        <MusicPlayer gameId={gameId} />
       </div>
     );
   }
@@ -279,7 +333,7 @@ function GameRoom() {
   return (
     <div className="relative h-[calc(100vh-4rem)] w-full px-3 py-3">
       <h1 className="sr-only">{game.name ? `${game.name} — D20 Project game room` : "D20 Project game room"}</h1>
-      {/* <MusicPlayer gameId={gameId} /> — desativado temporariamente; reativar quando a aba Music voltar. */}
+      <MusicPlayer gameId={gameId} />
       {/* Fullscreen map */}
       <div className="relative h-full w-full">
         {mapBoard}
@@ -306,10 +360,11 @@ function GameRoom() {
               <OnlinePresence gameId={gameId} userId={user.id} isNarrator={isNarrator} />
             </div>
             <Tabs defaultValue="chat" className="flex min-h-0 flex-1 flex-col">
-              <TabsList className="m-2 grid shrink-0 grid-cols-3">
+              <TabsList className="m-2 grid shrink-0 grid-cols-4">
                 <TabsTrigger value="chat">Chat</TabsTrigger>
                 <TabsTrigger value="compendium">Compendium</TabsTrigger>
                 <TabsTrigger value="files">Files</TabsTrigger>
+                <TabsTrigger value="music">Música</TabsTrigger>
               </TabsList>
               <TabsContent value="chat" className="mt-0 min-h-0 flex-1 overflow-hidden">
                 <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} isGameOwner={isNarrator} />
@@ -319,6 +374,9 @@ function GameRoom() {
               </TabsContent>
               <TabsContent value="files" className="mt-0 min-h-0 flex-1 overflow-auto p-3">
                 <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindow} />
+              </TabsContent>
+              <TabsContent value="music" className="mt-0 min-h-0 flex-1 overflow-hidden">
+                <MusicPanel gameId={gameId} isNarrator={isNarrator} />
               </TabsContent>
             </Tabs>
           </Card>
@@ -1265,7 +1323,24 @@ function ScenarioButtons({ gameId, currentBg }: { gameId: string; currentBg: str
     else { toast.success("Scenario created"); qc.invalidateQueries({ queryKey: ["scenarios", gameId] }); }
   }
   async function applyScenario(s: Scenario) {
-    await supabase.from("games").update({ background_url: s.background_url }).eq("id", gameId);
+    await supabase.from("games").update({
+      background_url: s.background_url,
+      current_scenario_id: s.id,
+    } as never).eq("id", gameId);
+    // Auto-play first non-SFX track tagged to this scenario (if any)
+    const { data: pl } = await supabase
+      .from("music_tracks")
+      .select("id")
+      .eq("game_id", gameId)
+      .eq("scenario_id", s.id)
+      .eq("is_sfx", false)
+      .order("position", { ascending: true })
+      .limit(1);
+    const first = (pl ?? [])[0] as { id: string } | undefined;
+    if (first) {
+      await supabase.from("music_tracks").update({ is_playing: false } as never).eq("game_id", gameId).eq("is_sfx", false);
+      await supabase.from("music_tracks").update({ is_playing: true } as never).eq("id", first.id);
+    }
     qc.invalidateQueries({ queryKey: ["game", gameId] });
     toast.success(`Loaded "${s.name}"`);
     setOpen(false);
@@ -1556,7 +1631,7 @@ function InitiativePanel({ gameId, isNarrator, open, onClose }: { gameId: string
     <FloatingWindow
       title="Turn Order"
       onClose={onClose}
-      initialX={typeof window !== "undefined" ? window.innerWidth - 320 : 800}
+      initialX={16}
       initialY={80}
       width={280}
       height={420}

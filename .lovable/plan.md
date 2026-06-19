@@ -83,14 +83,13 @@ Hoje `scenarios` é só background. Roll20 tem páginas independentes com tokens
 4. **Linha de visão por jogador** ✅: já implementada na Fase 2 via `vision_radius` + máscara SVG por jogador com raycasting.
 5. Diálogo "Aparência" no `TokenActionBar` (narrador) reúne todos os controles. Persistido em colunas novas em `tokens`.
 
-## Fase 6 — Música (quando reativar)
+## Fase 6 — Música ✅
 
-Já temos `MusicPanel`/`MusicPlayer`. Quando voltar:
-
-1. Playlists por cena (auto-tocar ao mudar de página).
-2. Crossfade entre faixas.
-3. Volume individual por faixa + master.
-4. Sons curtos ("soundboard") com hotkeys.
+1. **Tab Música reativada** ✅: tab no painel direito (desktop) e no menu superior (mobile). `MusicPlayer` invisível montado sempre.
+2. **Playlists por cena** ✅: cada faixa pode ser amarrada a um `scenario_id`. Ao trocar de cena, auto-toca a primeira faixa daquela cena. Coluna `games.current_scenario_id` rastreia a cena ativa.
+3. **Crossfade entre faixas** ✅: `MusicPlayer` usa dois iframes do YouTube IFrame API empilhados, com fade de 1.2s (volume crossfade) ao trocar de faixa.
+4. **Volume individual + master** ✅: cada faixa tem `volume` (slider 0–100); `games.master_volume` escala todas. Slider master no topo do painel (só narrador).
+5. **Soundboard com hotkeys** ✅: faixas marcadas `is_sfx` com `hotkey` (1 letra). Listener global `keydown` toca o SFX em um terceiro player dedicado (não interrompe a música ambiente). Inputs/textarea/contentEditable ignorados.
 
 ## Detalhes técnicos
 
