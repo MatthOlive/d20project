@@ -215,12 +215,8 @@ export function MapBoard({
   }, [resizeTokenId, localSize, mode, zoom]);
 
 
-  useEffect(() => {
-    if (!backgroundUrl) { setBgAspect(null); return; }
-    const img = new Image();
-    img.onload = () => setBgAspect(img.naturalWidth / img.naturalHeight);
-    img.src = backgroundUrl;
-  }, [backgroundUrl]);
+
+
 
   const { data: tokensRaw = [] } = useQuery({
     queryKey: ["tokens", gameId],
