@@ -295,6 +295,53 @@ export type Database = {
         }
         Relationships: []
       }
+      macros: {
+        Row: {
+          color: string
+          command: string
+          created_at: string
+          game_id: string | null
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+          user_id: string
+          visible_in_bar: boolean
+        }
+        Insert: {
+          color?: string
+          command: string
+          created_at?: string
+          game_id?: string | null
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+          user_id: string
+          visible_in_bar?: boolean
+        }
+        Update: {
+          color?: string
+          command?: string
+          created_at?: string
+          game_id?: string | null
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+          user_id?: string
+          visible_in_bar?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "macros_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       map_drawings: {
         Row: {
           author_id: string
