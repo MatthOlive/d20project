@@ -772,6 +772,67 @@ export function MapBoard({
             : {}),
         }}
       >
+      {/* Multi-image background layer */}
+      {mapBgs.map((bg) => {
+        const isSel = selectedBgId === bg.id;
+        const editable = isNarrator && mode === "background";
+        return (
+          <div
+            key={bg.id}
+            className={`absolute ${editable ? "cursor-move" : "pointer-events-none"} ${isSel ? "outline-2 outline-amber-400 outline-dashed" : ""}`}
+            style={{
+              left: `${bg.x * 100}%`,
+              top: `${bg.y * 100}%`,
+              width: `${bg.width * 100}%`,
+              height: `${bg.height * 100}%`,
+              transform: `rotate(${bg.rotation}deg)`,
+              transformOrigin: "center center",
+              zIndex: bg.z_index,
+            }}
+            onMouseDown={(e) => {
+              if (!editable) return;
+              e.stopPropagation();
+              setSelectedBgId(bg.id);
+              bgDragRef.current = { id: bg.id, kind: "move", sx: e.clientX, sy: e.clientY, ox: bg.x, oy: bg.y };
+            }}
+          >
+            <img
+              src={bg.image_url}
+              alt=""
+              draggable={false}
+              className="pointer-events-none h-full w-full select-none"
+              style={{ objectFit: "fill" }}
+            />
+            {editable && isSel && (
+              <>
+                {/* resize handle (bottom-right) */}
+                <div
+                  className="absolute -bottom-2 -right-2 h-4 w-4 cursor-se-resize rounded-sm border-2 border-amber-400 bg-background shadow"
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    bgDragRef.current = { id: bg.id, kind: "resize", sx: e.clientX, sy: e.clientY, ow: bg.width, oh: bg.height };
+                  }}
+                />
+                {/* rotate handle (top) */}
+                <div
+                  className="absolute -top-8 left-1/2 -translate-x-1/2 cursor-grab rounded-full border-2 border-amber-400 bg-background p-1 shadow"
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    const target = (e.currentTarget as HTMLElement).parentElement!.getBoundingClientRect();
+                    const cx = target.left + target.width / 2;
+                    const cy = target.top + target.height / 2;
+                    const startAngle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI;
+                    bgDragRef.current = { id: bg.id, kind: "rotate", cx, cy, startAngle, baseRotation: bg.rotation };
+                  }}
+                >
+                  <RotateCw className="h-3 w-3" />
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })}
+
       {/* grid overlay */}
       {gridSettings.enabled && (
         <div
