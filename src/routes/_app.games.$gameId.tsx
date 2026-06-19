@@ -333,7 +333,7 @@ function GameRoom() {
   return (
     <div className="relative h-[calc(100vh-4rem)] w-full px-3 py-3">
       <h1 className="sr-only">{game.name ? `${game.name} — D20 Project game room` : "D20 Project game room"}</h1>
-      {/* <MusicPlayer gameId={gameId} /> — desativado temporariamente; reativar quando a aba Music voltar. */}
+      <MusicPlayer gameId={gameId} />
       {/* Fullscreen map */}
       <div className="relative h-full w-full">
         {mapBoard}
