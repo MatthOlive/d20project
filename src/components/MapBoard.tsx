@@ -727,6 +727,7 @@ export function MapBoard({
   }, [ruler, gridSettings.size, gridSettings.unitMeters]);
 
   return (
+    <>
     <div className="flex h-full w-full items-center justify-center">
     <div
       ref={boardRef}
