@@ -810,6 +810,27 @@ function FilesPanel({
       kind: r.kind, id: r.id, label: r.label,
       imageUrl: r.image_url ?? (r.kind === "pokemon" ? r.sprite_url : null), ownerId: r.owner_id,
     };
+    const startLongPress = (e: React.PointerEvent) => {
+      if (e.pointerType === "mouse" || selectMode) return;
+      const sx = e.clientX, sy = e.clientY;
+      const timer = setTimeout(() => {
+        setCtxMenu({ row: r, x: sx, y: sy, mode: "main" });
+        if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(30);
+      }, 450);
+      longPressRef.current = { timer, sx, sy };
+    };
+    const moveLongPress = (e: React.PointerEvent) => {
+      const lp = longPressRef.current;
+      if (!lp || !lp.timer) return;
+      if (Math.hypot(e.clientX - lp.sx, e.clientY - lp.sy) > 8) {
+        clearTimeout(lp.timer); longPressRef.current = null;
+      }
+    };
+    const cancelLongPress = () => {
+      const lp = longPressRef.current;
+      if (lp?.timer) clearTimeout(lp.timer);
+      longPressRef.current = null;
+    };
     return (
       <div key={key} className="flex items-center gap-1.5">
         {selectMode && (
@@ -822,8 +843,19 @@ function FilesPanel({
             e.dataTransfer.setData(FOLDER_MIME, JSON.stringify({ kind: r.kind, id: r.id, folder: r.folder }));
             e.dataTransfer.effectAllowed = "copyMove";
           }}
+          onPointerDown={startLongPress}
+          onPointerMove={moveLongPress}
+          onPointerUp={cancelLongPress}
+          onPointerCancel={cancelLongPress}
+          onPointerLeave={cancelLongPress}
+          onContextMenu={(e) => {
+            if (!isMobile) return;
+            e.preventDefault();
+            setCtxMenu({ row: r, x: e.clientX, y: e.clientY, mode: "main" });
+          }}
           onClick={() => selectMode ? toggleSelected(key) : onOpen({ kind: r.kind, id: r.id, title: r.label })}
           className={`flex w-full items-center gap-2 rounded-md border ${selected.has(key) ? "border-primary bg-primary/5" : "border-border bg-card"} px-3 py-2 text-left text-sm hover:border-primary`}
+          style={isMobile ? { touchAction: "manipulation" } : undefined}
         >
           {r.kind === "pokemon" && r.sprite_url
             ? <img src={r.sprite_url} alt="" className="h-6 w-6 shrink-0" />
@@ -832,6 +864,28 @@ function FilesPanel({
         </button>
       </div>
     );
+  }
+
+  async function sendRowToMap(r: CharRow) {
+    const { error } = await supabase.from("tokens").insert({
+      game_id: gameId,
+      character_kind: r.kind,
+      character_id: r.id,
+      label: r.label,
+      image_url: r.image_url ?? (r.kind === "pokemon" ? r.sprite_url : null),
+      owner_id: r.owner_id,
+      x: 0.5, y: 0.5,
+    });
+    if (error) toast.error(error.message);
+    else toast.success("Enviado para o mapa");
+  }
+  async function deleteRow(r: CharRow) {
+    if (!confirm(`Deletar "${r.label}"?`)) return;
+    const table = r.kind === "trainer" ? "trainers" : "pokemon";
+    const { error } = await supabase.from(table).delete().eq("id", r.id);
+    if (error) { toast.error(error.message); return; }
+    qc.invalidateQueries({ queryKey: ["characters", gameId] });
+    toast.success("Deletado");
   }
 
   function FolderNodeView({ node, depth }: { node: FolderNode; depth: number }) {
