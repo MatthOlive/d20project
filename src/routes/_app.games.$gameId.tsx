@@ -1645,10 +1645,21 @@ function MovesCompendium() {
                     <span className="text-muted-foreground">{m.category}</span>
                     <span className="rounded bg-muted px-1.5 py-0.5">Pwr {m.power}</span>
                   </summary>
-                  <div className="space-y-0.5 border-t border-border px-3 py-2 text-xs">
-                    <p><span className="font-semibold">Accuracy:</span> {m.accuracy_stat ?? "—"}{m.accuracy_skill ? ` + ${m.accuracy_skill}` : ""}</p>
-                    <p><span className="font-semibold">Damage:</span> {m.damage_stat ?? "—"} · <span className="font-semibold">Target:</span> {m.target}</p>
-                    {m.effect && <p className="text-muted-foreground">{m.effect}</p>}
+                  <div className="divide-y divide-border border-t border-border text-xs">
+                    <div className="px-3 py-2">
+                      <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-primary">Acurácia</div>
+                      <p>{m.accuracy_stat ?? "—"}{m.accuracy_skill ? ` + ${m.accuracy_skill}` : ""}</p>
+                    </div>
+                    <div className="px-3 py-2">
+                      <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-primary">Dano & Alvo</div>
+                      <p><span className="font-semibold">Stat:</span> {m.damage_stat ?? "—"} · <span className="font-semibold">Alvo:</span> {m.target}</p>
+                    </div>
+                    {m.effect && (
+                      <div className="px-3 py-2">
+                        <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-primary">Efeito</div>
+                        <p className="text-muted-foreground">{m.effect}</p>
+                      </div>
+                    )}
                   </div>
                 </details>
               ))}
