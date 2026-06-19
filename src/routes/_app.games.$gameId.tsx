@@ -1801,11 +1801,11 @@ function MinimalSheetButton({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm" variant="outline">
-          <Plus className="mr-1 h-3.5 w-3.5" /> Simples
+          <Plus className="mr-1 h-3.5 w-3.5" /> Handouts
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogHeader><DialogTitle>Nova ficha simples</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Novo Handout</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div>
             <Label className="text-xs">Nome</Label>
