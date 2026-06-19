@@ -1120,6 +1120,8 @@ function MapToolbar({
   onClearFog, onRevealAll, onClearWalls,
   onToggleFog, onToggleLighting,
   visEnabled, setVisEnabled,
+  onAddBackground,
+  onDeleteSelectedBg, onSendBgBack, onBringBgFront, selectedBgId,
 }: {
   mode: Mode; setMode: (m: Mode) => void;
   drawTool: DrawKind; setDrawTool: (k: DrawKind) => void;
@@ -1138,6 +1140,11 @@ function MapToolbar({
   onToggleFog: (v: boolean) => void;
   onToggleLighting: (v: boolean) => void;
   visEnabled: boolean; setVisEnabled: (b: boolean) => void;
+  onAddBackground: (url: string) => void | Promise<void>;
+  onDeleteSelectedBg?: () => void;
+  onSendBgBack?: () => void;
+  onBringBgFront?: () => void;
+  selectedBgId: string | null;
 }) {
   const [collapsed, setCollapsed] = useState(false);
 
