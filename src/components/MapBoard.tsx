@@ -125,6 +125,7 @@ export function MapBoard({
   const [localSize, setLocalSize] = useState<Record<string, number>>({});
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
   const [hoverTokenId, setHoverTokenId] = useState<string | null>(null);
+  const [appearanceToken, setAppearanceToken] = useState<AppearanceToken | null>(null);
   // (background image now rendered full-screen; no aspect-ratio coupling)
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
