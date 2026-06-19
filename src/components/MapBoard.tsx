@@ -1002,6 +1002,24 @@ export function MapBoard({
             }}
             title={t.label}
           >
+            {/* Auras (rendered behind the avatar, sized in grid cells) */}
+            {[
+              { r: t.aura1_radius ?? 0, c: t.aura1_color ?? "#22c55e" },
+              { r: t.aura2_radius ?? 0, c: t.aura2_color ?? "#3b82f6" },
+            ].map((a, i) => a.r > 0 ? (
+              <div
+                key={`aura-${i}`}
+                className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+                style={{
+                  width: a.r * gridSettings.size * 2,
+                  height: a.r * gridSettings.size * 2,
+                  backgroundColor: a.c,
+                  opacity: 0.18,
+                  border: `2px solid ${a.c}`,
+                  zIndex: -1,
+                }}
+              />
+            ) : null)}
             {showStats && (
               <div className="pointer-events-none absolute left-1/2 -top-2 -translate-x-1/2 -translate-y-full">
                 <TokenStatsBar
@@ -1013,11 +1031,34 @@ export function MapBoard({
                 />
               </div>
             )}
+            {/* Custom bar (always visible above token when configured) */}
+            {(t.bar_label && t.bar_max && t.bar_max > 0) && (
+              <div className="pointer-events-none absolute left-1/2 -top-3 -translate-x-1/2 -translate-y-full flex flex-col items-center gap-0.5">
+                <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted/70 ring-1 ring-background/80">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.max(0, Math.min(100, ((t.bar_value ?? 0) / t.bar_max) * 100))}%`,
+                      backgroundColor: t.bar_color ?? "#f59e0b",
+                    }}
+                  />
+                </div>
+                <span className="rounded bg-background/80 px-1 text-[8px] font-bold uppercase tracking-wider text-foreground/80">
+                  {t.bar_label}
+                </span>
+              </div>
+            )}
             <div className={`relative flex h-full w-full items-center justify-center rounded-full border-2 ${isSelected ? "border-amber-400 ring-2 ring-amber-400/50" : onGmLayer ? "border-purple-500 ring-2 ring-purple-500/40 border-dashed" : "border-primary ring-2 ring-background"} bg-card shadow-md`}>
               {t.image_url ? (
                 <img src={t.image_url} alt={t.label} className="h-full w-full rounded-full object-cover" draggable={false} />
               ) : (
                 <span className="text-xs font-bold">{t.label.slice(0, 2).toUpperCase()}</span>
+              )}
+              {t.tint_color && (
+                <div
+                  className="pointer-events-none absolute inset-0 rounded-full"
+                  style={{ backgroundColor: t.tint_color, opacity: 0.45, mixBlendMode: "multiply" }}
+                />
               )}
               {onGmLayer && isNarrator && (
                 <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded bg-purple-600 px-1.5 py-0.5 text-[8px] font-bold uppercase text-white shadow">GM</span>
