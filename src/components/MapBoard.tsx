@@ -6,9 +6,11 @@ import {
   X, MousePointer2, Ruler, Pencil, Square, Circle as CircleIcon,
   Minus, Type as TypeIcon, Eraser, Eye, EyeOff, CloudFog, Box, Lightbulb, Trash2,
   ChevronLeft, ChevronRight, Image as ImageIcon, Plus, RotateCw, ArrowUp, ArrowDown,
+  Palette,
 } from "lucide-react";
 import { TokenActionBar } from "@/components/TokenActionBar";
 import { TokenStatsBar } from "@/components/TokenStatsBar";
+import { TokenAppearanceDialog, type AppearanceToken } from "@/components/TokenAppearanceDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export type DragCharacterPayload = {
