@@ -152,6 +152,24 @@ export function MapBoard({
         const next = Math.max(24, Math.min(240, resizeOrigin.current.size + Math.max(dx, dy)));
         setLocalSize((s) => ({ ...s, [resizeTokenId]: next }));
       }
+      // Background interactions
+      const drag = bgDragRef.current;
+      const rect = boardRef.current?.getBoundingClientRect();
+      if (drag && rect) {
+        if (drag.kind === "move") {
+          const dx = (e.clientX - drag.sx) / rect.width / zoom;
+          const dy = (e.clientY - drag.sy) / rect.height / zoom;
+          setBgLocal((s) => ({ ...s, [drag.id]: { ...(s[drag.id] ?? {}), x: drag.ox + dx, y: drag.oy + dy } }));
+        } else if (drag.kind === "resize") {
+          const dx = (e.clientX - drag.sx) / rect.width / zoom;
+          const dy = (e.clientY - drag.sy) / rect.height / zoom;
+          setBgLocal((s) => ({ ...s, [drag.id]: { ...(s[drag.id] ?? {}), width: Math.max(0.03, drag.ow + dx), height: Math.max(0.03, drag.oh + dy) } }));
+        } else if (drag.kind === "rotate") {
+          const angle = Math.atan2(e.clientY - drag.cy, e.clientX - drag.cx) * 180 / Math.PI;
+          const delta = angle - drag.startAngle;
+          setBgLocal((s) => ({ ...s, [drag.id]: { ...(s[drag.id] ?? {}), rotation: drag.baseRotation + delta } }));
+        }
+      }
     }
     async function onUp() {
       panOrigin.current = null;
@@ -164,6 +182,13 @@ export function MapBoard({
           await supabase.from("tokens").update({ size: Math.round(finalSize) }).eq("id", id);
           setLocalSize((s) => { const n = { ...s }; delete n[id]; return n; });
         }
+      }
+      // Persist bg edit
+      const drag = bgDragRef.current;
+      if (drag) {
+        const local = bgLocal[drag.id];
+        bgDragRef.current = null;
+        if (local) await persistBg(drag.id, local);
       }
     }
     window.addEventListener("click", onClickAway);
