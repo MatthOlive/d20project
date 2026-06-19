@@ -1041,91 +1041,138 @@ function MapToolbar({
   onToggleLighting: (v: boolean) => void;
   visEnabled: boolean; setVisEnabled: (b: boolean) => void;
 }) {
+  const [collapsed, setCollapsed] = useState(false);
+
+  const modeIcon = (m: Mode) => {
+    switch (m) {
+      case "select": return <MousePointer2 className="h-3.5 w-3.5" />;
+      case "ruler": return <Ruler className="h-3.5 w-3.5" />;
+      case "draw": return <Pencil className="h-3.5 w-3.5" />;
+      case "fog": return <CloudFog className="h-3.5 w-3.5" />;
+      case "walls": return <Box className="h-3.5 w-3.5" />;
+    }
+  };
+
   return (
     <div
       data-map-toolbar
-      className={`pointer-events-auto absolute z-30 flex flex-col gap-1 rounded-lg border border-border bg-card/95 p-1.5 shadow-lg backdrop-blur ${isMobile ? "left-1/2 bottom-3 -translate-x-1/2" : "right-3 top-3"}`}
+      className={`pointer-events-auto absolute left-3 top-3 z-30 flex flex-col gap-1.5 rounded-lg border border-border bg-card/95 p-1.5 shadow-lg backdrop-blur transition-all ${collapsed ? "w-10 items-center" : "w-56"}`}
       onMouseDown={(e) => e.stopPropagation()}
     >
-      <div className="flex gap-1">
-        <ToolBtn active={mode === "select"} onClick={() => setMode("select")} title="Selecionar (clique e arraste tokens)"><MousePointer2 className="h-3.5 w-3.5" /></ToolBtn>
-        <ToolBtn active={mode === "ruler"} onClick={() => setMode("ruler")} title="Régua (medir distância)"><Ruler className="h-3.5 w-3.5" /></ToolBtn>
-        <ToolBtn active={mode === "draw"} onClick={() => setMode("draw")} title="Desenhar"><Pencil className="h-3.5 w-3.5" /></ToolBtn>
-        {isNarrator && (
-          <>
-            <ToolBtn active={mode === "fog"} onClick={() => setMode("fog")} title="Fog of War (manual)"><CloudFog className="h-3.5 w-3.5" /></ToolBtn>
-            <ToolBtn active={mode === "walls"} onClick={() => setMode("walls")} title="Paredes (bloqueiam visão)"><Box className="h-3.5 w-3.5" /></ToolBtn>
-          </>
-        )}
+      {/* Header / toggle */}
+      <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"} gap-1 border-b border-border pb-1`}>
+        {!collapsed && <span className="px-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Ferramentas</span>}
+        <button
+          type="button"
+          onClick={() => setCollapsed((c) => !c)}
+          title={collapsed ? "Expandir ferramentas" : "Recolher ferramentas"}
+          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded hover:bg-accent"
+        >
+          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+        </button>
       </div>
-      {mode === "draw" && (
+
+      {collapsed ? (
+        <div className="flex flex-col items-center gap-1">
+          {(["select", "ruler", "draw", ...(isNarrator ? ["fog", "walls"] : [])] as Mode[]).map((m) => (
+            <ToolBtn key={m} active={mode === m} onClick={() => setMode(m)} title={modeTitle(m)}>
+              {modeIcon(m)}
+            </ToolBtn>
+          ))}
+        </div>
+      ) : (
         <>
-          <div className="flex gap-1 border-t border-border pt-1">
-            <ToolBtn active={drawTool === "freehand"} onClick={() => setDrawTool("freehand")} title="Caneta livre"><Pencil className="h-3.5 w-3.5" /></ToolBtn>
-            <ToolBtn active={drawTool === "rect"} onClick={() => setDrawTool("rect")} title="Retângulo"><Square className="h-3.5 w-3.5" /></ToolBtn>
-            <ToolBtn active={drawTool === "circle"} onClick={() => setDrawTool("circle")} title="Círculo"><CircleIcon className="h-3.5 w-3.5" /></ToolBtn>
-            <ToolBtn active={drawTool === "line"} onClick={() => setDrawTool("line")} title="Linha"><Minus className="h-3.5 w-3.5" /></ToolBtn>
-            <ToolBtn active={drawTool === "text"} onClick={() => setDrawTool("text")} title="Texto"><TypeIcon className="h-3.5 w-3.5" /></ToolBtn>
+          <div className="flex flex-wrap gap-1">
+            <ToolBtn active={mode === "select"} onClick={() => setMode("select")} title="Selecionar (clique e arraste tokens)"><MousePointer2 className="h-3.5 w-3.5" /></ToolBtn>
+            <ToolBtn active={mode === "ruler"} onClick={() => setMode("ruler")} title="Régua (medir distância)"><Ruler className="h-3.5 w-3.5" /></ToolBtn>
+            <ToolBtn active={mode === "draw"} onClick={() => setMode("draw")} title="Desenhar"><Pencil className="h-3.5 w-3.5" /></ToolBtn>
+            {isNarrator && (
+              <>
+                <ToolBtn active={mode === "fog"} onClick={() => setMode("fog")} title="Fog of War (manual)"><CloudFog className="h-3.5 w-3.5" /></ToolBtn>
+                <ToolBtn active={mode === "walls"} onClick={() => setMode("walls")} title="Paredes (bloqueiam visão)"><Box className="h-3.5 w-3.5" /></ToolBtn>
+              </>
+            )}
           </div>
-          <div className="flex items-center gap-1 border-t border-border pt-1">
-            <input type="color" value={drawColor} onChange={(e) => setDrawColor(e.target.value)} className="h-6 w-7 cursor-pointer rounded border border-border bg-transparent" title="Cor" />
-            <input
-              type="range" min={1} max={12} value={drawWidth}
-              onChange={(e) => setDrawWidth(Number(e.target.value))}
-              className="h-6 w-16" title={`Espessura: ${drawWidth}`}
-            />
-          </div>
-          {isNarrator && (
-            <div className="flex gap-1 border-t border-border pt-1">
-              <ToolBtn active={drawLayer === "drawing"} onClick={() => setDrawLayer("drawing")} title="Desenhar na camada visível">Visível</ToolBtn>
-              <ToolBtn active={drawLayer === "gm"} onClick={() => setDrawLayer("gm")} title="Desenhar só para o narrador">GM</ToolBtn>
+          {mode === "draw" && (
+            <>
+              <div className="flex flex-wrap gap-1 border-t border-border pt-1">
+                <ToolBtn active={drawTool === "freehand"} onClick={() => setDrawTool("freehand")} title="Caneta livre"><Pencil className="h-3.5 w-3.5" /></ToolBtn>
+                <ToolBtn active={drawTool === "rect"} onClick={() => setDrawTool("rect")} title="Retângulo"><Square className="h-3.5 w-3.5" /></ToolBtn>
+                <ToolBtn active={drawTool === "circle"} onClick={() => setDrawTool("circle")} title="Círculo"><CircleIcon className="h-3.5 w-3.5" /></ToolBtn>
+                <ToolBtn active={drawTool === "line"} onClick={() => setDrawTool("line")} title="Linha"><Minus className="h-3.5 w-3.5" /></ToolBtn>
+                <ToolBtn active={drawTool === "text"} onClick={() => setDrawTool("text")} title="Texto"><TypeIcon className="h-3.5 w-3.5" /></ToolBtn>
+              </div>
+              <div className="flex items-center gap-1 border-t border-border pt-1">
+                <input type="color" value={drawColor} onChange={(e) => setDrawColor(e.target.value)} className="h-6 w-7 cursor-pointer rounded border border-border bg-transparent" title="Cor" />
+                <input
+                  type="range" min={1} max={12} value={drawWidth}
+                  onChange={(e) => setDrawWidth(Number(e.target.value))}
+                  className="h-6 w-16" title={`Espessura: ${drawWidth}`}
+                />
+              </div>
+              {isNarrator && (
+                <div className="flex flex-wrap gap-1 border-t border-border pt-1">
+                  <ToolBtn active={drawLayer === "drawing"} onClick={() => setDrawLayer("drawing")} title="Desenhar na camada visível">Visível</ToolBtn>
+                  <ToolBtn active={drawLayer === "gm"} onClick={() => setDrawLayer("gm")} title="Desenhar só para o narrador">GM</ToolBtn>
+                </div>
+              )}
+            </>
+          )}
+          {mode === "fog" && isNarrator && (
+            <div className="flex flex-col gap-1 border-t border-border pt-1">
+              <div className="flex flex-wrap gap-1">
+                <ToolBtn active={fogTool === "reveal"} onClick={() => setFogTool("reveal")} title="Pincel: revelar área">Revelar</ToolBtn>
+                <ToolBtn active={fogTool === "hide"} onClick={() => setFogTool("hide")} title="Pincel: ocultar área">Ocultar</ToolBtn>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                <ToolBtn onClick={onRevealAll} title="Revelar mapa inteiro">Tudo</ToolBtn>
+                <ToolBtn onClick={onClearFog} title="Apagar toda a fog"><Trash2 className="h-3.5 w-3.5" /></ToolBtn>
+              </div>
             </div>
           )}
+          {mode === "walls" && isNarrator && (
+            <div className="flex flex-col gap-1 border-t border-border pt-1">
+              <p className="px-1 text-[10px] text-muted-foreground">Clique 2x para criar parede</p>
+              <ToolBtn onClick={onClearWalls} title="Apagar todas as paredes"><Trash2 className="h-3.5 w-3.5" /></ToolBtn>
+            </div>
+          )}
+          {isNarrator && (
+            <div className="flex flex-wrap gap-1 border-t border-border pt-1">
+              <ToolBtn active={visibility.fogEnabled} onClick={() => onToggleFog(!visibility.fogEnabled)} title={visibility.fogEnabled ? "Desativar Fog of War" : "Ativar Fog of War"}>
+                <CloudFog className="h-3.5 w-3.5" />
+              </ToolBtn>
+              <ToolBtn active={visibility.dynamicLighting} onClick={() => onToggleLighting(!visibility.dynamicLighting)} title={visibility.dynamicLighting ? "Desativar visão dinâmica" : "Ativar visão dinâmica"}>
+                <Lightbulb className="h-3.5 w-3.5" />
+              </ToolBtn>
+              {(visibility.fogEnabled || visibility.dynamicLighting) && (
+                <ToolBtn active={!visEnabled} onClick={() => setVisEnabled(!visEnabled)} title={visEnabled ? "Esconder fog localmente (narrador)" : "Mostrar fog"}>
+                  {visEnabled ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                </ToolBtn>
+              )}
+            </div>
+          )}
+          <div className="flex flex-wrap gap-1 border-t border-border pt-1">
+            {isNarrator && (
+              <ToolBtn active={!showGMLayer} onClick={() => setShowGMLayer(!showGMLayer)} title={showGMLayer ? "Esconder camada GM" : "Mostrar camada GM"}>
+                {showGMLayer ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              </ToolBtn>
+            )}
+            <ToolBtn onClick={onClearMine} title="Apagar meus desenhos"><Eraser className="h-3.5 w-3.5" /></ToolBtn>
+          </div>
         </>
       )}
-      {mode === "fog" && isNarrator && (
-        <div className="flex flex-col gap-1 border-t border-border pt-1">
-          <div className="flex gap-1">
-            <ToolBtn active={fogTool === "reveal"} onClick={() => setFogTool("reveal")} title="Pincel: revelar área">Revelar</ToolBtn>
-            <ToolBtn active={fogTool === "hide"} onClick={() => setFogTool("hide")} title="Pincel: ocultar área">Ocultar</ToolBtn>
-          </div>
-          <div className="flex gap-1">
-            <ToolBtn onClick={onRevealAll} title="Revelar mapa inteiro">Tudo</ToolBtn>
-            <ToolBtn onClick={onClearFog} title="Apagar toda a fog"><Trash2 className="h-3.5 w-3.5" /></ToolBtn>
-          </div>
-        </div>
-      )}
-      {mode === "walls" && isNarrator && (
-        <div className="flex flex-col gap-1 border-t border-border pt-1">
-          <p className="px-1 text-[10px] text-muted-foreground">Clique 2x para criar parede</p>
-          <ToolBtn onClick={onClearWalls} title="Apagar todas as paredes"><Trash2 className="h-3.5 w-3.5" /></ToolBtn>
-        </div>
-      )}
-      {isNarrator && (
-        <div className="flex gap-1 border-t border-border pt-1">
-          <ToolBtn active={visibility.fogEnabled} onClick={() => onToggleFog(!visibility.fogEnabled)} title={visibility.fogEnabled ? "Desativar Fog of War" : "Ativar Fog of War"}>
-            <CloudFog className="h-3.5 w-3.5" />
-          </ToolBtn>
-          <ToolBtn active={visibility.dynamicLighting} onClick={() => onToggleLighting(!visibility.dynamicLighting)} title={visibility.dynamicLighting ? "Desativar visão dinâmica" : "Ativar visão dinâmica"}>
-            <Lightbulb className="h-3.5 w-3.5" />
-          </ToolBtn>
-          {(visibility.fogEnabled || visibility.dynamicLighting) && (
-            <ToolBtn active={!visEnabled} onClick={() => setVisEnabled(!visEnabled)} title={visEnabled ? "Esconder fog localmente (narrador)" : "Mostrar fog"}>
-              {visEnabled ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-            </ToolBtn>
-          )}
-        </div>
-      )}
-      <div className="flex gap-1 border-t border-border pt-1">
-        {isNarrator && (
-          <ToolBtn active={!showGMLayer} onClick={() => setShowGMLayer(!showGMLayer)} title={showGMLayer ? "Esconder camada GM" : "Mostrar camada GM"}>
-            {showGMLayer ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-          </ToolBtn>
-        )}
-        <ToolBtn onClick={onClearMine} title="Apagar meus desenhos"><Eraser className="h-3.5 w-3.5" /></ToolBtn>
-      </div>
     </div>
   );
+}
+
+function modeTitle(m: Mode) {
+  switch (m) {
+    case "select": return "Selecionar";
+    case "ruler": return "Régua";
+    case "draw": return "Desenhar";
+    case "fog": return "Fog of War";
+    case "walls": return "Paredes";
+  }
 }
 
 function ToolBtn({ active, onClick, title, children }: { active?: boolean; onClick: () => void; title: string; children: React.ReactNode }) {
