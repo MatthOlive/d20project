@@ -285,7 +285,7 @@ export function MapBoard({
     const maxZ = mapBgsRaw.reduce((m, b) => Math.max(m, b.z_index), 0);
     const { error } = await (supabase.from("map_backgrounds" as never).insert({
       game_id: gameId, image_url: url, x: 0.2, y: 0.2, width: 0.4, height: 0.4, rotation: 0, z_index: maxZ + 1, created_by: userId,
-    }) as unknown as Promise<{ error: { message: string } | null }>);
+    } as never) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
   }
   async function deleteBackground(id: string) {
@@ -294,7 +294,7 @@ export function MapBoard({
     if (selectedBgId === id) setSelectedBgId(null);
   }
   async function persistBg(id: string, patch: Partial<MapBg>) {
-    const { error } = await (supabase.from("map_backgrounds" as never).update(patch).eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
+    const { error } = await (supabase.from("map_backgrounds" as never).update(patch as never).eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
     setBgLocal((s) => { const n = { ...s }; delete n[id]; return n; });
   }
