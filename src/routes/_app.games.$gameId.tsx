@@ -1840,6 +1840,37 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
               <p className="text-[11px] text-muted-foreground">Quando ligado, a Defesa Especial usa Insight no lugar de Vitality em toda a mesa.</p>
             </div>
           </div>
+          <div className="rounded-md border border-border bg-card p-3 space-y-2">
+            <div className="text-xs font-bold uppercase tracking-wider text-primary">Grid do mapa</div>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex items-center gap-2 text-xs">
+                <Checkbox checked={gridEnabled} onCheckedChange={(v) => setGridEnabled(!!v)} /> Mostrar grid
+              </label>
+              <label className="flex items-center gap-2 text-xs">
+                <Checkbox checked={gridSnap} onCheckedChange={(v) => setGridSnap(!!v)} /> Snap-to-grid
+              </label>
+              <div>
+                <Label className="text-xs">Tamanho da célula (px)</Label>
+                <Input type="number" min={16} max={256} value={gridSize} onChange={(e) => setGridSize(Number(e.target.value))} />
+              </div>
+              <div>
+                <Label className="text-xs">Cor</Label>
+                <input type="color" value={gridColor} onChange={(e) => setGridColor(e.target.value)} className="h-9 w-full cursor-pointer rounded border border-input bg-transparent" />
+              </div>
+              <div>
+                <Label className="text-xs">Opacidade (%)</Label>
+                <Input type="number" min={0} max={100} value={gridOpacity} onChange={(e) => setGridOpacity(Number(e.target.value))} />
+              </div>
+              <div>
+                <Label className="text-xs">Unidade por célula</Label>
+                <div className="flex gap-1">
+                  <Input type="number" step="0.1" min={0.1} value={gridUnitM} onChange={(e) => setGridUnitM(Number(e.target.value))} className="flex-1" />
+                  <Input value={gridUnitLabel} onChange={(e) => setGridUnitLabel(e.target.value)} className="w-16" placeholder="m" />
+                </div>
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground">Usado pela régua para mostrar distância (ex.: 1.5 m por célula).</p>
+          </div>
           <div>
             <div className="mb-1 flex items-center justify-between">
               <Label className="text-xs font-bold uppercase tracking-wider">Contest · Reaction deck weights</Label>
