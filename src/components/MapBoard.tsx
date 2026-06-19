@@ -787,7 +787,7 @@ export function MapBoard({
               height: `${bg.height * 100}%`,
               transform: `rotate(${bg.rotation}deg)`,
               transformOrigin: "center center",
-              zIndex: bg.z_index,
+              zIndex: 0,
             }}
             onMouseDown={(e) => {
               if (!editable) return;
