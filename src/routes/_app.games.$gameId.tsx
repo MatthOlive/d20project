@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,6 +44,8 @@ type OpenWindow =
 function GameRoom() {
   const { gameId } = Route.useParams();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
+  const [mobileTab, setMobileTab] = useState<"map" | "chat" | "compendium" | "files">("map");
   const qc = useQueryClient();
 
   const { data: game } = useQuery({
@@ -160,29 +163,112 @@ function GameRoom() {
 
   if (!game || !user) return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
 
+  const mapBoard = (
+    <MapBoard
+      gameId={gameId}
+      backgroundUrl={game.background_url}
+      userId={user.id}
+      isNarrator={isNarrator}
+      onRoll={rollFromSheet}
+      onOpenSheet={(kind, id, label) => openWindow({ kind, id, title: label })}
+      gridSettings={{
+        enabled: (game as never as { grid_enabled?: boolean }).grid_enabled ?? true,
+        snap: (game as never as { grid_snap?: boolean }).grid_snap ?? true,
+        size: (game as never as { grid_size?: number }).grid_size ?? 56,
+        color: (game as never as { grid_color?: string }).grid_color ?? "#000000",
+        opacity: (game as never as { grid_opacity?: number }).grid_opacity ?? 30,
+        unitMeters: Number((game as never as { grid_unit_m?: number }).grid_unit_m ?? 1.5),
+        unitLabel: (game as never as { grid_unit_label?: string }).grid_unit_label ?? "m",
+      }}
+    />
+  );
+
+  const sheetWindows = (
+    <div className="pointer-events-none">
+      {windows.map((w, i) => (
+        <FloatingWindow
+          key={`${w.kind}-${w.id}`}
+          title={w.title}
+          onClose={() => closeWindow(w.kind, w.id)}
+          onPopOut={() => {
+            const params = new URLSearchParams();
+            params.set("sheet", `${w.kind}:${w.id}:${encodeURIComponent(w.title)}`);
+            const url = `${window.location.pathname}?${params.toString()}`;
+            window.open(url, "_blank", "noopener,width=1200,height=800");
+          }}
+          initialX={isMobile ? 8 : 120 + i * 30}
+          initialY={isMobile ? 56 : 80 + i * 30}
+          width={isMobile ? Math.min(window.innerWidth - 16, 480) : (w.kind === "trainer" ? 760 : 560)}
+          height={isMobile ? Math.min(window.innerHeight - 80, 700) : 640}
+        >
+          {w.kind === "pokemon"
+            ? <PokemonSheet pokemonId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(w.kind, w.id); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
+            : <SheetTabs trainerId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(w.kind, w.id); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />}
+        </FloatingWindow>
+      ))}
+    </div>
+  );
+
+  if (isMobile) {
+    return (
+      <div className="relative flex h-[calc(100vh-4rem)] w-full flex-col">
+        <h1 className="sr-only">{game.name ? `${game.name} — D20 Project game room` : "D20 Project game room"}</h1>
+        <div className="grid shrink-0 grid-cols-4 gap-1 border-b border-border bg-card p-1">
+          {(["map", "chat", "compendium", "files"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setMobileTab(t)}
+              className={`rounded-md px-2 py-2 text-xs font-bold uppercase ${mobileTab === t ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
+            >
+              {t === "map" ? "Mapa" : t === "chat" ? "Chat" : t === "compendium" ? "Compendium" : "Files"}
+            </button>
+          ))}
+        </div>
+        <div className="relative min-h-0 flex-1 overflow-hidden">
+          <div className={`absolute inset-0 ${mobileTab === "map" ? "" : "hidden"}`}>
+            {mapBoard}
+            <MapLeftDisclosure
+              isNarrator={isNarrator}
+              inviteUrl={inviteUrl}
+              gameId={gameId}
+              onToggleTurnOrder={() => setTurnOrderOpen((v) => !v)}
+            />
+            {isNarrator && (
+              <MapTopDisclosure
+                gameId={gameId}
+                currentBg={game.background_url}
+                setBackgroundUrl={setBackgroundUrl}
+              />
+            )}
+            <InitiativePanel gameId={gameId} isNarrator={isNarrator} open={turnOrderOpen} onClose={() => setTurnOrderOpen(false)} />
+          </div>
+          {mobileTab === "chat" && (
+            <div className="h-full overflow-hidden">
+              <div className="p-2"><OnlinePresence gameId={gameId} userId={user.id} isNarrator={isNarrator} /></div>
+              <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} isGameOwner={isNarrator} />
+            </div>
+          )}
+          {mobileTab === "compendium" && (
+            <div className="h-full overflow-auto p-3"><CompendiumPanel /></div>
+          )}
+          {mobileTab === "files" && (
+            <div className="h-full overflow-auto p-3">
+              <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindow} isMobile />
+            </div>
+          )}
+        </div>
+        {sheetWindows}
+      </div>
+    );
+  }
+
   return (
     <div className="relative h-[calc(100vh-4rem)] w-full px-3 py-3">
       <h1 className="sr-only">{game.name ? `${game.name} — D20 Project game room` : "D20 Project game room"}</h1>
       {/* <MusicPlayer gameId={gameId} /> — desativado temporariamente; reativar quando a aba Music voltar. */}
       {/* Fullscreen map */}
       <div className="relative h-full w-full">
-        <MapBoard
-          gameId={gameId}
-          backgroundUrl={game.background_url}
-          userId={user.id}
-          isNarrator={isNarrator}
-          onRoll={rollFromSheet}
-          onOpenSheet={(kind, id, label) => openWindow({ kind, id, title: label })}
-          gridSettings={{
-            enabled: (game as never as { grid_enabled?: boolean }).grid_enabled ?? true,
-            snap: (game as never as { grid_snap?: boolean }).grid_snap ?? true,
-            size: (game as never as { grid_size?: number }).grid_size ?? 56,
-            color: (game as never as { grid_color?: string }).grid_color ?? "#000000",
-            opacity: (game as never as { grid_opacity?: number }).grid_opacity ?? 30,
-            unitMeters: Number((game as never as { grid_unit_m?: number }).grid_unit_m ?? 1.5),
-            unitLabel: (game as never as { grid_unit_label?: string }).grid_unit_label ?? "m",
-          }}
-        />
+        {mapBoard}
         <MapLeftDisclosure
           isNarrator={isNarrator}
           inviteUrl={inviteUrl}
@@ -205,13 +291,10 @@ function GameRoom() {
               <OnlinePresence gameId={gameId} userId={user.id} isNarrator={isNarrator} />
             </div>
             <Tabs defaultValue="chat" className="flex min-h-0 flex-1 flex-col">
-              {/* Music tab temporariamente removida — manter MusicPanel/MusicPlayer intactos para reativar depois.
-                  Para reativar: trocar grid-cols-3 por grid-cols-4 e descomentar TabsTrigger/TabsContent abaixo. */}
               <TabsList className="m-2 grid shrink-0 grid-cols-3">
                 <TabsTrigger value="chat">Chat</TabsTrigger>
                 <TabsTrigger value="compendium">Compendium</TabsTrigger>
                 <TabsTrigger value="files">Files</TabsTrigger>
-                {/* <TabsTrigger value="music">Music</TabsTrigger> */}
               </TabsList>
               <TabsContent value="chat" className="mt-0 min-h-0 flex-1 overflow-hidden">
                 <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} isGameOwner={isNarrator} />
@@ -222,38 +305,12 @@ function GameRoom() {
               <TabsContent value="files" className="mt-0 min-h-0 flex-1 overflow-auto p-3">
                 <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindow} />
               </TabsContent>
-              {/* <TabsContent value="music" className="mt-0 min-h-0 flex-1 overflow-hidden">
-                <MusicPanel gameId={gameId} isNarrator={isNarrator} />
-              </TabsContent> */}
             </Tabs>
           </Card>
         </RightOverlayPanel>
       </div>
 
-      {/* Floating sheet windows */}
-      <div className="pointer-events-none">
-        {windows.map((w, i) => (
-          <FloatingWindow
-            key={`${w.kind}-${w.id}`}
-            title={w.title}
-            onClose={() => closeWindow(w.kind, w.id)}
-            onPopOut={() => {
-              const params = new URLSearchParams();
-              params.set("sheet", `${w.kind}:${w.id}:${encodeURIComponent(w.title)}`);
-              const url = `${window.location.pathname}?${params.toString()}`;
-              window.open(url, "_blank", "noopener,width=1200,height=800");
-            }}
-            initialX={120 + i * 30}
-            initialY={80 + i * 30}
-            width={w.kind === "trainer" ? 760 : 560}
-            height={640}
-          >
-            {w.kind === "pokemon"
-              ? <PokemonSheet pokemonId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(w.kind, w.id); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
-              : <SheetTabs trainerId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(w.kind, w.id); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />}
-          </FloatingWindow>
-        ))}
-      </div>
+      {sheetWindows}
     </div>
   );
 }
@@ -380,11 +437,13 @@ function FilesPanel({
   userId,
   isNarrator,
   onOpen,
+  isMobile = false,
 }: {
   gameId: string;
   userId: string;
   isNarrator: boolean;
   onOpen: (w: OpenWindow) => void;
+  isMobile?: boolean;
 }) {
 
   const qc = useQueryClient();
@@ -405,6 +464,8 @@ function FilesPanel({
   const [dropHover, setDropHover] = useState<string | null>(null);
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [ctxMenu, setCtxMenu] = useState<{ row: CharRow; x: number; y: number; mode: "main" | "move" } | null>(null);
+  const longPressRef = useRef<{ timer: ReturnType<typeof setTimeout> | null; sx: number; sy: number } | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
     if (typeof window === "undefined") return {};
     try { return JSON.parse(localStorage.getItem(`folders:${gameId}`) ?? "{}"); } catch { return {}; }
@@ -749,6 +810,27 @@ function FilesPanel({
       kind: r.kind, id: r.id, label: r.label,
       imageUrl: r.image_url ?? (r.kind === "pokemon" ? r.sprite_url : null), ownerId: r.owner_id,
     };
+    const startLongPress = (e: React.PointerEvent) => {
+      if (e.pointerType === "mouse" || selectMode) return;
+      const sx = e.clientX, sy = e.clientY;
+      const timer = setTimeout(() => {
+        setCtxMenu({ row: r, x: sx, y: sy, mode: "main" });
+        if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(30);
+      }, 450);
+      longPressRef.current = { timer, sx, sy };
+    };
+    const moveLongPress = (e: React.PointerEvent) => {
+      const lp = longPressRef.current;
+      if (!lp || !lp.timer) return;
+      if (Math.hypot(e.clientX - lp.sx, e.clientY - lp.sy) > 8) {
+        clearTimeout(lp.timer); longPressRef.current = null;
+      }
+    };
+    const cancelLongPress = () => {
+      const lp = longPressRef.current;
+      if (lp?.timer) clearTimeout(lp.timer);
+      longPressRef.current = null;
+    };
     return (
       <div key={key} className="flex items-center gap-1.5">
         {selectMode && (
@@ -761,8 +843,19 @@ function FilesPanel({
             e.dataTransfer.setData(FOLDER_MIME, JSON.stringify({ kind: r.kind, id: r.id, folder: r.folder }));
             e.dataTransfer.effectAllowed = "copyMove";
           }}
+          onPointerDown={startLongPress}
+          onPointerMove={moveLongPress}
+          onPointerUp={cancelLongPress}
+          onPointerCancel={cancelLongPress}
+          onPointerLeave={cancelLongPress}
+          onContextMenu={(e) => {
+            if (!isMobile) return;
+            e.preventDefault();
+            setCtxMenu({ row: r, x: e.clientX, y: e.clientY, mode: "main" });
+          }}
           onClick={() => selectMode ? toggleSelected(key) : onOpen({ kind: r.kind, id: r.id, title: r.label })}
           className={`flex w-full items-center gap-2 rounded-md border ${selected.has(key) ? "border-primary bg-primary/5" : "border-border bg-card"} px-3 py-2 text-left text-sm hover:border-primary`}
+          style={isMobile ? { touchAction: "manipulation" } : undefined}
         >
           {r.kind === "pokemon" && r.sprite_url
             ? <img src={r.sprite_url} alt="" className="h-6 w-6 shrink-0" />
@@ -771,6 +864,28 @@ function FilesPanel({
         </button>
       </div>
     );
+  }
+
+  async function sendRowToMap(r: CharRow) {
+    const { error } = await supabase.from("tokens").insert({
+      game_id: gameId,
+      character_kind: r.kind,
+      character_id: r.id,
+      label: r.label,
+      image_url: r.image_url ?? (r.kind === "pokemon" ? r.sprite_url : null),
+      owner_id: r.owner_id,
+      x: 0.5, y: 0.5,
+    });
+    if (error) toast.error(error.message);
+    else toast.success("Enviado para o mapa");
+  }
+  async function deleteRow(r: CharRow) {
+    if (!confirm(`Deletar "${r.label}"?`)) return;
+    const table = r.kind === "trainer" ? "trainers" : "pokemon";
+    const { error } = await supabase.from(table).delete().eq("id", r.id);
+    if (error) { toast.error(error.message); return; }
+    qc.invalidateQueries({ queryKey: ["characters", gameId] });
+    toast.success("Deletado");
   }
 
   function FolderNodeView({ node, depth }: { node: FolderNode; depth: number }) {
@@ -1065,6 +1180,47 @@ function FilesPanel({
           <p className="text-xs text-muted-foreground">No characters yet. Create one to get started.</p>
         )}
       </div>
+
+      {ctxMenu && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setCtxMenu(null)} />
+          <div
+            className="fixed z-50 w-56 overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-xl"
+            style={{
+              left: Math.min(ctxMenu.x, (typeof window !== "undefined" ? window.innerWidth : 9999) - 232),
+              top: Math.min(ctxMenu.y, (typeof window !== "undefined" ? window.innerHeight : 9999) - 280),
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="border-b border-border bg-muted/50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              {ctxMenu.row.label}
+            </div>
+            {ctxMenu.mode === "main" ? (
+              <div className="flex flex-col">
+                <button className="px-3 py-2.5 text-left text-sm hover:bg-accent" onClick={async () => { await sendRowToMap(ctxMenu.row); setCtxMenu(null); }}>📍 Enviar para mapa</button>
+                <button className="px-3 py-2.5 text-left text-sm hover:bg-accent" onClick={() => setCtxMenu({ ...ctxMenu, mode: "move" })}>📁 Mover para pasta</button>
+                <button className="px-3 py-2.5 text-left text-sm hover:bg-accent" onClick={() => { setSelectMode(true); setSelected((p) => { const n = new Set(p); n.add(`${ctxMenu.row.kind}:${ctxMenu.row.id}`); return n; }); setCtxMenu(null); }}>☑️ Selecionar</button>
+                <button className="px-3 py-2.5 text-left text-sm text-destructive hover:bg-destructive/10" onClick={async () => { const row = ctxMenu.row; setCtxMenu(null); await deleteRow(row); }}>🗑️ Deletar</button>
+              </div>
+            ) : (
+              <div className="max-h-72 overflow-auto">
+                <button className="block w-full px-3 py-2 text-left text-sm hover:bg-accent" onClick={async () => { const row = ctxMenu.row; setCtxMenu(null); await moveToFolder(row, null); }}>
+                  📂 Unfiled
+                </button>
+                {folderPaths.length === 0 && (
+                  <p className="px-3 py-2 text-xs text-muted-foreground">Nenhuma pasta criada.</p>
+                )}
+                {folderPaths.sort().map((p) => (
+                  <button key={p} className="block w-full px-3 py-2 text-left text-sm hover:bg-accent" onClick={async () => { const row = ctxMenu.row; setCtxMenu(null); await moveToFolder(row, p); }}>
+                    📁 {p}
+                  </button>
+                ))}
+                <button className="block w-full border-t border-border px-3 py-2 text-left text-xs text-muted-foreground hover:bg-accent" onClick={() => setCtxMenu({ ...ctxMenu, mode: "main" })}>← Voltar</button>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

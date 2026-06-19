@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { TokenActionBar } from "@/components/TokenActionBar";
 import { TokenStatsBar } from "@/components/TokenStatsBar";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export type DragCharacterPayload = {
   kind: "pokemon" | "trainer";
@@ -92,6 +93,7 @@ export function MapBoard({
   gridSettings?: GridSettings;
 }) {
   const qc = useQueryClient();
+  const isMobile = useIsMobile();
   const boardRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
   const [dragId, setDragId] = useState<string | null>(null);
@@ -418,6 +420,32 @@ export function MapBoard({
     if (error) toast.error(error.message);
   }
 
+  function onTokenPointerDown(e: React.PointerEvent, t: Token, canMove: boolean) {
+    if (!canMove || mode !== "select") return;
+    if (e.pointerType === "mouse") return; // mouse keeps native HTML5 drag
+    e.preventDefault();
+    e.stopPropagation();
+    setDragId(t.id);
+    const move = (ev: PointerEvent) => {
+      const { x, y } = pointToRel(ev.clientX, ev.clientY);
+      qc.setQueryData<Token[]>(["tokens", gameId], (old) =>
+        (old ?? []).map((tk) => (tk.id === t.id ? { ...tk, x, y } : tk)),
+      );
+    };
+    const up = async (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      const { x, y } = pointToRel(ev.clientX, ev.clientY);
+      setDragId(null);
+      const { error } = await supabase.from("tokens").update({ x, y }).eq("id", t.id);
+      if (error) toast.error(error.message);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  }
+
   async function toggleTokenLayer(id: string, current: "tokens" | "gm") {
     const next = current === "gm" ? "tokens" : "gm";
     const { error } = await (supabase.from("tokens").update({ layer: next } as never).eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
@@ -466,6 +494,7 @@ export function MapBoard({
         isNarrator={isNarrator}
         showGMLayer={showGMLayer} setShowGMLayer={setShowGMLayer}
         onClearMine={clearMyDrawings}
+        isMobile={isMobile}
       />
 
       <div
@@ -545,6 +574,7 @@ export function MapBoard({
               const img = new Image();
               e.dataTransfer.setDragImage(img, 0, 0);
             }}
+            onPointerDown={(e) => onTokenPointerDown(e, t, canMove)}
             onMouseEnter={() => setHoverTokenId(t.id)}
             onMouseLeave={() => setHoverTokenId((cur) => (cur === t.id ? null : cur))}
             onClick={(e) => {
@@ -561,6 +591,7 @@ export function MapBoard({
               cursor: mode !== "select" ? "inherit" : canMove ? "grab" : "pointer",
               zIndex: isSelected || isHover ? 20 : 1,
               opacity: onGmLayer ? 0.7 : 1,
+              touchAction: canMove && mode === "select" ? "none" : undefined,
               transition: dragId === t.id || resizeTokenId === t.id ? "none" : "left 200ms ease, top 200ms ease, width 120ms ease, height 120ms ease",
             }}
             title={t.label}
@@ -735,6 +766,7 @@ function MapToolbar({
   isNarrator,
   showGMLayer, setShowGMLayer,
   onClearMine,
+  isMobile,
 }: {
   mode: Mode; setMode: (m: Mode) => void;
   drawTool: DrawKind; setDrawTool: (k: DrawKind) => void;
@@ -744,11 +776,12 @@ function MapToolbar({
   isNarrator: boolean;
   showGMLayer: boolean; setShowGMLayer: (b: boolean) => void;
   onClearMine: () => void;
+  isMobile?: boolean;
 }) {
   return (
     <div
       data-map-toolbar
-      className="pointer-events-auto absolute right-3 top-3 z-30 flex flex-col gap-1 rounded-lg border border-border bg-card/95 p-1.5 shadow-lg backdrop-blur"
+      className={`pointer-events-auto absolute z-30 flex flex-col gap-1 rounded-lg border border-border bg-card/95 p-1.5 shadow-lg backdrop-blur ${isMobile ? "left-1/2 bottom-3 -translate-x-1/2" : "right-3 top-3"}`}
       onMouseDown={(e) => e.stopPropagation()}
     >
       <div className="flex gap-1">
