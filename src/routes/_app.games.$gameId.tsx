@@ -1565,15 +1565,28 @@ function PokedexCompendium() {
                 ))}
               </div>
             </summary>
-            <div className="space-y-1.5 border-t border-border px-3 py-2 text-xs">
-              <p><span className="font-semibold">Base HP:</span> {s.base_hp} · <span className="font-semibold">Suggested rank:</span> {s.suggested_rank ?? "—"}</p>
+            <div className="divide-y divide-border border-t border-border text-xs">
+              <div className="px-3 py-2">
+                <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-primary">Geral</div>
+                <p><span className="font-semibold">Base HP:</span> {s.base_hp}</p>
+                <p><span className="font-semibold">Rank sugerido:</span> {s.suggested_rank ?? "—"}</p>
+              </div>
               {Object.keys(s.base_attrs ?? {}).length > 0 && (
-                <p><span className="font-semibold">Base attrs:</span> {Object.entries(s.base_attrs).map(([k, v]) => `${k} ${v}`).join(" · ")}</p>
+                <div className="px-3 py-2">
+                  <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-primary">Atributos base</div>
+                  <p className="text-muted-foreground">{Object.entries(s.base_attrs).map(([k, v]) => `${k} ${v}`).join(" · ")}</p>
+                </div>
               )}
-              <p><span className="font-semibold">Abilities:</span> {(s.abilities ?? []).join(", ") || "—"}
-                {s.hidden_ability && <em className="text-muted-foreground"> · Hidden: {s.hidden_ability}</em>}</p>
+              <div className="px-3 py-2">
+                <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-primary">Habilidades</div>
+                <p>{(s.abilities ?? []).join(", ") || "—"}</p>
+                {s.hidden_ability && <p className="text-muted-foreground"><em>Hidden:</em> {s.hidden_ability}</p>}
+              </div>
               {(s.evolutions ?? []).length > 0 && (
-                <p><span className="font-semibold">Evolutions:</span> {s.evolutions.join(" → ")}</p>
+                <div className="px-3 py-2">
+                  <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-primary">Evoluções</div>
+                  <p>{s.evolutions.join(" → ")}</p>
+                </div>
               )}
             </div>
           </details>
