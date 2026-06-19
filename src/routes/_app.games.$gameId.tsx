@@ -223,7 +223,7 @@ function GameRoom() {
   );
 
   if (isMobile) {
-    const baseTabs = ["map", "chat", "compendium", "files"] as const;
+    const baseTabs = ["map", "chat", "compendium", "files", "music"] as const;
     type BaseTab = (typeof baseTabs)[number];
     const sheetTabKey = (w: OpenWindow) => `sheet:${w.kind}:${w.id}`;
     const isSheetTab = mobileTab.startsWith("sheet:");
