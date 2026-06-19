@@ -162,7 +162,14 @@ function GameRoom() {
   }
 
 
-  if (!game || !user) return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
+  if (gameError) return (
+    <div className="p-8 max-w-2xl mx-auto">
+      <h2 className="text-lg font-bold text-destructive mb-2">Erro ao carregar o jogo</h2>
+      <pre className="text-xs bg-muted p-3 rounded whitespace-pre-wrap break-words">{(gameError as Error)?.message || String(gameError)}</pre>
+      <p className="text-sm text-muted-foreground mt-3">Causa provável: você não é membro deste jogo, ou uma coluna foi removida. Volte ao dashboard e tente novamente.</p>
+    </div>
+  );
+  if (gameLoading || !game || !user) return <div className="p-8 text-sm text-muted-foreground">Carregando jogo…</div>;
 
   const mapBoard = (
     <MapBoard
