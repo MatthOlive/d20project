@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   X, MousePointer2, Ruler, Pencil, Square, Circle as CircleIcon,
-  Minus, Type as TypeIcon, Eraser, Eye, EyeOff,
+  Minus, Type as TypeIcon, Eraser, Eye, EyeOff, CloudFog, Box, Lightbulb, Trash2,
 } from "lucide-react";
 import { TokenActionBar } from "@/components/TokenActionBar";
 import { TokenStatsBar } from "@/components/TokenStatsBar";
@@ -32,6 +32,8 @@ type Token = {
   size: number;
   owner_id: string;
   layer?: "tokens" | "gm";
+  vision_radius?: number;
+  light_radius?: number;
 };
 
 type DrawKind = "freehand" | "rect" | "circle" | "line" | "text";
@@ -66,12 +68,18 @@ export type GridSettings = {
   unitLabel: string;
 };
 
-type Mode = "select" | "ruler" | "draw";
+type Mode = "select" | "ruler" | "draw" | "fog" | "walls";
+
+type FogRegion = { id: string; game_id: string; x: number; y: number; w: number; h: number; revealed: boolean; author_id: string };
+type Wall = { id: string; game_id: string; x1: number; y1: number; x2: number; y2: number };
+
+export type Visibility = { fogEnabled: boolean; dynamicLighting: boolean };
 
 const DEFAULT_GRID: GridSettings = {
   enabled: true, snap: true, size: 56, color: "#000000",
   opacity: 30, unitMeters: 1.5, unitLabel: "m",
 };
+const DEFAULT_VIS: Visibility = { fogEnabled: false, dynamicLighting: false };
 
 export function MapBoard({
   gameId,
@@ -82,6 +90,7 @@ export function MapBoard({
   onRoll,
   onOpenSheet,
   gridSettings = DEFAULT_GRID,
+  visibility = DEFAULT_VIS,
 }: {
   gameId: string;
   backgroundUrl: string | null;
@@ -91,6 +100,7 @@ export function MapBoard({
   onRoll?: (label: string, n: number, penalty?: number, meta?: { characterKind: "trainer" | "pokemon"; characterId: string; imageUrl?: string | null }) => void;
   onOpenSheet?: (kind: "trainer" | "pokemon", id: string, label: string) => void;
   gridSettings?: GridSettings;
+  visibility?: Visibility;
 }) {
   const qc = useQueryClient();
   const isMobile = useIsMobile();
@@ -233,6 +243,124 @@ export function MapBoard({
     [drawings, isNarrator, showGMLayer],
   );
 
+  // ───────────── Fog of War + Walls (Phase 2) ─────────────
+  const [fogTool, setFogTool] = useState<"reveal" | "hide">("reveal");
+  const [fogRect, setFogRect] = useState<{ ax: number; ay: number; bx: number; by: number } | null>(null);
+  const [wallStart, setWallStart] = useState<{ x: number; y: number } | null>(null);
+  const [wallCursor, setWallCursor] = useState<{ x: number; y: number } | null>(null);
+  const [visEnabled, setVisEnabled] = useState(true);
+  const fogActive = visibility.fogEnabled || visibility.dynamicLighting;
+
+  const { data: fogRegions = [] } = useQuery({
+    queryKey: ["fog_regions", gameId],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("fog_regions" as never).select("*").eq("game_id", gameId) as unknown as Promise<{ data: FogRegion[] | null; error: { message: string } | null }>);
+      if (error) throw new Error(error.message);
+      return (data ?? []) as FogRegion[];
+    },
+  });
+  const { data: walls = [] } = useQuery({
+    queryKey: ["walls", gameId],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("walls" as never).select("*").eq("game_id", gameId) as unknown as Promise<{ data: Wall[] | null; error: { message: string } | null }>);
+      if (error) throw new Error(error.message);
+      return (data ?? []) as Wall[];
+    },
+  });
+  useEffect(() => {
+    const ch1 = supabase.channel(`fog:${gameId}`).on("postgres_changes",
+      { event: "*", schema: "public", table: "fog_regions", filter: `game_id=eq.${gameId}` },
+      () => qc.invalidateQueries({ queryKey: ["fog_regions", gameId] })).subscribe();
+    const ch2 = supabase.channel(`walls:${gameId}`).on("postgres_changes",
+      { event: "*", schema: "public", table: "walls", filter: `game_id=eq.${gameId}` },
+      () => qc.invalidateQueries({ queryKey: ["walls", gameId] })).subscribe();
+    return () => { supabase.removeChannel(ch1); supabase.removeChannel(ch2); };
+  }, [gameId, qc]);
+
+  async function insertFogRegion(ax: number, ay: number, bx: number, by: number, revealed: boolean) {
+    const x = Math.min(ax, bx), y = Math.min(ay, by);
+    const w = Math.abs(bx - ax), h = Math.abs(by - ay);
+    if (w < 0.005 || h < 0.005) return;
+    const { error } = await (supabase.from("fog_regions" as never).insert({ game_id: gameId, x, y, w, h, revealed, author_id: userId } as never) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+  async function clearFog() {
+    if (!confirm("Apagar toda a fog desta mesa?")) return;
+    const { error } = await (supabase.from("fog_regions" as never).delete().eq("game_id", gameId) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+  async function revealAll() {
+    const { error } = await (supabase.from("fog_regions" as never).insert({ game_id: gameId, x: 0, y: 0, w: 1, h: 1, revealed: true, author_id: userId } as never) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+  async function insertWall(x1: number, y1: number, x2: number, y2: number) {
+    if (Math.hypot(x2 - x1, y2 - y1) < 0.01) return;
+    const { error } = await (supabase.from("walls" as never).insert({ game_id: gameId, x1, y1, x2, y2, author_id: userId } as never) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+  async function deleteWall(id: string) {
+    const { error } = await (supabase.from("walls" as never).delete().eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+  async function clearWalls() {
+    if (!confirm("Apagar todas as paredes?")) return;
+    const { error } = await (supabase.from("walls" as never).delete().eq("game_id", gameId) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+  async function toggleGameFlag(field: "fog_enabled" | "dynamic_lighting", value: boolean) {
+    const { error } = await (supabase.from("games").update({ [field]: value } as never).eq("id", gameId) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+    else qc.invalidateQueries({ queryKey: ["game", gameId] });
+  }
+  async function setTokenVision(t: Token) {
+    const cur = t.vision_radius ?? 0;
+    const raw = window.prompt(`Raio de visão de "${t.label}" (em células, 0 = sem visão):`, String(cur));
+    if (raw === null) return;
+    const n = Math.max(0, Math.min(60, Number(raw) || 0));
+    const { error } = await (supabase.from("tokens").update({ vision_radius: n } as never).eq("id", t.id) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+
+  // Visibility polygons (raycasting) — computed when dynamicLighting is on.
+  const visibilityPolygons = useMemo(() => {
+    if (!visibility.dynamicLighting) return [] as string[];
+    const rect = (innerRef.current ?? boardRef.current)?.getBoundingClientRect();
+    if (!rect) return [];
+    const sources = isNarrator
+      ? tokens.filter((t) => (t.vision_radius ?? 0) > 0)
+      : tokens.filter((t) => t.owner_id === userId && (t.vision_radius ?? 0) > 0);
+    if (sources.length === 0) return [];
+    const W = rect.width, H = rect.height;
+    const wallsPx = walls.map((w) => ({ ax: w.x1 * W, ay: w.y1 * H, bx: w.x2 * W, by: w.y2 * H }));
+    const out: string[] = [];
+    for (const t of sources) {
+      const ox = t.x * W, oy = t.y * H;
+      const radius = (t.vision_radius ?? 0) * gridSettings.size;
+      const N = 96;
+      const pts: [number, number][] = [];
+      for (let i = 0; i < N; i++) {
+        const ang = (i / N) * Math.PI * 2;
+        const dx = Math.cos(ang), dy = Math.sin(ang);
+        let bestT = radius;
+        for (const w of wallsPx) {
+          const sx = w.ax - ox, sy = w.ay - oy;
+          const rx = w.bx - w.ax, ry = w.by - w.ay;
+          const denom = dx * ry - dy * rx;
+          if (Math.abs(denom) < 1e-6) continue;
+          const tt = (sx * ry - sy * rx) / denom;
+          const uu = (sx * dy - sy * dx) / denom;
+          if (tt >= 0 && tt < bestT && uu >= 0 && uu <= 1) bestT = tt;
+        }
+        pts.push([ox + dx * bestT, oy + dy * bestT]);
+      }
+      // Convert to viewBox 1000x1000 coords
+      const path = pts.map(([px, py], i) => `${i === 0 ? "M" : "L"}${(px / W) * 1000},${(py / H) * 1000}`).join(" ") + " Z";
+      out.push(path);
+    }
+    return out;
+  }, [tokens, walls, visibility.dynamicLighting, isNarrator, userId, gridSettings.size]);
+  // ─────────────────────────────────────────────────────────
+
   function snap(v: number, dim: number) {
     if (!gridSettings.snap || !gridSettings.enabled) return Math.max(0, Math.min(1, v));
     const px = v * dim;
@@ -310,11 +438,38 @@ export function MapBoard({
       }
       setDrawingShape(base);
     }
+    if (mode === "fog" && isNarrator) {
+      const p = pointToRelRaw(e.clientX, e.clientY);
+      setFogRect({ ax: p.x, ay: p.y, bx: p.x, by: p.y });
+      return;
+    }
+    if (mode === "walls" && isNarrator) {
+      const p = pointToRelRaw(e.clientX, e.clientY);
+      if (!wallStart) {
+        setWallStart({ x: p.x, y: p.y });
+        setWallCursor({ x: p.x, y: p.y });
+      } else {
+        void insertWall(wallStart.x, wallStart.y, p.x, p.y);
+        setWallStart(null);
+        setWallCursor(null);
+      }
+      return;
+    }
   }
   function onMouseMoveBoard(e: React.MouseEvent) {
     if (mode === "ruler" && ruler) {
       const p = pointToRelRaw(e.clientX, e.clientY);
       setRuler({ ...ruler, bx: p.x, by: p.y });
+      return;
+    }
+    if (mode === "fog" && fogRect) {
+      const p = pointToRelRaw(e.clientX, e.clientY);
+      setFogRect({ ...fogRect, bx: p.x, by: p.y });
+      return;
+    }
+    if (mode === "walls" && wallStart) {
+      const p = pointToRelRaw(e.clientX, e.clientY);
+      setWallCursor({ x: p.x, y: p.y });
       return;
     }
     if (mode === "draw" && drawingShape) {
@@ -343,13 +498,16 @@ export function MapBoard({
   }
   async function onMouseUpBoard() {
     if (mode === "ruler") {
-      // Keep the ruler visible until user clicks again or changes mode
+      return;
+    }
+    if (mode === "fog" && fogRect) {
+      await insertFogRegion(fogRect.ax, fogRect.ay, fogRect.bx, fogRect.by, fogTool === "reveal");
+      setFogRect(null);
       return;
     }
     if (mode === "draw" && drawingShape) {
       const d = drawingShape;
       setDrawingShape(null);
-      // Discard zero-size shapes (accidental clicks)
       if (d.kind === "rect" && ((d.geometry.w ?? 0) < 0.005 || (d.geometry.h ?? 0) < 0.005)) return;
       if (d.kind === "circle" && (d.geometry.r ?? 0) < 0.005) return;
       if (d.kind === "line") {
@@ -479,7 +637,7 @@ export function MapBoard({
       className={`relative overflow-hidden rounded-xl border border-border bg-muted ${bgAspect ? "max-h-full max-w-full" : "h-full w-full"}`}
       style={{
         ...(bgAspect ? { aspectRatio: String(bgAspect), height: "100%", width: "auto" } : {}),
-        cursor: mode === "ruler" ? "crosshair" : mode === "draw" ? "crosshair" : undefined,
+        cursor: mode === "ruler" || mode === "draw" || mode === "fog" || mode === "walls" ? "crosshair" : undefined,
       }}
     >
       {topLeftSlot && <div className="absolute left-3 top-3 z-30 flex items-center gap-2">{topLeftSlot}</div>}
@@ -495,6 +653,14 @@ export function MapBoard({
         showGMLayer={showGMLayer} setShowGMLayer={setShowGMLayer}
         onClearMine={clearMyDrawings}
         isMobile={isMobile}
+        visibility={visibility}
+        fogTool={fogTool} setFogTool={setFogTool}
+        onClearFog={clearFog}
+        onRevealAll={revealAll}
+        onClearWalls={clearWalls}
+        onToggleFog={(v) => toggleGameFlag("fog_enabled", v)}
+        onToggleLighting={(v) => toggleGameFlag("dynamic_lighting", v)}
+        visEnabled={visEnabled} setVisEnabled={setVisEnabled}
       />
 
       <div
@@ -529,6 +695,78 @@ export function MapBoard({
         {visibleDrawings.map((d) => renderDrawing(d, false, isNarrator, userId, deleteDrawing))}
         {drawingShape && renderDrawing(drawingShape, true, isNarrator, userId, deleteDrawing)}
       </svg>
+
+      {/* Walls layer — visible to narrator only */}
+      {isNarrator && (walls.length > 0 || (wallStart && wallCursor)) && (
+        <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1000 1000" preserveAspectRatio="none">
+          {walls.map((w) => (
+            <g key={w.id}>
+              <line
+                x1={w.x1 * 1000} y1={w.y1 * 1000} x2={w.x2 * 1000} y2={w.y2 * 1000}
+                stroke="#ef4444" strokeWidth={3} strokeDasharray="4 3" strokeLinecap="round"
+                vectorEffect="non-scaling-stroke" opacity={0.85}
+              />
+              {mode === "walls" && (
+                <g style={{ cursor: "pointer", pointerEvents: "auto" }} onClick={() => deleteWall(w.id)}>
+                  <circle cx={(w.x1 + w.x2) / 2 * 1000} cy={(w.y1 + w.y2) / 2 * 1000} r={8} fill="hsl(0 84% 60%)" />
+                  <text x={(w.x1 + w.x2) / 2 * 1000} y={(w.y1 + w.y2) / 2 * 1000 + 4} fontSize={11} textAnchor="middle" fill="white" fontWeight="bold">×</text>
+                </g>
+              )}
+            </g>
+          ))}
+          {wallStart && wallCursor && (
+            <line
+              x1={wallStart.x * 1000} y1={wallStart.y * 1000}
+              x2={wallCursor.x * 1000} y2={wallCursor.y * 1000}
+              stroke="#fbbf24" strokeWidth={2} vectorEffect="non-scaling-stroke"
+            />
+          )}
+        </svg>
+      )}
+
+      {/* Fog of War + Dynamic Lighting */}
+      {fogActive && visEnabled && (
+        <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1000 1000" preserveAspectRatio="none">
+          <defs>
+            <mask id={`fog-mask-${gameId}`}>
+              {/* Start fully covered */}
+              <rect x="0" y="0" width="1000" height="1000" fill="white" />
+              {/* Subtract revealed regions (manual fog) */}
+              {visibility.fogEnabled && fogRegions.filter((r) => r.revealed).map((r) => (
+                <rect key={r.id} x={r.x * 1000} y={r.y * 1000} width={r.w * 1000} height={r.h * 1000} fill="black" />
+              ))}
+              {/* Subtract visibility polygons (dynamic lighting) */}
+              {visibilityPolygons.map((d, i) => (
+                <path key={`vis-${i}`} d={d} fill="black" />
+              ))}
+              {/* Re-cover hidden regions on top */}
+              {visibility.fogEnabled && fogRegions.filter((r) => !r.revealed).map((r) => (
+                <rect key={r.id} x={r.x * 1000} y={r.y * 1000} width={r.w * 1000} height={r.h * 1000} fill="white" />
+              ))}
+            </mask>
+          </defs>
+          <rect
+            x="0" y="0" width="1000" height="1000"
+            fill="#000000"
+            opacity={isNarrator ? 0.5 : 1}
+            mask={`url(#fog-mask-${gameId})`}
+          />
+          {/* Live fog rectangle preview */}
+          {isNarrator && mode === "fog" && fogRect && (() => {
+            const x = Math.min(fogRect.ax, fogRect.bx) * 1000;
+            const y = Math.min(fogRect.ay, fogRect.by) * 1000;
+            const w = Math.abs(fogRect.bx - fogRect.ax) * 1000;
+            const h = Math.abs(fogRect.by - fogRect.ay) * 1000;
+            return (
+              <rect x={x} y={y} width={w} height={h}
+                fill={fogTool === "reveal" ? "rgba(34,197,94,0.25)" : "rgba(239,68,68,0.25)"}
+                stroke={fogTool === "reveal" ? "#22c55e" : "#ef4444"} strokeWidth={2}
+                strokeDasharray="4 3" vectorEffect="non-scaling-stroke"
+              />
+            );
+          })()}
+        </svg>
+      )}
 
       {/* Ruler overlay */}
       {ruler && rulerInfo && (
@@ -655,15 +893,26 @@ export function MapBoard({
                   onClose={() => setSelectedTokenId(null)}
                   onOpenSheet={() => onOpenSheet?.(t.character_kind, t.character_id, t.label)}
                   extra={isNarrator ? (
-                    <button
-                      type="button"
-                      onClick={() => toggleTokenLayer(t.id, (t.layer ?? "tokens") as "tokens" | "gm")}
-                      className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-background px-2 text-[11px] font-semibold hover:bg-accent"
-                      title="Mover entre camada visível e GM"
-                    >
-                      {onGmLayer ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
-                      {onGmLayer ? "Tornar visível" : "Mover para GM"}
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => toggleTokenLayer(t.id, (t.layer ?? "tokens") as "tokens" | "gm")}
+                        className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-background px-2 text-[11px] font-semibold hover:bg-accent"
+                        title="Mover entre camada visível e GM"
+                      >
+                        {onGmLayer ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                        {onGmLayer ? "Tornar visível" : "Mover para GM"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTokenVision(t)}
+                        className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-background px-2 text-[11px] font-semibold hover:bg-accent"
+                        title="Definir raio de visão deste token"
+                      >
+                        <Lightbulb className="h-3 w-3" />
+                        Visão{(t.vision_radius ?? 0) > 0 ? `: ${t.vision_radius}` : ""}
+                      </button>
+                    </>
                   ) : undefined}
                 />
               </div>
@@ -767,6 +1016,11 @@ function MapToolbar({
   showGMLayer, setShowGMLayer,
   onClearMine,
   isMobile,
+  visibility,
+  fogTool, setFogTool,
+  onClearFog, onRevealAll, onClearWalls,
+  onToggleFog, onToggleLighting,
+  visEnabled, setVisEnabled,
 }: {
   mode: Mode; setMode: (m: Mode) => void;
   drawTool: DrawKind; setDrawTool: (k: DrawKind) => void;
@@ -777,6 +1031,14 @@ function MapToolbar({
   showGMLayer: boolean; setShowGMLayer: (b: boolean) => void;
   onClearMine: () => void;
   isMobile?: boolean;
+  visibility: Visibility;
+  fogTool: "reveal" | "hide"; setFogTool: (t: "reveal" | "hide") => void;
+  onClearFog: () => void;
+  onRevealAll: () => void;
+  onClearWalls: () => void;
+  onToggleFog: (v: boolean) => void;
+  onToggleLighting: (v: boolean) => void;
+  visEnabled: boolean; setVisEnabled: (b: boolean) => void;
 }) {
   return (
     <div
@@ -788,6 +1050,12 @@ function MapToolbar({
         <ToolBtn active={mode === "select"} onClick={() => setMode("select")} title="Selecionar (clique e arraste tokens)"><MousePointer2 className="h-3.5 w-3.5" /></ToolBtn>
         <ToolBtn active={mode === "ruler"} onClick={() => setMode("ruler")} title="Régua (medir distância)"><Ruler className="h-3.5 w-3.5" /></ToolBtn>
         <ToolBtn active={mode === "draw"} onClick={() => setMode("draw")} title="Desenhar"><Pencil className="h-3.5 w-3.5" /></ToolBtn>
+        {isNarrator && (
+          <>
+            <ToolBtn active={mode === "fog"} onClick={() => setMode("fog")} title="Fog of War (manual)"><CloudFog className="h-3.5 w-3.5" /></ToolBtn>
+            <ToolBtn active={mode === "walls"} onClick={() => setMode("walls")} title="Paredes (bloqueiam visão)"><Box className="h-3.5 w-3.5" /></ToolBtn>
+          </>
+        )}
       </div>
       {mode === "draw" && (
         <>
@@ -813,6 +1081,39 @@ function MapToolbar({
             </div>
           )}
         </>
+      )}
+      {mode === "fog" && isNarrator && (
+        <div className="flex flex-col gap-1 border-t border-border pt-1">
+          <div className="flex gap-1">
+            <ToolBtn active={fogTool === "reveal"} onClick={() => setFogTool("reveal")} title="Pincel: revelar área">Revelar</ToolBtn>
+            <ToolBtn active={fogTool === "hide"} onClick={() => setFogTool("hide")} title="Pincel: ocultar área">Ocultar</ToolBtn>
+          </div>
+          <div className="flex gap-1">
+            <ToolBtn onClick={onRevealAll} title="Revelar mapa inteiro">Tudo</ToolBtn>
+            <ToolBtn onClick={onClearFog} title="Apagar toda a fog"><Trash2 className="h-3.5 w-3.5" /></ToolBtn>
+          </div>
+        </div>
+      )}
+      {mode === "walls" && isNarrator && (
+        <div className="flex flex-col gap-1 border-t border-border pt-1">
+          <p className="px-1 text-[10px] text-muted-foreground">Clique 2x para criar parede</p>
+          <ToolBtn onClick={onClearWalls} title="Apagar todas as paredes"><Trash2 className="h-3.5 w-3.5" /></ToolBtn>
+        </div>
+      )}
+      {isNarrator && (
+        <div className="flex gap-1 border-t border-border pt-1">
+          <ToolBtn active={visibility.fogEnabled} onClick={() => onToggleFog(!visibility.fogEnabled)} title={visibility.fogEnabled ? "Desativar Fog of War" : "Ativar Fog of War"}>
+            <CloudFog className="h-3.5 w-3.5" />
+          </ToolBtn>
+          <ToolBtn active={visibility.dynamicLighting} onClick={() => onToggleLighting(!visibility.dynamicLighting)} title={visibility.dynamicLighting ? "Desativar visão dinâmica" : "Ativar visão dinâmica"}>
+            <Lightbulb className="h-3.5 w-3.5" />
+          </ToolBtn>
+          {(visibility.fogEnabled || visibility.dynamicLighting) && (
+            <ToolBtn active={!visEnabled} onClick={() => setVisEnabled(!visEnabled)} title={visEnabled ? "Esconder fog localmente (narrador)" : "Mostrar fog"}>
+              {visEnabled ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+            </ToolBtn>
+          )}
+        </div>
       )}
       <div className="flex gap-1 border-t border-border pt-1">
         {isNarrator && (

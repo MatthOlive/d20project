@@ -54,7 +54,7 @@ function GameRoom() {
       // Note: invite_code is intentionally excluded — narrator fetches it via get_game_invite_code RPC.
       const { data, error } = await supabase
         .from("games")
-        .select("id,narrator_id,name,background_url,created_at,system,language,narrator_type,shiny_chance,overgrown_chance,contest_weights,grid_enabled,grid_snap,grid_size,grid_color,grid_opacity,grid_unit_m,grid_unit_label")
+        .select("id,narrator_id,name,background_url,created_at,system,language,narrator_type,shiny_chance,overgrown_chance,contest_weights,grid_enabled,grid_snap,grid_size,grid_color,grid_opacity,grid_unit_m,grid_unit_label,fog_enabled,dynamic_lighting")
         .eq("id", gameId)
         .single();
       if (error) throw error;
@@ -179,6 +179,10 @@ function GameRoom() {
         opacity: (game as never as { grid_opacity?: number }).grid_opacity ?? 30,
         unitMeters: Number((game as never as { grid_unit_m?: number }).grid_unit_m ?? 1.5),
         unitLabel: (game as never as { grid_unit_label?: string }).grid_unit_label ?? "m",
+      }}
+      visibility={{
+        fogEnabled: (game as never as { fog_enabled?: boolean }).fog_enabled ?? false,
+        dynamicLighting: (game as never as { dynamic_lighting?: boolean }).dynamic_lighting ?? false,
       }}
     />
   );
