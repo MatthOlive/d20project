@@ -1801,7 +1801,7 @@ function MinimalSheetButton({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm" variant="outline">
-          <Plus className="mr-1 h-3.5 w-3.5" /> Simples
+          <Plus className="mr-1 h-3.5 w-3.5" /> Handouts
         </Button>
       </DialogTrigger>
       <DialogContent>
