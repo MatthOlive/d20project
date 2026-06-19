@@ -48,7 +48,7 @@ function GameRoom() {
   const [mobileTab, setMobileTab] = useState<"map" | "chat" | "compendium" | "files">("map");
   const qc = useQueryClient();
 
-  const { data: game } = useQuery({
+  const { data: game, error: gameError, isLoading: gameLoading } = useQuery({
     queryKey: ["game", gameId],
     queryFn: async () => {
       // Note: invite_code is intentionally excluded — narrator fetches it via get_game_invite_code RPC.
@@ -60,6 +60,7 @@ function GameRoom() {
       if (error) throw error;
       return data;
     },
+    retry: false,
   });
 
   // Character list lives in <FilesPanel>.
