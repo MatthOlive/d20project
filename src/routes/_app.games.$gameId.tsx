@@ -252,7 +252,7 @@ function GameRoom() {
               onClick={() => onClickBaseTab(t)}
               className={`shrink-0 rounded-md px-2 py-2 text-xs font-bold uppercase ${mobileTab === t ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
             >
-              {t === "map" ? "Mapa" : t === "chat" ? "Chat" : t === "compendium" ? "Compendium" : "Files"}
+              {t === "map" ? "Mapa" : t === "chat" ? "Chat" : t === "compendium" ? "Compendium" : t === "files" ? "Files" : "Música"}
             </button>
           ))}
           {windows.map((w) => {
