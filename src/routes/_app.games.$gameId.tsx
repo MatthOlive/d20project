@@ -173,6 +173,15 @@ function GameRoom() {
           isNarrator={isNarrator}
           onRoll={rollFromSheet}
           onOpenSheet={(kind, id, label) => openWindow({ kind, id, title: label })}
+          gridSettings={{
+            enabled: (game as never as { grid_enabled?: boolean }).grid_enabled ?? true,
+            snap: (game as never as { grid_snap?: boolean }).grid_snap ?? true,
+            size: (game as never as { grid_size?: number }).grid_size ?? 56,
+            color: (game as never as { grid_color?: string }).grid_color ?? "#000000",
+            opacity: (game as never as { grid_opacity?: number }).grid_opacity ?? 30,
+            unitMeters: Number((game as never as { grid_unit_m?: number }).grid_unit_m ?? 1.5),
+            unitLabel: (game as never as { grid_unit_label?: string }).grid_unit_label ?? "m",
+          }}
         />
         <MapLeftDisclosure
           isNarrator={isNarrator}
