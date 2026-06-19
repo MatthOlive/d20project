@@ -468,6 +468,7 @@ export function MapBoard({
         isNarrator={isNarrator}
         showGMLayer={showGMLayer} setShowGMLayer={setShowGMLayer}
         onClearMine={clearMyDrawings}
+        isMobile={isMobile}
       />
 
       <div
