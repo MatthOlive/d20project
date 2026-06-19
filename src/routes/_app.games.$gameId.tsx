@@ -196,11 +196,13 @@ function GameRoom() {
               <OnlinePresence gameId={gameId} userId={user.id} isNarrator={isNarrator} />
             </div>
             <Tabs defaultValue="chat" className="flex min-h-0 flex-1 flex-col">
-              <TabsList className="m-2 grid shrink-0 grid-cols-4">
+              {/* Music tab temporariamente removida — manter MusicPanel/MusicPlayer intactos para reativar depois.
+                  Para reativar: trocar grid-cols-3 por grid-cols-4 e descomentar TabsTrigger/TabsContent abaixo. */}
+              <TabsList className="m-2 grid shrink-0 grid-cols-3">
                 <TabsTrigger value="chat">Chat</TabsTrigger>
                 <TabsTrigger value="compendium">Compendium</TabsTrigger>
                 <TabsTrigger value="files">Files</TabsTrigger>
-                <TabsTrigger value="music">Music</TabsTrigger>
+                {/* <TabsTrigger value="music">Music</TabsTrigger> */}
               </TabsList>
               <TabsContent value="chat" className="mt-0 min-h-0 flex-1 overflow-hidden">
                 <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} isGameOwner={isNarrator} />
@@ -211,9 +213,9 @@ function GameRoom() {
               <TabsContent value="files" className="mt-0 min-h-0 flex-1 overflow-auto p-3">
                 <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindow} />
               </TabsContent>
-              <TabsContent value="music" className="mt-0 min-h-0 flex-1 overflow-hidden">
+              {/* <TabsContent value="music" className="mt-0 min-h-0 flex-1 overflow-hidden">
                 <MusicPanel gameId={gameId} isNarrator={isNarrator} />
-              </TabsContent>
+              </TabsContent> */}
             </Tabs>
           </Card>
         </RightOverlayPanel>
