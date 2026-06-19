@@ -92,7 +92,7 @@ function TrainerBar({ id, label, onRoll, onClose, onOpenSheet, extra }: Props) {
   );
 }
 
-function PokemonBar({ id, label, gameId, userId, onRoll, onClose, onOpenSheet }: Props) {
+function PokemonBar({ id, label, gameId, userId, onRoll, onClose, onOpenSheet, extra }: Props) {
   const { data: p } = useQuery({
     queryKey: ["token-pokemon", id],
     queryFn: async () => {
