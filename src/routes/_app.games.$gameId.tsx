@@ -1323,7 +1323,24 @@ function ScenarioButtons({ gameId, currentBg }: { gameId: string; currentBg: str
     else { toast.success("Scenario created"); qc.invalidateQueries({ queryKey: ["scenarios", gameId] }); }
   }
   async function applyScenario(s: Scenario) {
-    await supabase.from("games").update({ background_url: s.background_url }).eq("id", gameId);
+    await supabase.from("games").update({
+      background_url: s.background_url,
+      current_scenario_id: s.id,
+    } as never).eq("id", gameId);
+    // Auto-play first non-SFX track tagged to this scenario (if any)
+    const { data: pl } = await supabase
+      .from("music_tracks")
+      .select("id")
+      .eq("game_id", gameId)
+      .eq("scenario_id", s.id)
+      .eq("is_sfx", false)
+      .order("position", { ascending: true })
+      .limit(1);
+    const first = (pl ?? [])[0] as { id: string } | undefined;
+    if (first) {
+      await supabase.from("music_tracks").update({ is_playing: false } as never).eq("game_id", gameId).eq("is_sfx", false);
+      await supabase.from("music_tracks").update({ is_playing: true } as never).eq("id", first.id);
+    }
     qc.invalidateQueries({ queryKey: ["game", gameId] });
     toast.success(`Loaded "${s.name}"`);
     setOpen(false);
