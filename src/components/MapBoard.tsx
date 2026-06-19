@@ -243,6 +243,124 @@ export function MapBoard({
     [drawings, isNarrator, showGMLayer],
   );
 
+  // ───────────── Fog of War + Walls (Phase 2) ─────────────
+  const [fogTool, setFogTool] = useState<"reveal" | "hide">("reveal");
+  const [fogRect, setFogRect] = useState<{ ax: number; ay: number; bx: number; by: number } | null>(null);
+  const [wallStart, setWallStart] = useState<{ x: number; y: number } | null>(null);
+  const [wallCursor, setWallCursor] = useState<{ x: number; y: number } | null>(null);
+  const [visEnabled, setVisEnabled] = useState(true);
+  const fogActive = visibility.fogEnabled || visibility.dynamicLighting;
+
+  const { data: fogRegions = [] } = useQuery({
+    queryKey: ["fog_regions", gameId],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("fog_regions" as never).select("*").eq("game_id", gameId) as unknown as Promise<{ data: FogRegion[] | null; error: { message: string } | null }>);
+      if (error) throw new Error(error.message);
+      return (data ?? []) as FogRegion[];
+    },
+  });
+  const { data: walls = [] } = useQuery({
+    queryKey: ["walls", gameId],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("walls" as never).select("*").eq("game_id", gameId) as unknown as Promise<{ data: Wall[] | null; error: { message: string } | null }>);
+      if (error) throw new Error(error.message);
+      return (data ?? []) as Wall[];
+    },
+  });
+  useEffect(() => {
+    const ch1 = supabase.channel(`fog:${gameId}`).on("postgres_changes",
+      { event: "*", schema: "public", table: "fog_regions", filter: `game_id=eq.${gameId}` },
+      () => qc.invalidateQueries({ queryKey: ["fog_regions", gameId] })).subscribe();
+    const ch2 = supabase.channel(`walls:${gameId}`).on("postgres_changes",
+      { event: "*", schema: "public", table: "walls", filter: `game_id=eq.${gameId}` },
+      () => qc.invalidateQueries({ queryKey: ["walls", gameId] })).subscribe();
+    return () => { supabase.removeChannel(ch1); supabase.removeChannel(ch2); };
+  }, [gameId, qc]);
+
+  async function insertFogRegion(ax: number, ay: number, bx: number, by: number, revealed: boolean) {
+    const x = Math.min(ax, bx), y = Math.min(ay, by);
+    const w = Math.abs(bx - ax), h = Math.abs(by - ay);
+    if (w < 0.005 || h < 0.005) return;
+    const { error } = await (supabase.from("fog_regions" as never).insert({ game_id: gameId, x, y, w, h, revealed, author_id: userId } as never) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+  async function clearFog() {
+    if (!confirm("Apagar toda a fog desta mesa?")) return;
+    const { error } = await (supabase.from("fog_regions" as never).delete().eq("game_id", gameId) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+  async function revealAll() {
+    const { error } = await (supabase.from("fog_regions" as never).insert({ game_id: gameId, x: 0, y: 0, w: 1, h: 1, revealed: true, author_id: userId } as never) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+  async function insertWall(x1: number, y1: number, x2: number, y2: number) {
+    if (Math.hypot(x2 - x1, y2 - y1) < 0.01) return;
+    const { error } = await (supabase.from("walls" as never).insert({ game_id: gameId, x1, y1, x2, y2, author_id: userId } as never) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+  async function deleteWall(id: string) {
+    const { error } = await (supabase.from("walls" as never).delete().eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+  async function clearWalls() {
+    if (!confirm("Apagar todas as paredes?")) return;
+    const { error } = await (supabase.from("walls" as never).delete().eq("game_id", gameId) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+  async function toggleGameFlag(field: "fog_enabled" | "dynamic_lighting", value: boolean) {
+    const { error } = await (supabase.from("games").update({ [field]: value } as never).eq("id", gameId) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+    else qc.invalidateQueries({ queryKey: ["game", gameId] });
+  }
+  async function setTokenVision(t: Token) {
+    const cur = t.vision_radius ?? 0;
+    const raw = window.prompt(`Raio de visão de "${t.label}" (em células, 0 = sem visão):`, String(cur));
+    if (raw === null) return;
+    const n = Math.max(0, Math.min(60, Number(raw) || 0));
+    const { error } = await (supabase.from("tokens").update({ vision_radius: n } as never).eq("id", t.id) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+
+  // Visibility polygons (raycasting) — computed when dynamicLighting is on.
+  const visibilityPolygons = useMemo(() => {
+    if (!visibility.dynamicLighting) return [] as string[];
+    const rect = (innerRef.current ?? boardRef.current)?.getBoundingClientRect();
+    if (!rect) return [];
+    const sources = isNarrator
+      ? tokens.filter((t) => (t.vision_radius ?? 0) > 0)
+      : tokens.filter((t) => t.owner_id === userId && (t.vision_radius ?? 0) > 0);
+    if (sources.length === 0) return [];
+    const W = rect.width, H = rect.height;
+    const wallsPx = walls.map((w) => ({ ax: w.x1 * W, ay: w.y1 * H, bx: w.x2 * W, by: w.y2 * H }));
+    const out: string[] = [];
+    for (const t of sources) {
+      const ox = t.x * W, oy = t.y * H;
+      const radius = (t.vision_radius ?? 0) * gridSettings.size;
+      const N = 96;
+      const pts: [number, number][] = [];
+      for (let i = 0; i < N; i++) {
+        const ang = (i / N) * Math.PI * 2;
+        const dx = Math.cos(ang), dy = Math.sin(ang);
+        let bestT = radius;
+        for (const w of wallsPx) {
+          const sx = w.ax - ox, sy = w.ay - oy;
+          const rx = w.bx - w.ax, ry = w.by - w.ay;
+          const denom = dx * ry - dy * rx;
+          if (Math.abs(denom) < 1e-6) continue;
+          const tt = (sx * ry - sy * rx) / denom;
+          const uu = (sx * dy - sy * dx) / denom;
+          if (tt >= 0 && tt < bestT && uu >= 0 && uu <= 1) bestT = tt;
+        }
+        pts.push([ox + dx * bestT, oy + dy * bestT]);
+      }
+      // Convert to viewBox 1000x1000 coords
+      const path = pts.map(([px, py], i) => `${i === 0 ? "M" : "L"}${(px / W) * 1000},${(py / H) * 1000}`).join(" ") + " Z";
+      out.push(path);
+    }
+    return out;
+  }, [tokens, walls, visibility.dynamicLighting, isNarrator, userId, gridSettings.size]);
+  // ─────────────────────────────────────────────────────────
+
   function snap(v: number, dim: number) {
     if (!gridSettings.snap || !gridSettings.enabled) return Math.max(0, Math.min(1, v));
     const px = v * dim;
