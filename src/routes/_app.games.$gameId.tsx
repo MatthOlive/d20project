@@ -1787,9 +1787,16 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
     const o = Math.max(0, Math.min(100, Math.round(over)));
     const cw: Record<string, number> = {};
     for (const c of REACTION_DECK) cw[c.id] = Math.max(0, Math.min(100, Math.round(weights[c.id] ?? 0)));
+    const gs = Math.max(16, Math.min(256, Math.round(gridSize)));
+    const go = Math.max(0, Math.min(100, Math.round(gridOpacity)));
+    const um = Math.max(0.1, Math.min(100, Number(gridUnitM)));
     const { error } = await supabase
       .from("games")
-      .update({ shiny_chance: s, overgrown_chance: o, contest_weights: cw, spdef_uses_insight: spdefIns } as never)
+      .update({
+        shiny_chance: s, overgrown_chance: o, contest_weights: cw, spdef_uses_insight: spdefIns,
+        grid_enabled: gridEnabled, grid_snap: gridSnap, grid_size: gs,
+        grid_color: gridColor, grid_opacity: go, grid_unit_m: um, grid_unit_label: gridUnitLabel,
+      } as never)
       .eq("id", gameId);
     if (error) { toast.error(error.message); return; }
     toast.success("Configurações salvas");
