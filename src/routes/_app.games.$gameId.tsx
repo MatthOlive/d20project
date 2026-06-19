@@ -1171,8 +1171,9 @@ function CompendiumPanel() {
   );
 }
 
-const MECHANICS: { title: string; body: string }[] = [
+const MECHANICS: { title: string; body: string; category: string }[] = [
   {
+    category: "Básico",
     title: "Dice & Successes",
     body:
       "Pokérole 2.0 uses pools of d6. Each die showing 4, 5 or 6 counts as 1 success. " +
@@ -1181,6 +1182,7 @@ const MECHANICS: { title: string; body: string }[] = [
       "an opposing roll. Ties favor the defender.",
   },
   {
+    category: "Básico",
     title: "Action Economy (Round)",
     body:
       "On a round every character may take ONE main action (move + attack, or a full action " +
@@ -1189,6 +1191,7 @@ const MECHANICS: { title: string; body: string }[] = [
       "drop an item) don't cost the round.",
   },
   {
+    category: "Combate",
     title: "Combat — Accuracy & Damage",
     body:
       "Attack roll = (Accuracy Attribute) + (Accuracy Skill). Each success beyond the " +
@@ -1198,26 +1201,14 @@ const MECHANICS: { title: string; body: string }[] = [
       "matches a type of the user.",
   },
   {
+    category: "Combate",
     title: "Pain Penalty",
     body:
       "Track current HP vs max. At ≤ half max HP every roll loses 1 success (pain penalty 1). " +
       "At 1 HP remaining the penalty becomes 2. Reaching 0 HP knocks the character out.",
   },
   {
-    title: "Will & Mental Effects",
-    body:
-      "Will = Insight + 2 (max). Spend Will to use Channel-based abilities, resist mental " +
-      "moves, or push through fear/charm/confusion. Restore Will by resting, eating a meal, " +
-      "or scenes of camaraderie.",
-  },
-  {
-    title: "Confidence & Loyalty",
-    body:
-      "Pokémon track Happiness, Loyalty and Confidence (0–5). Confidence is spent like Will " +
-      "to re-roll one die or shrug off a status. Build it through victories, training and " +
-      "respecting the Pokémon's Nature; lose it from defeat or mistreatment.",
-  },
-  {
+    category: "Combate",
     title: "Status Conditions",
     body:
       "Burn: lose 1 HP at round start, −1 Strength. Poison: 1 HP/round, doubles after the " +
@@ -1226,6 +1217,23 @@ const MECHANICS: { title: string; body: string }[] = [
       "the next action. Remove with rest, items or healing moves.",
   },
   {
+    category: "Mental & Vontade",
+    title: "Will & Mental Effects",
+    body:
+      "Will = Insight + 2 (max). Spend Will to use Channel-based abilities, resist mental " +
+      "moves, or push through fear/charm/confusion. Restore Will by resting, eating a meal, " +
+      "or scenes of camaraderie.",
+  },
+  {
+    category: "Mental & Vontade",
+    title: "Confidence & Loyalty",
+    body:
+      "Pokémon track Happiness, Loyalty and Confidence (0–5). Confidence is spent like Will " +
+      "to re-roll one die or shrug off a status. Build it through victories, training and " +
+      "respecting the Pokémon's Nature; lose it from defeat or mistreatment.",
+  },
+  {
+    category: "Progressão",
     title: "Ranks",
     body:
       "Starter → Beginner → Amateur → Ace → Pro → Master. Rank caps attributes & skills " +
@@ -1233,12 +1241,14 @@ const MECHANICS: { title: string; body: string }[] = [
       "XP grinding. The Narrator decides when the party gains a Rank.",
   },
   {
+    category: "Progressão",
     title: "Move Learning Cap",
     body:
       "A Pokémon knows at most (Insight + 2) moves at a time. To learn a new move beyond " +
       "the cap you must forget one. Trainers also cap their battle techniques the same way.",
   },
   {
+    category: "Progressão",
     title: "Evolution",
     body:
       "Evolve when at the required Rank (or holding the right item/stone) and after a " +
@@ -1246,6 +1256,7 @@ const MECHANICS: { title: string; body: string }[] = [
       "may refuse evolution — Loyalty rolls decide.",
   },
   {
+    category: "Especial",
     title: "Z-Moves & Dynamax",
     body:
       "Z-Move: once per scene, transform one damaging move into its Z-form (renamed by type, " +
@@ -1254,6 +1265,7 @@ const MECHANICS: { title: string; body: string }[] = [
       "(Power +3 of the base) — only species with a G-Max form.",
   },
   {
+    category: "Social",
     title: "Social / Contest Stats",
     body:
       "Tough · Cool · Beautiful · Cute · Clever. Used for Contests, performances, and " +
@@ -1261,6 +1273,7 @@ const MECHANICS: { title: string; body: string }[] = [
       "Same d6-success mechanics as combat.",
   },
   {
+    category: "Skills",
     title: "Skills",
     body:
       "Trainer skills include Brawl, Throw, Weapons (attack rolls use Dex + one of these). " +
@@ -1269,6 +1282,7 @@ const MECHANICS: { title: string; body: string }[] = [
       "Lore, Medicine, Science, Empathy. Cap = current Rank tier.",
   },
   {
+    category: "Itens",
     title: "Healing & Items",
     body:
       "Potion +2 HP, Super +4, Hyper +6, Max heals to full. Battle Items (X Attack, X Def…) " +
@@ -1277,22 +1291,34 @@ const MECHANICS: { title: string; body: string }[] = [
   },
 ];
 
+const MECHANICS_CATEGORY_ORDER = ["Básico", "Combate", "Mental & Vontade", "Progressão", "Especial", "Social", "Skills", "Itens"];
+
 function MechanicsCompendium() {
   const [q, setQ] = useState("");
   const filtered = MECHANICS.filter(
     (m) => !q || m.title.toLowerCase().includes(q.toLowerCase()) || m.body.toLowerCase().includes(q.toLowerCase()),
   );
+  const groups = MECHANICS_CATEGORY_ORDER
+    .map((cat) => ({ cat, items: filtered.filter((m) => m.category === cat) }))
+    .filter((g) => g.items.length > 0);
   return (
     <div className="flex h-full flex-col gap-2 p-2">
       <Input placeholder="Search rules…" value={q} onChange={(e) => setQ(e.target.value)} className="h-8 text-sm" />
-      <div className="flex-1 overflow-y-auto space-y-1.5">
-        {filtered.map((m) => (
-          <details key={m.title} className="rounded-md border border-border bg-card">
-            <summary className="cursor-pointer px-3 py-2 text-sm font-semibold">{m.title}</summary>
-            <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground leading-relaxed whitespace-pre-line">{m.body}</p>
-          </details>
+      <div className="flex-1 overflow-y-auto space-y-3">
+        {groups.map((g) => (
+          <section key={g.cat} className="space-y-1.5">
+            <h3 className="sticky top-0 z-[1] bg-background/95 px-1 py-1 text-[11px] font-bold uppercase tracking-wider text-primary backdrop-blur">
+              {g.cat}
+            </h3>
+            {g.items.map((m) => (
+              <details key={m.title} className="rounded-md border border-border bg-card">
+                <summary className="cursor-pointer px-3 py-2 text-sm font-semibold">{m.title}</summary>
+                <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground leading-relaxed whitespace-pre-line">{m.body}</p>
+              </details>
+            ))}
+          </section>
         ))}
-        {filtered.length === 0 && <p className="p-4 text-center text-xs text-muted-foreground">No matches.</p>}
+        {groups.length === 0 && <p className="p-4 text-center text-xs text-muted-foreground">No matches.</p>}
       </div>
     </div>
   );
