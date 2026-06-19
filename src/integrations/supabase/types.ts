@@ -151,6 +151,7 @@ export type Database = {
           background_url: string | null
           contest_weights: Json | null
           created_at: string
+          current_scenario_id: string | null
           dynamic_lighting: boolean
           fog_enabled: boolean
           grid_color: string
@@ -163,6 +164,7 @@ export type Database = {
           id: string
           invite_code: string
           language: string
+          master_volume: number
           name: string
           narrator_id: string
           narrator_type: string
@@ -175,6 +177,7 @@ export type Database = {
           background_url?: string | null
           contest_weights?: Json | null
           created_at?: string
+          current_scenario_id?: string | null
           dynamic_lighting?: boolean
           fog_enabled?: boolean
           grid_color?: string
@@ -187,6 +190,7 @@ export type Database = {
           id?: string
           invite_code?: string
           language?: string
+          master_volume?: number
           name: string
           narrator_id: string
           narrator_type?: string
@@ -199,6 +203,7 @@ export type Database = {
           background_url?: string | null
           contest_weights?: Json | null
           created_at?: string
+          current_scenario_id?: string | null
           dynamic_lighting?: boolean
           fog_enabled?: boolean
           grid_color?: string
@@ -211,6 +216,7 @@ export type Database = {
           id?: string
           invite_code?: string
           language?: string
+          master_volume?: number
           name?: string
           narrator_id?: string
           narrator_type?: string
@@ -219,7 +225,15 @@ export type Database = {
           spdef_uses_insight?: boolean
           system?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "games_current_scenario_id_fkey"
+            columns: ["current_scenario_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       initiative: {
         Row: {
@@ -499,36 +513,56 @@ export type Database = {
           added_by: string
           created_at: string
           game_id: string
+          hotkey: string | null
           id: string
           is_playing: boolean
+          is_sfx: boolean
           position: number
+          scenario_id: string | null
           thumbnail: string | null
           title: string
           video_id: string
+          volume: number
         }
         Insert: {
           added_by: string
           created_at?: string
           game_id: string
+          hotkey?: string | null
           id?: string
           is_playing?: boolean
+          is_sfx?: boolean
           position?: number
+          scenario_id?: string | null
           thumbnail?: string | null
           title?: string
           video_id: string
+          volume?: number
         }
         Update: {
           added_by?: string
           created_at?: string
           game_id?: string
+          hotkey?: string | null
           id?: string
           is_playing?: boolean
+          is_sfx?: boolean
           position?: number
+          scenario_id?: string | null
           thumbnail?: string | null
           title?: string
           video_id?: string
+          volume?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "music_tracks_scenario_id_fkey"
+            columns: ["scenario_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       natures: {
         Row: {
