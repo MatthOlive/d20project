@@ -212,7 +212,7 @@ export function MapBoard({
       window.removeEventListener("mouseup", onUp);
       window.removeEventListener("map-zoom", onZoom as EventListener);
     };
-  }, [resizeTokenId, localSize, mode]);
+  }, [resizeTokenId, localSize, mode, zoom]);
 
 
   useEffect(() => {
