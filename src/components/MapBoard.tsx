@@ -1196,6 +1196,7 @@ function MapToolbar({
               <>
                 <ToolBtn active={mode === "fog"} onClick={() => setMode("fog")} title="Fog of War (manual)"><CloudFog className="h-3.5 w-3.5" /></ToolBtn>
                 <ToolBtn active={mode === "walls"} onClick={() => setMode("walls")} title="Paredes (bloqueiam visão)"><Box className="h-3.5 w-3.5" /></ToolBtn>
+                <ToolBtn active={mode === "background"} onClick={() => setMode("background")} title="Backgrounds (mover/redimensionar/rotacionar imagens)"><ImageIcon className="h-3.5 w-3.5" /></ToolBtn>
               </>
             )}
           </div>
