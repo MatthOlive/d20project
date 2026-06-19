@@ -46,7 +46,7 @@ function GameRoom() {
   const { gameId } = Route.useParams();
   const { user } = useAuth();
   const isMobile = useIsMobile();
-  const [mobileTab, setMobileTab] = useState<"map" | "chat" | "compendium" | "files">("map");
+  const [mobileTab, setMobileTab] = useState<string>("map");
   const qc = useQueryClient();
 
   const { data: game, error: gameError, isLoading: gameLoading } = useQuery({
