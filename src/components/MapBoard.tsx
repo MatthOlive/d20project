@@ -1,8 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { X } from "lucide-react";
+import {
+  X, MousePointer2, Ruler, Pencil, Square, Circle as CircleIcon,
+  Minus, Type as TypeIcon, Eraser, Eye, EyeOff,
+} from "lucide-react";
 import { TokenActionBar } from "@/components/TokenActionBar";
 import { TokenStatsBar } from "@/components/TokenStatsBar";
 
@@ -27,9 +30,47 @@ type Token = {
   y: number;
   size: number;
   owner_id: string;
+  layer?: "tokens" | "gm";
 };
 
-const GRID_PX = 56;
+type DrawKind = "freehand" | "rect" | "circle" | "line" | "text";
+
+type Drawing = {
+  id: string;
+  game_id: string;
+  layer: "drawing" | "gm";
+  kind: DrawKind;
+  geometry: {
+    points?: [number, number][];
+    x?: number; y?: number; w?: number; h?: number;
+    cx?: number; cy?: number; r?: number;
+    x1?: number; y1?: number; x2?: number; y2?: number;
+    fontSize?: number;
+  };
+  stroke: string;
+  fill: string | null;
+  stroke_width: number;
+  text_content: string | null;
+  author_id: string;
+  created_at: string;
+};
+
+export type GridSettings = {
+  enabled: boolean;
+  snap: boolean;
+  size: number;
+  color: string;
+  opacity: number; // 0-100
+  unitMeters: number;
+  unitLabel: string;
+};
+
+type Mode = "select" | "ruler" | "draw";
+
+const DEFAULT_GRID: GridSettings = {
+  enabled: true, snap: true, size: 56, color: "#000000",
+  opacity: 30, unitMeters: 1.5, unitLabel: "m",
+};
 
 export function MapBoard({
   gameId,
@@ -39,6 +80,7 @@ export function MapBoard({
   topLeftSlot,
   onRoll,
   onOpenSheet,
+  gridSettings = DEFAULT_GRID,
 }: {
   gameId: string;
   backgroundUrl: string | null;
@@ -47,6 +89,7 @@ export function MapBoard({
   topLeftSlot?: React.ReactNode;
   onRoll?: (label: string, n: number, penalty?: number, meta?: { characterKind: "trainer" | "pokemon"; characterId: string; imageUrl?: string | null }) => void;
   onOpenSheet?: (kind: "trainer" | "pokemon", id: string, label: string) => void;
+  gridSettings?: GridSettings;
 }) {
   const qc = useQueryClient();
   const boardRef = useRef<HTMLDivElement>(null);
@@ -62,11 +105,25 @@ export function MapBoard({
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const panOrigin = useRef<{ mx: number; my: number; ox: number; oy: number } | null>(null);
 
+  // Map tool state
+  const [mode, setMode] = useState<Mode>("select");
+  const [drawTool, setDrawTool] = useState<DrawKind>("freehand");
+  const [drawColor, setDrawColor] = useState("#ef4444");
+  const [drawWidth, setDrawWidth] = useState(3);
+  const [drawLayer, setDrawLayer] = useState<"drawing" | "gm">("drawing");
+  const [showGMLayer, setShowGMLayer] = useState(true);
+
+  // Ruler state (local only)
+  const [ruler, setRuler] = useState<{ ax: number; ay: number; bx: number; by: number } | null>(null);
+
+  // Draw-in-progress state (local until mouseup)
+  const [drawingShape, setDrawingShape] = useState<Drawing | null>(null);
+
   useEffect(() => {
     function onClickAway(e: MouseEvent) {
       const target = e.target as HTMLElement | null;
-      if (target?.closest("[data-map-token], [data-token-action-bar]")) return;
-      setSelectedTokenId(null);
+      if (target?.closest("[data-map-token], [data-token-action-bar], [data-map-toolbar]")) return;
+      if (mode === "select") setSelectedTokenId(null);
     }
     function onMove(e: MouseEvent) {
       if (panOrigin.current) {
@@ -112,7 +169,7 @@ export function MapBoard({
       window.removeEventListener("mouseup", onUp);
       window.removeEventListener("map-zoom", onZoom as EventListener);
     };
-  }, [resizeTokenId, localSize]);
+  }, [resizeTokenId, localSize, mode]);
 
 
   useEffect(() => {
@@ -122,7 +179,7 @@ export function MapBoard({
     img.src = backgroundUrl;
   }, [backgroundUrl]);
 
-  const { data: tokens = [] } = useQuery({
+  const { data: tokensRaw = [] } = useQuery({
     queryKey: ["tokens", gameId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -131,6 +188,10 @@ export function MapBoard({
       return (data ?? []) as Token[];
     },
   });
+  const tokens = useMemo(
+    () => tokensRaw.filter((t) => isNarrator || (t.layer ?? "tokens") !== "gm"),
+    [tokensRaw, isNarrator],
+  );
 
   useEffect(() => {
     const ch = supabase
@@ -144,12 +205,48 @@ export function MapBoard({
     return () => { supabase.removeChannel(ch); };
   }, [gameId, qc]);
 
+  // Drawings query + realtime
+  const { data: drawings = [] } = useQuery({
+    queryKey: ["map_drawings", gameId],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("map_drawings" as never).select("*").eq("game_id", gameId) as unknown as Promise<{ data: Drawing[] | null; error: { message: string } | null }>);
+      if (error) throw new Error(error.message);
+      return (data ?? []) as Drawing[];
+    },
+  });
+  useEffect(() => {
+    const ch = supabase
+      .channel(`drawings:${gameId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "map_drawings", filter: `game_id=eq.${gameId}` },
+        () => qc.invalidateQueries({ queryKey: ["map_drawings", gameId] }),
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [gameId, qc]);
+
+  const visibleDrawings = useMemo(
+    () => drawings.filter((d) => d.layer !== "gm" || (isNarrator && showGMLayer)),
+    [drawings, isNarrator, showGMLayer],
+  );
+
   function snap(v: number, dim: number) {
+    if (!gridSettings.snap || !gridSettings.enabled) return Math.max(0, Math.min(1, v));
     const px = v * dim;
-    const cell = Math.round(px / GRID_PX) * GRID_PX;
+    const cell = Math.round(px / gridSettings.size) * gridSettings.size;
     return Math.max(0, Math.min(1, cell / dim));
   }
 
+  function pointToRelRaw(clientX: number, clientY: number) {
+    const target = innerRef.current ?? boardRef.current!;
+    const rect = target.getBoundingClientRect();
+    return {
+      x: Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)),
+      y: Math.max(0, Math.min(1, (clientY - rect.top) / rect.height)),
+      rectW: rect.width, rectH: rect.height,
+    };
+  }
   function pointToRel(clientX: number, clientY: number) {
     const target = innerRef.current ?? boardRef.current!;
     const rect = target.getBoundingClientRect();
@@ -166,10 +263,125 @@ export function MapBoard({
   }
   function onContextMenu(e: React.MouseEvent) { e.preventDefault(); }
   function onMouseDown(e: React.MouseEvent) {
+    // Right click pans
     if (e.button === 2) {
       e.preventDefault();
       panOrigin.current = { mx: e.clientX, my: e.clientY, ox: pan.x, oy: pan.y };
+      return;
     }
+    if (e.button !== 0) return;
+    // Ignore clicks on tokens / action bar / toolbar
+    const target = e.target as HTMLElement | null;
+    if (target?.closest("[data-map-token], [data-token-action-bar], [data-map-toolbar]")) return;
+
+    if (mode === "ruler") {
+      const p = pointToRelRaw(e.clientX, e.clientY);
+      setRuler({ ax: p.x, ay: p.y, bx: p.x, by: p.y });
+      return;
+    }
+    if (mode === "draw") {
+      const p = pointToRelRaw(e.clientX, e.clientY);
+      const base: Drawing = {
+        id: "tmp",
+        game_id: gameId,
+        layer: drawLayer,
+        kind: drawTool,
+        geometry: {},
+        stroke: drawColor,
+        fill: null,
+        stroke_width: drawWidth,
+        text_content: null,
+        author_id: userId,
+        created_at: new Date().toISOString(),
+      };
+      if (drawTool === "freehand") base.geometry = { points: [[p.x, p.y]] };
+      else if (drawTool === "rect") base.geometry = { x: p.x, y: p.y, w: 0, h: 0 };
+      else if (drawTool === "circle") base.geometry = { cx: p.x, cy: p.y, r: 0 };
+      else if (drawTool === "line") base.geometry = { x1: p.x, y1: p.y, x2: p.x, y2: p.y };
+      else if (drawTool === "text") {
+        const text = window.prompt("Texto:");
+        if (!text) return;
+        base.geometry = { x: p.x, y: p.y, fontSize: 16 };
+        base.text_content = text;
+        void persistDrawing(base);
+        return;
+      }
+      setDrawingShape(base);
+    }
+  }
+  function onMouseMoveBoard(e: React.MouseEvent) {
+    if (mode === "ruler" && ruler) {
+      const p = pointToRelRaw(e.clientX, e.clientY);
+      setRuler({ ...ruler, bx: p.x, by: p.y });
+      return;
+    }
+    if (mode === "draw" && drawingShape) {
+      const p = pointToRelRaw(e.clientX, e.clientY);
+      setDrawingShape((cur) => {
+        if (!cur) return cur;
+        if (cur.kind === "freehand") {
+          const points = [...(cur.geometry.points ?? []), [p.x, p.y] as [number, number]];
+          return { ...cur, geometry: { points } };
+        }
+        if (cur.kind === "rect") {
+          const x0 = cur.geometry.x!, y0 = cur.geometry.y!;
+          return { ...cur, geometry: { x: Math.min(x0, p.x), y: Math.min(y0, p.y), w: Math.abs(p.x - x0), h: Math.abs(p.y - y0) } };
+        }
+        if (cur.kind === "circle") {
+          const cx = cur.geometry.cx!, cy = cur.geometry.cy!;
+          const r = Math.hypot(p.x - cx, p.y - cy);
+          return { ...cur, geometry: { cx, cy, r } };
+        }
+        if (cur.kind === "line") {
+          return { ...cur, geometry: { x1: cur.geometry.x1!, y1: cur.geometry.y1!, x2: p.x, y2: p.y } };
+        }
+        return cur;
+      });
+    }
+  }
+  async function onMouseUpBoard() {
+    if (mode === "ruler") {
+      // Keep the ruler visible until user clicks again or changes mode
+      return;
+    }
+    if (mode === "draw" && drawingShape) {
+      const d = drawingShape;
+      setDrawingShape(null);
+      // Discard zero-size shapes (accidental clicks)
+      if (d.kind === "rect" && ((d.geometry.w ?? 0) < 0.005 || (d.geometry.h ?? 0) < 0.005)) return;
+      if (d.kind === "circle" && (d.geometry.r ?? 0) < 0.005) return;
+      if (d.kind === "line") {
+        const dx = (d.geometry.x2! - d.geometry.x1!), dy = (d.geometry.y2! - d.geometry.y1!);
+        if (Math.hypot(dx, dy) < 0.005) return;
+      }
+      if (d.kind === "freehand" && (d.geometry.points?.length ?? 0) < 2) return;
+      await persistDrawing(d);
+    }
+  }
+  async function persistDrawing(d: Drawing) {
+    const payload = {
+      game_id: d.game_id,
+      layer: d.layer,
+      kind: d.kind,
+      geometry: d.geometry,
+      stroke: d.stroke,
+      fill: d.fill,
+      stroke_width: d.stroke_width,
+      text_content: d.text_content,
+      author_id: d.author_id,
+    };
+    const { error } = await (supabase.from("map_drawings" as never).insert(payload as never) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+  async function deleteDrawing(id: string) {
+    const { error } = await (supabase.from("map_drawings" as never).delete().eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+  async function clearMyDrawings() {
+    if (!confirm("Apagar todos os seus desenhos neste mapa?")) return;
+    const q = supabase.from("map_drawings" as never).delete().eq("game_id", gameId).eq("author_id", userId);
+    const { error } = await (q as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
   }
 
   async function onDrop(e: React.DragEvent) {
@@ -206,6 +418,25 @@ export function MapBoard({
     if (error) toast.error(error.message);
   }
 
+  async function toggleTokenLayer(id: string, current: "tokens" | "gm") {
+    const next = current === "gm" ? "tokens" : "gm";
+    const { error } = await (supabase.from("tokens").update({ layer: next } as never).eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+
+  // Ruler computed distance
+  const rulerInfo = useMemo(() => {
+    if (!ruler) return null;
+    const rect = (innerRef.current ?? boardRef.current)?.getBoundingClientRect();
+    if (!rect) return null;
+    const dx = (ruler.bx - ruler.ax) * rect.width;
+    const dy = (ruler.by - ruler.ay) * rect.height;
+    const distPx = Math.hypot(dx, dy);
+    const cells = distPx / Math.max(1, gridSettings.size);
+    const meters = cells * gridSettings.unitMeters;
+    return { distPx, cells, meters };
+  }, [ruler, gridSettings.size, gridSettings.unitMeters]);
+
   return (
     <div className="flex h-full w-full items-center justify-center">
     <div
@@ -215,12 +446,28 @@ export function MapBoard({
       onWheel={onWheel}
       onContextMenu={onContextMenu}
       onMouseDown={onMouseDown}
+      onMouseMove={onMouseMoveBoard}
+      onMouseUp={onMouseUpBoard}
       className={`relative overflow-hidden rounded-xl border border-border bg-muted ${bgAspect ? "max-h-full max-w-full" : "h-full w-full"}`}
       style={{
         ...(bgAspect ? { aspectRatio: String(bgAspect), height: "100%", width: "auto" } : {}),
+        cursor: mode === "ruler" ? "crosshair" : mode === "draw" ? "crosshair" : undefined,
       }}
     >
       {topLeftSlot && <div className="absolute left-3 top-3 z-30 flex items-center gap-2">{topLeftSlot}</div>}
+
+      {/* Map toolbar (top-right) */}
+      <MapToolbar
+        mode={mode} setMode={setMode}
+        drawTool={drawTool} setDrawTool={setDrawTool}
+        drawColor={drawColor} setDrawColor={setDrawColor}
+        drawWidth={drawWidth} setDrawWidth={setDrawWidth}
+        drawLayer={drawLayer} setDrawLayer={setDrawLayer}
+        isNarrator={isNarrator}
+        showGMLayer={showGMLayer} setShowGMLayer={setShowGMLayer}
+        onClearMine={clearMyDrawings}
+      />
+
       <div
         ref={innerRef}
         className="absolute inset-0 origin-center"
@@ -232,28 +479,67 @@ export function MapBoard({
         }}
       >
       {/* grid overlay */}
-      <div
-        className="pointer-events-none absolute inset-0 opacity-30"
-        style={{
-          backgroundImage:
-            "linear-gradient(to right, rgba(0,0,0,0.25) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.25) 1px, transparent 1px)",
-          backgroundSize: `${GRID_PX}px ${GRID_PX}px`,
-        }}
-      />
+      {gridSettings.enabled && (
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            opacity: Math.max(0, Math.min(1, gridSettings.opacity / 100)),
+            backgroundImage:
+              `linear-gradient(to right, ${gridSettings.color} 1px, transparent 1px), linear-gradient(to bottom, ${gridSettings.color} 1px, transparent 1px)`,
+            backgroundSize: `${gridSettings.size}px ${gridSettings.size}px`,
+          }}
+        />
+      )}
 
+      {/* Drawings SVG layer */}
+      <svg
+        className="pointer-events-none absolute inset-0 h-full w-full"
+        viewBox="0 0 1000 1000"
+        preserveAspectRatio="none"
+      >
+        {visibleDrawings.map((d) => renderDrawing(d, false, isNarrator, userId, deleteDrawing))}
+        {drawingShape && renderDrawing(drawingShape, true, isNarrator, userId, deleteDrawing)}
+      </svg>
+
+      {/* Ruler overlay */}
+      {ruler && rulerInfo && (
+        <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1000 1000" preserveAspectRatio="none">
+          <line
+            x1={ruler.ax * 1000} y1={ruler.ay * 1000}
+            x2={ruler.bx * 1000} y2={ruler.by * 1000}
+            stroke="#fbbf24" strokeWidth={2} strokeDasharray="6 4"
+            vectorEffect="non-scaling-stroke"
+          />
+          <circle cx={ruler.ax * 1000} cy={ruler.ay * 1000} r={5} fill="#fbbf24" vectorEffect="non-scaling-stroke" />
+          <circle cx={ruler.bx * 1000} cy={ruler.by * 1000} r={5} fill="#fbbf24" vectorEffect="non-scaling-stroke" />
+        </svg>
+      )}
+      {ruler && rulerInfo && (
+        <div
+          className="pointer-events-none absolute z-20 rounded bg-black/80 px-2 py-1 text-[11px] font-bold text-amber-300 shadow"
+          style={{
+            left: `${((ruler.ax + ruler.bx) / 2) * 100}%`,
+            top: `${((ruler.ay + ruler.by) / 2) * 100}%`,
+            transform: "translate(-50%, -50%)",
+          }}
+        >
+          {rulerInfo.cells.toFixed(1)} células · {rulerInfo.meters.toFixed(1)} {gridSettings.unitLabel}
+        </div>
+      )}
 
       {tokens.map((t) => {
         const canMove = isNarrator || t.owner_id === userId;
         const isSelected = selectedTokenId === t.id;
         const isHover = hoverTokenId === t.id;
         const showStats = isSelected || isHover;
+        const onGmLayer = (t.layer ?? "tokens") === "gm";
         return (
           <div
             key={t.id}
               data-map-token
-            draggable={canMove}
+            draggable={canMove && mode === "select"}
             onDragStart={(e) => {
-              if (!canMove) return;
+              if (!canMove || mode !== "select") return;
               setDragId(t.id);
               e.dataTransfer.effectAllowed = "move";
               const img = new Image();
@@ -262,6 +548,7 @@ export function MapBoard({
             onMouseEnter={() => setHoverTokenId(t.id)}
             onMouseLeave={() => setHoverTokenId((cur) => (cur === t.id ? null : cur))}
             onClick={(e) => {
+              if (mode !== "select") return;
               e.stopPropagation();
               setSelectedTokenId((cur) => (cur === t.id ? null : t.id));
             }}
@@ -271,8 +558,9 @@ export function MapBoard({
               top: `${t.y * 100}%`,
               width: localSize[t.id] ?? t.size,
               height: localSize[t.id] ?? t.size,
-              cursor: canMove ? "grab" : "pointer",
+              cursor: mode !== "select" ? "inherit" : canMove ? "grab" : "pointer",
               zIndex: isSelected || isHover ? 20 : 1,
+              opacity: onGmLayer ? 0.7 : 1,
               transition: dragId === t.id || resizeTokenId === t.id ? "none" : "left 200ms ease, top 200ms ease, width 120ms ease, height 120ms ease",
             }}
             title={t.label}
@@ -288,11 +576,14 @@ export function MapBoard({
                 />
               </div>
             )}
-            <div className={`relative flex h-full w-full items-center justify-center rounded-full border-2 ${isSelected ? "border-amber-400 ring-2 ring-amber-400/50" : "border-primary ring-2 ring-background"} bg-card shadow-md`}>
+            <div className={`relative flex h-full w-full items-center justify-center rounded-full border-2 ${isSelected ? "border-amber-400 ring-2 ring-amber-400/50" : onGmLayer ? "border-purple-500 ring-2 ring-purple-500/40 border-dashed" : "border-primary ring-2 ring-background"} bg-card shadow-md`}>
               {t.image_url ? (
                 <img src={t.image_url} alt={t.label} className="h-full w-full rounded-full object-cover" draggable={false} />
               ) : (
                 <span className="text-xs font-bold">{t.label.slice(0, 2).toUpperCase()}</span>
+              )}
+              {onGmLayer && isNarrator && (
+                <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded bg-purple-600 px-1.5 py-0.5 text-[8px] font-bold uppercase text-white shadow">GM</span>
               )}
               {canMove && (
                 <button
@@ -317,7 +608,7 @@ export function MapBoard({
             <div className="pointer-events-none absolute left-1/2 top-full mt-0.5 -translate-x-1/2 whitespace-nowrap rounded bg-background/90 px-1.5 py-0.5 text-[10px] font-semibold shadow">
               {t.label}
             </div>
-            {isSelected && onRoll && (
+            {isSelected && onRoll && mode === "select" && (
               <div
                 data-token-action-bar
                 className="absolute left-1/2 top-full mt-6 -translate-x-1/2"
@@ -332,6 +623,17 @@ export function MapBoard({
                   onRoll={onRoll}
                   onClose={() => setSelectedTokenId(null)}
                   onOpenSheet={() => onOpenSheet?.(t.character_kind, t.character_id, t.label)}
+                  extra={isNarrator ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleTokenLayer(t.id, (t.layer ?? "tokens") as "tokens" | "gm")}
+                      className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-background px-2 text-[11px] font-semibold hover:bg-accent"
+                      title="Mover entre camada visível e GM"
+                    >
+                      {onGmLayer ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                      {onGmLayer ? "Tornar visível" : "Mover para GM"}
+                    </button>
+                  ) : undefined}
                 />
               </div>
             )}
@@ -344,3 +646,162 @@ export function MapBoard({
   );
 }
 
+function renderDrawing(
+  d: Drawing,
+  isPreview: boolean,
+  isNarrator: boolean,
+  userId: string,
+  onDelete: (id: string) => void,
+) {
+  const sw = d.stroke_width;
+  const stroke = d.stroke;
+  const fill = d.fill ?? "none";
+  const onGm = d.layer === "gm";
+  const opacity = onGm ? 0.7 : 1;
+  const dash = onGm ? "8 4" : undefined;
+  const canDelete = !isPreview && (isNarrator || d.author_id === userId);
+  const wrap = (children: React.ReactNode, cx: number, cy: number) => (
+    <g key={d.id} opacity={opacity}>
+      {children}
+      {canDelete && (
+        <g
+          style={{ cursor: "pointer", pointerEvents: "auto" }}
+          onClick={() => onDelete(d.id)}
+        >
+          <circle cx={cx} cy={cy} r={10} fill="hsl(0 84% 60%)" />
+          <text x={cx} y={cy + 4} fontSize={12} textAnchor="middle" fill="white" fontWeight="bold">×</text>
+        </g>
+      )}
+    </g>
+  );
+
+  if (d.kind === "freehand") {
+    const pts = d.geometry.points ?? [];
+    if (pts.length === 0) return null;
+    const path = pts.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x * 1000} ${y * 1000}`).join(" ");
+    const last = pts[pts.length - 1];
+    return wrap(
+      <path d={path} stroke={stroke} strokeWidth={sw} fill="none" strokeLinecap="round" strokeLinejoin="round" strokeDasharray={dash} vectorEffect="non-scaling-stroke" />,
+      last[0] * 1000, last[1] * 1000,
+    );
+  }
+  if (d.kind === "rect") {
+    const x = (d.geometry.x ?? 0) * 1000;
+    const y = (d.geometry.y ?? 0) * 1000;
+    const w = (d.geometry.w ?? 0) * 1000;
+    const h = (d.geometry.h ?? 0) * 1000;
+    return wrap(
+      <rect x={x} y={y} width={w} height={h} stroke={stroke} strokeWidth={sw} fill={fill} strokeDasharray={dash} vectorEffect="non-scaling-stroke" />,
+      x + w, y,
+    );
+  }
+  if (d.kind === "circle") {
+    const cx = (d.geometry.cx ?? 0) * 1000;
+    const cy = (d.geometry.cy ?? 0) * 1000;
+    const r = (d.geometry.r ?? 0) * 1000;
+    return wrap(
+      <circle cx={cx} cy={cy} r={r} stroke={stroke} strokeWidth={sw} fill={fill} strokeDasharray={dash} vectorEffect="non-scaling-stroke" />,
+      cx + r, cy,
+    );
+  }
+  if (d.kind === "line") {
+    const x1 = (d.geometry.x1 ?? 0) * 1000;
+    const y1 = (d.geometry.y1 ?? 0) * 1000;
+    const x2 = (d.geometry.x2 ?? 0) * 1000;
+    const y2 = (d.geometry.y2 ?? 0) * 1000;
+    return wrap(
+      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={stroke} strokeWidth={sw} strokeLinecap="round" strokeDasharray={dash} vectorEffect="non-scaling-stroke" />,
+      x2, y2,
+    );
+  }
+  if (d.kind === "text") {
+    const x = (d.geometry.x ?? 0) * 1000;
+    const y = (d.geometry.y ?? 0) * 1000;
+    const fs = d.geometry.fontSize ?? 16;
+    return wrap(
+      <text x={x} y={y} fontSize={fs * 2} fill={stroke} fontWeight="bold" strokeDasharray={dash}>{d.text_content}</text>,
+      x + 40, y - 12,
+    );
+  }
+  return null;
+}
+
+function MapToolbar({
+  mode, setMode,
+  drawTool, setDrawTool,
+  drawColor, setDrawColor,
+  drawWidth, setDrawWidth,
+  drawLayer, setDrawLayer,
+  isNarrator,
+  showGMLayer, setShowGMLayer,
+  onClearMine,
+}: {
+  mode: Mode; setMode: (m: Mode) => void;
+  drawTool: DrawKind; setDrawTool: (k: DrawKind) => void;
+  drawColor: string; setDrawColor: (c: string) => void;
+  drawWidth: number; setDrawWidth: (n: number) => void;
+  drawLayer: "drawing" | "gm"; setDrawLayer: (l: "drawing" | "gm") => void;
+  isNarrator: boolean;
+  showGMLayer: boolean; setShowGMLayer: (b: boolean) => void;
+  onClearMine: () => void;
+}) {
+  return (
+    <div
+      data-map-toolbar
+      className="pointer-events-auto absolute right-3 top-3 z-30 flex flex-col gap-1 rounded-lg border border-border bg-card/95 p-1.5 shadow-lg backdrop-blur"
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      <div className="flex gap-1">
+        <ToolBtn active={mode === "select"} onClick={() => setMode("select")} title="Selecionar (clique e arraste tokens)"><MousePointer2 className="h-3.5 w-3.5" /></ToolBtn>
+        <ToolBtn active={mode === "ruler"} onClick={() => setMode("ruler")} title="Régua (medir distância)"><Ruler className="h-3.5 w-3.5" /></ToolBtn>
+        <ToolBtn active={mode === "draw"} onClick={() => setMode("draw")} title="Desenhar"><Pencil className="h-3.5 w-3.5" /></ToolBtn>
+      </div>
+      {mode === "draw" && (
+        <>
+          <div className="flex gap-1 border-t border-border pt-1">
+            <ToolBtn active={drawTool === "freehand"} onClick={() => setDrawTool("freehand")} title="Caneta livre"><Pencil className="h-3.5 w-3.5" /></ToolBtn>
+            <ToolBtn active={drawTool === "rect"} onClick={() => setDrawTool("rect")} title="Retângulo"><Square className="h-3.5 w-3.5" /></ToolBtn>
+            <ToolBtn active={drawTool === "circle"} onClick={() => setDrawTool("circle")} title="Círculo"><CircleIcon className="h-3.5 w-3.5" /></ToolBtn>
+            <ToolBtn active={drawTool === "line"} onClick={() => setDrawTool("line")} title="Linha"><Minus className="h-3.5 w-3.5" /></ToolBtn>
+            <ToolBtn active={drawTool === "text"} onClick={() => setDrawTool("text")} title="Texto"><TypeIcon className="h-3.5 w-3.5" /></ToolBtn>
+          </div>
+          <div className="flex items-center gap-1 border-t border-border pt-1">
+            <input type="color" value={drawColor} onChange={(e) => setDrawColor(e.target.value)} className="h-6 w-7 cursor-pointer rounded border border-border bg-transparent" title="Cor" />
+            <input
+              type="range" min={1} max={12} value={drawWidth}
+              onChange={(e) => setDrawWidth(Number(e.target.value))}
+              className="h-6 w-16" title={`Espessura: ${drawWidth}`}
+            />
+          </div>
+          {isNarrator && (
+            <div className="flex gap-1 border-t border-border pt-1">
+              <ToolBtn active={drawLayer === "drawing"} onClick={() => setDrawLayer("drawing")} title="Desenhar na camada visível">Visível</ToolBtn>
+              <ToolBtn active={drawLayer === "gm"} onClick={() => setDrawLayer("gm")} title="Desenhar só para o narrador">GM</ToolBtn>
+            </div>
+          )}
+        </>
+      )}
+      <div className="flex gap-1 border-t border-border pt-1">
+        {isNarrator && (
+          <ToolBtn active={!showGMLayer} onClick={() => setShowGMLayer(!showGMLayer)} title={showGMLayer ? "Esconder camada GM" : "Mostrar camada GM"}>
+            {showGMLayer ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+          </ToolBtn>
+        )}
+        <ToolBtn onClick={onClearMine} title="Apagar meus desenhos"><Eraser className="h-3.5 w-3.5" /></ToolBtn>
+      </div>
+    </div>
+  );
+}
+
+function ToolBtn({ active, onClick, title, children }: { active?: boolean; onClick: () => void; title: string; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className={`inline-flex h-7 min-w-[28px] items-center justify-center gap-1 rounded px-1.5 text-[11px] font-semibold transition ${active ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
+    >
+      {children}
+    </button>
+  );
+}

@@ -107,6 +107,13 @@ export type Database = {
           background_url: string | null
           contest_weights: Json | null
           created_at: string
+          grid_color: string
+          grid_enabled: boolean
+          grid_opacity: number
+          grid_size: number
+          grid_snap: boolean
+          grid_unit_label: string
+          grid_unit_m: number
           id: string
           invite_code: string
           language: string
@@ -122,6 +129,13 @@ export type Database = {
           background_url?: string | null
           contest_weights?: Json | null
           created_at?: string
+          grid_color?: string
+          grid_enabled?: boolean
+          grid_opacity?: number
+          grid_size?: number
+          grid_snap?: boolean
+          grid_unit_label?: string
+          grid_unit_m?: number
           id?: string
           invite_code?: string
           language?: string
@@ -137,6 +151,13 @@ export type Database = {
           background_url?: string | null
           contest_weights?: Json | null
           created_at?: string
+          grid_color?: string
+          grid_enabled?: boolean
+          grid_opacity?: number
+          grid_size?: number
+          grid_snap?: boolean
+          grid_unit_label?: string
+          grid_unit_m?: number
           id?: string
           invite_code?: string
           language?: string
@@ -223,6 +244,66 @@ export type Database = {
           source?: string
         }
         Relationships: []
+      }
+      map_drawings: {
+        Row: {
+          author_id: string
+          created_at: string
+          fill: string | null
+          game_id: string
+          geometry: Json
+          id: string
+          kind: string
+          layer: string
+          scenario_id: string | null
+          stroke: string
+          stroke_width: number
+          text_content: string | null
+        }
+        Insert: {
+          author_id: string
+          created_at?: string
+          fill?: string | null
+          game_id: string
+          geometry: Json
+          id?: string
+          kind: string
+          layer?: string
+          scenario_id?: string | null
+          stroke?: string
+          stroke_width?: number
+          text_content?: string | null
+        }
+        Update: {
+          author_id?: string
+          created_at?: string
+          fill?: string | null
+          game_id?: string
+          geometry?: Json
+          id?: string
+          kind?: string
+          layer?: string
+          scenario_id?: string | null
+          stroke?: string
+          stroke_width?: number
+          text_content?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "map_drawings_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "map_drawings_scenario_id_fkey"
+            columns: ["scenario_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       moves: {
         Row: {
@@ -660,6 +741,7 @@ export type Database = {
           id: string
           image_url: string | null
           label: string
+          layer: string
           owner_id: string
           size: number
           x: number
@@ -673,6 +755,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           label?: string
+          layer?: string
           owner_id: string
           size?: number
           x?: number
@@ -686,6 +769,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           label?: string
+          layer?: string
           owner_id?: string
           size?: number
           x?: number

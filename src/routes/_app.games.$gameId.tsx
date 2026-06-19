@@ -51,7 +51,7 @@ function GameRoom() {
       // Note: invite_code is intentionally excluded — narrator fetches it via get_game_invite_code RPC.
       const { data, error } = await supabase
         .from("games")
-        .select("id,narrator_id,name,background_url,created_at,system,language,narrator_type,shiny_chance,overgrown_chance,contest_weights")
+        .select("id,narrator_id,name,background_url,created_at,system,language,narrator_type,shiny_chance,overgrown_chance,contest_weights,grid_enabled,grid_snap,grid_size,grid_color,grid_opacity,grid_unit_m,grid_unit_label")
         .eq("id", gameId)
         .single();
       if (error) throw error;
@@ -173,6 +173,15 @@ function GameRoom() {
           isNarrator={isNarrator}
           onRoll={rollFromSheet}
           onOpenSheet={(kind, id, label) => openWindow({ kind, id, title: label })}
+          gridSettings={{
+            enabled: (game as never as { grid_enabled?: boolean }).grid_enabled ?? true,
+            snap: (game as never as { grid_snap?: boolean }).grid_snap ?? true,
+            size: (game as never as { grid_size?: number }).grid_size ?? 56,
+            color: (game as never as { grid_color?: string }).grid_color ?? "#000000",
+            opacity: (game as never as { grid_opacity?: number }).grid_opacity ?? 30,
+            unitMeters: Number((game as never as { grid_unit_m?: number }).grid_unit_m ?? 1.5),
+            unitLabel: (game as never as { grid_unit_label?: string }).grid_unit_label ?? "m",
+          }}
         />
         <MapLeftDisclosure
           isNarrator={isNarrator}
@@ -1723,6 +1732,13 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
   const [shiny, setShiny] = useState<number>(10);
   const [over, setOver] = useState<number>(0);
   const [spdefIns, setSpdefIns] = useState<boolean>(false);
+  const [gridEnabled, setGridEnabled] = useState(true);
+  const [gridSnap, setGridSnap] = useState(true);
+  const [gridSize, setGridSize] = useState(56);
+  const [gridColor, setGridColor] = useState("#000000");
+  const [gridOpacity, setGridOpacity] = useState(30);
+  const [gridUnitM, setGridUnitM] = useState(1.5);
+  const [gridUnitLabel, setGridUnitLabel] = useState("m");
   const [weights, setWeights] = useState<Record<string, number>>(() => {
     const m: Record<string, number> = {};
     for (const c of REACTION_DECK) m[c.id] = c.defaultWeight;
@@ -1734,7 +1750,7 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
     (async () => {
       const { data, error } = await supabase
         .from("games")
-        .select("shiny_chance,overgrown_chance,contest_weights,spdef_uses_insight")
+        .select("shiny_chance,overgrown_chance,contest_weights,spdef_uses_insight,grid_enabled,grid_snap,grid_size,grid_color,grid_opacity,grid_unit_m,grid_unit_label")
         .eq("id", gameId)
         .single();
       if (error) {
@@ -1742,10 +1758,22 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
         setSpdefIns(savedSpdefIns);
         return;
       }
-      const row = data as { shiny_chance?: number; overgrown_chance?: number; contest_weights?: Record<string, number> | null; spdef_uses_insight?: boolean } | null;
+      const row = data as {
+        shiny_chance?: number; overgrown_chance?: number;
+        contest_weights?: Record<string, number> | null; spdef_uses_insight?: boolean;
+        grid_enabled?: boolean; grid_snap?: boolean; grid_size?: number;
+        grid_color?: string; grid_opacity?: number; grid_unit_m?: number; grid_unit_label?: string;
+      } | null;
       setShiny(row?.shiny_chance ?? 10);
       setOver(row?.overgrown_chance ?? 0);
       setSpdefIns(Boolean(row?.spdef_uses_insight));
+      setGridEnabled(row?.grid_enabled ?? true);
+      setGridSnap(row?.grid_snap ?? true);
+      setGridSize(row?.grid_size ?? 56);
+      setGridColor(row?.grid_color ?? "#000000");
+      setGridOpacity(row?.grid_opacity ?? 30);
+      setGridUnitM(Number(row?.grid_unit_m ?? 1.5));
+      setGridUnitLabel(row?.grid_unit_label ?? "m");
       const w: Record<string, number> = {};
       for (const c of REACTION_DECK) w[c.id] = row?.contest_weights?.[c.id] ?? c.defaultWeight;
       setWeights(w);
@@ -1759,9 +1787,16 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
     const o = Math.max(0, Math.min(100, Math.round(over)));
     const cw: Record<string, number> = {};
     for (const c of REACTION_DECK) cw[c.id] = Math.max(0, Math.min(100, Math.round(weights[c.id] ?? 0)));
+    const gs = Math.max(16, Math.min(256, Math.round(gridSize)));
+    const go = Math.max(0, Math.min(100, Math.round(gridOpacity)));
+    const um = Math.max(0.1, Math.min(100, Number(gridUnitM)));
     const { error } = await supabase
       .from("games")
-      .update({ shiny_chance: s, overgrown_chance: o, contest_weights: cw, spdef_uses_insight: spdefIns } as never)
+      .update({
+        shiny_chance: s, overgrown_chance: o, contest_weights: cw, spdef_uses_insight: spdefIns,
+        grid_enabled: gridEnabled, grid_snap: gridSnap, grid_size: gs,
+        grid_color: gridColor, grid_opacity: go, grid_unit_m: um, grid_unit_label: gridUnitLabel,
+      } as never)
       .eq("id", gameId);
     if (error) { toast.error(error.message); return; }
     toast.success("Configurações salvas");
@@ -1804,6 +1839,37 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
               <span className="text-sm font-semibold">SpDef usa Insight (regra da casa)</span>
               <p className="text-[11px] text-muted-foreground">Quando ligado, a Defesa Especial usa Insight no lugar de Vitality em toda a mesa.</p>
             </div>
+          </div>
+          <div className="rounded-md border border-border bg-card p-3 space-y-2">
+            <div className="text-xs font-bold uppercase tracking-wider text-primary">Grid do mapa</div>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex items-center gap-2 text-xs">
+                <Checkbox checked={gridEnabled} onCheckedChange={(v) => setGridEnabled(!!v)} /> Mostrar grid
+              </label>
+              <label className="flex items-center gap-2 text-xs">
+                <Checkbox checked={gridSnap} onCheckedChange={(v) => setGridSnap(!!v)} /> Snap-to-grid
+              </label>
+              <div>
+                <Label className="text-xs">Tamanho da célula (px)</Label>
+                <Input type="number" min={16} max={256} value={gridSize} onChange={(e) => setGridSize(Number(e.target.value))} />
+              </div>
+              <div>
+                <Label className="text-xs">Cor</Label>
+                <input type="color" value={gridColor} onChange={(e) => setGridColor(e.target.value)} className="h-9 w-full cursor-pointer rounded border border-input bg-transparent" />
+              </div>
+              <div>
+                <Label className="text-xs">Opacidade (%)</Label>
+                <Input type="number" min={0} max={100} value={gridOpacity} onChange={(e) => setGridOpacity(Number(e.target.value))} />
+              </div>
+              <div>
+                <Label className="text-xs">Unidade por célula</Label>
+                <div className="flex gap-1">
+                  <Input type="number" step="0.1" min={0.1} value={gridUnitM} onChange={(e) => setGridUnitM(Number(e.target.value))} className="flex-1" />
+                  <Input value={gridUnitLabel} onChange={(e) => setGridUnitLabel(e.target.value)} className="w-16" placeholder="m" />
+                </div>
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground">Usado pela régua para mostrar distância (ex.: 1.5 m por célula).</p>
           </div>
           <div>
             <div className="mb-1 flex items-center justify-between">

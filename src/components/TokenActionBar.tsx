@@ -23,6 +23,7 @@ type Props = {
   onRoll: (label: string, n: number, penalty?: number, meta?: { characterKind: "trainer" | "pokemon"; characterId: string; imageUrl?: string | null }) => void;
   onClose: () => void;
   onOpenSheet: () => void;
+  extra?: React.ReactNode;
 };
 
 export function TokenActionBar(p: Props) {
@@ -30,7 +31,7 @@ export function TokenActionBar(p: Props) {
   return <PokemonBar {...p} />;
 }
 
-function TrainerBar({ id, label, onRoll, onClose, onOpenSheet }: Props) {
+function TrainerBar({ id, label, onRoll, onClose, onOpenSheet, extra }: Props) {
   const { data: t } = useQuery({
     queryKey: ["token-trainer", id],
     queryFn: async () => {
@@ -86,11 +87,12 @@ function TrainerBar({ id, label, onRoll, onClose, onOpenSheet }: Props) {
       />
       <StatusDialogButton kind="trainer" id={id} label={label} status={t.status_conditions ?? []} />
       <AttrsDialogButton kind="trainer" id={id} label={label} />
+      {extra}
     </Shell>
   );
 }
 
-function PokemonBar({ id, label, gameId, userId, onRoll, onClose, onOpenSheet }: Props) {
+function PokemonBar({ id, label, gameId, userId, onRoll, onClose, onOpenSheet, extra }: Props) {
   const { data: p } = useQuery({
     queryKey: ["token-pokemon", id],
     queryFn: async () => {
@@ -172,6 +174,7 @@ function PokemonBar({ id, label, gameId, userId, onRoll, onClose, onOpenSheet }:
       />
       <StatusDialogButton kind="pokemon" id={id} label={label} status={(p as unknown as { status?: string[] }).status ?? []} />
       <AttrsDialogButton kind="pokemon" id={id} label={label} />
+      {extra}
     </Shell>
   );
 }
