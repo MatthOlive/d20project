@@ -1174,6 +1174,7 @@ function modeTitle(m: Mode) {
     case "draw": return "Desenhar";
     case "fog": return "Fog of War";
     case "walls": return "Paredes";
+    case "background": return "Backgrounds";
   }
 }
 
