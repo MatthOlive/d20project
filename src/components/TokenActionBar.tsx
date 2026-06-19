@@ -174,6 +174,7 @@ function PokemonBar({ id, label, gameId, userId, onRoll, onClose, onOpenSheet, e
       />
       <StatusDialogButton kind="pokemon" id={id} label={label} status={(p as unknown as { status?: string[] }).status ?? []} />
       <AttrsDialogButton kind="pokemon" id={id} label={label} />
+      {extra}
     </Shell>
   );
 }
