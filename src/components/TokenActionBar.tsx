@@ -31,7 +31,7 @@ export function TokenActionBar(p: Props) {
   return <PokemonBar {...p} />;
 }
 
-function TrainerBar({ id, label, onRoll, onClose, onOpenSheet }: Props) {
+function TrainerBar({ id, label, onRoll, onClose, onOpenSheet, extra }: Props) {
   const { data: t } = useQuery({
     queryKey: ["token-trainer", id],
     queryFn: async () => {
