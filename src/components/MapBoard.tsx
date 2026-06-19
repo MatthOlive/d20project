@@ -245,6 +245,68 @@ export function MapBoard({
     [drawings, isNarrator, showGMLayer],
   );
 
+  // ───────────── Map Backgrounds (multi-image layer) ─────────────
+  const [selectedBgId, setSelectedBgId] = useState<string | null>(null);
+  const bgDragRef = useRef<
+    | { id: string; kind: "move"; sx: number; sy: number; ox: number; oy: number }
+    | { id: string; kind: "resize"; sx: number; sy: number; ow: number; oh: number }
+    | { id: string; kind: "rotate"; cx: number; cy: number; startAngle: number; baseRotation: number }
+    | null
+  >(null);
+  const [bgLocal, setBgLocal] = useState<Record<string, Partial<MapBg>>>({});
+
+  const { data: mapBgsRaw = [] } = useQuery({
+    queryKey: ["map_backgrounds", gameId],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("map_backgrounds" as never).select("*").eq("game_id", gameId).order("z_index", { ascending: true }) as unknown as Promise<{ data: MapBg[] | null; error: { message: string } | null }>);
+      if (error) throw new Error(error.message);
+      return (data ?? []) as MapBg[];
+    },
+  });
+  useEffect(() => {
+    const ch = supabase
+      .channel(`map_backgrounds:${gameId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "map_backgrounds", filter: `game_id=eq.${gameId}` },
+        () => qc.invalidateQueries({ queryKey: ["map_backgrounds", gameId] }),
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [gameId, qc]);
+
+  const mapBgs = useMemo<MapBg[]>(
+    () => mapBgsRaw.map((b) => ({ ...b, ...(bgLocal[b.id] ?? {}) })),
+    [mapBgsRaw, bgLocal],
+  );
+
+  async function addBackground(url: string) {
+    if (!isNarrator || !url) return;
+    const maxZ = mapBgsRaw.reduce((m, b) => Math.max(m, b.z_index), 0);
+    const { error } = await (supabase.from("map_backgrounds" as never).insert({
+      game_id: gameId, image_url: url, x: 0.2, y: 0.2, width: 0.4, height: 0.4, rotation: 0, z_index: maxZ + 1, created_by: userId,
+    }) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+  async function deleteBackground(id: string) {
+    const { error } = await (supabase.from("map_backgrounds" as never).delete().eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+    if (selectedBgId === id) setSelectedBgId(null);
+  }
+  async function persistBg(id: string, patch: Partial<MapBg>) {
+    const { error } = await (supabase.from("map_backgrounds" as never).update(patch).eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+    setBgLocal((s) => { const n = { ...s }; delete n[id]; return n; });
+  }
+  async function reorderBg(id: string, dir: "front" | "back") {
+    const bg = mapBgsRaw.find((b) => b.id === id);
+    if (!bg) return;
+    const maxZ = mapBgsRaw.reduce((m, b) => Math.max(m, b.z_index), 0);
+    const minZ = mapBgsRaw.reduce((m, b) => Math.min(m, b.z_index), 0);
+    await persistBg(id, { z_index: dir === "front" ? maxZ + 1 : minZ - 1 });
+  }
+
+
   // ───────────── Fog of War + Walls (Phase 2) ─────────────
   const [fogTool, setFogTool] = useState<"reveal" | "hide">("reveal");
   const [fogRect, setFogRect] = useState<{ ax: number; ay: number; bx: number; by: number } | null>(null);
