@@ -26,6 +26,7 @@ import { OnlinePresence } from "@/components/OnlinePresence";
 import { PokemonSheet } from "@/components/PokemonSheet";
 import { SheetTabs } from "@/components/SheetTabs";
 import { MapBoard, DRAG_MIME, type DragCharacterPayload } from "@/components/MapBoard";
+import { MacroBar } from "@/components/MacroBar";
 import { MusicPanel } from "@/components/MusicPanel";
 import { MusicPlayer } from "@/components/MusicPlayer";
 import { toast } from "sonner";
