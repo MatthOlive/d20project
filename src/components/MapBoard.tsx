@@ -574,6 +574,7 @@ export function MapBoard({
               const img = new Image();
               e.dataTransfer.setDragImage(img, 0, 0);
             }}
+            onPointerDown={(e) => onTokenPointerDown(e, t, canMove)}
             onMouseEnter={() => setHoverTokenId(t.id)}
             onMouseLeave={() => setHoverTokenId((cur) => (cur === t.id ? null : cur))}
             onClick={(e) => {
@@ -590,6 +591,7 @@ export function MapBoard({
               cursor: mode !== "select" ? "inherit" : canMove ? "grab" : "pointer",
               zIndex: isSelected || isHover ? 20 : 1,
               opacity: onGmLayer ? 0.7 : 1,
+              touchAction: canMove && mode === "select" ? "none" : undefined,
               transition: dragId === t.id || resizeTokenId === t.id ? "none" : "left 200ms ease, top 200ms ease, width 120ms ease, height 120ms ease",
             }}
             title={t.label}
