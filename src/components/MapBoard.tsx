@@ -420,6 +420,32 @@ export function MapBoard({
     if (error) toast.error(error.message);
   }
 
+  function onTokenPointerDown(e: React.PointerEvent, t: Token, canMove: boolean) {
+    if (!canMove || mode !== "select") return;
+    if (e.pointerType === "mouse") return; // mouse keeps native HTML5 drag
+    e.preventDefault();
+    e.stopPropagation();
+    setDragId(t.id);
+    const move = (ev: PointerEvent) => {
+      const { x, y } = pointToRel(ev.clientX, ev.clientY);
+      qc.setQueryData<Token[]>(["tokens", gameId], (old) =>
+        (old ?? []).map((tk) => (tk.id === t.id ? { ...tk, x, y } : tk)),
+      );
+    };
+    const up = async (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      const { x, y } = pointToRel(ev.clientX, ev.clientY);
+      setDragId(null);
+      const { error } = await supabase.from("tokens").update({ x, y }).eq("id", t.id);
+      if (error) toast.error(error.message);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  }
+
   async function toggleTokenLayer(id: string, current: "tokens" | "gm") {
     const next = current === "gm" ? "tokens" : "gm";
     const { error } = await (supabase.from("tokens").update({ layer: next } as never).eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
