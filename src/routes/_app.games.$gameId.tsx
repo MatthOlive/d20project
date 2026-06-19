@@ -254,6 +254,7 @@ function GameRoom() {
               />
             )}
             <InitiativePanel gameId={gameId} isNarrator={isNarrator} open={turnOrderOpen} onClose={() => setTurnOrderOpen(false)} />
+            <MacroBar gameId={gameId} userId={user.id} />
           </div>
           {mobileTab === "chat" && (
             <div className="h-full overflow-hidden">
