@@ -643,7 +643,7 @@ export function MapBoard({
     >
       {topLeftSlot && <div className="absolute left-3 top-3 z-30 flex items-center gap-2">{topLeftSlot}</div>}
 
-      {/* Map toolbar (top-right) */}
+      {/* Map toolbar (top-left, collapsible) */}
       <MapToolbar
         mode={mode} setMode={setMode}
         drawTool={drawTool} setDrawTool={setDrawTool}
