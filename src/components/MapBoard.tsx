@@ -653,6 +653,14 @@ export function MapBoard({
         showGMLayer={showGMLayer} setShowGMLayer={setShowGMLayer}
         onClearMine={clearMyDrawings}
         isMobile={isMobile}
+        visibility={visibility}
+        fogTool={fogTool} setFogTool={setFogTool}
+        onClearFog={clearFog}
+        onRevealAll={revealAll}
+        onClearWalls={clearWalls}
+        onToggleFog={(v) => toggleGameFlag("fog_enabled", v)}
+        onToggleLighting={(v) => toggleGameFlag("dynamic_lighting", v)}
+        visEnabled={visEnabled} setVisEnabled={setVisEnabled}
       />
 
       <div
