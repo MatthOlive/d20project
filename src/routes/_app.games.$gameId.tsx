@@ -1684,15 +1684,31 @@ function AbilitiesCompendium() {
     },
   });
   const filtered = list.filter((a) => !q || a.name.toLowerCase().includes(q.toLowerCase()));
+  const groups = filtered.reduce<Record<string, AbilityRow[]>>((acc, a) => {
+    const k = (a.name?.[0] ?? "#").toUpperCase();
+    (acc[k] ??= []).push(a);
+    return acc;
+  }, {});
+  const letters = Object.keys(groups).sort();
   return (
     <div className="flex h-full flex-col gap-2 p-2">
       <Input placeholder="Search ability…" value={q} onChange={(e) => setQ(e.target.value)} className="h-8 text-sm" />
-      <div className="flex-1 overflow-y-auto space-y-1">
-        {filtered.map((a) => (
-          <details key={a.id} className="rounded-md border border-border bg-card">
-            <summary className="cursor-pointer px-3 py-1.5 text-sm font-semibold">{a.name}</summary>
-            <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground">{a.effect || "—"}</p>
-          </details>
+      <div className="flex-1 overflow-y-auto space-y-3">
+        {letters.map((L) => (
+          <section key={L} className="space-y-1">
+            <h3 className="sticky top-0 z-[1] bg-background/95 px-1 py-1 text-[11px] font-bold uppercase tracking-wider text-primary backdrop-blur">
+              {L}
+            </h3>
+            {groups[L].map((a) => (
+              <details key={a.id} className="rounded-md border border-border bg-card">
+                <summary className="cursor-pointer px-3 py-1.5 text-sm font-semibold">{a.name}</summary>
+                <div className="border-t border-border px-3 py-2 text-xs">
+                  <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-primary">Efeito</div>
+                  <p className="text-muted-foreground">{a.effect || "—"}</p>
+                </div>
+              </details>
+            ))}
+          </section>
         ))}
         {filtered.length === 0 && <p className="p-4 text-center text-xs text-muted-foreground">No abilities.</p>}
       </div>
