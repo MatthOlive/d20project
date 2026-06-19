@@ -48,14 +48,15 @@ Importar mapa por grid/tiles    FALTA
 3. **Camadas (Layers)**: Map / Tokens / GM-only / Drawing. Toggle visível só para narrador. Tokens da camada GM-only ficam ocultos para jogadores.
 4. **Drawing tools**: caneta livre, retângulo, círculo, linha, texto livre, com paleta de cores. Persistir em nova tabela `map_drawings` (game_id, scenario_id, layer, geometry jsonb, stroke, fill).
 
-## Fase 2 — Visibilidade: Fog of War e Dynamic Lighting
+## Fase 2 — Visibilidade: Fog of War e Dynamic Lighting ✅
 
-1. **Fog of War manual**: narrador pinta áreas ocultas/reveladas com pincel/retângulo. Persistir como máscara (poligonal ou bitmap base64).
-2. **Dynamic Lighting (v2 simplificado)**:
-  - Paredes ("walls") como segmentos que bloqueiam visão.
-  - Tokens com `light_radius` e `vision_radius` — jogadores só veem o que seus tokens vêem.
-  - Render via SVG mask por jogador (raycasting simples client-side).
-3. **Modo "GM Layer"** combina com isto: tokens/desenhos GM-only invisíveis aos jogadores mesmo dentro do campo de visão.
+1. **Fog of War manual** ✅: narrador pinta retângulos para revelar/ocultar áreas. Persistido em `fog_regions`.
+2. **Dynamic Lighting (v2 simplificado)** ✅:
+  - Paredes (`walls`) como segmentos de linha que bloqueiam visão (narrador desenha clicando 2x).
+  - Tokens com `vision_radius` (raio em células) editável pelo narrador via botão "Visão" na action bar.
+  - Render via SVG mask por jogador (raycasting client-side, 96 raios por token).
+3. **Modo "GM Layer"** ✅: tokens/desenhos GM-only continuam invisíveis aos jogadores mesmo dentro do campo de visão.
+4. Toggle de Fog/Lighting persistido em `games.fog_enabled` / `games.dynamic_lighting`, controlado pelo narrador na toolbar.
 
 ## Fase 3 — Páginas/cenas reais (multi-mapa)
 
