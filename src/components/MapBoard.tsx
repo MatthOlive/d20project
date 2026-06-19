@@ -893,15 +893,26 @@ export function MapBoard({
                   onClose={() => setSelectedTokenId(null)}
                   onOpenSheet={() => onOpenSheet?.(t.character_kind, t.character_id, t.label)}
                   extra={isNarrator ? (
-                    <button
-                      type="button"
-                      onClick={() => toggleTokenLayer(t.id, (t.layer ?? "tokens") as "tokens" | "gm")}
-                      className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-background px-2 text-[11px] font-semibold hover:bg-accent"
-                      title="Mover entre camada visível e GM"
-                    >
-                      {onGmLayer ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
-                      {onGmLayer ? "Tornar visível" : "Mover para GM"}
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => toggleTokenLayer(t.id, (t.layer ?? "tokens") as "tokens" | "gm")}
+                        className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-background px-2 text-[11px] font-semibold hover:bg-accent"
+                        title="Mover entre camada visível e GM"
+                      >
+                        {onGmLayer ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                        {onGmLayer ? "Tornar visível" : "Mover para GM"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTokenVision(t)}
+                        className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-background px-2 text-[11px] font-semibold hover:bg-accent"
+                        title="Definir raio de visão deste token"
+                      >
+                        <Lightbulb className="h-3 w-3" />
+                        Visão{(t.vision_radius ?? 0) > 0 ? `: ${t.vision_radius}` : ""}
+                      </button>
+                    </>
                   ) : undefined}
                 />
               </div>
