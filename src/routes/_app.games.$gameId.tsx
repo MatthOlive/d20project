@@ -297,6 +297,7 @@ function GameRoom() {
           />
         )}
         <InitiativePanel gameId={gameId} isNarrator={isNarrator} open={turnOrderOpen} onClose={() => setTurnOrderOpen(false)} />
+        <MacroBar gameId={gameId} userId={user.id} />
 
         {/* Right: floating chat/files/etc overlay */}
         <RightOverlayPanel>
