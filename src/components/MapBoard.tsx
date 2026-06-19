@@ -637,7 +637,7 @@ export function MapBoard({
       className={`relative overflow-hidden rounded-xl border border-border bg-muted ${bgAspect ? "max-h-full max-w-full" : "h-full w-full"}`}
       style={{
         ...(bgAspect ? { aspectRatio: String(bgAspect), height: "100%", width: "auto" } : {}),
-        cursor: mode === "ruler" ? "crosshair" : mode === "draw" ? "crosshair" : undefined,
+        cursor: mode === "ruler" || mode === "draw" || mode === "fog" || mode === "walls" ? "crosshair" : undefined,
       }}
     >
       {topLeftSlot && <div className="absolute left-3 top-3 z-30 flex items-center gap-2">{topLeftSlot}</div>}
