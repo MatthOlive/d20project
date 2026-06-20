@@ -32,7 +32,21 @@ import { MusicPlayer } from "@/components/MusicPlayer";
 import { toast } from "sonner";
 import { Copy, Crown, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Swords, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, Dices, Menu, ZoomIn, ZoomOut, RotateCcw, MessageSquare } from "lucide-react";
 import { rollD6, rollShiny, POKEMON_ATTRS, SOCIAL_ATTRS, POKEMON_TYPES, RANKS, RANK_LABELS, TYPE_COLORS, type PokemonType, type Rank } from "@/lib/pokerole";
+import { rollPokemonAutofill } from "@/lib/pokemon-autofill";
 import { REACTION_DECK } from "@/lib/contest";
+
+const BIOME_LABELS: Record<string, string> = {
+  cave: "Caverna",
+  forest: "Floresta",
+  grassland: "Campo",
+  mountain: "Montanha",
+  rare: "Rara/Lendária",
+  "rough-terrain": "Terreno acidentado",
+  sea: "Mar",
+  urban: "Urbano",
+  "waters-edge": "Margem d'água",
+};
+const BIOME_KEYS = Object.keys(BIOME_LABELS);
 
 export const Route = createFileRoute("/_app/games/$gameId")({
   component: GameRoom,
