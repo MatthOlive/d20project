@@ -802,6 +802,44 @@ export type Database = {
         }
         Relationships: []
       }
+      routes: {
+        Row: {
+          created_at: string
+          default_rank: string
+          game_id: string
+          id: string
+          name: string
+          species_ids: string[]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_rank?: string
+          game_id: string
+          id?: string
+          name: string
+          species_ids?: string[]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_rank?: string
+          game_id?: string
+          id?: string
+          name?: string
+          species_ids?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "routes_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scenarios: {
         Row: {
           background_url: string | null
@@ -835,6 +873,7 @@ export type Database = {
           attr_limits: Json
           base_attrs: Json
           base_hp: number
+          biomes: string[]
           dex_number: number | null
           evolution_method: Json | null
           evolutions: string[]
@@ -852,6 +891,7 @@ export type Database = {
           attr_limits?: Json
           base_attrs?: Json
           base_hp?: number
+          biomes?: string[]
           dex_number?: number | null
           evolution_method?: Json | null
           evolutions?: string[]
@@ -869,6 +909,7 @@ export type Database = {
           attr_limits?: Json
           base_attrs?: Json
           base_hp?: number
+          biomes?: string[]
           dex_number?: number | null
           evolution_method?: Json | null
           evolutions?: string[]
