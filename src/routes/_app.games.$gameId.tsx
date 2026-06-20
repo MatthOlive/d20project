@@ -32,7 +32,21 @@ import { MusicPlayer } from "@/components/MusicPlayer";
 import { toast } from "sonner";
 import { Copy, Crown, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Swords, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, Dices, Menu, ZoomIn, ZoomOut, RotateCcw, MessageSquare } from "lucide-react";
 import { rollD6, rollShiny, POKEMON_ATTRS, SOCIAL_ATTRS, POKEMON_TYPES, RANKS, RANK_LABELS, TYPE_COLORS, type PokemonType, type Rank } from "@/lib/pokerole";
+import { rollPokemonAutofill } from "@/lib/pokemon-autofill";
 import { REACTION_DECK } from "@/lib/contest";
+
+const BIOME_LABELS: Record<string, string> = {
+  cave: "Caverna",
+  forest: "Floresta",
+  grassland: "Campo",
+  mountain: "Montanha",
+  rare: "Rara/Lendária",
+  "rough-terrain": "Terreno acidentado",
+  sea: "Mar",
+  urban: "Urbano",
+  "waters-edge": "Margem d'água",
+};
+const BIOME_KEYS = Object.keys(BIOME_LABELS);
 
 export const Route = createFileRoute("/_app/games/$gameId")({
   component: GameRoom,
@@ -531,6 +545,39 @@ function FilesPanel({
   const [fLegend, setFLegend] = useState(false);
   const [fRank, setFRank] = useState<string>("");
   const [randomGenRank, setRandomGenRank] = useState<Rank>("starter");
+  const [randomMode, setRandomMode] = useState<"catalog" | "route" | "biome">("catalog");
+  const [selectedBiome, setSelectedBiome] = useState<string>("forest");
+  const [selectedRouteId, setSelectedRouteId] = useState<string>("");
+  // Route management (narrator only)
+  const [routeMgrOpen, setRouteMgrOpen] = useState(false);
+  const [newRouteName, setNewRouteName] = useState("");
+  const [editingRouteId, setEditingRouteId] = useState<string | null>(null);
+  const [editingRouteSpecies, setEditingRouteSpecies] = useState<string[]>([]);
+  const [routeSpeciesPick, setRouteSpeciesPick] = useState<string>("");
+
+  const { data: routes, refetch: refetchRoutes } = useQuery({
+    queryKey: ["routes", gameId],
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase.from("routes" as any) as any)
+        .select("id,name,species_ids,default_rank")
+        .eq("game_id", gameId)
+        .order("created_at");
+      return (data ?? []) as { id: string; name: string; species_ids: string[]; default_rank: Rank }[];
+    },
+  });
+
+  const { data: speciesWithBiomes } = useQuery({
+    queryKey: ["species-biomes"],
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase.from("species") as any)
+        .select("id,name,biomes,suggested_rank")
+        .order("dex_number");
+      return (data ?? []) as { id: string; name: string; biomes: string[]; suggested_rank: string | null }[];
+    },
+  });
+
 
   const [newFolder, setNewFolder] = useState("");
   const [extraFolders, setExtraFolders] = useState<string[]>([]);
@@ -637,110 +684,18 @@ function FilesPanel({
       };
 
       if (random) {
-        // Fetch species data + natures + learnable moves
-        const [spRes, natRes, mvRes] = await Promise.all([
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (supabase.from("species") as any).select("base_attrs,attr_limits,base_hp,abilities").eq("id", speciesId).single(),
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (supabase.from("natures") as any).select("name,confidence"),
-          supabase.from("species_moves").select("min_rank,move_id").eq("species_id", speciesId),
-        ]);
-        const sp = (spRes.data ?? {}) as { base_attrs: Record<string, number>; attr_limits: Record<string, number>; base_hp: number; abilities: string[] };
-        const natures = (natRes.data ?? []) as { name: string; confidence: number }[];
-        const learnable = (mvRes.data ?? []) as { min_rank: Rank; move_id: string }[];
-
-        // Pools
-        const physPool: Record<Rank, number> = { starter: 0, beginner: 2, amateur: 4, ace: 6, pro: 8, master: 10 };
-        const skillPool: Record<Rank, number> = { starter: 5, beginner: 9, amateur: 12, ace: 14, pro: 15, master: 16 };
-        const skillCapByRank: Record<Rank, number> = { starter: 1, beginner: 2, amateur: 3, ace: 4, pro: 5, master: 5 };
-        const r = random.rank;
-        const skillCap = skillCapByRank[r];
-
-        // Distribute physical attr points (cap = attr_limits)
-        const attrPoints: Record<string, number> = {};
-        for (const a of POKEMON_ATTRS) attrPoints[a] = 0;
-        const curAttrs: Record<string, number> = { ...sp.base_attrs };
-        let physRemaining = physPool[r];
-        const eligiblePhys = () => POKEMON_ATTRS.filter((a) => (curAttrs[a] ?? sp.base_attrs[a] ?? 1) < (sp.attr_limits[a] ?? 5));
-        while (physRemaining > 0) {
-          const opts = eligiblePhys();
-          if (opts.length === 0) break;
-          const pick = opts[Math.floor(Math.random() * opts.length)];
-          attrPoints[pick] = (attrPoints[pick] ?? 0) + 1;
-          curAttrs[pick] = (curAttrs[pick] ?? sp.base_attrs[pick] ?? 1) + 1;
-          physRemaining--;
-        }
-        // Distribute social attr points (base 1, cap 5)
-        const socialAttrs: Record<string, number> = {};
-        const socialPoints: Record<string, number> = {};
-        for (const a of SOCIAL_ATTRS) { socialAttrs[a] = 1; socialPoints[a] = 0; }
-        let socRemaining = physPool[r];
-        const eligibleSoc = () => SOCIAL_ATTRS.filter((a) => (socialAttrs[a] + socialPoints[a]) < 5);
-        while (socRemaining > 0) {
-          const opts = eligibleSoc();
-          if (opts.length === 0) break;
-          const pick = opts[Math.floor(Math.random() * opts.length)];
-          socialPoints[pick]++;
-          socRemaining--;
-        }
-        // Distribute skills (per-rank cap)
-        const SKILL_NAMES = ["Brawl","Channel","Clash","Evasion","Alert","Athletic","Nature","Stealth","Allure","Etiquette","Intimidate","Perform"];
-        const skills: Record<string, number> = {};
-        for (const s of SKILL_NAMES) skills[s] = 0;
-        let skRemaining = skillPool[r];
-        const eligibleSkill = () => SKILL_NAMES.filter((s) => skills[s] < skillCap);
-        while (skRemaining > 0) {
-          const opts = eligibleSkill();
-          if (opts.length === 0) break;
-          const pick = opts[Math.floor(Math.random() * opts.length)];
-          skills[pick]++;
-          skRemaining--;
-        }
-        // Sex
-        const sex = ["male", "female", "none"][Math.floor(Math.random() * 3)];
-        // Nature
-        const nat = natures.length > 0 ? natures[Math.floor(Math.random() * natures.length)] : null;
-        // Ability: pick random selected
-        const abilities = sp.abilities ?? [];
-        const selectedAbility = abilities.length > 0 ? abilities[Math.floor(Math.random() * abilities.length)] : null;
-        const modifiers: Record<string, unknown> = {};
-        if (selectedAbility) modifiers._selected_ability = selectedAbility;
-        // HP
-        const baseHp = (sp.base_hp ?? 0) + (finalOvergrown ? 1 : 0);
-        const vit = curAttrs.vitality ?? 1;
-        const ins = curAttrs.insight ?? 1;
-
-        Object.assign(basePayload, {
-          current_attrs: curAttrs,
-          attr_points: attrPoints,
-          social_attrs: socialAttrs,
-          social_attr_points: socialPoints,
-          skills,
-          modifiers,
-          sex,
-          nature: nat?.name ?? null,
-          confidence: nat?.confidence ?? 0,
-          hp: baseHp + vit,
-          will: ins + 2,
-        });
+        const { patch, moveIds } = await rollPokemonAutofill(speciesId, random.rank, { overgrown: finalOvergrown });
+        Object.assign(basePayload, patch);
 
         const { data, error } = await supabase
           .from("pokemon")
           .insert(basePayload as never)
           .select().single();
         if (error) throw error;
-        // Add random moves (up to Insight + 2) from learnable filtered by rank
-        const rankOrder = RANKS.indexOf(r);
-        const allowedMoves = learnable
-          .filter((l) => RANKS.indexOf(l.min_rank) <= rankOrder)
-          .map((l) => l.move_id);
-        const moveCap = ins + 2;
-        // Shuffle and take up to cap
-        const shuffled = [...allowedMoves].sort(() => Math.random() - 0.5).slice(0, moveCap);
-        if (shuffled.length > 0) {
+        if (moveIds.length > 0) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (supabase.from("pokemon_moves") as any).insert(
-            shuffled.map((mid) => ({ pokemon_id: (data as { id: string }).id, move_id: mid })),
+            moveIds.map((mid) => ({ pokemon_id: (data as { id: string }).id, move_id: mid })),
           );
         }
         if (isShiny) toast.success("✨ Shiny rolled!");
@@ -767,6 +722,7 @@ function FilesPanel({
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
 
   const rows: CharRow[] = [
@@ -1133,7 +1089,7 @@ function FilesPanel({
                 for (const s of list) for (const ev of (s.evolutions ?? [])) parentOf.set(ev, s.name);
                 const isMegaName = (n: string) => /\bMega\b/.test(n);
                 const allMega = (evos: string[]) => evos.length > 0 && evos.every(isMegaName);
-                function matches(s: typeof list[number]): boolean {
+                function matchesCatalog(s: typeof list[number]): boolean {
                   const hasParent = parentOf.has(s.name);
                   const evos = s.evolutions ?? [];
                   const rank = s.suggested_rank;
@@ -1149,7 +1105,20 @@ function FilesPanel({
                   return catMatch && rankMatch;
                 }
                 function roll() {
-                  const pool = list.filter(matches);
+                  let pool: { id: string; name: string }[] = [];
+                  if (randomMode === "catalog") {
+                    pool = list.filter(matchesCatalog);
+                  } else if (randomMode === "biome") {
+                    const sl = speciesWithBiomes ?? [];
+                    pool = sl
+                      .filter((s) => (s.biomes ?? []).includes(selectedBiome))
+                      .filter((s) => !fRank || s.suggested_rank === fRank);
+                  } else if (randomMode === "route") {
+                    const r = (routes ?? []).find((x) => x.id === selectedRouteId);
+                    if (!r) { toast.error("Selecione uma rota"); return; }
+                    const ids = new Set(r.species_ids);
+                    pool = list.filter((s) => ids.has(s.id));
+                  }
                   if (pool.length === 0) { toast.error("Nenhum Pokémon corresponde aos filtros"); return; }
                   const pick = pool[Math.floor(Math.random() * pool.length)];
                   toast.success(`🎲 ${pick.name}`);
@@ -1157,28 +1126,76 @@ function FilesPanel({
                 }
                 return (
                   <div className="space-y-2 rounded-md border border-border bg-muted/30 p-2.5 text-xs">
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <label className="flex items-center gap-1.5"><Checkbox checked={fStarter} onCheckedChange={(v) => setFStarter(!!v)} /> Starter</label>
-                      <label className="flex items-center gap-1.5"><Checkbox checked={fLegend} onCheckedChange={(v) => setFLegend(!!v)} /> Lendário</label>
-                      <label className="flex items-center gap-1.5"><Checkbox checked={fFirst} onCheckedChange={(v) => setFFirst(!!v)} /> Estágio inicial</label>
-                      <label className="flex items-center gap-1.5"><Checkbox checked={fSecond} onCheckedChange={(v) => setFSecond(!!v)} /> Segundo estágio</label>
-                      <label className="flex items-center gap-1.5"><Checkbox checked={fLast} onCheckedChange={(v) => setFLast(!!v)} /> Último estágio</label>
+                    <div className="flex gap-1">
+                      {(["catalog","route","biome"] as const).map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setRandomMode(m)}
+                          className={`flex-1 rounded px-2 py-1 text-xs font-medium transition ${randomMode === m ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`}
+                        >
+                          {m === "catalog" ? "Catálogo" : m === "route" ? "Rota" : "Bioma"}
+                        </button>
+                      ))}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="whitespace-nowrap">Rank recomendado:</span>
-                      <Select value={fRank || "any"} onValueChange={(v) => setFRank(v === "any" ? "" : v)}>
-                        <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="any">Qualquer</SelectItem>
-                          <SelectItem value="starter">Starter</SelectItem>
-                          <SelectItem value="beginner">Beginner</SelectItem>
-                          <SelectItem value="amateur">Amateur</SelectItem>
-                          <SelectItem value="ace">Ace</SelectItem>
-                          <SelectItem value="pro">Pro</SelectItem>
-                          <SelectItem value="master">Master</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+
+                    {randomMode === "catalog" && (
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <label className="flex items-center gap-1.5"><Checkbox checked={fStarter} onCheckedChange={(v) => setFStarter(!!v)} /> Starter</label>
+                        <label className="flex items-center gap-1.5"><Checkbox checked={fLegend} onCheckedChange={(v) => setFLegend(!!v)} /> Lendário</label>
+                        <label className="flex items-center gap-1.5"><Checkbox checked={fFirst} onCheckedChange={(v) => setFFirst(!!v)} /> Estágio inicial</label>
+                        <label className="flex items-center gap-1.5"><Checkbox checked={fSecond} onCheckedChange={(v) => setFSecond(!!v)} /> Segundo estágio</label>
+                        <label className="flex items-center gap-1.5"><Checkbox checked={fLast} onCheckedChange={(v) => setFLast(!!v)} /> Último estágio</label>
+                      </div>
+                    )}
+
+                    {randomMode === "biome" && (
+                      <div className="flex items-center gap-2">
+                        <span className="whitespace-nowrap">Bioma:</span>
+                        <Select value={selectedBiome} onValueChange={setSelectedBiome}>
+                          <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {BIOME_KEYS.map((b) => <SelectItem key={b} value={b}>{BIOME_LABELS[b]}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {randomMode === "route" && (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <span className="whitespace-nowrap">Rota:</span>
+                          <Select value={selectedRouteId} onValueChange={setSelectedRouteId}>
+                            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Escolher" /></SelectTrigger>
+                            <SelectContent>
+                              {(routes ?? []).length === 0 && <div className="px-2 py-1 text-xs text-muted-foreground">Sem rotas ainda</div>}
+                              {(routes ?? []).map((r) => <SelectItem key={r.id} value={r.id}>{r.name} ({r.species_ids.length})</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          {isNarrator && (
+                            <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setRouteMgrOpen(true)}>Gerenciar</Button>
+                          )}
+                        </div>
+                      </>
+                    )}
+
+                    {randomMode !== "route" && (
+                      <div className="flex items-center gap-2">
+                        <span className="whitespace-nowrap">Rank recomendado:</span>
+                        <Select value={fRank || "any"} onValueChange={(v) => setFRank(v === "any" ? "" : v)}>
+                          <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="any">Qualquer</SelectItem>
+                            <SelectItem value="starter">Starter</SelectItem>
+                            <SelectItem value="beginner">Beginner</SelectItem>
+                            <SelectItem value="amateur">Amateur</SelectItem>
+                            <SelectItem value="ace">Ace</SelectItem>
+                            <SelectItem value="pro">Pro</SelectItem>
+                            <SelectItem value="master">Master</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                     <div className="flex items-center gap-2">
                       <span className="whitespace-nowrap">Rank do Pokémon:</span>
                       <Select value={randomGenRank} onValueChange={(v) => setRandomGenRank(v as Rank)}>
@@ -1195,6 +1212,7 @@ function FilesPanel({
                   </div>
                 );
               })()}
+
               <label className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-2.5 text-sm">
                 <Checkbox
                   checked={newPkmOvergrown}
@@ -1216,6 +1234,106 @@ function FilesPanel({
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* Route Manager — narrator only */}
+          {isNarrator && (
+            <Dialog open={routeMgrOpen} onOpenChange={setRouteMgrOpen}>
+              <DialogContent className="max-w-lg">
+                <DialogHeader><DialogTitle>Rotas de captura</DialogTitle></DialogHeader>
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Nome da nova rota (ex.: Rota 1)"
+                      value={newRouteName}
+                      onChange={(e) => setNewRouteName(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        const name = newRouteName.trim();
+                        if (!name) return;
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const { error } = await (supabase.from("routes" as any) as any).insert({ game_id: gameId, name });
+                        if (error) { toast.error(error.message); return; }
+                        setNewRouteName("");
+                        refetchRoutes();
+                      }}
+                    >Criar</Button>
+                  </div>
+
+                  <div className="max-h-80 space-y-2 overflow-auto">
+                    {(routes ?? []).map((r) => {
+                      const isEditing = editingRouteId === r.id;
+                      const speciesIds = isEditing ? editingRouteSpecies : r.species_ids;
+                      return (
+                        <div key={r.id} className="rounded-md border border-border bg-muted/30 p-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-semibold">{r.name}</span>
+                            <div className="flex gap-1">
+                              {!isEditing ? (
+                                <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => { setEditingRouteId(r.id); setEditingRouteSpecies(r.species_ids); setRouteSpeciesPick(""); }}>Editar</Button>
+                              ) : (
+                                <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={async () => {
+                                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                  const { error } = await (supabase.from("routes" as any) as any).update({ species_ids: editingRouteSpecies }).eq("id", r.id);
+                                  if (error) { toast.error(error.message); return; }
+                                  setEditingRouteId(null);
+                                  refetchRoutes();
+                                  toast.success("Rota salva");
+                                }}>Salvar</Button>
+                              )}
+                              <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-destructive" onClick={async () => {
+                                if (!confirm(`Apagar rota "${r.name}"?`)) return;
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                await (supabase.from("routes" as any) as any).delete().eq("id", r.id);
+                                refetchRoutes();
+                              }}>×</Button>
+                            </div>
+                          </div>
+
+                          {isEditing && (
+                            <div className="mt-2 flex gap-1">
+                              <Select value={routeSpeciesPick} onValueChange={setRouteSpeciesPick}>
+                                <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Adicionar Pokémon" /></SelectTrigger>
+                                <SelectContent>
+                                  {(speciesList ?? []).filter((s) => !editingRouteSpecies.includes(s.id)).map((s) => (
+                                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => {
+                                if (routeSpeciesPick) { setEditingRouteSpecies((p) => [...p, routeSpeciesPick]); setRouteSpeciesPick(""); }
+                              }}>+</Button>
+                            </div>
+                          )}
+
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {speciesIds.length === 0 && <span className="text-[11px] text-muted-foreground">Vazia</span>}
+                            {speciesIds.map((sid) => {
+                              const s = (speciesList ?? []).find((x) => x.id === sid);
+                              return (
+                                <span key={sid} className="inline-flex items-center gap-1 rounded bg-background px-1.5 py-0.5 text-[11px]">
+                                  {s?.name ?? "?"}
+                                  {isEditing && (
+                                    <button type="button" className="text-muted-foreground hover:text-destructive" onClick={() => setEditingRouteSpecies((p) => p.filter((x) => x !== sid))}>×</button>
+                                  )}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {(routes ?? []).length === 0 && (
+                      <p className="text-xs text-muted-foreground">Nenhuma rota criada ainda.</p>
+                    )}
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
+
           {!selectMode ? (
             <Button size="sm" variant="outline" onClick={() => setSelectMode(true)}>Select</Button>
           ) : (
