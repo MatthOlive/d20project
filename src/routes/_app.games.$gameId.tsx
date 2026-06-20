@@ -1234,6 +1234,106 @@ function FilesPanel({
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* Route Manager — narrator only */}
+          {isNarrator && (
+            <Dialog open={routeMgrOpen} onOpenChange={setRouteMgrOpen}>
+              <DialogContent className="max-w-lg">
+                <DialogHeader><DialogTitle>Rotas de captura</DialogTitle></DialogHeader>
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Nome da nova rota (ex.: Rota 1)"
+                      value={newRouteName}
+                      onChange={(e) => setNewRouteName(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        const name = newRouteName.trim();
+                        if (!name) return;
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const { error } = await (supabase.from("routes" as any) as any).insert({ game_id: gameId, name });
+                        if (error) { toast.error(error.message); return; }
+                        setNewRouteName("");
+                        refetchRoutes();
+                      }}
+                    >Criar</Button>
+                  </div>
+
+                  <div className="max-h-80 space-y-2 overflow-auto">
+                    {(routes ?? []).map((r) => {
+                      const isEditing = editingRouteId === r.id;
+                      const speciesIds = isEditing ? editingRouteSpecies : r.species_ids;
+                      return (
+                        <div key={r.id} className="rounded-md border border-border bg-muted/30 p-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-semibold">{r.name}</span>
+                            <div className="flex gap-1">
+                              {!isEditing ? (
+                                <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => { setEditingRouteId(r.id); setEditingRouteSpecies(r.species_ids); setRouteSpeciesPick(""); }}>Editar</Button>
+                              ) : (
+                                <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={async () => {
+                                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                  const { error } = await (supabase.from("routes" as any) as any).update({ species_ids: editingRouteSpecies }).eq("id", r.id);
+                                  if (error) { toast.error(error.message); return; }
+                                  setEditingRouteId(null);
+                                  refetchRoutes();
+                                  toast.success("Rota salva");
+                                }}>Salvar</Button>
+                              )}
+                              <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-destructive" onClick={async () => {
+                                if (!confirm(`Apagar rota "${r.name}"?`)) return;
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                await (supabase.from("routes" as any) as any).delete().eq("id", r.id);
+                                refetchRoutes();
+                              }}>×</Button>
+                            </div>
+                          </div>
+
+                          {isEditing && (
+                            <div className="mt-2 flex gap-1">
+                              <Select value={routeSpeciesPick} onValueChange={setRouteSpeciesPick}>
+                                <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Adicionar Pokémon" /></SelectTrigger>
+                                <SelectContent>
+                                  {(speciesList ?? []).filter((s) => !editingRouteSpecies.includes(s.id)).map((s) => (
+                                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => {
+                                if (routeSpeciesPick) { setEditingRouteSpecies((p) => [...p, routeSpeciesPick]); setRouteSpeciesPick(""); }
+                              }}>+</Button>
+                            </div>
+                          )}
+
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {speciesIds.length === 0 && <span className="text-[11px] text-muted-foreground">Vazia</span>}
+                            {speciesIds.map((sid) => {
+                              const s = (speciesList ?? []).find((x) => x.id === sid);
+                              return (
+                                <span key={sid} className="inline-flex items-center gap-1 rounded bg-background px-1.5 py-0.5 text-[11px]">
+                                  {s?.name ?? "?"}
+                                  {isEditing && (
+                                    <button type="button" className="text-muted-foreground hover:text-destructive" onClick={() => setEditingRouteSpecies((p) => p.filter((x) => x !== sid))}>×</button>
+                                  )}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {(routes ?? []).length === 0 && (
+                      <p className="text-xs text-muted-foreground">Nenhuma rota criada ainda.</p>
+                    )}
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
+
           {!selectMode ? (
             <Button size="sm" variant="outline" onClick={() => setSelectMode(true)}>Select</Button>
           ) : (
