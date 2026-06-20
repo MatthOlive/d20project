@@ -545,6 +545,39 @@ function FilesPanel({
   const [fLegend, setFLegend] = useState(false);
   const [fRank, setFRank] = useState<string>("");
   const [randomGenRank, setRandomGenRank] = useState<Rank>("starter");
+  const [randomMode, setRandomMode] = useState<"catalog" | "route" | "biome">("catalog");
+  const [selectedBiome, setSelectedBiome] = useState<string>("forest");
+  const [selectedRouteId, setSelectedRouteId] = useState<string>("");
+  // Route management (narrator only)
+  const [routeMgrOpen, setRouteMgrOpen] = useState(false);
+  const [newRouteName, setNewRouteName] = useState("");
+  const [editingRouteId, setEditingRouteId] = useState<string | null>(null);
+  const [editingRouteSpecies, setEditingRouteSpecies] = useState<string[]>([]);
+  const [routeSpeciesPick, setRouteSpeciesPick] = useState<string>("");
+
+  const { data: routes, refetch: refetchRoutes } = useQuery({
+    queryKey: ["routes", gameId],
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase.from("routes" as any) as any)
+        .select("id,name,species_ids,default_rank")
+        .eq("game_id", gameId)
+        .order("created_at");
+      return (data ?? []) as { id: string; name: string; species_ids: string[]; default_rank: Rank }[];
+    },
+  });
+
+  const { data: speciesWithBiomes } = useQuery({
+    queryKey: ["species-biomes"],
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase.from("species") as any)
+        .select("id,name,biomes,suggested_rank")
+        .order("dex_number");
+      return (data ?? []) as { id: string; name: string; biomes: string[]; suggested_rank: string | null }[];
+    },
+  });
+
 
   const [newFolder, setNewFolder] = useState("");
   const [extraFolders, setExtraFolders] = useState<string[]>([]);
