@@ -1089,7 +1089,7 @@ function FilesPanel({
                 for (const s of list) for (const ev of (s.evolutions ?? [])) parentOf.set(ev, s.name);
                 const isMegaName = (n: string) => /\bMega\b/.test(n);
                 const allMega = (evos: string[]) => evos.length > 0 && evos.every(isMegaName);
-                function matches(s: typeof list[number]): boolean {
+                function matchesCatalog(s: typeof list[number]): boolean {
                   const hasParent = parentOf.has(s.name);
                   const evos = s.evolutions ?? [];
                   const rank = s.suggested_rank;
@@ -1105,7 +1105,20 @@ function FilesPanel({
                   return catMatch && rankMatch;
                 }
                 function roll() {
-                  const pool = list.filter(matches);
+                  let pool: { id: string; name: string }[] = [];
+                  if (randomMode === "catalog") {
+                    pool = list.filter(matchesCatalog);
+                  } else if (randomMode === "biome") {
+                    const sl = speciesWithBiomes ?? [];
+                    pool = sl
+                      .filter((s) => (s.biomes ?? []).includes(selectedBiome))
+                      .filter((s) => !fRank || s.suggested_rank === fRank);
+                  } else if (randomMode === "route") {
+                    const r = (routes ?? []).find((x) => x.id === selectedRouteId);
+                    if (!r) { toast.error("Selecione uma rota"); return; }
+                    const ids = new Set(r.species_ids);
+                    pool = list.filter((s) => ids.has(s.id));
+                  }
                   if (pool.length === 0) { toast.error("Nenhum Pokémon corresponde aos filtros"); return; }
                   const pick = pool[Math.floor(Math.random() * pool.length)];
                   toast.success(`🎲 ${pick.name}`);
@@ -1113,28 +1126,76 @@ function FilesPanel({
                 }
                 return (
                   <div className="space-y-2 rounded-md border border-border bg-muted/30 p-2.5 text-xs">
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <label className="flex items-center gap-1.5"><Checkbox checked={fStarter} onCheckedChange={(v) => setFStarter(!!v)} /> Starter</label>
-                      <label className="flex items-center gap-1.5"><Checkbox checked={fLegend} onCheckedChange={(v) => setFLegend(!!v)} /> Lendário</label>
-                      <label className="flex items-center gap-1.5"><Checkbox checked={fFirst} onCheckedChange={(v) => setFFirst(!!v)} /> Estágio inicial</label>
-                      <label className="flex items-center gap-1.5"><Checkbox checked={fSecond} onCheckedChange={(v) => setFSecond(!!v)} /> Segundo estágio</label>
-                      <label className="flex items-center gap-1.5"><Checkbox checked={fLast} onCheckedChange={(v) => setFLast(!!v)} /> Último estágio</label>
+                    <div className="flex gap-1">
+                      {(["catalog","route","biome"] as const).map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setRandomMode(m)}
+                          className={`flex-1 rounded px-2 py-1 text-xs font-medium transition ${randomMode === m ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`}
+                        >
+                          {m === "catalog" ? "Catálogo" : m === "route" ? "Rota" : "Bioma"}
+                        </button>
+                      ))}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="whitespace-nowrap">Rank recomendado:</span>
-                      <Select value={fRank || "any"} onValueChange={(v) => setFRank(v === "any" ? "" : v)}>
-                        <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="any">Qualquer</SelectItem>
-                          <SelectItem value="starter">Starter</SelectItem>
-                          <SelectItem value="beginner">Beginner</SelectItem>
-                          <SelectItem value="amateur">Amateur</SelectItem>
-                          <SelectItem value="ace">Ace</SelectItem>
-                          <SelectItem value="pro">Pro</SelectItem>
-                          <SelectItem value="master">Master</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+
+                    {randomMode === "catalog" && (
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <label className="flex items-center gap-1.5"><Checkbox checked={fStarter} onCheckedChange={(v) => setFStarter(!!v)} /> Starter</label>
+                        <label className="flex items-center gap-1.5"><Checkbox checked={fLegend} onCheckedChange={(v) => setFLegend(!!v)} /> Lendário</label>
+                        <label className="flex items-center gap-1.5"><Checkbox checked={fFirst} onCheckedChange={(v) => setFFirst(!!v)} /> Estágio inicial</label>
+                        <label className="flex items-center gap-1.5"><Checkbox checked={fSecond} onCheckedChange={(v) => setFSecond(!!v)} /> Segundo estágio</label>
+                        <label className="flex items-center gap-1.5"><Checkbox checked={fLast} onCheckedChange={(v) => setFLast(!!v)} /> Último estágio</label>
+                      </div>
+                    )}
+
+                    {randomMode === "biome" && (
+                      <div className="flex items-center gap-2">
+                        <span className="whitespace-nowrap">Bioma:</span>
+                        <Select value={selectedBiome} onValueChange={setSelectedBiome}>
+                          <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {BIOME_KEYS.map((b) => <SelectItem key={b} value={b}>{BIOME_LABELS[b]}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {randomMode === "route" && (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <span className="whitespace-nowrap">Rota:</span>
+                          <Select value={selectedRouteId} onValueChange={setSelectedRouteId}>
+                            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Escolher" /></SelectTrigger>
+                            <SelectContent>
+                              {(routes ?? []).length === 0 && <div className="px-2 py-1 text-xs text-muted-foreground">Sem rotas ainda</div>}
+                              {(routes ?? []).map((r) => <SelectItem key={r.id} value={r.id}>{r.name} ({r.species_ids.length})</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          {isNarrator && (
+                            <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setRouteMgrOpen(true)}>Gerenciar</Button>
+                          )}
+                        </div>
+                      </>
+                    )}
+
+                    {randomMode !== "route" && (
+                      <div className="flex items-center gap-2">
+                        <span className="whitespace-nowrap">Rank recomendado:</span>
+                        <Select value={fRank || "any"} onValueChange={(v) => setFRank(v === "any" ? "" : v)}>
+                          <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="any">Qualquer</SelectItem>
+                            <SelectItem value="starter">Starter</SelectItem>
+                            <SelectItem value="beginner">Beginner</SelectItem>
+                            <SelectItem value="amateur">Amateur</SelectItem>
+                            <SelectItem value="ace">Ace</SelectItem>
+                            <SelectItem value="pro">Pro</SelectItem>
+                            <SelectItem value="master">Master</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                     <div className="flex items-center gap-2">
                       <span className="whitespace-nowrap">Rank do Pokémon:</span>
                       <Select value={randomGenRank} onValueChange={(v) => setRandomGenRank(v as Rank)}>
@@ -1151,6 +1212,7 @@ function FilesPanel({
                   </div>
                 );
               })()}
+
               <label className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-2.5 text-sm">
                 <Checkbox
                   checked={newPkmOvergrown}
