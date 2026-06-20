@@ -240,6 +240,28 @@ export function PokemonSheet({
             <SelectTrigger className="h-6 w-28 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>{RANKS.map((r) => <SelectItem key={r} value={r}>{RANK_LABELS[r]}</SelectItem>)}</SelectContent>
           </Select>
+          {canEdit && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-6 px-2 text-[10px]"
+              title="Sorteia atributos, skills, sexo, nature, habilidade e moves para o rank selecionado"
+              onClick={async () => {
+                if (!confirm(`Preencher automaticamente esta ficha para o rank "${RANK_LABELS[pokemon.rank]}"? Os atributos, skills, sexo, nature, habilidade e moves atuais serão substituídos.`)) return;
+                try {
+                  const { applyAutofillToPokemon } = await import("@/lib/pokemon-autofill");
+                  await applyAutofillToPokemon(pokemon.id, species.id, pokemon.rank);
+                  await qc.invalidateQueries({ queryKey: ["pokemon", pokemon.id] });
+                  await qc.invalidateQueries({ queryKey: ["pokemon-moves", pokemon.id] });
+                  toast.success("Ficha preenchida automaticamente");
+                } catch (e) {
+                  toast.error((e as Error).message);
+                }
+              }}
+            >
+              <Dices className="mr-1 h-3 w-3" /> Preencher
+            </Button>
+          )}
         </div>
         <div className="grid gap-3 p-3 sm:grid-cols-[160px_1fr]">
           {/* Left: image + types */}
