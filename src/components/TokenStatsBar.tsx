@@ -132,8 +132,11 @@ function PokemonStats({ id, gameId, editable, expanded }: { id: string; gameId?:
   const confMax = natureMax ?? Math.max(conf, 5);
   const vit = data.current_attrs?.vitality ?? 0;
   const ins = data.current_attrs?.insight ?? 0;
-  const def = vit;
-  const spDef = spDefUsesInsight ? ins : vit;
+  const mods = (data.modifiers ?? {}) as Record<string, unknown>;
+  const defBonus = Number(mods._def_bonus ?? 0) || 0;
+  const spdefBonus = Number(mods._spdef_bonus ?? 0) || 0;
+  const def = vit + defBonus;
+  const spDef = (spDefUsesInsight ? ins : vit) + spdefBonus;
 
   async function patch(field: "current_hp" | "current_will" | "confidence", value: number) {
     qc.setQueryData(["token-pokemon-stats", id], (old: typeof data) => old ? { ...old, [field]: value } : old);
