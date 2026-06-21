@@ -2115,7 +2115,7 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
     (async () => {
       const { data, error } = await supabase
         .from("games")
-        .select("shiny_chance,overgrown_chance,contest_weights,spdef_uses_insight,grid_enabled,grid_snap,grid_size,grid_color,grid_opacity,grid_unit_m,grid_unit_label")
+        .select("shiny_chance,overgrown_chance,contest_weights,spdef_uses_insight,effectiveness_flat,grid_enabled,grid_snap,grid_size,grid_color,grid_opacity,grid_unit_m,grid_unit_label")
         .eq("id", gameId)
         .single();
       if (error) {
