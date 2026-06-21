@@ -49,7 +49,9 @@ export function MoveCard({
         >
           <span className="truncate text-base font-extrabold tracking-wide drop-shadow-sm">{data.name}</span>
           {hasStab && (
-            <span className="ml-2 rounded bg-black/20 px-1.5 py-0.5 text-[10px] font-bold uppercase">STAB</span>
+            <span className="ml-2 rounded bg-black/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+              STAB
+            </span>
           )}
         </div>
         <div className="flex w-20 shrink-0 flex-col items-center justify-center bg-muted px-2 py-1 text-center">
@@ -68,10 +70,15 @@ export function MoveCard({
             <span className="font-bold uppercase tracking-wider text-muted-foreground">Accuracy:</span>
             {accuracySlot ?? <span>{data.accuracyText}</span>}
           </div>
-          <div className="flex flex-wrap items-center gap-1">
-            <span className="font-bold uppercase tracking-wider text-muted-foreground">Damage Pool:</span>
-            {damageSlot ?? <span>{data.damagePoolText}</span>}
-          </div>
+
+          {/* REQUISITO: Se damageSlot for null, a linha inteira deixa de existir */}
+          {damageSlot !== null && (
+            <div className="flex flex-wrap items-center gap-1">
+              <span className="font-bold uppercase tracking-wider text-muted-foreground">Damage Pool:</span>
+              {damageSlot ?? <span>{data.damagePoolText}</span>}
+            </div>
+          )}
+
           {damageDetailsSlot && <div className="pt-1">{damageDetailsSlot}</div>}
           {(data.effect || chanceSlot) && (
             <div className="flex flex-wrap items-start gap-1">
@@ -94,10 +101,6 @@ export function MoveCard({
   );
 }
 
-/**
- * A "success badge with hover-dice tooltip" used in chat to display roll outcomes.
- * Pure CSS group-hover tooltip — no provider needed.
- */
 export function SuccessHover({
   label,
   successes,
@@ -109,7 +112,6 @@ export function SuccessHover({
   label: string;
   successes: number;
   dice: number[];
-  /** Predicate marking a die as a success (defaults to ≥4). */
   highlight?: (d: number) => boolean;
   tone?: "primary" | "danger" | "amber";
   emptyText?: string;
@@ -161,6 +163,8 @@ export type MoveRollTarget = {
   effDelta: number;
   immune: boolean;
   finalDamage: number;
+  dice?: number[];
+  successes?: number;
 };
 
 export type MoveRollMessage = {
@@ -188,4 +192,3 @@ export type MoveRollMessage = {
   } | null;
   chance: { label: string; pool: number; dice: number[]; successes: number }[];
 };
-
