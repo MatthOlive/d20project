@@ -441,21 +441,21 @@ export function ChatPanel({
         <div ref={bottomRef} />
       </div>
 
-      {/* Janela Flutuante de Dados (FloatingWindow) Ajustada Conforme o Primeiro Print */}
+      {/* Janela Flutuante de Dados (FloatingWindow) - CORRIGIDA EXATAMENTE COMO O PRINT CORRETO */}
       {showDiceWindow && (
         <FloatingWindow onClose={() => setShowDiceWindow(false)}>
-          <div className="p-2 space-y-2 text-center bg-popover rounded-md border border-border shadow-md w-48">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block border-b pb-1">
+          <div className="p-3 space-y-3 bg-popover rounded-xl border border-border shadow-xl w-64 text-left">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block border-b pb-1.5">
               Roll Dice
             </span>
-            <div className="flex flex-col gap-1 max-h-56 overflow-y-auto pr-0.5">
+            <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1">
               {DICE_FACES.map((faces) => (
                 <div
                   key={faces}
-                  className="flex items-center justify-between gap-2 p-0.5 rounded border border-transparent hover:bg-muted/40 transition-colors"
+                  className="flex items-center justify-between p-1 rounded-lg border border-border/40 bg-muted/20 hover:bg-muted/60 transition-colors"
                 >
-                  <span className="text-[11px] font-mono font-bold text-foreground pl-1">d{faces}</span>
-                  <div className="flex gap-1">
+                  <span className="text-xs font-mono font-bold text-foreground w-10 pl-1">d{faces}</span>
+                  <div className="flex gap-1 justify-end flex-1">
                     {[1, 2, 3, 4, 5].map((count) => (
                       <Button
                         key={count}
@@ -465,7 +465,7 @@ export function ChatPanel({
                           handleQuickRoll(count, faces);
                           setShowDiceWindow(false);
                         }}
-                        className="h-6 w-6 p-0 text-[10px] font-mono font-semibold text-muted-foreground hover:text-foreground hover:bg-muted"
+                        className="h-6 w-6 p-0 text-[11px] font-mono font-semibold text-muted-foreground hover:text-foreground hover:bg-background border border-transparent hover:border-border/60 shadow-none rounded"
                       >
                         {count}
                       </Button>
