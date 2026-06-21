@@ -11,7 +11,6 @@ import { cn } from "@/lib/utils";
 import { narratorTurn } from "@/lib/narrator.functions";
 import { toast } from "sonner";
 import { MoveCard, SuccessHover, type MoveRollMessage } from "@/components/MoveCard";
-import { FloatingWindow } from "@/components/FloatingWindow";
 
 type Msg = {
   id: string;
@@ -147,23 +146,6 @@ export function ChatPanel({
     });
   }
 
-  async function handleQuickRoll(count: number, faces: number) {
-    const result = rollDice(count, faces, 0, faces === 6 ? "success" : "sum");
-    await supabase.from("chat_messages").insert({
-      game_id: gameId,
-      user_id: userId,
-      kind: "roll",
-      body: `rolled ${count}d${faces}`,
-      roll_data: {
-        dice: result.dice,
-        successes: result.successes,
-        ones: result.ones,
-        faces,
-        mode: faces === 6 ? "success" : "sum",
-      },
-    });
-  }
-
   async function handleNarratorSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!text.trim()) return;
@@ -267,39 +249,7 @@ export function ChatPanel({
 
   return (
     <div className="flex h-full flex-col bg-background/95 shadow-xl relative overflow-visible">
-      {/* BARRA DE BOTÕES CORRIGIDA: Forçada a aparecer sempre no topo do ChatPanel */}
-      <div className="flex items-center justify-between border-b px-4 py-2 bg-card z-10 shrink-0">
-        <div className="flex gap-1">
-          <Button
-            size="sm"
-            variant={activeTab === "chat" ? "default" : "ghost"}
-            onClick={() => setActiveTab("chat")}
-            className="h-8 text-xs"
-          >
-            Chat
-          </Button>
-          {aiNarrator && (
-            <Button
-              size="sm"
-              variant={activeTab === "narrator" ? "default" : "ghost"}
-              onClick={() => setActiveTab("narrator")}
-              className="h-8 text-xs gap-1"
-            >
-              <Bot className="h-3 w-3" /> Narrator
-            </Button>
-          )}
-          <Button
-            size="sm"
-            variant={activeTab === "contest" ? "default" : "ghost"}
-            onClick={() => setActiveTab("contest")}
-            className="h-8 text-xs gap-1"
-          >
-            <Sparkles className="h-3 w-3" /> Contests
-          </Button>
-        </div>
-      </div>
-
-      {/* Grid de Mensagens: overflow-x alterado para permitir elementos visíveis saindo nas laterais */}
+      {/* Área de Mensagens (Sem barra superior) */}
       <div className="flex-1 overflow-y-auto overflow-x-visible p-4 space-y-3 min-h-0 z-0">
         {activeTab === "chat" || activeTab === "narrator" ? (
           messages
@@ -494,35 +444,37 @@ export function ChatPanel({
         <div ref={bottomRef} />
       </div>
 
+      {/* BARRA INFERIOR DE BOTÕES CORRIGIDA */}
       <div className="border-t p-3 space-y-2 bg-card/50 shrink-0">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mr-1">Quick Roll:</span>
-          {[1, 2, 3, 4, 5, 6].map((n) => (
-            <Button
-              key={n}
-              size="sm"
-              variant="outline"
-              onClick={() => handleQuickRoll(n, 6)}
-              className="h-6 px-2 text-[10px] font-mono font-bold"
-            >
-              {n}d6
-            </Button>
-          ))}
+        <div className="flex items-center gap-2">
           <Button
             size="sm"
-            variant="outline"
-            onClick={() => handleQuickRoll(1, 20)}
-            className="h-6 px-2 text-[10px] font-mono font-bold"
+            variant={activeTab === "chat" ? "default" : "outline"}
+            onClick={() => setActiveTab("chat")}
+            className="h-7 text-xs gap-1.5 font-semibold px-3 shadow-sm"
           >
-            1d20
+            <Dices className="h-3.5 w-3.5 text-primary" /> Dados
           </Button>
+
+          {/* O Botão do Narrador IA só aparece aqui em baixo se aiNarrator for true */}
+          {aiNarrator && (
+            <Button
+              size="sm"
+              variant={activeTab === "narrator" ? "default" : "outline"}
+              onClick={() => setActiveTab("narrator")}
+              className="h-7 text-xs gap-1.5 font-semibold px-3 shadow-sm"
+            >
+              <Bot className="h-3.5 w-3.5 text-purple-500" /> Narrator
+            </Button>
+          )}
+
           <Button
             size="sm"
-            variant="outline"
-            onClick={() => handleQuickRoll(1, 100)}
-            className="h-6 px-2 text-[10px] font-mono font-bold"
+            variant={activeTab === "contest" ? "default" : "outline"}
+            onClick={() => setActiveTab("contest")}
+            className="h-7 text-xs gap-1.5 font-semibold px-3 shadow-sm"
           >
-            1d100
+            <Sparkles className="h-3.5 w-3.5 text-amber-500" /> Contest
           </Button>
         </div>
 
