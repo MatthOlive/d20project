@@ -4,13 +4,14 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dices, Send, Bot, Sparkles, Award } from "lucide-react";
+import { Dices, Send, Bot, Sparkles } from "lucide-react";
 import { rollDice, parseRollCommand } from "@/lib/pokerole";
 import { drawReactionCard } from "@/lib/contest";
 import { cn } from "@/lib/utils";
 import { narratorTurn } from "@/lib/narrator.functions";
 import { toast } from "sonner";
 import { MoveCard, SuccessHover, type MoveRollMessage } from "@/components/MoveCard";
+import { FloatingWindow } from "@/components/FloatingWindow";
 
 type Msg = {
   id: string;
@@ -46,12 +47,9 @@ export function ChatPanel({
 }) {
   const queryClient = useQueryClient();
   const [text, setText] = useState("");
-  const [activeTab, setActiveTab] = useState<"chat" | "narrator" | "contest">("chat");
+  const [activeTab, setActiveTab] = useState<"chat" | "narrator">("chat");
+  const [showDiceWindow, setShowDiceWindow] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-
-  // Contest states
-  const [contestRank, setContestRank] = useState<"Normal" | "Great" | "Ideal" | "Super" | "Hyper" | "Master">("Normal");
-  const [contestAttr, setContestAttr] = useState("Beauty");
 
   const runNarratorTurn = useServerFn(narratorTurn);
 
@@ -146,6 +144,23 @@ export function ChatPanel({
     });
   }
 
+  async function handleQuickRoll(count: number, faces: number) {
+    const result = rollDice(count, faces, 0, faces === 6 ? "success" : "sum");
+    await supabase.from("chat_messages").insert({
+      game_id: gameId,
+      user_id: userId,
+      kind: "roll",
+      body: `rolled ${count}d${faces}`,
+      roll_data: {
+        dice: result.dice,
+        successes: result.successes,
+        ones: result.ones,
+        faces,
+        mode: faces === 6 ? "success" : "sum",
+      },
+    });
+  }
+
   async function handleNarratorSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!text.trim()) return;
@@ -187,8 +202,9 @@ export function ChatPanel({
   }
 
   async function handleDrawContestCard() {
-    const card = drawReactionCard(contestRank, contestAttr);
-    const body = `drew a Contest Reaction Card for ${contestAttr} (${contestRank} Rank):\n\n**${card.title}**\n\n*Effect:* ${card.effect}\n\n*Points:* ${card.points}`;
+    // Puxa uma carta padrão (Normal / Beauty) diretamente como era feito originalmente
+    const card = drawReactionCard("Normal", "Beauty");
+    const body = `drew a Contest Reaction Card for Beauty (Normal Rank):\n\n**${card.title}**\n\n*Effect:* ${card.effect}\n\n*Points:* ${card.points}`;
 
     await supabase.from("chat_messages").insert({
       game_id: gameId,
@@ -249,232 +265,244 @@ export function ChatPanel({
 
   return (
     <div className="flex h-full flex-col bg-background/95 shadow-xl relative overflow-visible">
-      {/* Área de Mensagens (Sem barra superior) */}
-      <div className="flex-1 overflow-y-auto overflow-x-visible p-4 space-y-3 min-h-0 z-0">
-        {activeTab === "chat" || activeTab === "narrator" ? (
-          messages
-            .filter((m) => (activeTab === "chat" ? m.kind !== "narrator" : true))
-            .map((msg) => {
-              const isMe = msg.user_id === userId;
-              const isNarrator = msg.user_id === "narrator";
-              const profile = profiles.find((p) => p.id === msg.user_id);
-              const authorName = isNarrator ? "AI Narrator" : profile?.username || "Unknown";
-
-              if (msg.kind === "move" && msg.roll_data && "v" in msg.roll_data) {
-                const rd = msg.roll_data as MoveRollMessage;
-                const hasTargets = rd.damage?.targets && rd.damage.targets.length > 0;
-
-                return (
-                  <div
-                    key={msg.id}
-                    className={cn(
-                      "flex flex-col max-w-[320px] relative overflow-visible",
-                      isMe ? "ml-auto items-end" : "mr-auto items-start",
-                    )}
-                  >
-                    <span className="px-1 text-[11px] text-muted-foreground mb-0.5">
-                      {rd.pokemonName} ({authorName})
-                    </span>
-                    <MoveCard
-                      data={rd.card}
-                      hasStab={rd.hasStab}
-                      className="w-full text-left overflow-visible"
-                      accuracySlot={
-                        <SuccessHover label="Hit" successes={rd.accuracy.successes} dice={rd.accuracy.dice} />
-                      }
-                      damageSlot={
-                        hasTargets ? null : rd.damage ? (
-                          <SuccessHover
-                            label="Dano"
-                            successes={rd.damage.successes}
-                            dice={rd.damage.dice}
-                            tone="danger"
-                          />
-                        ) : undefined
-                      }
-                      chanceSlot={
-                        rd.chance && rd.chance.length > 0
-                          ? rd.chance.map((c, i) => (
-                              <div key={i} className="mt-1 block">
-                                <span className="text-[10px] text-muted-foreground font-semibold block mb-0.5">
-                                  {c.label}:
-                                </span>
-                                <SuccessHover
-                                  label="Efeito"
-                                  successes={c.successes}
-                                  dice={c.dice}
-                                  highlight={(d) => d === 6}
-                                  tone="amber"
-                                  emptyText="No effect dice"
-                                />
-                              </div>
-                            ))
-                          : undefined
-                      }
-                      footer={
-                        rd.damage?.targets && rd.damage.targets.length > 0 ? (
-                          <div className="mt-2 space-y-1.5 border-t pt-1.5 overflow-visible">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                              Resultados por Alvo:
-                            </span>
-                            {rd.damage.targets.map((tgt, idx) => {
-                              const effLower = (tgt.effLabel || "").toLowerCase();
-
-                              const isNotVeryEffectiveOrLess =
-                                effLower.includes("not very") ||
-                                effLower.includes("no effect") ||
-                                effLower.includes("immune") ||
-                                tgt.immune;
-
-                              let displayDamage = tgt.finalDamage;
-                              if (displayDamage === 0 && !isNotVeryEffectiveOrLess) {
-                                displayDamage = 1;
-                              }
-
-                              return (
-                                <div
-                                  key={idx}
-                                  className="flex flex-col gap-1 rounded bg-muted/30 p-1.5 border border-border/40 text-[11px] overflow-visible"
-                                >
-                                  <div className="flex justify-between items-center font-medium">
-                                    <span className="truncate">{tgt.name}</span>
-                                    <span className="text-[10px] rounded bg-background px-1 border border-border/60 text-muted-foreground font-mono lowercase">
-                                      {tgt.defStat} {tgt.def} · {tgt.effLabel}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center justify-between mt-0.5 overflow-visible">
-                                    <span className="text-muted-foreground text-[10px]">Rolagem de Dano:</span>
-                                    {tgt.dice && tgt.dice.length > 0 ? (
-                                      <SuccessHover
-                                        label="Dano"
-                                        successes={displayDamage}
-                                        dice={tgt.dice}
-                                        tone="danger"
-                                      />
-                                    ) : (
-                                      <span className="font-bold text-destructive">{displayDamage} DMG</span>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : rd.accuracy.crit?.isCrit ? (
-                          <div className="text-[10px] font-bold text-amber-500 bg-amber-500/10 p-1 rounded text-center border border-amber-500/20 animate-pulse">
-                            💥 ACERTO CRÍTICO! (+1 Dado de Dano adicionado)
-                          </div>
-                        ) : undefined
-                      }
-                    />
-                  </div>
-                );
-              }
-
-              return (
-                <div key={msg.id} className={cn("flex flex-col", isMe ? "items-end" : "items-start")}>
-                  <span className="px-1 text-xs text-muted-foreground">{authorName}</span>
-                  <div
-                    className={cn(
-                      "max-w-[280px] rounded-lg px-3 py-1.5 text-sm shadow-sm whitespace-pre-wrap break-words",
-                      isNarrator
-                        ? "bg-purple-600/10 text-purple-200 border border-purple-500/20 font-serif italic"
-                        : isMe
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-foreground",
-                    )}
-                  >
-                    {msg.body}
-                    {msg.kind === "roll" && renderRollData(msg.roll_data)}
-                  </div>
-                </div>
-              );
-            })
-        ) : (
-          <div className="space-y-4 rounded-lg border border-border bg-card p-4 shadow-inner">
-            <div className="space-y-2">
-              <h3 className="text-sm font-bold flex items-center gap-1.5 text-foreground">
-                <Award className="h-4 w-4 text-amber-500" /> Contest Reaction Deck
-              </h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Draw a random reaction card tailored to your contest attribute and current rank tier.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 pt-2">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Rank Tier
-                </label>
-                <select
-                  value={contestRank}
-                  onChange={(e: any) => setContestRank(e.target.value)}
-                  className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                >
-                  {["Normal", "Great", "Ideal", "Super", "Hyper", "Master"].map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Attribute
-                </label>
-                <select
-                  value={contestAttr}
-                  onChange={(e) => setContestAttr(e.target.value)}
-                  className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                >
-                  {["Beauty", "Cool", "Cute", "Smart", "Tough"].map((a) => (
-                    <option key={a} value={a}>
-                      {a}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <Button onClick={handleDrawContestCard} className="w-full mt-2 h-9 text-xs font-semibold gap-1.5">
-              <Sparkles className="h-3.5 w-3.5" /> Draw Reaction Card
+      {/* Barra de Abas Superior para o Narrador (Se ativo) */}
+      {aiNarrator && (
+        <div className="flex items-center justify-start border-b px-4 py-2 bg-card z-10 shrink-0">
+          <div className="flex gap-1">
+            <Button
+              size="sm"
+              variant={activeTab === "chat" ? "default" : "ghost"}
+              onClick={() => setActiveTab("chat")}
+              className="h-8 text-xs"
+            >
+              Chat
+            </Button>
+            <Button
+              size="sm"
+              variant={activeTab === "narrator" ? "default" : "ghost"}
+              onClick={() => setActiveTab("narrator")}
+              className="h-8 text-xs gap-1"
+            >
+              <Bot className="h-3 w-3" /> Narrator
             </Button>
           </div>
-        )}
+        </div>
+      )}
+
+      {/* Lista de Mensagens */}
+      <div className="flex-1 overflow-y-auto overflow-x-visible p-4 space-y-3 min-h-0 z-0">
+        {messages
+          .filter((m) => (activeTab === "chat" ? m.kind !== "narrator" : m.kind === "narrator" || m.user_id === userId))
+          .map((msg) => {
+            const isMe = msg.user_id === userId;
+            const isNarrator = msg.user_id === "narrator";
+            const profile = profiles.find((p) => p.id === msg.user_id);
+            const authorName = isNarrator ? "AI Narrator" : profile?.username || "Unknown";
+
+            if (msg.kind === "move" && msg.roll_data && "v" in msg.roll_data) {
+              const rd = msg.roll_data as MoveRollMessage;
+              const hasTargets = rd.damage?.targets && rd.damage.targets.length > 0;
+
+              return (
+                <div
+                  key={msg.id}
+                  className={cn(
+                    "flex flex-col max-w-[320px] relative overflow-visible",
+                    isMe ? "ml-auto items-end" : "mr-auto items-start",
+                  )}
+                >
+                  <span className="px-1 text-[11px] text-muted-foreground mb-0.5">
+                    {rd.pokemonName} ({authorName})
+                  </span>
+                  <MoveCard
+                    data={rd.card}
+                    hasStab={rd.hasStab}
+                    className="w-full text-left overflow-visible"
+                    accuracySlot={
+                      <SuccessHover label="Hit" successes={rd.accuracy.successes} dice={rd.accuracy.dice} />
+                    }
+                    damageSlot={
+                      hasTargets ? null : rd.damage ? (
+                        <SuccessHover
+                          label="Dano"
+                          successes={rd.damage.successes}
+                          dice={rd.damage.dice}
+                          tone="danger"
+                        />
+                      ) : undefined
+                    }
+                    chanceSlot={
+                      rd.chance && rd.chance.length > 0
+                        ? rd.chance.map((c, i) => (
+                            <div key={i} className="mt-1 block">
+                              <span className="text-[10px] text-muted-foreground font-semibold block mb-0.5">
+                                {c.label}:
+                              </span>
+                              <SuccessHover
+                                label="Efeito"
+                                successes={c.successes}
+                                dice={c.dice}
+                                highlight={(d) => d === 6}
+                                tone="amber"
+                                emptyText="No effect dice"
+                              />
+                            </div>
+                          ))
+                        : undefined
+                    }
+                    footer={
+                      rd.damage?.targets && rd.damage.targets.length > 0 ? (
+                        <div className="mt-2 space-y-1.5 border-t pt-1.5 overflow-visible">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                            Resultados por Alvo:
+                          </span>
+                          {rd.damage.targets.map((tgt, idx) => {
+                            const effLower = (tgt.effLabel || "").toLowerCase();
+
+                            const isNotVeryEffectiveOrLess =
+                              effLower.includes("not very") ||
+                              effLower.includes("no effect") ||
+                              effLower.includes("immune") ||
+                              tgt.immune;
+
+                            let displayDamage = tgt.finalDamage;
+                            if (displayDamage === 0 && !isNotVeryEffectiveOrLess) {
+                              displayDamage = 1;
+                            }
+
+                            return (
+                              <div
+                                key={idx}
+                                className="flex flex-col gap-1 rounded bg-muted/30 p-1.5 border border-border/40 text-[11px] overflow-visible"
+                              >
+                                <div className="flex justify-between items-center font-medium">
+                                  <span className="truncate">{tgt.name}</span>
+                                  <span className="text-[10px] rounded bg-background px-1 border border-border/60 text-muted-foreground font-mono lowercase">
+                                    {tgt.defStat} {tgt.def} · {tgt.effLabel}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between mt-0.5 overflow-visible">
+                                  <span className="text-muted-foreground text-[10px]">Rolagem de Dano:</span>
+                                  {tgt.dice && tgt.dice.length > 0 ? (
+                                    <SuccessHover
+                                      label="Dano"
+                                      successes={displayDamage}
+                                      dice={tgt.dice}
+                                      tone="danger"
+                                    />
+                                  ) : (
+                                    <span className="font-bold text-destructive">{displayDamage} DMG</span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : rd.accuracy.crit?.isCrit ? (
+                        <div className="text-[10px] font-bold text-amber-500 bg-amber-500/10 p-1 rounded text-center border border-amber-500/20 animate-pulse">
+                          💥 ACERTO CRÍTICO! (+1 Dado de Dano adicionado)
+                        </div>
+                      ) : undefined
+                    }
+                  />
+                </div>
+              );
+            }
+
+            return (
+              <div key={msg.id} className={cn("flex flex-col", isMe ? "items-end" : "items-start")}>
+                <span className="px-1 text-xs text-muted-foreground">{authorName}</span>
+                <div
+                  className={cn(
+                    "max-w-[280px] rounded-lg px-3 py-1.5 text-sm shadow-sm whitespace-pre-wrap break-words",
+                    isNarrator
+                      ? "bg-purple-600/10 text-purple-200 border border-purple-500/20 font-serif italic"
+                      : isMe
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-foreground",
+                  )}
+                >
+                  {msg.body}
+                  {msg.kind === "roll" && renderRollData(msg.roll_data)}
+                </div>
+              </div>
+            );
+          })}
         <div ref={bottomRef} />
       </div>
 
-      {/* BARRA INFERIOR DE BOTÕES CORRIGIDA */}
+      {/* Janela Flutuante de Dados (FloatingWindow) controlada pelo botão Dados */}
+      {showDiceWindow && (
+        <FloatingWindow onClose={() => setShowDiceWindow(false)}>
+          <div className="p-2 space-y-2 text-center bg-popover rounded-md border border-border shadow-md">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+              Quick Roll:
+            </span>
+            <div className="flex flex-wrap items-center justify-center gap-1.5 max-w-[240px]">
+              {[1, 2, 3, 4, 5, 6].map((n) => (
+                <Button
+                  key={n}
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    handleQuickRoll(n, 6);
+                    setShowDiceWindow(false);
+                  }}
+                  className="h-6 px-2 text-[10px] font-mono font-bold"
+                >
+                  {n}d6
+                </Button>
+              ))}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  handleQuickRoll(1, 20);
+                  setShowDiceWindow(false);
+                }}
+                className="h-6 px-2 text-[10px] font-mono font-bold"
+              >
+                1d20
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  handleQuickRoll(1, 100);
+                  setShowDiceWindow(false);
+                }}
+                className="h-6 px-2 text-[10px] font-mono font-bold"
+              >
+                1d100
+              </Button>
+            </div>
+          </div>
+        </FloatingWindow>
+      )}
+
+      {/* Rodapé Original do Chat */}
       <div className="border-t p-3 space-y-2 bg-card/50 shrink-0">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          {/* Botão Dados: Abre/fecha a janela flutuante dos dados */}
           <Button
+            type="button"
             size="sm"
-            variant={activeTab === "chat" ? "default" : "outline"}
-            onClick={() => setActiveTab("chat")}
-            className="h-7 text-xs gap-1.5 font-semibold px-3 shadow-sm"
+            variant="outline"
+            onClick={() => setShowDiceWindow(!showDiceWindow)}
+            className="h-7 text-xs gap-1 px-2.5 font-medium border-border"
           >
-            <Dices className="h-3.5 w-3.5 text-primary" /> Dados
+            <Dices className="h-3.5 w-3.5 text-muted-foreground" /> Dados
           </Button>
 
-          {/* O Botão do Narrador IA só aparece aqui em baixo se aiNarrator for true */}
-          {aiNarrator && (
-            <Button
-              size="sm"
-              variant={activeTab === "narrator" ? "default" : "outline"}
-              onClick={() => setActiveTab("narrator")}
-              className="h-7 text-xs gap-1.5 font-semibold px-3 shadow-sm"
-            >
-              <Bot className="h-3.5 w-3.5 text-purple-500" /> Narrator
-            </Button>
-          )}
-
+          {/* Botão Contest: Puxa a carta imediatamente no chat */}
           <Button
+            type="button"
             size="sm"
-            variant={activeTab === "contest" ? "default" : "outline"}
-            onClick={() => setActiveTab("contest")}
-            className="h-7 text-xs gap-1.5 font-semibold px-3 shadow-sm"
+            variant="outline"
+            onClick={handleDrawContestCard}
+            className="h-7 text-xs gap-1 px-2.5 font-medium border-border"
           >
-            <Sparkles className="h-3.5 w-3.5 text-amber-500" /> Contest
+            <Sparkles className="h-3.5 w-3.5 text-muted-foreground" /> Contest
           </Button>
         </div>
 
