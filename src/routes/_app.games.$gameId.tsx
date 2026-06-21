@@ -2096,6 +2096,7 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
   const [shiny, setShiny] = useState<number>(10);
   const [over, setOver] = useState<number>(0);
   const [spdefIns, setSpdefIns] = useState<boolean>(false);
+  const [effFlat, setEffFlat] = useState<boolean>(true);
   const [gridEnabled, setGridEnabled] = useState(true);
   const [gridSnap, setGridSnap] = useState(true);
   const [gridSize, setGridSize] = useState(56);
