@@ -34,8 +34,6 @@ type Msg = {
   created_at: string;
 };
 
-const DICE_FACES = [2, 4, 6, 8, 10, 12, 20, 100] as const;
-
 export function ChatPanel({
   gameId,
   userId,
@@ -268,8 +266,9 @@ export function ChatPanel({
   }
 
   return (
-    <div className="flex h-full flex-col bg-background/95 shadow-xl">
-      <div className="flex items-center justify-between border-b px-4 py-2">
+    <div className="flex h-full flex-col bg-background/95 shadow-xl relative overflow-visible">
+      {/* BARRA DE BOTÕES CORRIGIDA: Forçada a aparecer sempre no topo do ChatPanel */}
+      <div className="flex items-center justify-between border-b px-4 py-2 bg-card z-10 shrink-0">
         <div className="flex gap-1">
           <Button
             size="sm"
@@ -300,7 +299,8 @@ export function ChatPanel({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
+      {/* Grid de Mensagens: overflow-x alterado para permitir elementos visíveis saindo nas laterais */}
+      <div className="flex-1 overflow-y-auto overflow-x-visible p-4 space-y-3 min-h-0 z-0">
         {activeTab === "chat" || activeTab === "narrator" ? (
           messages
             .filter((m) => (activeTab === "chat" ? m.kind !== "narrator" : true))
@@ -317,7 +317,10 @@ export function ChatPanel({
                 return (
                   <div
                     key={msg.id}
-                    className={cn("flex flex-col max-w-[320px]", isMe ? "ml-auto items-end" : "mr-auto items-start")}
+                    className={cn(
+                      "flex flex-col max-w-[320px] relative overflow-visible",
+                      isMe ? "ml-auto items-end" : "mr-auto items-start",
+                    )}
                   >
                     <span className="px-1 text-[11px] text-muted-foreground mb-0.5">
                       {rd.pokemonName} ({authorName})
@@ -325,7 +328,7 @@ export function ChatPanel({
                     <MoveCard
                       data={rd.card}
                       hasStab={rd.hasStab}
-                      className="w-full text-left"
+                      className="w-full text-left overflow-visible"
                       accuracySlot={
                         <SuccessHover label="Hit" successes={rd.accuracy.successes} dice={rd.accuracy.dice} />
                       }
@@ -360,7 +363,7 @@ export function ChatPanel({
                       }
                       footer={
                         rd.damage?.targets && rd.damage.targets.length > 0 ? (
-                          <div className="mt-2 space-y-1.5 border-t pt-1.5">
+                          <div className="mt-2 space-y-1.5 border-t pt-1.5 overflow-visible">
                             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
                               Resultados por Alvo:
                             </span>
@@ -381,7 +384,7 @@ export function ChatPanel({
                               return (
                                 <div
                                   key={idx}
-                                  className="flex flex-col gap-1 rounded bg-muted/30 p-1.5 border border-border/40 text-[11px]"
+                                  className="flex flex-col gap-1 rounded bg-muted/30 p-1.5 border border-border/40 text-[11px] overflow-visible"
                                 >
                                   <div className="flex justify-between items-center font-medium">
                                     <span className="truncate">{tgt.name}</span>
@@ -389,7 +392,7 @@ export function ChatPanel({
                                       {tgt.defStat} {tgt.def} · {tgt.effLabel}
                                     </span>
                                   </div>
-                                  <div className="flex items-center justify-between mt-0.5">
+                                  <div className="flex items-center justify-between mt-0.5 overflow-visible">
                                     <span className="text-muted-foreground text-[10px]">Rolagem de Dano:</span>
                                     {tgt.dice && tgt.dice.length > 0 ? (
                                       <SuccessHover
@@ -491,7 +494,7 @@ export function ChatPanel({
         <div ref={bottomRef} />
       </div>
 
-      <div className="border-t p-3 space-y-2 bg-card/50">
+      <div className="border-t p-3 space-y-2 bg-card/50 shrink-0">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mr-1">Quick Roll:</span>
           {[1, 2, 3, 4, 5, 6].map((n) => (
