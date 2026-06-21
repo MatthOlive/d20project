@@ -256,6 +256,39 @@ export function MapBoard({
     return () => { supabase.removeChannel(ch); };
   }, [gameId, qc]);
 
+  // Real-time updates from pokemon / trainers so token images, stats,
+  // status conditions and attribute bonuses propagate live to every player.
+  useEffect(() => {
+    const ch = supabase
+      .channel(`token-chars:${gameId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "pokemon", filter: `game_id=eq.${gameId}` },
+        (payload) => {
+          const id = (payload.new as { id?: string } | null)?.id
+            ?? (payload.old as { id?: string } | null)?.id;
+          qc.invalidateQueries({ queryKey: ["token-pokemon", id] });
+          qc.invalidateQueries({ queryKey: ["token-pokemon-stats", id] });
+          qc.invalidateQueries({ queryKey: ["token-pokemon-status", id] });
+          qc.invalidateQueries({ queryKey: ["pokemon", id] });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "trainers", filter: `game_id=eq.${gameId}` },
+        (payload) => {
+          const id = (payload.new as { id?: string } | null)?.id
+            ?? (payload.old as { id?: string } | null)?.id;
+          qc.invalidateQueries({ queryKey: ["token-trainer", id] });
+          qc.invalidateQueries({ queryKey: ["token-trainer-stats", id] });
+          qc.invalidateQueries({ queryKey: ["token-trainer-status", id] });
+          qc.invalidateQueries({ queryKey: ["trainer", id] });
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [gameId, qc]);
+
   // Drawings query + realtime
   const { data: drawings = [] } = useQuery({
     queryKey: ["map_drawings", gameId],
