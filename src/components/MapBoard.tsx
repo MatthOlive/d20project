@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { TokenActionBar } from "@/components/TokenActionBar";
 import { TokenStatsBar } from "@/components/TokenStatsBar";
+import { TokenAvatar, TokenStatusBadges } from "@/components/TokenAvatar";
 import { TokenAppearanceDialog, type AppearanceToken } from "@/components/TokenAppearanceDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 
