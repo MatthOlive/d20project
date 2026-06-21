@@ -329,18 +329,15 @@ export function ChatPanel({
                       accuracySlot={
                         <SuccessHover label="Hit" successes={rd.accuracy.successes} dice={rd.accuracy.dice} />
                       }
+                      // REQUISITO 1: Se houver alvos selecionados, a linha inteira de "Damage Pool:" deixa de existir (retorna null)
                       damageSlot={
-                        rd.damage ? (
-                          hasTargets ? (
-                            <span className="text-[11px] text-muted-foreground italic">Calculado por alvo</span>
-                          ) : (
-                            <SuccessHover
-                              label="Dano"
-                              successes={rd.damage.successes}
-                              dice={rd.damage.dice}
-                              tone="danger"
-                            />
-                          )
+                        hasTargets ? null : rd.damage ? (
+                          <SuccessHover
+                            label="Dano"
+                            successes={rd.damage.successes}
+                            dice={rd.damage.dice}
+                            tone="danger"
+                          />
                         ) : undefined
                       }
                       chanceSlot={
@@ -368,32 +365,49 @@ export function ChatPanel({
                             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
                               Resultados por Alvo:
                             </span>
-                            {rd.damage.targets.map((tgt, idx) => (
-                              <div
-                                key={idx}
-                                className="flex flex-col gap-1 rounded bg-muted/30 p-1.5 border border-border/40 text-[11px]"
-                              >
-                                <div className="flex justify-between items-center font-medium">
-                                  <span className="truncate">{tgt.name}</span>
-                                  <span className="text-[10px] rounded bg-background px-1 border border-border/60 text-muted-foreground font-mono lowercase">
-                                    {tgt.defStat} {tgt.def} · {tgt.effLabel}
-                                  </span>
+                            {rd.damage.targets.map((tgt, idx) => {
+                              const effLower = (tgt.effLabel || "").toLowerCase();
+                              // Verifica se o ataque é "não é muito efetivo" ou imune/sem efeito
+                              const isNotVeryEffectiveOrLess =
+                                effLower.includes("not very") ||
+                                effLower.includes("no effect") ||
+                                effLower.includes("immune") ||
+                                tgt.immune;
+
+                              // REQUISITO 3: Se o dano for 0 e NÃO for pouco efetivo/imune, o dano mínimo passa a ser 1.
+                              let displayDamage = tgt.finalDamage;
+                              if (displayDamage === 0 && !isNotVeryEffectiveOrLess) {
+                                displayDamage = 1;
+                              }
+
+                              return (
+                                <div
+                                  key={idx}
+                                  className="flex flex-col gap-1 rounded bg-muted/30 p-1.5 border border-border/40 text-[11px]"
+                                >
+                                  <div className="flex justify-between items-center font-medium">
+                                    <span className="truncate">{tgt.name}</span>
+                                    <span className="text-[10px] rounded bg-background px-1 border border-border/60 text-muted-foreground font-mono lowercase">
+                                      {tgt.defStat} {tgt.def} · {tgt.effLabel}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between mt-0.5">
+                                    <span className="text-muted-foreground text-[10px]">Rolagem de Dano:</span>
+                                    {/* REQUISITO 2: Substituído o texto simples por SuccessHover para exibir a janela flutuante dos d6 */}
+                                    {tgt.dice && tgt.dice.length > 0 ? (
+                                      <SuccessHover
+                                        label="Dano"
+                                        successes={displayDamage}
+                                        dice={tgt.dice}
+                                        tone="danger"
+                                      />
+                                    ) : (
+                                      <span className="font-bold text-destructive">{displayDamage} DMG</span>
+                                    )}
+                                  </div>
                                 </div>
-                                <div className="flex items-center justify-between mt-0.5">
-                                  <span className="text-muted-foreground text-[10px]">Rolagem de Dano:</span>
-                                  {tgt.dice && tgt.dice.length > 0 ? (
-                                    <SuccessHover
-                                      label="Dano"
-                                      successes={tgt.finalDamage}
-                                      dice={tgt.dice}
-                                      tone="danger"
-                                    />
-                                  ) : (
-                                    <span className="font-bold text-destructive">{tgt.finalDamage} DMG</span>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         ) : rd.accuracy.crit?.isCrit ? (
                           <div className="text-[10px] font-bold text-amber-500 bg-amber-500/10 p-1 rounded text-center border border-amber-500/20 animate-pulse">
