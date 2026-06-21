@@ -1084,11 +1084,13 @@ export function MapBoard({
               </div>
             )}
             <div className={`relative flex h-full w-full items-center justify-center rounded-full border-2 ${isSelected ? "border-amber-400 ring-2 ring-amber-400/50" : onGmLayer ? "border-purple-500 ring-2 ring-purple-500/40 border-dashed" : "border-primary ring-2 ring-background"} bg-card shadow-md`}>
-              {t.image_url ? (
-                <img src={t.image_url} alt={t.label} className="h-full w-full rounded-full object-cover" draggable={false} />
-              ) : (
-                <span className="text-xs font-bold">{t.label.slice(0, 2).toUpperCase()}</span>
-              )}
+              <TokenAvatar
+                kind={t.character_kind}
+                id={t.character_id}
+                fallbackImage={t.image_url ?? null}
+                label={t.label}
+              />
+              <TokenStatusBadges kind={t.character_kind} id={t.character_id} />
               {t.tint_color && (
                 <div
                   className="pointer-events-none absolute inset-0 rounded-full"
