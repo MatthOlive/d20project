@@ -319,7 +319,16 @@ export function ChatPanel({
                     hasStab={rd.hasStab}
                     className="w-full text-left overflow-visible"
                     accuracySlot={
-                      <SuccessHover label="Hit" successes={rd.accuracy.successes} dice={rd.accuracy.dice} />
+                      <SuccessHover
+                        label="Sucessos"
+                        successes={rd.accuracy.successes}
+                        dice={rd.accuracy.dice}
+                        critInfo={
+                          rd.accuracy.crit
+                            ? { required: rd.accuracy.crit.required, critRequired: rd.accuracy.crit.critRequired }
+                            : undefined
+                        }
+                      />
                     }
                     damageSlot={
                       hasTargets ? null : rd.damage ? (
