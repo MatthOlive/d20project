@@ -51,6 +51,11 @@ export function ChatPanel({
   const [text, setText] = useState("");
   const [activeTab, setActiveTab] = useState<"chat" | "narrator">("chat");
   const [showDiceWindow, setShowDiceWindow] = useState(false);
+
+  // Estados para o configurador da janela de dados
+  const [diceCount, setDiceCount] = useState<number>(1);
+  const [diceModifier, setDiceModifier] = useState<number>(0);
+
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const runNarratorTurn = useServerFn(narratorTurn);
@@ -146,18 +151,26 @@ export function ChatPanel({
     });
   }
 
-  async function handleQuickRoll(count: number, faces: number) {
-    const result = rollDice(count, faces, 0, faces === 6 ? "success" : "sum");
+  async function handleQuickRoll(count: number, faces: number, modifier: number) {
+    const validCount = Math.max(1, count);
+    const result = rollDice(validCount, faces, modifier, faces === 6 ? "success" : "sum");
+
+    let rollDescription = `rolled ${validCount}d${faces}`;
+    if (modifier !== 0) {
+      rollDescription += modifier > 0 ? `+${modifier}` : `${modifier}`;
+    }
+
     await supabase.from("chat_messages").insert({
       game_id: gameId,
       user_id: userId,
       kind: "roll",
-      body: `rolled ${count}d${faces}`,
+      body: rollDescription,
       roll_data: {
         dice: result.dice,
         successes: result.successes,
         ones: result.ones,
         faces,
+        modifier,
         mode: faces === 6 ? "success" : "sum",
       },
     });
@@ -441,38 +454,59 @@ export function ChatPanel({
         <div ref={bottomRef} />
       </div>
 
-      {/* Janela Flutuante de Dados (FloatingWindow) - CORRIGIDA EXATAMENTE COMO O PRINT CORRETO */}
+      {/* Janela Flutuante de Dados (Exatamente como a 119741, com Inputs interativos) */}
       {showDiceWindow && (
         <FloatingWindow onClose={() => setShowDiceWindow(false)}>
-          <div className="p-3 space-y-3 bg-popover rounded-xl border border-border shadow-xl w-64 text-left">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block border-b pb-1.5">
-              Roll Dice
+          <div className="p-3 space-y-3 bg-popover rounded-md border border-border shadow-md w-48 text-left">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block border-b pb-1">
+              Dados
             </span>
-            <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1">
-              {DICE_FACES.map((faces) => (
-                <div
-                  key={faces}
-                  className="flex items-center justify-between p-1 rounded-lg border border-border/40 bg-muted/20 hover:bg-muted/60 transition-colors"
-                >
-                  <span className="text-xs font-mono font-bold text-foreground w-10 pl-1">d{faces}</span>
-                  <div className="flex gap-1 justify-end flex-1">
-                    {[1, 2, 3, 4, 5].map((count) => (
-                      <Button
-                        key={count}
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          handleQuickRoll(count, faces);
-                          setShowDiceWindow(false);
-                        }}
-                        className="h-6 w-6 p-0 text-[11px] font-mono font-semibold text-muted-foreground hover:text-foreground hover:bg-background border border-transparent hover:border-border/60 shadow-none rounded"
-                      >
-                        {count}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              ))}
+
+            {/* Campos de Configuração de Quantidade e Bônus */}
+            <div className="grid grid-cols-2 gap-2 text-[10px] font-semibold text-muted-foreground">
+              <div className="space-y-1">
+                <label>Quantidade</label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={diceCount}
+                  onChange={(e) => setDiceCount(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="h-7 text-xs px-1.5 focus-visible:ring-1"
+                />
+              </div>
+              <div className="space-y-1">
+                <label>Bônus</label>
+                <Input
+                  type="number"
+                  value={diceModifier}
+                  onChange={(e) => setDiceModifier(parseInt(e.target.value) || 0)}
+                  className="h-7 text-xs px-1.5 focus-visible:ring-1"
+                />
+              </div>
+            </div>
+
+            {/* Lista Vertical Compacta de Dados baseada no estado dos inputs */}
+            <div className="flex flex-col gap-1 max-h-48 overflow-y-auto pt-1 border-t border-border/50">
+              {DICE_FACES.map((faces) => {
+                const bonusText = diceModifier > 0 ? `+${diceModifier}` : diceModifier < 0 ? `${diceModifier}` : "";
+                return (
+                  <Button
+                    key={faces}
+                    variant="ghost"
+                    onClick={() => {
+                      handleQuickRoll(diceCount, faces, diceModifier);
+                      setShowDiceWindow(false);
+                    }}
+                    className="h-7 justify-between px-2 text-[11px] font-mono font-medium text-muted-foreground hover:text-foreground hover:bg-muted w-full rounded flex items-center"
+                  >
+                    <span className="font-bold text-foreground">d{faces}</span>
+                    <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded border border-border/40 font-semibold text-muted-foreground group-hover:text-foreground">
+                      Rolar {diceCount}d{faces}
+                      {bonusText}
+                    </span>
+                  </Button>
+                );
+              })}
             </div>
           </div>
         </FloatingWindow>
