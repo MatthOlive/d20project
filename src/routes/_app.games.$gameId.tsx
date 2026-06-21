@@ -2126,12 +2126,14 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
       const row = data as {
         shiny_chance?: number; overgrown_chance?: number;
         contest_weights?: Record<string, number> | null; spdef_uses_insight?: boolean;
+        effectiveness_flat?: boolean;
         grid_enabled?: boolean; grid_snap?: boolean; grid_size?: number;
         grid_color?: string; grid_opacity?: number; grid_unit_m?: number; grid_unit_label?: string;
       } | null;
       setShiny(row?.shiny_chance ?? 10);
       setOver(row?.overgrown_chance ?? 0);
       setSpdefIns(Boolean(row?.spdef_uses_insight));
+      setEffFlat(row?.effectiveness_flat === undefined || row?.effectiveness_flat === null ? true : Boolean(row.effectiveness_flat));
       setGridEnabled(row?.grid_enabled ?? true);
       setGridSnap(row?.grid_snap ?? true);
       setGridSize(row?.grid_size ?? 56);
