@@ -34,6 +34,8 @@ type Msg = {
   created_at: string;
 };
 
+const DICE_FACES = [2, 4, 6, 8, 10, 12, 20, 100] as const;
+
 export function ChatPanel({
   gameId,
   userId,
@@ -202,7 +204,6 @@ export function ChatPanel({
   }
 
   async function handleDrawContestCard() {
-    // Puxa uma carta padrão (Normal / Beauty) diretamente como era feito originalmente
     const card = drawReactionCard("Normal", "Beauty");
     const body = `drew a Contest Reaction Card for Beauty (Normal Rank):\n\n**${card.title}**\n\n*Effect:* ${card.effect}\n\n*Points:* ${card.points}`;
 
@@ -265,7 +266,7 @@ export function ChatPanel({
 
   return (
     <div className="flex h-full flex-col bg-background/95 shadow-xl relative overflow-visible">
-      {/* Barra de Abas Superior para o Narrador (Se ativo) */}
+      {/* Barra de Abas Superior para o Narrador */}
       {aiNarrator && (
         <div className="flex items-center justify-start border-b px-4 py-2 bg-card z-10 shrink-0">
           <div className="flex gap-1">
@@ -440,50 +441,38 @@ export function ChatPanel({
         <div ref={bottomRef} />
       </div>
 
-      {/* Janela Flutuante de Dados (FloatingWindow) controlada pelo botão Dados */}
+      {/* Janela Flutuante de Dados (FloatingWindow) Ajustada Conforme o Primeiro Print */}
       {showDiceWindow && (
         <FloatingWindow onClose={() => setShowDiceWindow(false)}>
-          <div className="p-2 space-y-2 text-center bg-popover rounded-md border border-border shadow-md">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-              Quick Roll:
+          <div className="p-2 space-y-2 text-center bg-popover rounded-md border border-border shadow-md w-48">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block border-b pb-1">
+              Roll Dice
             </span>
-            <div className="flex flex-wrap items-center justify-center gap-1.5 max-w-[240px]">
-              {[1, 2, 3, 4, 5, 6].map((n) => (
-                <Button
-                  key={n}
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    handleQuickRoll(n, 6);
-                    setShowDiceWindow(false);
-                  }}
-                  className="h-6 px-2 text-[10px] font-mono font-bold"
+            <div className="flex flex-col gap-1 max-h-56 overflow-y-auto pr-0.5">
+              {DICE_FACES.map((faces) => (
+                <div
+                  key={faces}
+                  className="flex items-center justify-between gap-2 p-0.5 rounded border border-transparent hover:bg-muted/40 transition-colors"
                 >
-                  {n}d6
-                </Button>
+                  <span className="text-[11px] font-mono font-bold text-foreground pl-1">d{faces}</span>
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4, 5].map((count) => (
+                      <Button
+                        key={count}
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          handleQuickRoll(count, faces);
+                          setShowDiceWindow(false);
+                        }}
+                        className="h-6 w-6 p-0 text-[10px] font-mono font-semibold text-muted-foreground hover:text-foreground hover:bg-muted"
+                      >
+                        {count}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
               ))}
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  handleQuickRoll(1, 20);
-                  setShowDiceWindow(false);
-                }}
-                className="h-6 px-2 text-[10px] font-mono font-bold"
-              >
-                1d20
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  handleQuickRoll(1, 100);
-                  setShowDiceWindow(false);
-                }}
-                className="h-6 px-2 text-[10px] font-mono font-bold"
-              >
-                1d100
-              </Button>
             </div>
           </div>
         </FloatingWindow>
@@ -492,7 +481,6 @@ export function ChatPanel({
       {/* Rodapé Original do Chat */}
       <div className="border-t p-3 space-y-2 bg-card/50 shrink-0">
         <div className="flex items-center gap-1.5">
-          {/* Botão Dados: Abre/fecha a janela flutuante dos dados */}
           <Button
             type="button"
             size="sm"
@@ -503,7 +491,6 @@ export function ChatPanel({
             <Dices className="h-3.5 w-3.5 text-muted-foreground" /> Dados
           </Button>
 
-          {/* Botão Contest: Puxa a carta imediatamente no chat */}
           <Button
             type="button"
             size="sm"
