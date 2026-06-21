@@ -20,14 +20,21 @@ type Msg = {
   kind: string;
   body: string;
   roll_data:
-    | { dice: number[]; successes: number; ones: number; label?: string; faces?: number; modifier?: number; mode?: "sum" | "success" }
+    | {
+        dice: number[];
+        successes: number;
+        ones: number;
+        label?: string;
+        faces?: number;
+        modifier?: number;
+        mode?: "sum" | "success";
+      }
     | MoveRollMessage
     | null;
   created_at: string;
 };
 
 const DICE_FACES = [2, 4, 6, 8, 10, 12, 20, 100] as const;
-
 
 export function ChatPanel({
   gameId,
@@ -38,42 +45,48 @@ export function ChatPanel({
   gameId: string;
   userId: string;
   aiNarrator?: boolean;
-  /** Only the game's owner triggers the AI to avoid duplicate replies. */
   isGameOwner?: boolean;
 }) {
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
   const [text, setText] = useState("");
-  const [aiBusy, setAiBusy] = useState(false);
-  const aiBusyRef = useRef(false);
-  const lastTriggeredIdRef = useRef<string | null>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const callNarrator = useServerFn(narratorTurn);
+  const [activeTab, setActiveTab] = useState<"chat" | "narrator" | "contest">("chat");
+  const bottomRef = useRef<HTMLDivElement>(null);
 
-  const { data: messages = [] } = useQuery({
-    queryKey: ["chat", gameId],
+  // Contest states
+  const [contestRank, setContestRank] = useState<"Normal" | "Great" | "Ideal" | "Super" | "Hyper" | "Master">("Normal");
+  const [contestAttr, setContestAttr] = useState("Beauty");
+
+  const runNarratorTurn = useServerFn(narratorTurn);
+
+  const { data: messages = [] } = useQuery<Msg[]>({
+    queryKey: ["chat_messages", gameId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("chat_messages")
         .select("*")
         .eq("game_id", gameId)
-        .order("created_at", { ascending: true })
-        .limit(200);
+        .order("created_at", { ascending: true });
       if (error) throw error;
       return (data ?? []) as Msg[];
     },
   });
 
-  const { data: profiles = {} } = useQuery({
-    queryKey: ["profiles-for-chat", gameId, messages.length],
+  const { data: profiles = [] } = useQuery({
+    queryKey: ["game_profiles", gameId],
     queryFn: async () => {
-      const ids = Array.from(new Set(messages.map((m) => m.user_id)));
-      if (ids.length === 0) return {};
-      const { data } = await supabase.from("profiles").select("id,display_name").in("id", ids);
-      const map: Record<string, string> = {};
-      (data ?? []).forEach((p) => (map[p.id] = p.display_name));
-      return map;
+      const { data, error } = await supabase.from("profiles").select("id, username");
+      if (error) throw error;
+      return data ?? [];
     },
-    enabled: messages.length > 0,
+  });
+
+  const { data: game } = useQuery({
+    queryKey: ["game_title", gameId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("games").select("title").eq("id", gameId).single();
+      if (error) throw error;
+      return data;
+    },
   });
 
   useEffect(() => {
@@ -82,367 +95,155 @@ export function ChatPanel({
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "chat_messages", filter: `game_id=eq.${gameId}` },
-        (payload) => {
-          qc.invalidateQueries({ queryKey: ["chat", gameId] });
-          // Auto-trigger AI narrator on any player chat/roll message.
-          const row = payload.new as { id: string; kind: string; user_id: string; body: string };
-          if (!aiNarrator || !isGameOwner) return;
-          if (row.kind === "narrator") return;
-          if (row.id === lastTriggeredIdRef.current) return;
-          if (aiBusyRef.current) return;
-          lastTriggeredIdRef.current = row.id;
-          // Small debounce so a chat + roll combo is consumed as one beat.
-          window.setTimeout(() => { void askNarrator(row.kind === "roll" ? undefined : row.body); }, 800);
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["chat_messages", gameId] });
         },
       )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameId, qc, aiNarrator, isGameOwner]);
+  }, [gameId, queryClient]);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
-  }, [messages.length]);
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, activeTab]);
 
-  async function send() {
-    const trimmed = text.trim();
-    if (!trimmed) return;
+  async function handleSend(e: React.FormEvent) {
+    e.preventDefault();
+    if (!text.trim()) return;
+
+    const currentText = text;
     setText("");
-    const roll = parseRollCommand(trimmed);
-    if (roll) {
-      const result = rollDice(roll.n, roll.faces);
-      const body = roll.label ?? `${roll.n}d${roll.faces}`;
-      await supabase.from("chat_messages").insert({
-        game_id: gameId,
-        user_id: userId,
-        kind: "roll",
-        body,
-        roll_data: { ...result, label: body },
-      });
-    } else {
-      await supabase.from("chat_messages").insert({
-        game_id: gameId,
-        user_id: userId,
-        kind: "chat",
-        body: trimmed,
-      });
+
+    if (currentText.startsWith("/")) {
+      const parsed = parseRollCommand(currentText);
+      if (parsed) {
+        const result = rollDice(parsed.count, parsed.faces, parsed.modifier, parsed.mode);
+        const body = `rolled ${parsed.count}d${parsed.faces}${parsed.modifier ? (parsed.modifier > 0 ? `+${parsed.modifier}` : parsed.modifier) : ""}${parsed.label ? ` for ${parsed.label}` : ""}`;
+
+        await supabase.from("chat_messages").insert({
+          game_id: gameId,
+          user_id: userId,
+          kind: "roll",
+          body,
+          roll_data: {
+            dice: result.dice,
+            successes: result.successes,
+            ones: result.ones,
+            label: parsed.label,
+            faces: parsed.faces,
+            modifier: parsed.modifier,
+            mode: parsed.mode,
+          },
+        });
+        return;
+      }
     }
+
+    await supabase.from("chat_messages").insert({
+      game_id: gameId,
+      user_id: userId,
+      kind: "text",
+      body: currentText,
+    });
   }
 
-  async function askNarrator(prompt?: string) {
-    if (aiBusyRef.current) return;
-    aiBusyRef.current = true;
-    setAiBusy(true);
-    try {
-      await callNarrator({ data: { gameId, userPrompt: prompt } });
-      qc.invalidateQueries({ queryKey: ["chat", gameId] });
-      qc.invalidateQueries({ queryKey: ["initiative", gameId] });
-      qc.invalidateQueries({ queryKey: ["characters", gameId] });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Narrator failed");
-    } finally {
-      aiBusyRef.current = false;
-      setAiBusy(false);
-    }
-  }
-
-  async function rollFromPanel(faces: number, count: number, modifier: number, successMode: boolean) {
-    const n = Math.max(1, Math.min(50, Math.floor(count)));
-    const mod = Math.floor(modifier) || 0;
-    const result = rollDice(n, faces);
-    const mode: "sum" | "success" = faces === 6 && successMode ? "success" : "sum";
-    const modStr = mod === 0 ? "" : mod > 0 ? ` +${mod}` : ` ${mod}`;
-    const body = `${n}d${faces}${modStr}`;
+  async function handleQuickRoll(count: number, faces: number) {
+    const result = rollDice(count, faces, 0, faces === 6 ? "success" : "sum");
     await supabase.from("chat_messages").insert({
       game_id: gameId,
       user_id: userId,
       kind: "roll",
-      body,
-      roll_data: { ...result, label: body, modifier: mod, mode },
+      body: `rolled ${count}d${faces}`,
+      roll_data: {
+        dice: result.dice,
+        successes: result.successes,
+        ones: result.ones,
+        faces,
+        mode: faces === 6 ? "success" : "sum",
+      },
     });
   }
 
+  async function handleNarratorSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!text.trim()) return;
 
-  async function drawContest() {
-    // Fetch game-level weight overrides (narrator can set in Settings)
-    const { data: g } = await supabase
-      .from("games")
-      .select("contest_weights")
-      .eq("id", gameId)
-      .single<{ contest_weights: Record<string, number> | null }>();
-    const card = drawReactionCard(g?.contest_weights ?? null);
+    const currentText = text;
+    setText("");
+
+    await supabase.from("chat_messages").insert({
+      game_id: gameId,
+      user_id: userId,
+      kind: "text",
+      body: currentText,
+    });
+
+    try {
+      const chatHistory = messages.map((m) => ({
+        role: m.user_id === "narrator" ? ("assistant" as const) : ("user" as const),
+        content: m.body,
+      }));
+
+      const response = await runNarratorTurn({
+        gameTitle: game?.title ?? "Pokémon RPG",
+        chatHistory,
+        newMessage: currentText,
+      });
+
+      if (response) {
+        await supabase.from("chat_messages").insert({
+          game_id: gameId,
+          user_id: "narrator",
+          kind: "narrator",
+          body: response,
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to get response from AI Narrator");
+    }
+  }
+
+  async function handleDrawContestCard() {
+    const card = drawReactionCard(contestRank, contestAttr);
+    const body = `drew a Contest Reaction Card for ${contestAttr} (${contestRank} Rank):\n\n**${card.title}**\n\n*Effect:* ${card.effect}\n\n*Points:* ${card.points}`;
+
     await supabase.from("chat_messages").insert({
       game_id: gameId,
       user_id: userId,
       kind: "contest",
-      body: card.name,
-      roll_data: { v: "contest-1", cardId: card.id, name: card.name, hearts: card.hearts, description: card.description },
+      body,
     });
   }
 
-  const [diceOpen, setDiceOpen] = useState(false);
-  const [successMode, setSuccessMode] = useState(false);
-  const [diceRows, setDiceRows] = useState<Record<number, { count: number; mod: number }>>(() =>
-    Object.fromEntries(DICE_FACES.map((f) => [f, { count: 1, mod: 0 }])) as Record<number, { count: number; mod: number }>,
-  );
-
-  return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div ref={scrollRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
-        {messages.map((m) => (
-          <MessageBubble key={m.id} msg={m} authorName={profiles[m.user_id] ?? "…"} isMe={m.user_id === userId} />
-        ))}
-        {messages.length === 0 && (
-          <p className="py-6 text-center text-sm text-muted-foreground">
-            {aiNarrator
-              ? "Tap “Ask AI Narrator” to open the scene."
-              : <>No messages yet. Try <code className="rounded bg-muted px-1.5 py-0.5">/r 5d6</code> or <code className="rounded bg-muted px-1.5 py-0.5">/r 2d20</code>.</>}
-          </p>
-        )}
-        {aiBusy && (
-          <p className="text-center text-xs italic text-muted-foreground"><Bot className="inline h-3 w-3" /> Narrator is thinking…</p>
-        )}
-      </div>
-      <div className="shrink-0 border-t border-border bg-card p-3">
-        {aiNarrator && (
-          <div className="mb-2 flex flex-wrap gap-1">
-            <Button
-              variant="default"
-              size="sm"
-              className="h-7 text-xs"
-              disabled={aiBusy}
-              onClick={() => askNarrator(messages.length === 0 ? "Begin the adventure. Set the opening scene." : undefined)}
-            >
-              <Sparkles className="mr-1 h-3 w-3" />
-              {messages.length === 0 ? "Start adventure" : "Ask AI Narrator"}
-            </Button>
-          </div>
-        )}
-        <div className="mb-2 flex flex-wrap gap-1">
-          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setDiceOpen(true)}>
-            <Dices className="mr-1 h-3 w-3" /> Dados
-          </Button>
-          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => void drawContest()} title="Sortear carta de reação de Contest">
-            <Award className="mr-1 h-3 w-3" /> Contest
-          </Button>
-        </div>
-        <form
-          onSubmit={(e) => { e.preventDefault(); void send(); }}
-          className="flex gap-2"
-        >
-          <Input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Message or /r 3d6"
-          />
-          <Button type="submit" size="icon" aria-label="Send message"><Send className="h-4 w-4" /></Button>
-        </form>
-      </div>
-      {diceOpen && (
-        <FloatingWindow
-          title="Dados"
-          onClose={() => setDiceOpen(false)}
-          width={360}
-          height={480}
-          initialX={typeof window !== "undefined" ? Math.max(20, window.innerWidth - 400) : 100}
-          initialY={120}
-        >
-          <div className="space-y-3 p-3">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={successMode}
-                onChange={(e) => setSuccessMode(e.target.checked)}
-                className="h-4 w-4 rounded-full accent-primary"
-              />
-              <span className="font-medium">Sucesso</span>
-              <span className="text-xs text-muted-foreground">(d6: 4-6 = sucesso)</span>
-            </label>
-            <div className="space-y-2">
-              {DICE_FACES.map((faces) => {
-                const row = diceRows[faces];
-                return (
-                  <div key={faces} className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      min={1}
-                      max={50}
-                      value={row.count}
-                      onChange={(e) =>
-                        setDiceRows((prev) => ({ ...prev, [faces]: { ...prev[faces], count: parseInt(e.target.value || "1", 10) } }))
-                      }
-                      className="h-8 w-16"
-                    />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 w-16 text-xs font-bold"
-                      onClick={() => void rollFromPanel(faces, row.count, row.mod, successMode)}
-                    >
-                      d{faces}
-                    </Button>
-                    <span className="text-xs text-muted-foreground">+</span>
-                    <Input
-                      type="number"
-                      value={row.mod}
-                      onChange={(e) =>
-                        setDiceRows((prev) => ({ ...prev, [faces]: { ...prev[faces], mod: parseInt(e.target.value || "0", 10) } }))
-                      }
-                      className="h-8 w-16"
-                      placeholder="0"
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </FloatingWindow>
-      )}
-    </div>
-  );
-}
-
-
-function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string; isMe: boolean }) {
-  if (msg.kind === "narrator") {
-    return (
-      <div className="rounded-lg border border-primary/30 bg-primary/10 p-3">
-        <div className="mb-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-primary">
-          <Bot className="h-3 w-3" /> Narrator
-        </div>
-        <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.body}</p>
-      </div>
-    );
-  }
-  if (msg.kind === "contest" && msg.roll_data) {
-    const c = msg.roll_data as unknown as { name: string; hearts: number; description: string };
-    const tone = c.hearts > 0 ? "border-success/40 bg-success/10 text-success" : c.hearts < 0 ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-border bg-muted/40 text-foreground";
-    return (
-      <div className={`rounded-lg border p-3 ${tone}`}>
-        <div className="mb-1 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wide">
-          <span className="opacity-80">{authorName} drew</span>
-          <span className="rounded bg-background/40 px-1.5 py-0.5">Contest · Reaction</span>
-          <span className="ml-auto tabular-nums">{c.hearts > 0 ? `+${c.hearts}` : c.hearts} ♥</span>
-        </div>
-        <p className="text-sm font-bold">{c.name}</p>
-        <p className="mt-0.5 text-xs opacity-90">{c.description}</p>
-      </div>
-    );
-  }
-  if (msg.kind === "move" && msg.roll_data && (msg.roll_data as MoveRollMessage).v === "move-1") {
-    const m = msg.roll_data as MoveRollMessage;
-    const crit = m.accuracy.crit;
-    return (
-      <div className="space-y-1">
-        <div className="px-1 text-[11px] text-muted-foreground">
-          <span className="font-semibold text-foreground">{authorName}</span> · {m.pokemonName} used <b>{m.card.name}</b>
-          {crit?.isCrit && <span className="ml-2 rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-bold uppercase text-amber-600">CRÍTICO +1 dado</span>}
-        </div>
-        <MoveCard
-          data={m.card}
-          hasStab={m.hasStab}
-          accuracySlot={
-            <span className="inline-flex items-center gap-1">
-              <SuccessHover
-                label="success"
-                successes={m.accuracy.successes}
-                dice={m.accuracy.dice}
-              />
-              {crit && (
-                <span className="text-[10px] text-muted-foreground">need {crit.required} (crit {crit.critRequired})</span>
-              )}
-            </span>
-          }
-          damageSlot={
-            m.damage ? (
-              <span className="inline-flex items-center gap-1">
-                <SuccessHover
-                  label="dmg"
-                  successes={m.damage.successes}
-                  dice={m.damage.dice}
-                  tone="danger"
-                />
-                {m.damage.critBonus ? <span className="text-[10px] font-bold text-amber-600">+{m.damage.critBonus} dado crit</span> : null}
-              </span>
-            ) : (
-              <span className="text-muted-foreground">Status</span>
-            )
-          }
-          damageDetailsSlot={
-            m.damage?.targets && m.damage.targets.length > 0 ? (
-              <div className="rounded-md border border-border bg-muted/30 p-2">
-                <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Dano por alvo</div>
-                <ul className="space-y-0.5">
-                  {m.damage.targets.map((t, i) => (
-                    <li key={i} className="flex items-center justify-between gap-2">
-                      <span className="truncate font-semibold">{t.name}</span>
-                      <span className="flex items-center gap-1 tabular-nums">
-                        <span className="rounded bg-muted px-1 text-[10px]">{t.defStat === "spdef" ? "SpDef" : "Def"} {t.def}</span>
-                        <span className="rounded bg-muted/60 px-1 text-[10px]">{t.effLabel}</span>
-                        {t.immune ? (
-                          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">Imune (0)</span>
-                        ) : (
-                          <span className="rounded bg-destructive/15 px-1.5 py-0.5 font-bold text-destructive">{t.finalDamage} dmg</span>
-                        )}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null
-          }
-          chanceSlot={
-            m.chance.length > 0 ? (
-              <>
-                {m.chance.map((c, i) => (
-                  <SuccessHover
-                    key={i}
-                    label={`6s · ${c.label}`}
-                    successes={c.successes}
-                    dice={c.dice}
-                    tone="amber"
-                    highlight={(d) => d === 6}
-                  />
-                ))}
-              </>
-            ) : null
-          }
-        />
-      </div>
-    );
-  }
-
-  // Legacy simple roll message
-  const rd = msg.roll_data as unknown as { dice: number[]; successes: number; ones: number; faces?: number; modifier?: number; mode?: "sum" | "success" } | null;
-  if (msg.kind === "roll" && rd) {
-    const faces = rd.faces ?? 6;
-    const isD6 = faces === 6;
-    const mod = rd.modifier ?? 0;
+  function renderRollData(rd: any) {
+    if (!rd || !rd.dice) return null;
+    const isD6 = rd.faces === 6;
     const mode = rd.mode ?? (isD6 ? "success" : "sum");
-    const sum = rd.dice.reduce((a, b) => a + b, 0);
+    const sum = rd.dice.reduce((a: number, b: number) => a + b, 0);
+    const mod = rd.modifier ?? 0;
     const total = sum + mod;
 
     return (
-      <div className="rounded-lg border border-border bg-card p-3">
-        <div className="mb-1.5 flex items-baseline justify-between text-xs">
-          <span className="font-semibold text-foreground">{authorName}</span>
-          <span className="text-muted-foreground">rolled {msg.body}</span>
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          {rd.dice.map((d, i) => (
+      <div className="mt-1.5 rounded-md border border-border bg-muted/50 p-1.5 font-mono text-[11px]">
+        {rd.label && <div className="mb-1 font-sans font-semibold text-muted-foreground">{rd.label}:</div>}
+        <div className="flex flex-wrap items-center gap-1">
+          {rd.dice.map((d: number, i: number) => (
             <span
               key={i}
               className={cn(
-                "inline-flex h-7 min-w-7 items-center justify-center rounded-md border px-1.5 text-sm font-bold tabular-nums",
+                "inline-flex h-5 w-5 items-center justify-center rounded border text-[10px] font-bold shadow-sm",
                 isD6 && mode === "success" && d >= 4
                   ? "border-success bg-success text-success-foreground"
                   : isD6 && mode === "success" && d === 1
                     ? "border-destructive/30 bg-destructive/10 text-destructive"
                     : "border-border bg-muted text-foreground",
               )}
-            >{d}</span>
+            >
+              {d}
+            </span>
           ))}
           {mode === "success" ? (
             <>
@@ -457,7 +258,8 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
             </>
           ) : (
             <span className="ml-2 rounded-full bg-primary/15 px-2.5 py-0.5 text-xs font-bold text-primary">
-              total {total}{mod !== 0 ? ` (${sum}${mod > 0 ? ` +${mod}` : ` ${mod}`})` : ""}
+              total {total}
+              {mod !== 0 ? ` (${sum}${mod > 0 ? ` +${mod}` : ` ${mod}`})` : ""}
             </span>
           )}
         </div>
@@ -466,15 +268,265 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
   }
 
   return (
-    <div className={cn("flex flex-col", isMe ? "items-end" : "items-start")}>
-      <span className="px-1 text-xs text-muted-foreground">{authorName}</span>
-      <div
-        className={cn(
-          "max-w-[85%] rounded-2xl px-3 py-1.5 text-sm",
-          isMe ? "bg-primary text-primary-foreground" : "bg-muted text-foreground",
+    <div className="flex h-full flex-col bg-background/95 shadow-xl">
+      <div className="flex items-center justify-between border-b px-4 py-2">
+        <div className="flex gap-1">
+          <Button
+            size="sm"
+            variant={activeTab === "chat" ? "default" : "ghost"}
+            onClick={() => setActiveTab("chat")}
+            className="h-8 text-xs"
+          >
+            Chat
+          </Button>
+          {aiNarrator && (
+            <Button
+              size="sm"
+              variant={activeTab === "narrator" ? "default" : "ghost"}
+              onClick={() => setActiveTab("narrator")}
+              className="h-8 text-xs gap-1"
+            >
+              <Bot className="h-3 w-3" /> Narrator
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant={activeTab === "contest" ? "default" : "ghost"}
+            onClick={() => setActiveTab("contest")}
+            className="h-8 text-xs gap-1"
+          >
+            <Sparkles className="h-3 w-3" /> Contests
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
+        {activeTab === "chat" || activeTab === "narrator" ? (
+          messages
+            .filter((m) => (activeTab === "chat" ? m.kind !== "narrator" : true))
+            .map((msg) => {
+              const isMe = msg.user_id === userId;
+              const isNarrator = msg.user_id === "narrator";
+              const profile = profiles.find((p) => p.id === msg.user_id);
+              const authorName = isNarrator ? "AI Narrator" : profile?.username || "Unknown";
+
+              if (msg.kind === "move" && msg.roll_data && "v" in msg.roll_data) {
+                const rd = msg.roll_data as MoveRollMessage;
+                const hasTargets = rd.damage?.targets && rd.damage.targets.length > 0;
+
+                return (
+                  <div
+                    key={msg.id}
+                    className={cn("flex flex-col max-w-[320px]", isMe ? "ml-auto items-end" : "mr-auto items-start")}
+                  >
+                    <span className="px-1 text-[11px] text-muted-foreground mb-0.5">
+                      {rd.pokemonName} ({authorName})
+                    </span>
+                    <MoveCard
+                      data={rd.card}
+                      hasStab={rd.hasStab}
+                      className="w-full text-left"
+                      accuracySlot={
+                        <SuccessHover label="Hit" successes={rd.accuracy.successes} dice={rd.accuracy.dice} />
+                      }
+                      damageSlot={
+                        rd.damage ? (
+                          hasTargets ? (
+                            <span className="text-[11px] text-muted-foreground italic">Calculado por alvo</span>
+                          ) : (
+                            <SuccessHover
+                              label="Dano"
+                              successes={rd.damage.successes}
+                              dice={rd.damage.dice}
+                              tone="danger"
+                            />
+                          )
+                        ) : undefined
+                      }
+                      chanceSlot={
+                        rd.chance && rd.chance.length > 0
+                          ? rd.chance.map((c, i) => (
+                              <div key={i} className="mt-1 block">
+                                <span className="text-[10px] text-muted-foreground font-semibold block mb-0.5">
+                                  {c.label}:
+                                </span>
+                                <SuccessHover
+                                  label="Efeito"
+                                  successes={c.successes}
+                                  dice={c.dice}
+                                  highlight={(d) => d === 6}
+                                  tone="amber"
+                                  emptyText="No effect dice"
+                                />
+                              </div>
+                            ))
+                          : undefined
+                      }
+                      footer={
+                        rd.damage?.targets && rd.damage.targets.length > 0 ? (
+                          <div className="mt-2 space-y-1.5 border-t pt-1.5">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                              Resultados por Alvo:
+                            </span>
+                            {rd.damage.targets.map((tgt, idx) => (
+                              <div
+                                key={idx}
+                                className="flex flex-col gap-1 rounded bg-muted/30 p-1.5 border border-border/40 text-[11px]"
+                              >
+                                <div className="flex justify-between items-center font-medium">
+                                  <span className="truncate">{tgt.name}</span>
+                                  <span className="text-[10px] rounded bg-background px-1 border border-border/60 text-muted-foreground font-mono lowercase">
+                                    {tgt.defStat} {tgt.def} · {tgt.effLabel}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between mt-0.5">
+                                  <span className="text-muted-foreground text-[10px]">Rolagem de Dano:</span>
+                                  {tgt.dice && tgt.dice.length > 0 ? (
+                                    <SuccessHover
+                                      label="Dano"
+                                      successes={tgt.finalDamage}
+                                      dice={tgt.dice}
+                                      tone="danger"
+                                    />
+                                  ) : (
+                                    <span className="font-bold text-destructive">{tgt.finalDamage} DMG</span>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : rd.accuracy.crit?.isCrit ? (
+                          <div className="text-[10px] font-bold text-amber-500 bg-amber-500/10 p-1 rounded text-center border border-amber-500/20 animate-pulse">
+                            💥 ACERTO CRÍTICO! (+1 Dado de Dano adicionado)
+                          </div>
+                        ) : undefined
+                      }
+                    />
+                  </div>
+                );
+              }
+
+              return (
+                <div key={msg.id} className={cn("flex flex-col", isMe ? "items-end" : "items-start")}>
+                  <span className="px-1 text-xs text-muted-foreground">{authorName}</span>
+                  <div
+                    className={cn(
+                      "max-w-[280px] rounded-lg px-3 py-1.5 text-sm shadow-sm whitespace-pre-wrap break-words",
+                      isNarrator
+                        ? "bg-purple-600/10 text-purple-200 border border-purple-500/20 font-serif italic"
+                        : isMe
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-foreground",
+                    )}
+                  >
+                    {msg.body}
+                    {msg.kind === "roll" && renderRollData(msg.roll_data)}
+                  </div>
+                </div>
+              );
+            })
+        ) : (
+          <div className="space-y-4 rounded-lg border border-border bg-card p-4 shadow-inner">
+            <div className="space-y-2">
+              <h3 className="text-sm font-bold flex items-center gap-1.5 text-foreground">
+                <Award className="h-4 w-4 text-amber-500" /> Contest Reaction Deck
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Draw a random reaction card tailored to your contest attribute and current rank tier.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Rank Tier
+                </label>
+                <select
+                  value={contestRank}
+                  onChange={(e: any) => setContestRank(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                >
+                  {["Normal", "Great", "Ideal", "Super", "Hyper", "Master"].map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Attribute
+                </label>
+                <select
+                  value={contestAttr}
+                  onChange={(e) => setContestAttr(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                >
+                  {["Beauty", "Cool", "Cute", "Smart", "Tough"].map((a) => (
+                    <option key={a} value={a}>
+                      {a}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <Button onClick={handleDrawContestCard} className="w-full mt-2 h-9 text-xs font-semibold gap-1.5">
+              <Sparkles className="h-3.5 w-3.5" /> Draw Reaction Card
+            </Button>
+          </div>
         )}
-      >
-        {msg.body}
+        <div ref={bottomRef} />
+      </div>
+
+      <div className="border-t p-3 space-y-2 bg-card/50">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mr-1">Quick Roll:</span>
+          {[1, 2, 3, 4, 5, 6].map((n) => (
+            <Button
+              key={n}
+              size="sm"
+              variant="outline"
+              onClick={() => handleQuickRoll(n, 6)}
+              className="h-6 px-2 text-[10px] font-mono font-bold"
+            >
+              {n}d6
+            </Button>
+          ))}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleQuickRoll(1, 20)}
+            className="h-6 px-2 text-[10px] font-mono font-bold"
+          >
+            1d20
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleQuickRoll(1, 100)}
+            className="h-6 px-2 text-[10px] font-mono font-bold"
+          >
+            1d100
+          </Button>
+        </div>
+
+        <form onSubmit={activeTab === "narrator" ? handleNarratorSubmit : handleSend} className="flex gap-2">
+          <Input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder={
+              activeTab === "narrator"
+                ? "Talk to the AI Narrator..."
+                : "Type message or /roll count d[faces] [label]..."
+            }
+            className="h-9 text-xs focus-visible:ring-1"
+          />
+          <Button type="submit" size="icon" className="h-9 w-9 shrink-0">
+            <Send className="h-3.5 w-3.5" />
+          </Button>
+        </form>
       </div>
     </div>
   );
