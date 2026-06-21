@@ -374,7 +374,7 @@ export function MoveRollDialog({
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{move.name}{hasStab ? <span className="ml-2 rounded bg-success/20 px-1.5 py-0.5 text-xs font-bold text-success">STAB +1</span> : null}</DialogTitle></DialogHeader>
         {move.effect && <p className="text-sm text-muted-foreground">{move.effect}</p>}
-        <p className="text-[11px] italic text-muted-foreground">Ordem: 1) Acurácia → 2) Dano{extras.chance.length > 0 ? " → 3) Chance Dice (apenas 6 contam)" : ""}.{painPenalty > 0 ? ` Penalidade de dor −${painPenalty} em Acurácia & Dano.` : ""}</p>
+        <p className="text-[11px] italic text-muted-foreground">Ordem: 1) Acurácia → 2) Dano{extras.chance.length > 0 ? " → 3) Chance Dice (apenas 6 contam)" : ""}.{painPenalty > 0 ? ` Pain Penalty −${painPenalty} dado(s) em Acurácia & Dano.` : ""} {effectivenessFlat ? "Efetividade: regra da casa (+/− sucessos)." : "Efetividade: RAW (+/− dados na pool)."}</p>
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
             <div><Label className="text-xs">Bônus de acurácia (dados)</Label><p className="text-[11px] text-muted-foreground">Pool: {accPool}d6 → rolando {finalAccPool}d6</p></div>
