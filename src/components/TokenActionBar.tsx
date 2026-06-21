@@ -457,7 +457,7 @@ function AttrsDialogButton({
     if (kind !== "pokemon") return;
     const cur = ((data?.modifiers as Record<string, unknown>) ?? {}) as Record<string, unknown>;
     const next = { ...cur, [key]: value };
-    await supabase.from("pokemon").update({ modifiers: next }).eq("id", id);
+    await supabase.from("pokemon").update({ modifiers: next as never }).eq("id", id);
     refetch();
     qc.invalidateQueries({ queryKey: ["token-pokemon", id] });
     qc.invalidateQueries({ queryKey: ["token-pokemon-stats", id] });
