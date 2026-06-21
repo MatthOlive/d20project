@@ -2210,6 +2210,20 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
               <p className="text-[11px] text-muted-foreground">Quando ligado, a Defesa Especial usa Insight no lugar de Vitality em toda a mesa.</p>
             </div>
           </div>
+          <div
+            className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-card p-3"
+            onClick={() => setEffFlat((v) => !v)}
+          >
+            <Checkbox
+              checked={effFlat}
+              onCheckedChange={(v) => setEffFlat(!!v)}
+              onClick={(e) => e.stopPropagation()}
+            />
+            <div>
+              <span className="text-sm font-semibold">Efetividade: regra da casa (+/− sucessos)</span>
+              <p className="text-[11px] text-muted-foreground">Ligado: super-efetivo soma +1/+2 sucessos de dano (e não-efetivo subtrai 1/2). Desligado: usa o RAW e adiciona/remove dados da pool antes de rolar.</p>
+            </div>
+          </div>
           <div className="rounded-md border border-border bg-card p-3 space-y-2">
             <div className="text-xs font-bold uppercase tracking-wider text-primary">Grid do mapa</div>
             <div className="grid grid-cols-2 gap-3">
