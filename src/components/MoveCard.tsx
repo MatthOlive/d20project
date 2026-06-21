@@ -7,10 +7,44 @@ export type MoveCardData = {
   name: string;
   type: string;
   power: number;
-  accuracyText: string;
-  damagePoolText: string;
+  accuracyText: string; // e.g. "Dexterity + Channel"
+  damagePoolText: string; // e.g. "Special + 2" (PDF style)
   effect: string;
   category?: string;
+};
+
+export type MoveRollTarget = {
+  name: string;
+  def: number;
+  defStat: "def" | "spdef";
+  effLabel: string;
+  effDelta: number;
+  immune: boolean;
+  finalDamage: number;
+};
+
+export type MoveRollMessage = {
+  v: "move-1";
+  card: MoveCardData;
+  pokemonName: string;
+  hasStab: boolean;
+  imageUrl?: string | null;
+  accuracy: {
+    pool: number;
+    dice: number[];
+    successes: number;
+    penalty: number;
+    crit?: { margin: number; actions: number; required: number; critRequired: number; isCrit: boolean };
+  };
+  damage: {
+    pool: number;
+    dice: number[];
+    successes: number;
+    penalty: number;
+    isStatus: boolean;
+    targets?: MoveRollTarget[];
+  };
+  chance?: { label: string; dice: number[]; successes: number }[];
 };
 
 export function MoveCard({
@@ -37,62 +71,54 @@ export function MoveCard({
   const tcol = TYPE_COLORS[data.type as keyof typeof TYPE_COLORS] ?? { bg: "#888", fg: "#fff" };
   return (
     <div
-      className={cn("overflow-visible rounded-lg border-2 shadow-sm relative", className)}
+      className={cn("overflow-hidden rounded-lg border-2 shadow-sm bg-card text-card-foreground", className)}
       style={{ borderColor: tcol.bg }}
     >
-      <div className="flex items-stretch">
-        <div
-          className="flex flex-1 items-center px-3 py-2"
-          style={{ background: `linear-gradient(135deg, ${tcol.bg}, ${tcol.bg}cc)`, color: tcol.fg }}
-        >
-          <span className="truncate text-base font-extrabold tracking-wide drop-shadow-sm">{data.name}</span>
+      <div className="flex items-center justify-between p-2 text-white" style={{ backgroundColor: tcol.bg }}>
+        <div className="flex flex-col">
+          <span className="text-sm font-bold tracking-wide uppercase">{data.name}</span>
           {hasStab && (
-            <span className="ml-2 rounded bg-black/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+            <span className="mt-0.5 inline-block self-start rounded bg-white/20 px-1 py-px text-[9px] font-bold uppercase tracking-wider text-white">
               STAB
             </span>
           )}
         </div>
-        <div className="flex w-20 shrink-0 flex-col items-center justify-center bg-muted px-2 py-1 text-center">
-          <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Power</span>
-          <span className="text-xl font-black leading-none text-foreground">{data.power}</span>
+        <div className="flex flex-col items-end">
+          <span className="text-[10px] font-medium opacity-80">Power</span>
+          <span className="font-mono text-base font-bold leading-none">{data.power}</span>
         </div>
       </div>
 
-      <div className="grid gap-2 bg-card px-3 py-2 sm:grid-cols-[1fr_auto] overflow-visible">
-        <div className="space-y-1 text-[11px] leading-snug overflow-visible">
+      <div className="p-2.5 space-y-2 text-xs">
+        <div className="grid grid-cols-2 gap-2 border-b pb-2">
           <div>
-            <span className="font-bold uppercase tracking-wider text-muted-foreground">Type: </span>
-            <span className="capitalize">{data.type}</span>
-          </div>
-          <div className="flex flex-wrap items-center gap-1 overflow-visible">
-            <span className="font-bold uppercase tracking-wider text-muted-foreground">Accuracy:</span>
-            {accuracySlot ?? <span>{data.accuracyText}</span>}
-          </div>
-
-          {damageSlot !== null && (
-            <div className="flex flex-wrap items-center gap-1 overflow-visible">
-              <span className="font-bold uppercase tracking-wider text-muted-foreground">Damage Pool:</span>
-              {damageSlot ?? <span>{data.damagePoolText}</span>}
+            <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Accuracy</span>
+            <div className="mt-0.5 font-medium flex items-center gap-1.5 flex-wrap min-h-5">
+              {accuracySlot || data.accuracyText}
             </div>
-          )}
-
-          {damageDetailsSlot && <div className="pt-1">{damageDetailsSlot}</div>}
-          {(data.effect || chanceSlot) && (
-            <div className="flex flex-wrap items-start gap-1 overflow-visible">
-              <span className="font-bold uppercase tracking-wider text-muted-foreground">Added Effect:</span>
-              <div className="flex-1 space-y-1 overflow-visible">
-                {data.effect && <span>{data.effect}</span>}
-                {chanceSlot && <div className="flex flex-wrap items-center gap-1">{chanceSlot}</div>}
-              </div>
+          </div>
+          <div>
+            <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              Damage Pool
+            </span>
+            <div className="mt-0.5 font-medium flex items-center gap-1.5 flex-wrap min-h-5">
+              {damageSlot || data.damagePoolText}
             </div>
-          )}
+          </div>
         </div>
-        {rightExtras && <div className="flex flex-col items-end justify-start gap-1">{rightExtras}</div>}
-      </div>
 
-      <div className="space-y-2 border-t border-border bg-card px-3 py-2 overflow-visible">
-        <EffectIcons effect={data.effect} />
-        {footer}
+        {damageDetailsSlot && <div className="border-b pb-2">{damageDetailsSlot}</div>}
+
+        <div>
+          <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Effect</span>
+          <p className="mt-1 text-muted-foreground leading-relaxed whitespace-pre-wrap">{data.effect}</p>
+        </div>
+
+        {chanceSlot && <div className="border-t pt-2 space-y-1">{chanceSlot}</div>}
+
+        {rightExtras && <div className="border-t pt-2 flex flex-wrap gap-1">{rightExtras}</div>}
+
+        {footer && <div className="border-t pt-2">{footer}</div>}
       </div>
     </div>
   );
@@ -103,41 +129,58 @@ export function SuccessHover({
   successes,
   dice,
   highlight,
-  tone = "primary",
+  tone = "success",
   emptyText,
+  critInfo,
 }: {
   label: string;
   successes: number;
   dice: number[];
   highlight?: (d: number) => boolean;
-  tone?: "primary" | "danger" | "amber";
+  tone?: "success" | "danger" | "amber";
   emptyText?: string;
+  critInfo?: { required: number; critRequired: number };
 }) {
+  const isD6 = true;
   const isHit = highlight ?? ((d: number) => d >= 4);
-  const toneCls =
-    tone === "danger"
-      ? "bg-destructive/15 text-destructive border-destructive/40"
-      : tone === "amber"
-        ? "bg-amber-500/15 text-amber-600 border-amber-500/40"
-        : "bg-success/15 text-success border-success/40";
+
+  // Lógica de cor condicional baseada no 'need' apenas se critInfo (required) for passado
+  let badgeBg = "bg-success text-success-foreground border-success";
+  if (tone === "danger") badgeBg = "bg-destructive text-destructive-foreground border-destructive";
+  if (tone === "amber") badgeBg = "bg-amber-500 text-amber-900 border-amber-500";
+
+  if (critInfo) {
+    if (successes >= critInfo.required) {
+      badgeBg = "bg-success text-success-foreground border-success";
+    } else {
+      badgeBg = "bg-destructive text-destructive-foreground border-destructive";
+    }
+  }
 
   return (
-    <span className="group relative inline-flex cursor-help items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold tabular-nums overflow-visible">
-      <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5", toneCls)}>
-        {successes} {label}
+    <span className="group relative inline-flex items-center gap-1 cursor-help overflow-visible z-30">
+      <span
+        className={cn(
+          "inline-flex h-5 items-center justify-center rounded border px-2 text-[11px] font-bold shadow-sm transition-colors",
+          badgeBg,
+        )}
+      >
+        {successes} {label === "Hit" ? "Sucessos" : label}
       </span>
 
-      {/* SOLUÇÃO DEFINITIVA: Posicionado para a ESQUERDA com z-[100] altíssimo para sobrepor tudo */}
-      <span className="pointer-events-none invisible absolute right-full top-1/2 z-[100] mr-2 w-max max-w-[240px] -translate-y-1/2 rounded-md border border-border bg-popover px-2 py-1.5 text-popover-foreground opacity-0 shadow-xl transition-all group-hover:visible group-hover:opacity-100">
+      {/* Janela flutuante original restaurada */}
+      <span className="absolute bottom-full left-1/2 mb-1.5 hidden w-max max-w-[260px] -translate-x-1/2 flex-col gap-1 rounded-md border border-border bg-popover p-2 text-[11px] text-popover-foreground shadow-md group-hover:flex z-50 pointer-events-none animate-in fade-in slide-in-from-bottom-1 duration-150">
+        <span className="font-semibold text-muted-foreground block border-b pb-0.5 mb-1">Dados Rolados:</span>
+
         {dice.length === 0 ? (
-          <span className="text-[10px] text-muted-foreground">{emptyText ?? "No dice rolled"}</span>
+          <span className="text-muted-foreground italic">{emptyText || "Nenhum dado."}</span>
         ) : (
-          <span className="flex flex-wrap gap-1 max-w-[200px]">
+          <span className="flex flex-wrap gap-1">
             {dice.map((d, i) => (
               <span
                 key={i}
                 className={cn(
-                  "inline-flex h-5 min-w-5 items-center justify-center rounded border px-1 text-[10px] font-bold shadow-sm",
+                  "inline-flex h-5 min-w-5 items-center justify-center rounded border px-1 text-[10px] font-bold",
                   isHit(d)
                     ? "border-success bg-success text-success-foreground"
                     : d === 1
@@ -150,45 +193,15 @@ export function SuccessHover({
             ))}
           </span>
         )}
+
+        {/* Exibe o aviso "need X crit Y" maior, caso fornecido */}
+        {critInfo && (
+          <div className="mt-1.5 pt-1 border-t border-border/60 text-center font-semibold text-[10.5px] text-muted-foreground">
+            need <span className="text-foreground font-bold">{critInfo.required}</span> crit{" "}
+            <span className="text-foreground font-bold">{critInfo.critRequired}</span>
+          </div>
+        )}
       </span>
     </span>
   );
 }
-
-export type MoveRollTarget = {
-  name: string;
-  def: number;
-  defStat: "def" | "spdef";
-  effLabel: string;
-  effDelta: number;
-  immune: boolean;
-  finalDamage: number;
-  dice?: number[];
-  successes?: number;
-};
-
-export type MoveRollMessage = {
-  v: "move-1";
-  card: MoveCardData;
-  pokemonName: string;
-  hasStab: boolean;
-  imageUrl?: string | null;
-  accuracy: {
-    pool: number;
-    dice: number[];
-    successes: number;
-    penalty: number;
-    crit?: { margin: number; actions: number; required: number; critRequired: number; isCrit: boolean };
-  };
-  damage: {
-    pool: number;
-    dice: number[];
-    successes: number;
-    penalty: number;
-    isStatus: boolean;
-    targetDef: number;
-    critBonus?: number;
-    targets?: MoveRollTarget[];
-  } | null;
-  chance: { label: string; pool: number; dice: number[]; successes: number }[];
-};
