@@ -41,7 +41,7 @@ export function MoveCard({
 }) {
   const tcol = TYPE_COLORS[data.type as keyof typeof TYPE_COLORS] ?? { bg: "#888", fg: "#fff" };
   return (
-    <div className={cn("overflow-hidden rounded-lg border-2 shadow-sm", className)} style={{ borderColor: tcol.bg }}>
+    <div className={cn("overflow-visible rounded-lg border-2 shadow-sm", className)} style={{ borderColor: tcol.bg }}>
       <div className="flex items-stretch">
         <div
           className="flex flex-1 items-center px-3 py-2"
@@ -71,7 +71,6 @@ export function MoveCard({
             {accuracySlot ?? <span>{data.accuracyText}</span>}
           </div>
 
-          {/* REQUISITO: Se damageSlot for null, a linha inteira deixa de existir */}
           {damageSlot !== null && (
             <div className="flex flex-wrap items-center gap-1">
               <span className="font-bold uppercase tracking-wider text-muted-foreground">Damage Pool:</span>
@@ -123,16 +122,18 @@ export function SuccessHover({
       : tone === "amber"
         ? "bg-amber-500/15 text-amber-600 border-amber-500/40"
         : "bg-success/15 text-success border-success/40";
+
   return (
     <span className="group relative inline-flex cursor-help items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold tabular-nums">
       <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5", toneCls)}>
         {successes} {label}
       </span>
-      <span className="pointer-events-none invisible absolute left-1/2 top-full z-50 mt-1 w-max max-w-[260px] -translate-x-1/2 rounded-md border border-border bg-popover px-2 py-1.5 text-popover-foreground opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100">
+      {/* Ajustado: agora abre para CIMA (bottom-full mb-1) para evitar ser cortado pelos cantos e layouts inferiores */}
+      <span className="pointer-events-none invisible absolute left-1/2 bottom-full z-50 mb-1 w-max max-w-[240px] -translate-x-1/2 rounded-md border border-border bg-popover px-2 py-1.5 text-popover-foreground opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100">
         {dice.length === 0 ? (
           <span className="text-[10px] text-muted-foreground">{emptyText ?? "No dice rolled"}</span>
         ) : (
-          <span className="flex flex-wrap gap-1">
+          <span className="flex flex-wrap gap-1 max-w-[220px]">
             {dice.map((d, i) => (
               <span
                 key={i}
