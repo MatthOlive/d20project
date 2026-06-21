@@ -123,14 +123,14 @@ function GameRoom() {
     meta?: { characterKind: "trainer" | "pokemon"; characterId: string; imageUrl?: string | null },
   ) {
     if (!user) return;
-    const result = rollD6(n);
-    const adjusted = Math.max(0, result.successes - (penalty || 0));
-    const finalLabel = penalty > 0 ? `${label} (−${penalty} pain)` : label;
+    // Pain penalty reduces the dice pool, NOT successes.
+    const finalPool = Math.max(0, n - (penalty || 0));
+    const result = rollD6(finalPool);
+    const finalLabel = penalty > 0 ? `${label} (pool ${n}−${penalty} pain)` : label;
     await supabase.from("chat_messages").insert({
       game_id: gameId, user_id: user.id, kind: "roll",
-      body: finalLabel, roll_data: { ...result, successes: adjusted, penalty, label: finalLabel },
+      body: finalLabel, roll_data: { ...result, pool: finalPool, originalPool: n, penalty, label: finalLabel },
     });
-    // Auto-populate Turn Order whenever an initiative roll is made
     if (meta && /initiative/i.test(label)) {
       const name = label.split("·")[0]?.trim() || label;
       await supabase
@@ -144,7 +144,7 @@ function GameRoom() {
         character_ref: meta.characterId,
         character_name: name,
         image_url: meta.imageUrl ?? null,
-        successes: adjusted,
+        successes: result.successes,
         position: 0,
       });
     }
