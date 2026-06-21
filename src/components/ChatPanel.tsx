@@ -329,7 +329,6 @@ export function ChatPanel({
                       accuracySlot={
                         <SuccessHover label="Hit" successes={rd.accuracy.successes} dice={rd.accuracy.dice} />
                       }
-                      // REQUISITO 1: Se houver alvos selecionados, a linha inteira de "Damage Pool:" deixa de existir (retorna null)
                       damageSlot={
                         hasTargets ? null : rd.damage ? (
                           <SuccessHover
@@ -367,14 +366,13 @@ export function ChatPanel({
                             </span>
                             {rd.damage.targets.map((tgt, idx) => {
                               const effLower = (tgt.effLabel || "").toLowerCase();
-                              // Verifica se o ataque é "não é muito efetivo" ou imune/sem efeito
+
                               const isNotVeryEffectiveOrLess =
                                 effLower.includes("not very") ||
                                 effLower.includes("no effect") ||
                                 effLower.includes("immune") ||
                                 tgt.immune;
 
-                              // REQUISITO 3: Se o dano for 0 e NÃO for pouco efetivo/imune, o dano mínimo passa a ser 1.
                               let displayDamage = tgt.finalDamage;
                               if (displayDamage === 0 && !isNotVeryEffectiveOrLess) {
                                 displayDamage = 1;
@@ -393,7 +391,6 @@ export function ChatPanel({
                                   </div>
                                   <div className="flex items-center justify-between mt-0.5">
                                     <span className="text-muted-foreground text-[10px]">Rolagem de Dano:</span>
-                                    {/* REQUISITO 2: Substituído o texto simples por SuccessHover para exibir a janela flutuante dos d6 */}
                                     {tgt.dice && tgt.dice.length > 0 ? (
                                       <SuccessHover
                                         label="Dano"
