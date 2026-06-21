@@ -7,17 +7,12 @@ export type MoveCardData = {
   name: string;
   type: string;
   power: number;
-  accuracyText: string; // e.g. "Dexterity + Channel"
-  damagePoolText: string; // e.g. "Special + 2" (PDF style)
+  accuracyText: string;
+  damagePoolText: string;
   effect: string;
   category?: string;
 };
 
-/**
- * Reusable Pokérole move card (PDF-style).
- * Accepts optional slots for accuracy / damage / chance — when provided they
- * replace the plain text descriptors with success/dice tooltips.
- */
 export function MoveCard({
   data,
   hasStab,
@@ -41,7 +36,10 @@ export function MoveCard({
 }) {
   const tcol = TYPE_COLORS[data.type as keyof typeof TYPE_COLORS] ?? { bg: "#888", fg: "#fff" };
   return (
-    <div className={cn("overflow-visible rounded-lg border-2 shadow-sm", className)} style={{ borderColor: tcol.bg }}>
+    <div
+      className={cn("overflow-visible rounded-lg border-2 shadow-sm relative", className)}
+      style={{ borderColor: tcol.bg }}
+    >
       <div className="flex items-stretch">
         <div
           className="flex flex-1 items-center px-3 py-2"
@@ -60,19 +58,19 @@ export function MoveCard({
         </div>
       </div>
 
-      <div className="grid gap-2 bg-card px-3 py-2 sm:grid-cols-[1fr_auto]">
-        <div className="space-y-1 text-[11px] leading-snug">
+      <div className="grid gap-2 bg-card px-3 py-2 sm:grid-cols-[1fr_auto] overflow-visible">
+        <div className="space-y-1 text-[11px] leading-snug overflow-visible">
           <div>
             <span className="font-bold uppercase tracking-wider text-muted-foreground">Type: </span>
             <span className="capitalize">{data.type}</span>
           </div>
-          <div className="flex flex-wrap items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1 overflow-visible">
             <span className="font-bold uppercase tracking-wider text-muted-foreground">Accuracy:</span>
             {accuracySlot ?? <span>{data.accuracyText}</span>}
           </div>
 
           {damageSlot !== null && (
-            <div className="flex flex-wrap items-center gap-1">
+            <div className="flex flex-wrap items-center gap-1 overflow-visible">
               <span className="font-bold uppercase tracking-wider text-muted-foreground">Damage Pool:</span>
               {damageSlot ?? <span>{data.damagePoolText}</span>}
             </div>
@@ -80,9 +78,9 @@ export function MoveCard({
 
           {damageDetailsSlot && <div className="pt-1">{damageDetailsSlot}</div>}
           {(data.effect || chanceSlot) && (
-            <div className="flex flex-wrap items-start gap-1">
+            <div className="flex flex-wrap items-start gap-1 overflow-visible">
               <span className="font-bold uppercase tracking-wider text-muted-foreground">Added Effect:</span>
-              <div className="flex-1 space-y-1">
+              <div className="flex-1 space-y-1 overflow-visible">
                 {data.effect && <span>{data.effect}</span>}
                 {chanceSlot && <div className="flex flex-wrap items-center gap-1">{chanceSlot}</div>}
               </div>
@@ -92,7 +90,7 @@ export function MoveCard({
         {rightExtras && <div className="flex flex-col items-end justify-start gap-1">{rightExtras}</div>}
       </div>
 
-      <div className="space-y-2 border-t border-border bg-card px-3 py-2">
+      <div className="space-y-2 border-t border-border bg-card px-3 py-2 overflow-visible">
         <EffectIcons effect={data.effect} />
         {footer}
       </div>
@@ -124,21 +122,22 @@ export function SuccessHover({
         : "bg-success/15 text-success border-success/40";
 
   return (
-    <span className="group relative inline-flex cursor-help items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold tabular-nums">
+    <span className="group relative inline-flex cursor-help items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold tabular-nums overflow-visible">
       <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5", toneCls)}>
         {successes} {label}
       </span>
-      {/* Ajustado: agora abre para CIMA (bottom-full mb-1) para evitar ser cortado pelos cantos e layouts inferiores */}
-      <span className="pointer-events-none invisible absolute left-1/2 bottom-full z-50 mb-1 w-max max-w-[240px] -translate-x-1/2 rounded-md border border-border bg-popover px-2 py-1.5 text-popover-foreground opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100">
+
+      {/* SOLUÇÃO DEFINITIVA: Posicionado para a ESQUERDA com z-[100] altíssimo para sobrepor tudo */}
+      <span className="pointer-events-none invisible absolute right-full top-1/2 z-[100] mr-2 w-max max-w-[240px] -translate-y-1/2 rounded-md border border-border bg-popover px-2 py-1.5 text-popover-foreground opacity-0 shadow-xl transition-all group-hover:visible group-hover:opacity-100">
         {dice.length === 0 ? (
           <span className="text-[10px] text-muted-foreground">{emptyText ?? "No dice rolled"}</span>
         ) : (
-          <span className="flex flex-wrap gap-1 max-w-[220px]">
+          <span className="flex flex-wrap gap-1 max-w-[200px]">
             {dice.map((d, i) => (
               <span
                 key={i}
                 className={cn(
-                  "inline-flex h-5 min-w-5 items-center justify-center rounded border px-1 text-[10px] font-bold",
+                  "inline-flex h-5 min-w-5 items-center justify-center rounded border px-1 text-[10px] font-bold shadow-sm",
                   isHit(d)
                     ? "border-success bg-success text-success-foreground"
                     : d === 1
