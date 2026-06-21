@@ -20,6 +20,8 @@ export type MoveRollTarget = {
   effLabel: string;
   effDelta: number;
   immune: boolean;
+  dice: number[];
+  successes: number;
   finalDamage: number;
 };
 
@@ -42,9 +44,11 @@ export type MoveRollMessage = {
     successes: number;
     penalty: number;
     isStatus: boolean;
+    targetDef: number;
+    critBonus?: number;
     targets?: MoveRollTarget[];
-  };
-  chance?: { label: string; dice: number[]; successes: number }[];
+  } | null;
+  chance: { label: string; pool: number; dice: number[]; successes: number }[];
 };
 
 export function MoveCard({
@@ -57,6 +61,7 @@ export function MoveCard({
   rightExtras,
   footer,
   className,
+  hideDamagePool,
 }: {
   data: MoveCardData;
   hasStab?: boolean;
@@ -67,34 +72,29 @@ export function MoveCard({
   rightExtras?: ReactNode;
   footer?: ReactNode;
   className?: string;
+  hideDamagePool?: boolean;
 }) {
   const tcol = TYPE_COLORS[data.type as keyof typeof TYPE_COLORS] ?? { bg: "#888", fg: "#fff" };
   return (
-    <div className={cn("overflow-hidden rounded-lg border-2 shadow-sm", className)} style={{ borderColor: tcol.bg }}>
+    <div
+      className={cn("overflow-hidden rounded-[18px] border-2 bg-[#111418] text-[#f4f4ee] shadow-sm", className)}
+      style={{ borderColor: tcol.bg }}
+    >
       <div className="flex items-stretch">
         <div
-          className="flex flex-1 items-center px-3 py-2"
-          style={{ background: `linear-gradient(135deg, ${tcol.bg}, ${tcol.bg}cc)`, color: tcol.fg }}
+          className="flex min-h-[62px] flex-1 items-center px-5 py-3"
+          style={{ backgroundColor: tcol.bg, color: tcol.fg }}
         >
-          <span className="truncate text-base font-extrabold tracking-wide drop-shadow-sm">{data.name}</span>
+          <span className="truncate text-2xl font-black tracking-normal drop-shadow-sm">{data.name}</span>
           {hasStab && (
-            <span className="ml-2 rounded bg-black/20 px-1.5 py-0.5 text-[10px] font-bold uppercase">STAB</span>
+            <span className="ml-3 rounded bg-black/25 px-1.5 py-0.5 text-[10px] font-bold uppercase">STAB</span>
           )}
         </div>
-        <div className="flex w-20 shrink-0 flex-col items-center justify-center bg-muted px-2 py-1 text-center">
-          <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Power</span>
-          <span className="text-xl font-black leading-none text-foreground">{data.power}</span>
+        <div className="flex w-[120px] shrink-0 flex-col items-center justify-center bg-[#202329] px-3 py-2 text-center">
+          <span className="text-[13px] font-black uppercase tracking-wider text-[#9da0a8]">Power</span>
+          <span className="text-3xl font-black leading-none text-white">{data.power}</span>
         </div>
       </div>
 
-      <div className="grid gap-2 bg-card px-3 py-2 sm:grid-cols-[1fr_auto]">
-        <div className="space-y-1 text-[11px] leading-snug">
-          <div>
-            <span className="font-bold uppercase tracking-wider text-muted-foreground">Type: </span>
-            <span className="capitalize">{data.type}</span>
-          </div>
-          <div className="flex flex-wrap items-center gap-1">
-            <span className="font-bold uppercase tracking-wider text-muted-foreground">Accuracy:</span>
-            {accuracySlot ?? <span>{data.accuracyText}</span>}
-          </div>
-          <div className="flex flex-wrap items-center gap-1">
+      <div className="grid gap-2 bg-[#111418] px-5 py-3 sm:grid-cols-[1fr_auto]">
+        <div className="space-y-3 text-base font-semibold leading-snug text-[#f4f4ee]">
