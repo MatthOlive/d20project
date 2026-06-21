@@ -2169,8 +2169,10 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
     if (error) { toast.error(error.message); return; }
     toast.success("Configurações salvas");
     qc.setQueryData(["game-spdef-uses-insight", gameId], spdefIns);
+    qc.setQueryData(["game-effectiveness-flat", gameId], effFlat);
     qc.invalidateQueries({ queryKey: ["game", gameId] });
     qc.invalidateQueries({ queryKey: ["game-spdef-uses-insight", gameId] });
+    qc.invalidateQueries({ queryKey: ["game-effectiveness-flat", gameId] });
     setOpen(false);
   }
 
