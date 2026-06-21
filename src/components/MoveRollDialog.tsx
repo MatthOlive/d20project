@@ -14,6 +14,7 @@ import {
   type TYPE_COLORS,
 } from "@/lib/pokerole";
 import { useGameSpdefUsesInsight } from "@/hooks/use-game-spdef-uses-insight";
+import { useGameEffectivenessFlat } from "@/hooks/use-game-effectiveness-flat";
 import type { MoveRollMessage, MoveRollTarget } from "@/components/MoveCard";
 
 export type MoveData = {
