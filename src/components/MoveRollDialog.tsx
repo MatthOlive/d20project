@@ -439,7 +439,7 @@ export function MoveRollDialog({
 
               {!hasTargets && (
                 <div className="flex items-center justify-between gap-3">
-                  <div><Label className="text-xs">{defLabel} manual</Label><p className="text-[11px] text-muted-foreground">Pool final: <b>{finalDmgPool}d6</b></p></div>
+                  <div><Label className="text-xs">{defLabel} manual</Label><p className="text-[11px] text-muted-foreground">Pool de dano base: <b>{baseDmgPool}d6</b> (Def reduz dados){painPenalty > 0 ? ` · −${painPenalty} dado(s) por dor` : ""}</p></div>
                   <Input type="number" min={0} value={targetDef} onChange={(e) => setTargetDef(Math.max(0, parseInt(e.target.value) || 0))} className="h-9 w-20" />
                 </div>
               )}
