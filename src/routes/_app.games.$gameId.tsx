@@ -123,14 +123,14 @@ function GameRoom() {
     meta?: { characterKind: "trainer" | "pokemon"; characterId: string; imageUrl?: string | null },
   ) {
     if (!user) return;
-    const result = rollD6(n);
-    const adjusted = Math.max(0, result.successes - (penalty || 0));
-    const finalLabel = penalty > 0 ? `${label} (−${penalty} pain)` : label;
+    // Pain penalty reduces the dice pool, NOT successes.
+    const finalPool = Math.max(0, n - (penalty || 0));
+    const result = rollD6(finalPool);
+    const finalLabel = penalty > 0 ? `${label} (pool ${n}−${penalty} pain)` : label;
     await supabase.from("chat_messages").insert({
       game_id: gameId, user_id: user.id, kind: "roll",
-      body: finalLabel, roll_data: { ...result, successes: adjusted, penalty, label: finalLabel },
+      body: finalLabel, roll_data: { ...result, pool: finalPool, originalPool: n, penalty, label: finalLabel },
     });
-    // Auto-populate Turn Order whenever an initiative roll is made
     if (meta && /initiative/i.test(label)) {
       const name = label.split("·")[0]?.trim() || label;
       await supabase
@@ -144,7 +144,7 @@ function GameRoom() {
         character_ref: meta.characterId,
         character_name: name,
         image_url: meta.imageUrl ?? null,
-        successes: adjusted,
+        successes: result.successes,
         position: 0,
       });
     }
@@ -2096,6 +2096,7 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
   const [shiny, setShiny] = useState<number>(10);
   const [over, setOver] = useState<number>(0);
   const [spdefIns, setSpdefIns] = useState<boolean>(false);
+  const [effFlat, setEffFlat] = useState<boolean>(true);
   const [gridEnabled, setGridEnabled] = useState(true);
   const [gridSnap, setGridSnap] = useState(true);
   const [gridSize, setGridSize] = useState(56);
@@ -2114,7 +2115,7 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
     (async () => {
       const { data, error } = await supabase
         .from("games")
-        .select("shiny_chance,overgrown_chance,contest_weights,spdef_uses_insight,grid_enabled,grid_snap,grid_size,grid_color,grid_opacity,grid_unit_m,grid_unit_label")
+        .select("shiny_chance,overgrown_chance,contest_weights,spdef_uses_insight,effectiveness_flat,grid_enabled,grid_snap,grid_size,grid_color,grid_opacity,grid_unit_m,grid_unit_label")
         .eq("id", gameId)
         .single();
       if (error) {
@@ -2125,12 +2126,14 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
       const row = data as {
         shiny_chance?: number; overgrown_chance?: number;
         contest_weights?: Record<string, number> | null; spdef_uses_insight?: boolean;
+        effectiveness_flat?: boolean;
         grid_enabled?: boolean; grid_snap?: boolean; grid_size?: number;
         grid_color?: string; grid_opacity?: number; grid_unit_m?: number; grid_unit_label?: string;
       } | null;
       setShiny(row?.shiny_chance ?? 10);
       setOver(row?.overgrown_chance ?? 0);
       setSpdefIns(Boolean(row?.spdef_uses_insight));
+      setEffFlat(row?.effectiveness_flat === undefined || row?.effectiveness_flat === null ? true : Boolean(row.effectiveness_flat));
       setGridEnabled(row?.grid_enabled ?? true);
       setGridSnap(row?.grid_snap ?? true);
       setGridSize(row?.grid_size ?? 56);
@@ -2158,6 +2161,7 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
       .from("games")
       .update({
         shiny_chance: s, overgrown_chance: o, contest_weights: cw, spdef_uses_insight: spdefIns,
+        effectiveness_flat: effFlat,
         grid_enabled: gridEnabled, grid_snap: gridSnap, grid_size: gs,
         grid_color: gridColor, grid_opacity: go, grid_unit_m: um, grid_unit_label: gridUnitLabel,
       } as never)
@@ -2165,8 +2169,10 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
     if (error) { toast.error(error.message); return; }
     toast.success("Configurações salvas");
     qc.setQueryData(["game-spdef-uses-insight", gameId], spdefIns);
+    qc.setQueryData(["game-effectiveness-flat", gameId], effFlat);
     qc.invalidateQueries({ queryKey: ["game", gameId] });
     qc.invalidateQueries({ queryKey: ["game-spdef-uses-insight", gameId] });
+    qc.invalidateQueries({ queryKey: ["game-effectiveness-flat", gameId] });
     setOpen(false);
   }
 
@@ -2202,6 +2208,20 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
             <div>
               <span className="text-sm font-semibold">SpDef usa Insight (regra da casa)</span>
               <p className="text-[11px] text-muted-foreground">Quando ligado, a Defesa Especial usa Insight no lugar de Vitality em toda a mesa.</p>
+            </div>
+          </div>
+          <div
+            className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-card p-3"
+            onClick={() => setEffFlat((v) => !v)}
+          >
+            <Checkbox
+              checked={effFlat}
+              onCheckedChange={(v) => setEffFlat(!!v)}
+              onClick={(e) => e.stopPropagation()}
+            />
+            <div>
+              <span className="text-sm font-semibold">Efetividade: regra da casa (+/− sucessos)</span>
+              <p className="text-[11px] text-muted-foreground">Ligado: super-efetivo soma +1/+2 sucessos de dano (e não-efetivo subtrai 1/2). Desligado: usa o RAW e adiciona/remove dados da pool antes de rolar.</p>
             </div>
           </div>
           <div className="rounded-md border border-border bg-card p-3 space-y-2">

@@ -153,6 +153,7 @@ export type Database = {
           created_at: string
           current_scenario_id: string | null
           dynamic_lighting: boolean
+          effectiveness_flat: boolean
           fog_enabled: boolean
           grid_color: string
           grid_enabled: boolean
@@ -179,6 +180,7 @@ export type Database = {
           created_at?: string
           current_scenario_id?: string | null
           dynamic_lighting?: boolean
+          effectiveness_flat?: boolean
           fog_enabled?: boolean
           grid_color?: string
           grid_enabled?: boolean
@@ -205,6 +207,7 @@ export type Database = {
           created_at?: string
           current_scenario_id?: string | null
           dynamic_lighting?: boolean
+          effectiveness_flat?: boolean
           fog_enabled?: boolean
           grid_color?: string
           grid_enabled?: boolean

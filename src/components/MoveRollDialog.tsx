@@ -14,6 +14,7 @@ import {
   type TYPE_COLORS,
 } from "@/lib/pokerole";
 import { useGameSpdefUsesInsight } from "@/hooks/use-game-spdef-uses-insight";
+import { useGameEffectivenessFlat } from "@/hooks/use-game-effectiveness-flat";
 import type { MoveRollMessage, MoveRollTarget } from "@/components/MoveCard";
 
 export type MoveData = {
@@ -234,6 +235,7 @@ export function MoveRollDialog({
   const [actions, setActions] = useState(0);
   const [selectedTokenIds, setSelectedTokenIds] = useState<string[]>([]);
   const spdefUsesInsight = useGameSpdefUsesInsight(gameId);
+  const effectivenessFlat = useGameEffectivenessFlat(gameId);
   const { tokens, infoMap } = useTargetsForGame(gameId, open && !isStatus);
   const extras = useMemo(() => parseMoveExtras(move.effect), [move.effect]);
   const [extraOn, setExtraOn] = useState<boolean[]>(() => extras.extra.map(() => false));
@@ -243,8 +245,10 @@ export function MoveRollDialog({
   const defLabel = isSpecial ? "Target Sp.Def" : "Target Def";
   const extraDmgBonus = extras.extra.reduce((acc, e, i) => acc + (extraOn[i] ? e.count : 0), 0);
   const hasTargets = selectedTokenIds.length > 0;
-  const finalDmgPool = Math.max(0, dmgPool + dmgBonus + extraDmgBonus - (hasTargets ? 0 : targetDef));
-  const finalAccPool = Math.max(0, accPool + accBonus);
+  // baseDmg: pool before per-target Def / effectiveness, but already including bonuses + manual def (only when no targets).
+  const baseDmgPool = Math.max(0, dmgPool + dmgBonus + extraDmgBonus - (hasTargets ? 0 : targetDef));
+  const finalAccPoolBeforePain = Math.max(0, accPool + accBonus);
+  const finalAccPool = Math.max(0, finalAccPoolBeforePain - painPenalty);
   const requiredSuccesses = actions + 1;
   const critRequired = requiredSuccesses + Math.max(0, 3 - Math.max(0, critMargin));
 
@@ -254,49 +258,60 @@ export function MoveRollDialog({
   }
 
   async function confirm() {
+    // Pain penalty reduces dice count for accuracy.
     const accResult = rollD6(finalAccPool);
-    const accSuccesses = Math.max(0, accResult.successes - painPenalty);
+    const accSuccesses = accResult.successes;
     const isHit = accSuccesses >= requiredSuccesses;
     const isCrit = isHit && accSuccesses >= critRequired;
 
     let dmg: MoveRollMessage["damage"] = null;
-    if (!isStatus && finalDmgPool > 0) {
-      const dmgResult = rollD6(finalDmgPool);
-      const dice = [...dmgResult.dice];
-      // Crítico: rola 1 dado extra de dano (sem somar sucesso direto).
-      if (isCrit) {
-        const extra = 1 + Math.floor(Math.random() * 6);
-        dice.push(extra);
-      }
-      const rawSuccesses = dice.filter((d) => d >= 4).length;
-      const dmgSuccesses = Math.max(0, rawSuccesses - painPenalty);
+    if (!isStatus && baseDmgPool > 0) {
+      // Pool of damage dice BEFORE per-target def, after pain penalty + crit.
+      const dmgPoolAfterPain = Math.max(0, baseDmgPool - painPenalty + (isCrit ? 1 : 0));
+
+      let aggDice: number[] = [];
+      let aggSuccesses = 0;
       let targets: MoveRollTarget[] | undefined;
+
       if (hasTargets) {
-        targets = selectedTokenIds
-          .map((tid) => infoMap.get(tid))
-          .filter((x): x is TargetInfo => !!x)
-          .map((t) => {
-            const def = defValueFor(t);
-            const mult = damageMultiplierFor(move.type as string, t.types);
-            const eff = damageDeltaFromMultiplier(mult);
-            const finalDamage = eff.immune
-              ? 0
-              : Math.max(0, dmgSuccesses + eff.delta - def);
-            return {
-              name: t.name,
-              def,
-              defStat: isSpecial ? ("spdef" as const) : ("def" as const),
-              effLabel: eff.label,
-              effDelta: eff.delta,
-              immune: eff.immune,
-              finalDamage,
-            };
+        targets = [];
+        for (const tid of selectedTokenIds) {
+          const t = infoMap.get(tid);
+          if (!t) continue;
+          const def = defValueFor(t);
+          const mult = damageMultiplierFor(move.type as string, t.types);
+          const eff = damageDeltaFromMultiplier(mult);
+          // Effectiveness: house rule (flat) → adds/subtracts successes after.
+          // RAW (effectivenessFlat=false) → adds/subtracts dice from pool.
+          const effDicePool = effectivenessFlat ? 0 : eff.delta;
+          // Target def ALWAYS reduces dice from the damage pool.
+          const tgtPool = Math.max(0, dmgPoolAfterPain + effDicePool - def);
+          const rolled = eff.immune ? { dice: [] as number[], successes: 0 } : rollD6(tgtPool);
+          const successesFlatAdj = effectivenessFlat ? Math.max(0, rolled.successes + eff.delta) : rolled.successes;
+          const finalDamage = eff.immune ? 0 : successesFlatAdj;
+          aggDice = aggDice.concat(rolled.dice);
+          aggSuccesses += rolled.successes;
+          targets.push({
+            name: t.name,
+            def,
+            defStat: isSpecial ? ("spdef" as const) : ("def" as const),
+            effLabel: eff.label,
+            effDelta: eff.delta,
+            immune: eff.immune,
+            finalDamage,
           });
+        }
+      } else {
+        // No targets: simple roll of the post-pain damage pool.
+        const rolled = rollD6(dmgPoolAfterPain);
+        aggDice = rolled.dice;
+        aggSuccesses = rolled.successes;
       }
+
       dmg = {
-        pool: finalDmgPool,
-        dice,
-        successes: dmgSuccesses,
+        pool: dmgPoolAfterPain,
+        dice: aggDice,
+        successes: aggSuccesses,
         penalty: painPenalty,
         isStatus: false,
         targetDef: hasTargets ? 0 : targetDef,
@@ -359,7 +374,7 @@ export function MoveRollDialog({
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{move.name}{hasStab ? <span className="ml-2 rounded bg-success/20 px-1.5 py-0.5 text-xs font-bold text-success">STAB +1</span> : null}</DialogTitle></DialogHeader>
         {move.effect && <p className="text-sm text-muted-foreground">{move.effect}</p>}
-        <p className="text-[11px] italic text-muted-foreground">Ordem: 1) Acurácia → 2) Dano{extras.chance.length > 0 ? " → 3) Chance Dice (apenas 6 contam)" : ""}.{painPenalty > 0 ? ` Penalidade de dor −${painPenalty} em Acurácia & Dano.` : ""}</p>
+        <p className="text-[11px] italic text-muted-foreground">Ordem: 1) Acurácia → 2) Dano{extras.chance.length > 0 ? " → 3) Chance Dice (apenas 6 contam)" : ""}.{painPenalty > 0 ? ` Pain Penalty −${painPenalty} dado(s) em Acurácia & Dano.` : ""} {effectivenessFlat ? "Efetividade: regra da casa (+/− sucessos)." : "Efetividade: RAW (+/− dados na pool)."}</p>
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
             <div><Label className="text-xs">Bônus de acurácia (dados)</Label><p className="text-[11px] text-muted-foreground">Pool: {accPool}d6 → rolando {finalAccPool}d6</p></div>
@@ -424,7 +439,7 @@ export function MoveRollDialog({
 
               {!hasTargets && (
                 <div className="flex items-center justify-between gap-3">
-                  <div><Label className="text-xs">{defLabel} manual</Label><p className="text-[11px] text-muted-foreground">Pool final: <b>{finalDmgPool}d6</b></p></div>
+                  <div><Label className="text-xs">{defLabel} manual</Label><p className="text-[11px] text-muted-foreground">Pool de dano base: <b>{baseDmgPool}d6</b> (Def reduz dados){painPenalty > 0 ? ` · −${painPenalty} dado(s) por dor` : ""}</p></div>
                   <Input type="number" min={0} value={targetDef} onChange={(e) => setTargetDef(Math.max(0, parseInt(e.target.value) || 0))} className="h-9 w-20" />
                 </div>
               )}

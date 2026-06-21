@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { TokenActionBar } from "@/components/TokenActionBar";
 import { TokenStatsBar } from "@/components/TokenStatsBar";
+import { TokenAvatar, TokenStatusBadges } from "@/components/TokenAvatar";
 import { TokenAppearanceDialog, type AppearanceToken } from "@/components/TokenAppearanceDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -251,6 +252,39 @@ export function MapBoard({
         "postgres_changes",
         { event: "*", schema: "public", table: "tokens", filter: `game_id=eq.${gameId}` },
         () => qc.invalidateQueries({ queryKey: ["tokens", gameId] }),
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [gameId, qc]);
+
+  // Real-time updates from pokemon / trainers so token images, stats,
+  // status conditions and attribute bonuses propagate live to every player.
+  useEffect(() => {
+    const ch = supabase
+      .channel(`token-chars:${gameId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "pokemon", filter: `game_id=eq.${gameId}` },
+        (payload) => {
+          const id = (payload.new as { id?: string } | null)?.id
+            ?? (payload.old as { id?: string } | null)?.id;
+          qc.invalidateQueries({ queryKey: ["token-pokemon", id] });
+          qc.invalidateQueries({ queryKey: ["token-pokemon-stats", id] });
+          qc.invalidateQueries({ queryKey: ["token-pokemon-status", id] });
+          qc.invalidateQueries({ queryKey: ["pokemon", id] });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "trainers", filter: `game_id=eq.${gameId}` },
+        (payload) => {
+          const id = (payload.new as { id?: string } | null)?.id
+            ?? (payload.old as { id?: string } | null)?.id;
+          qc.invalidateQueries({ queryKey: ["token-trainer", id] });
+          qc.invalidateQueries({ queryKey: ["token-trainer-stats", id] });
+          qc.invalidateQueries({ queryKey: ["token-trainer-status", id] });
+          qc.invalidateQueries({ queryKey: ["trainer", id] });
+        },
       )
       .subscribe();
     return () => { supabase.removeChannel(ch); };
@@ -1050,11 +1084,13 @@ export function MapBoard({
               </div>
             )}
             <div className={`relative flex h-full w-full items-center justify-center rounded-full border-2 ${isSelected ? "border-amber-400 ring-2 ring-amber-400/50" : onGmLayer ? "border-purple-500 ring-2 ring-purple-500/40 border-dashed" : "border-primary ring-2 ring-background"} bg-card shadow-md`}>
-              {t.image_url ? (
-                <img src={t.image_url} alt={t.label} className="h-full w-full rounded-full object-cover" draggable={false} />
-              ) : (
-                <span className="text-xs font-bold">{t.label.slice(0, 2).toUpperCase()}</span>
-              )}
+              <TokenAvatar
+                kind={t.character_kind}
+                id={t.character_id}
+                fallbackImage={t.image_url ?? null}
+                label={t.label}
+              />
+              <TokenStatusBadges kind={t.character_kind} id={t.character_id} />
               {t.tint_color && (
                 <div
                   className="pointer-events-none absolute inset-0 rounded-full"

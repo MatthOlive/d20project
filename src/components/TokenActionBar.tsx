@@ -432,7 +432,7 @@ function AttrsDialogButton({
     queryFn: async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase.from(table) as any)
-        .select(`${attrCol}, attr_bonus, social_attrs, social_attr_bonus`)
+        .select(`${attrCol}, attr_bonus, social_attrs, social_attr_bonus${kind === "pokemon" ? ", modifiers" : ""}`)
         .eq("id", id)
         .single();
       if (error) throw error;
@@ -453,10 +453,24 @@ function AttrsDialogButton({
     qc.invalidateQueries({ queryKey: [kind === "trainer" ? "trainer" : "pokemon", id] });
   }
 
+  async function patchModBonus(key: "_def_bonus" | "_spdef_bonus", value: number) {
+    if (kind !== "pokemon") return;
+    const cur = ((data?.modifiers as Record<string, unknown>) ?? {}) as Record<string, unknown>;
+    const next = { ...cur, [key]: value };
+    await supabase.from("pokemon").update({ modifiers: next as never }).eq("id", id);
+    refetch();
+    qc.invalidateQueries({ queryKey: ["token-pokemon", id] });
+    qc.invalidateQueries({ queryKey: ["token-pokemon-stats", id] });
+    qc.invalidateQueries({ queryKey: ["pokemon", id] });
+  }
+
   const attrs = (data?.[attrCol] ?? {}) as Record<string, number>;
   const attrBonus = (data?.attr_bonus ?? {}) as Record<string, number>;
   const social = (data?.social_attrs ?? {}) as Record<string, number>;
   const socialBonus = (data?.social_attr_bonus ?? {}) as Record<string, number>;
+  const modifiers = ((data?.modifiers as Record<string, unknown>) ?? {}) as Record<string, unknown>;
+  const defBonus = Number(modifiers._def_bonus ?? 0) || 0;
+  const spdefBonus = Number(modifiers._spdef_bonus ?? 0) || 0;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -480,6 +494,25 @@ function AttrsDialogButton({
               ))}
             </div>
           </div>
+          {kind === "pokemon" && (
+            <div>
+              <Label className="text-xs font-bold">Defesas (bônus extra)</Label>
+              <div className="mt-1 space-y-1">
+                <BonusRow
+                  name="Def"
+                  base={(attrs.vitality ?? 1)}
+                  bonus={defBonus}
+                  onBonus={(v) => patchModBonus("_def_bonus", v)}
+                />
+                <BonusRow
+                  name="SpDef"
+                  base={(attrs.insight ?? attrs.vitality ?? 1)}
+                  bonus={spdefBonus}
+                  onBonus={(v) => patchModBonus("_spdef_bonus", v)}
+                />
+              </div>
+            </div>
+          )}
           <div>
             <Label className="text-xs font-bold">Sociais</Label>
             <div className="mt-1 space-y-1">
