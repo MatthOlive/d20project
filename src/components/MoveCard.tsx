@@ -95,21 +95,23 @@ export function MoveCard({
       </div>
 
       <div className="p-2.5 space-y-2 text-xs">
-        <div className="grid grid-cols-2 gap-2 border-b pb-2">
+        <div className={cn("grid gap-2 border-b pb-2", damageSlot !== null ? "grid-cols-2" : "grid-cols-1")}>
           <div>
             <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Accuracy</span>
             <div className="mt-0.5 font-medium flex items-center gap-1.5 flex-wrap min-h-5">
               {accuracySlot || data.accuracyText}
             </div>
           </div>
-          <div>
-            <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Damage Pool
-            </span>
-            <div className="mt-0.5 font-medium flex items-center gap-1.5 flex-wrap min-h-5">
-              {damageSlot || data.damagePoolText}
+          {damageSlot !== null && (
+            <div>
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Damage Pool
+              </span>
+              <div className="mt-0.5 font-medium flex items-center gap-1.5 flex-wrap min-h-5">
+                {damageSlot || data.damagePoolText}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {damageDetailsSlot && <div className="border-b pb-2">{damageDetailsSlot}</div>}
