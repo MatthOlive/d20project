@@ -433,6 +433,13 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
                           <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">
                             Imune (0)
                           </span>
+                        ) : t.dice && t.dice.length > 0 ? (
+                          <SuccessHover
+                            label={`${t.finalDamage} dmg`}
+                            successes={t.successes ?? t.finalDamage}
+                            dice={t.dice}
+                            tone="danger"
+                          />
                         ) : (
                           <span className="rounded bg-destructive/15 px-1.5 py-0.5 font-bold text-destructive">
                             {t.finalDamage} dmg
@@ -446,7 +453,7 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
             ) : null
           }
           chanceSlot={
-            m.chance.length > 0 ? (
+            m.chance && m.chance.length > 0 ? (
               <>
                 {m.chance.map((c, i) => (
                   <SuccessHover
