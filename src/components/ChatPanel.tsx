@@ -446,7 +446,7 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
             ) : null
           }
           chanceSlot={
-            m.chance.length > 0 ? (
+            m.chance && m.chance.length > 0 ? (
               <>
                 {m.chance.map((c, i) => (
                   <SuccessHover
