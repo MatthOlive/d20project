@@ -163,22 +163,25 @@ export function SuccessHover({
   }
 
   return (
-    <span className="group relative inline-flex items-center gap-1 cursor-help overflow-visible z-30">
-      <span
-        className={cn(
-          "inline-flex h-5 items-center justify-center rounded border px-2 text-[11px] font-bold shadow-sm transition-colors",
-          badgeBg,
-        )}
-      >
-        {successes} {label === "Hit" ? "Sucessos" : label}
-      </span>
-
-      {/* Janela flutuante original restaurada */}
-      <span className="absolute bottom-full left-1/2 mb-1.5 hidden w-max max-w-[260px] -translate-x-1/2 flex-col gap-1 rounded-md border border-border bg-popover p-2 text-[11px] text-popover-foreground shadow-md group-hover:flex z-50 pointer-events-none animate-in fade-in slide-in-from-bottom-1 duration-150">
-        <span className="font-semibold text-muted-foreground block border-b pb-0.5 mb-1">Dados Rolados:</span>
-
+    <HoverCard openDelay={80} closeDelay={80}>
+      <HoverCardTrigger asChild>
+        <span className="inline-flex items-center gap-1 cursor-help">
+          <span
+            className={cn(
+              "inline-flex h-5 items-center justify-center rounded border px-2 text-[11px] font-bold shadow-sm transition-colors",
+              badgeBg,
+            )}
+          >
+            {successes} {label === "Hit" ? "Sucessos" : label}
+          </span>
+        </span>
+      </HoverCardTrigger>
+      <HoverCardContent side="top" align="center" className="w-auto max-w-[280px] p-2">
+        <span className="font-semibold text-muted-foreground block border-b pb-0.5 mb-1 text-[11px]">
+          Dados Rolados:
+        </span>
         {dice.length === 0 ? (
-          <span className="text-muted-foreground italic">{emptyText || "Nenhum dado."}</span>
+          <span className="text-muted-foreground italic text-[11px]">{emptyText || "Nenhum dado."}</span>
         ) : (
           <span className="flex flex-wrap gap-1">
             {dice.map((d, i) => (
@@ -198,15 +201,13 @@ export function SuccessHover({
             ))}
           </span>
         )}
-
-        {/* Exibe o aviso "need X crit Y" maior, caso fornecido */}
         {critInfo && (
           <div className="mt-1.5 pt-1 border-t border-border/60 text-center font-semibold text-[10.5px] text-muted-foreground">
             need <span className="text-foreground font-bold">{critInfo.required}</span> crit{" "}
             <span className="text-foreground font-bold">{critInfo.critRequired}</span>
           </div>
         )}
-      </span>
-    </span>
+      </HoverCardContent>
+    </HoverCard>
   );
 }
