@@ -2,6 +2,7 @@ import { type ReactNode } from "react";
 import { TYPE_COLORS } from "@/lib/pokerole";
 import { EffectIcons } from "@/components/EffectIcons";
 import { cn } from "@/lib/utils";
+import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
 
 export type MoveCardData = {
   name: string;
