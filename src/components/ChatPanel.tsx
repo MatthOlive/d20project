@@ -403,16 +403,18 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
             </span>
           }
           damageSlot={
-            m.damage ? (
-              <span className="inline-flex items-center gap-1">
-                <SuccessHover label="dmg" successes={m.damage.successes} dice={m.damage.dice} tone="danger" />
-                {m.damage.critBonus ? (
-                  <span className="text-[10px] font-bold text-amber-600">+{m.damage.critBonus} dado crit</span>
-                ) : null}
-              </span>
-            ) : (
-              <span className="text-muted-foreground">Status</span>
-            )
+            m.damage?.targets && m.damage.targets.length > 0
+              ? null
+              : m.damage ? (
+                  <span className="inline-flex items-center gap-1">
+                    <SuccessHover label="dmg" successes={m.damage.successes} dice={m.damage.dice} tone="danger" />
+                    {m.damage.critBonus ? (
+                      <span className="text-[10px] font-bold text-amber-600">+{m.damage.critBonus} dado crit</span>
+                    ) : null}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">Status</span>
+                )
           }
           damageDetailsSlot={
             m.damage?.targets && m.damage.targets.length > 0 ? (
