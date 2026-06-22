@@ -21,6 +21,8 @@ export type MoveRollTarget = {
   effDelta: number;
   immune: boolean;
   finalDamage: number;
+  dice?: number[];
+  successes?: number;
 };
 
 export type MoveRollMessage = {
@@ -42,8 +44,10 @@ export type MoveRollMessage = {
     successes: number;
     penalty: number;
     isStatus: boolean;
+    targetDef?: number;
+    critBonus?: number;
     targets?: MoveRollTarget[];
-  };
+  } | null;
   chance?: { label: string; dice: number[]; successes: number }[];
 };
 
