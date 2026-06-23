@@ -125,7 +125,11 @@ export function PokemonSheet({
     },
   });
 
-  const canEdit = !!pokemon && (pokemon.owner_id === userId || isNarrator);
+  const canEdit = !!pokemon && (
+    pokemon.owner_id === userId
+    || isNarrator
+    || (pokemon.allowed_editors ?? []).includes(userId)
+  );
   const commit = useCallback(async (p: Partial<Pokemon>) => {
     const { error } = await supabase.from("pokemon").update(p).eq("id", pokemonId);
     if (error) toast.error(error.message);
