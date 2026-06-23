@@ -172,6 +172,31 @@ export function PokemonSheet({
   if (!pokemon) return <div className="p-4 text-sm text-muted-foreground">Loading…</div>;
   if (!species) return <div className="p-4 text-sm text-muted-foreground">Loading species…</div>;
 
+  if (!canEdit) {
+    const viewImage = pokemon.image_url ?? species.sprite_url;
+    const viewName = pokemon.nickname || species.name;
+    return (
+      <div className="space-y-4 p-4">
+        <section className="overflow-hidden rounded-xl border border-border bg-card">
+          <div className="flex items-center gap-2 border-b-2 border-primary bg-primary/10 px-3 py-1.5">
+            <span className="truncate text-[12px] font-bold uppercase tracking-wider text-primary">{viewName}</span>
+          </div>
+          <div className="flex flex-col items-center gap-3 p-6">
+            {viewImage ? (
+              <img src={viewImage} alt={viewName} className="h-48 w-48 rounded-lg object-contain" />
+            ) : (
+              <div className="grid h-48 w-48 place-items-center rounded-lg border border-dashed border-border text-xs text-muted-foreground">
+                Sem imagem
+              </div>
+            )}
+            <div className="text-lg font-bold">{viewName}</div>
+            <div className="text-xs text-muted-foreground">Você não tem permissão para ver detalhes desta ficha.</div>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   const overgrownBonus = pokemon.is_overgrown ? 1 : 0;
   const maxHpEff = (dynaMode ? pokemon.hp * 2 : pokemon.hp);
   const curHp = pokemon.current_hp ?? maxHpEff;
