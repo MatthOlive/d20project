@@ -76,8 +76,6 @@ type Trainer = {
   notoriety: Record<string, number>;
   trainings: Record<string, number>;
   retrains: number;
-  allowed_editors: string[];
-  allowed_viewers: string[];
 };
 
 type CustomSkill = { name: string; value: number };
@@ -183,32 +181,7 @@ export function TrainerSheet({
   const { patch } = useDebouncedPatch<Trainer>(queryKey, commit);
 
   if (!trainer) return <div className="p-4 text-sm text-muted-foreground">Loading…</div>;
-  const canEdit = trainer.owner_id === userId
-    || isNarrator
-    || (trainer.allowed_editors ?? []).includes(userId);
-
-  if (!canEdit) {
-    return (
-      <div className="space-y-4 p-4">
-        <section className="overflow-hidden rounded-xl border border-border bg-card">
-          <div className="flex items-center gap-2 border-b-2 border-primary bg-primary/10 px-3 py-1.5">
-            <span className="truncate text-[12px] font-bold uppercase tracking-wider text-primary">{trainer.name}</span>
-          </div>
-          <div className="flex flex-col items-center gap-3 p-6">
-            {trainer.image_url ? (
-              <img src={trainer.image_url} alt={trainer.name} className="h-48 w-48 rounded-lg object-contain" />
-            ) : (
-              <div className="grid h-48 w-48 place-items-center rounded-lg border border-dashed border-border text-xs text-muted-foreground">
-                Sem imagem
-              </div>
-            )}
-            <div className="text-lg font-bold">{trainer.name}</div>
-            <div className="text-xs text-muted-foreground">Você não tem permissão para ver detalhes desta ficha.</div>
-          </div>
-        </section>
-      </div>
-    );
-  }
+  const canEdit = trainer.owner_id === userId || isNarrator;
 
   // Trainer attributes have a base value of 1 (per Pokérole 2 rules).
   const totalAttr = (k: string) =>
