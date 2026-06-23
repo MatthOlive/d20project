@@ -71,6 +71,8 @@ type Pokemon = {
   owner_trainer_id: string | null;
   trainings: Record<string, number>;
   retrains: number;
+  allowed_editors: string[];
+  allowed_viewers: string[];
 };
 
 
