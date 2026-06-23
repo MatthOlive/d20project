@@ -1270,6 +1270,19 @@ export type Database = {
         Args: { _game: string; _owner: string }
         Returns: boolean
       }
+      can_edit_token: {
+        Args: {
+          _character: string
+          _game: string
+          _kind: string
+          _token_owner: string
+        }
+        Returns: boolean
+      }
+      can_view_character: {
+        Args: { _character: string; _game: string; _kind: string }
+        Returns: boolean
+      }
       get_game_invite_code: { Args: { _game: string }; Returns: string }
       is_game_member: {
         Args: { _game: string; _user: string }
