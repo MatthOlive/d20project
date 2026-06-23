@@ -173,7 +173,7 @@ export function SheetTabs(props: {
   }
 
   if (trainerMeta?.is_minimal) {
-    const canEdit = isNarrator || trainerMeta.owner_id === userId;
+    const canEdit = isNarrator || trainerMeta.owner_id === userId || (trainerMeta.allowed_editors ?? []).includes(userId);
     return <MinimalSheetView trainerId={trainerId} meta={trainerMeta} canEdit={canEdit} onDeleted={props.onDeleted} />;
   }
 
