@@ -287,26 +287,13 @@ export function PokemonSheet({
   }
 
   async function addMove(moveId: string) {
-    // Busca a sessão atual para garantir que o Supabase reconhece quem está a tentar inserir
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    const { error } = await supabase.from("pokemon_moves").insert({
-      pokemon_id: pokemonId,
-      move_id: moveId,
-      // Caso a tua tabela tenha uma coluna user_id ou criada por, forçamos o id da sessão
-      ...(session?.user?.id ? { user_id: session.user.id } : {}),
-    });
-
-    if (error) {
-      console.error("Erro RLS:", error);
-      // Solução imediata de Feedback se persistir
-      toast.error(`Erro de permissão no banco: ${error.message}. Tente recarregar a página.`);
-    } else {
-      toast.success("Movimento adicionado!");
-      qc.invalidateQueries({ queryKey: ["pokemon-moves", pokemonId] });
-    }
+    const { error } = await supabase.from("pokemon_moves").insert({ pokemon_id: pokemonId, move_id: moveId });
+    if (error) toast.error(error.message);
+    else qc.invalidateQueries({ queryKey: ["pokemon-moves", pokemonId] });
+  }
+  async function removeMove(moveId: string) {
+    await supabase.from("pokemon_moves").delete().eq("pokemon_id", pokemonId).eq("move_id", moveId);
+    qc.invalidateQueries({ queryKey: ["pokemon-moves", pokemonId] });
   }
 
   const displayImage = pokemon.image_url ?? species.sprite_url;
