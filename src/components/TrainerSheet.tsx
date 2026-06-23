@@ -76,6 +76,8 @@ type Trainer = {
   notoriety: Record<string, number>;
   trainings: Record<string, number>;
   retrains: number;
+  allowed_editors: string[];
+  allowed_viewers: string[];
 };
 
 type CustomSkill = { name: string; value: number };
