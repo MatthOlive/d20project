@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -245,6 +245,29 @@ export function MapBoard({
     [tokensRaw, isNarrator],
   );
 
+  // Character ids where the current user is in allowed_editors → treated as creator
+  const { data: editableCharIds } = useQuery({
+    queryKey: ["editable-char-ids", gameId, userId],
+    queryFn: async () => {
+      const [pkm, trs] = await Promise.all([
+        supabase.from("pokemon").select("id, allowed_editors").eq("game_id", gameId),
+        supabase.from("trainers").select("id, allowed_editors").eq("game_id", gameId),
+      ]);
+      const set = new Set<string>();
+      for (const r of (pkm.data ?? []) as { id: string; allowed_editors: string[] | null }[]) {
+        if ((r.allowed_editors ?? []).includes(userId)) set.add(r.id);
+      }
+      for (const r of (trs.data ?? []) as { id: string; allowed_editors: string[] | null }[]) {
+        if ((r.allowed_editors ?? []).includes(userId)) set.add(r.id);
+      }
+      return set;
+    },
+  });
+  const canActAsOwner = useCallback(
+    (t: Token) => t.owner_id === userId || (editableCharIds?.has(t.character_id) ?? false),
+    [userId, editableCharIds],
+  );
+
   useEffect(() => {
     const ch = supabase
       .channel(`tokens:${gameId}`)
@@ -465,7 +488,7 @@ export function MapBoard({
     if (!rect) return [];
     const sources = isNarrator
       ? tokens.filter((t) => (t.vision_radius ?? 0) > 0)
-      : tokens.filter((t) => t.owner_id === userId && (t.vision_radius ?? 0) > 0);
+      : tokens.filter((t) => canActAsOwner(t) && (t.vision_radius ?? 0) > 0);
     if (sources.length === 0) return [];
     const W = rect.width, H = rect.height;
     const wallsPx = walls.map((w) => ({ ax: w.x1 * W, ay: w.y1 * H, bx: w.x2 * W, by: w.y2 * H }));
@@ -998,7 +1021,7 @@ export function MapBoard({
       )}
 
       {tokens.map((t) => {
-        const canMove = isNarrator || t.owner_id === userId;
+        const canMove = isNarrator || canActAsOwner(t);
         const isSelected = selectedTokenId === t.id;
         const isHover = hoverTokenId === t.id;
         const showStats = isSelected || isHover;
