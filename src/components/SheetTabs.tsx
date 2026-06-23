@@ -59,10 +59,10 @@ export function SheetTabs(props: {
     queryFn: async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase.from("trainers") as any)
-        .select("is_minimal, name, image_url, description, owner_id, allowed_editors")
+        .select("is_minimal, name, image_url, description, owner_id")
         .eq("id", trainerId).single();
       if (error) throw error;
-      return data as { is_minimal: boolean; name: string; image_url: string | null; description: string | null; owner_id: string; allowed_editors: string[] | null };
+      return data as { is_minimal: boolean; name: string; image_url: string | null; description: string | null; owner_id: string };
     },
   });
 
@@ -173,7 +173,7 @@ export function SheetTabs(props: {
   }
 
   if (trainerMeta?.is_minimal) {
-    const canEdit = isNarrator || trainerMeta.owner_id === userId || (trainerMeta.allowed_editors ?? []).includes(userId);
+    const canEdit = isNarrator || trainerMeta.owner_id === userId;
     return <MinimalSheetView trainerId={trainerId} meta={trainerMeta} canEdit={canEdit} onDeleted={props.onDeleted} />;
   }
 
