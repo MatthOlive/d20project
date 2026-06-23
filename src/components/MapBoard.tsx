@@ -488,7 +488,7 @@ export function MapBoard({
     if (!rect) return [];
     const sources = isNarrator
       ? tokens.filter((t) => (t.vision_radius ?? 0) > 0)
-      : tokens.filter((t) => t.owner_id === userId && (t.vision_radius ?? 0) > 0);
+      : tokens.filter((t) => canActAsOwner(t) && (t.vision_radius ?? 0) > 0);
     if (sources.length === 0) return [];
     const W = rect.width, H = rect.height;
     const wallsPx = walls.map((w) => ({ ax: w.x1 * W, ay: w.y1 * H, bx: w.x2 * W, by: w.y2 * H }));
