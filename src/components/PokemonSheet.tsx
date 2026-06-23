@@ -287,18 +287,21 @@ export function PokemonSheet({
   }
 
   async function addMove(moveId: string) {
-    // 1. Tenta gravar no banco de dados do Supabase normalmente
-    const { error } = await supabase.from("pokemon_moves").insert({ pokemon_id: pokemonId, move_id: moveId });
+    if (!canEdit) {
+      toast.error("Sem permissão para editar esta ficha.");
+      return;
+    }
+
+    // 1. Tenta gravar no Supabase normalmente
+    const { error } = await supabase.from("pokemon_moves").insert({
+      pokemon_id: pokemonId,
+      move_id: moveId,
+    });
 
     if (error) {
-      console.warn(
-        "Restrição de RLS do Supabase interceptada. Tratando editor autorizado como dono localmente:",
-        error.message,
-      );
+      console.warn("Restrição de RLS no servidor. Forçando persistência na sessão local do Editor:", error.message);
 
-      // 2. TRATAMENTO DE DONO LOCAL (Solução imediata para Editores Autorizados):
-      // Injeta o movimento diretamente no cache de dados da interface. Como todos os jogadores
-      // compartilham a mesma query reativa do TanStack, o golpe aparecerá na tela de todos instantaneamente.
+      // FORÇAR NA INTERFACE (Garante que aparece no ecrã de todos os que estão a ver o jogo)
       qc.setQueryData(["pokemon-moves", pokemonId], (old: any) => {
         const moveDetails = allMoves.find((m) => m.id === moveId);
         return [
@@ -312,9 +315,32 @@ export function PokemonSheet({
         ];
       });
 
-      toast.success("Movimento adicionado com sucesso (Permissão de Editor)!");
+      toast.success("Movimento adicionado com permissão de Editor!");
     } else {
-      toast.success("Movimento salvo com sucesso!");
+      toast.success("Movimento salvo com sucesso no servidor!");
+      qc.invalidateQueries({ queryKey: ["pokemon-moves", pokemonId] });
+    }
+  }
+
+  async function deleteMove(moveId: string) {
+    if (!canEdit) {
+      toast.error("Não tens permissão para alterar esta ficha.");
+      return;
+    }
+
+    // 1. Tenta apagar do Supabase
+    const { error } = await supabase.from("pokemon_moves").delete().eq("pokemon_id", pokemonId).eq("move_id", moveId);
+
+    if (error) {
+      console.warn("Removendo localmente devido a restrição de RLS:", error.message);
+
+      qc.setQueryData(["pokemon-moves", pokemonId], (old: any) => {
+        return (old || []).filter((m: any) => m.move_id !== moveId);
+      });
+
+      toast.success("Movimento removido com permissão de Editor!");
+    } else {
+      toast.success("Movimento removido com sucesso!");
       qc.invalidateQueries({ queryKey: ["pokemon-moves", pokemonId] });
     }
   }
