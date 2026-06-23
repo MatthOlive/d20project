@@ -245,6 +245,29 @@ export function MapBoard({
     [tokensRaw, isNarrator],
   );
 
+  // Character ids where the current user is in allowed_editors → treated as creator
+  const { data: editableCharIds } = useQuery({
+    queryKey: ["editable-char-ids", gameId, userId],
+    queryFn: async () => {
+      const [pkm, trs] = await Promise.all([
+        supabase.from("pokemon").select("id, allowed_editors").eq("game_id", gameId),
+        supabase.from("trainers").select("id, allowed_editors").eq("game_id", gameId),
+      ]);
+      const set = new Set<string>();
+      for (const r of (pkm.data ?? []) as { id: string; allowed_editors: string[] | null }[]) {
+        if ((r.allowed_editors ?? []).includes(userId)) set.add(r.id);
+      }
+      for (const r of (trs.data ?? []) as { id: string; allowed_editors: string[] | null }[]) {
+        if ((r.allowed_editors ?? []).includes(userId)) set.add(r.id);
+      }
+      return set;
+    },
+  });
+  const canActAsOwner = useCallback(
+    (t: Token) => t.owner_id === userId || (editableCharIds?.has(t.character_id) ?? false),
+    [userId, editableCharIds],
+  );
+
   useEffect(() => {
     const ch = supabase
       .channel(`tokens:${gameId}`)
