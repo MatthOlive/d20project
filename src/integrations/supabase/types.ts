@@ -77,6 +77,7 @@ export type Database = {
           game_id: string
           h: number
           id: string
+          page_id: string
           revealed: boolean
           w: number
           x: number
@@ -88,6 +89,7 @@ export type Database = {
           game_id: string
           h: number
           id?: string
+          page_id: string
           revealed?: boolean
           w: number
           x: number
@@ -99,6 +101,7 @@ export type Database = {
           game_id?: string
           h?: number
           id?: string
+          page_id?: string
           revealed?: boolean
           w?: number
           x?: number
@@ -110,6 +113,13 @@ export type Database = {
             columns: ["game_id"]
             isOneToOne: false
             referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fog_regions_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
             referencedColumns: ["id"]
           },
         ]
@@ -148,6 +158,7 @@ export type Database = {
       }
       games: {
         Row: {
+          active_page_id: string | null
           background_url: string | null
           contest_weights: Json | null
           created_at: string
@@ -175,6 +186,7 @@ export type Database = {
           system: string
         }
         Insert: {
+          active_page_id?: string | null
           background_url?: string | null
           contest_weights?: Json | null
           created_at?: string
@@ -202,6 +214,7 @@ export type Database = {
           system?: string
         }
         Update: {
+          active_page_id?: string | null
           background_url?: string | null
           contest_weights?: Json | null
           created_at?: string
@@ -229,6 +242,13 @@ export type Database = {
           system?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "games_active_page_id_fkey"
+            columns: ["active_page_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "games_current_scenario_id_fkey"
             columns: ["current_scenario_id"]
@@ -367,6 +387,7 @@ export type Database = {
           height: number
           id: string
           image_url: string
+          page_id: string
           rotation: number
           updated_at: string
           width: number
@@ -381,6 +402,7 @@ export type Database = {
           height?: number
           id?: string
           image_url: string
+          page_id: string
           rotation?: number
           updated_at?: string
           width?: number
@@ -395,6 +417,7 @@ export type Database = {
           height?: number
           id?: string
           image_url?: string
+          page_id?: string
           rotation?: number
           updated_at?: string
           width?: number
@@ -410,6 +433,13 @@ export type Database = {
             referencedRelation: "games"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "map_backgrounds_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
+            referencedColumns: ["id"]
+          },
         ]
       }
       map_drawings: {
@@ -422,6 +452,7 @@ export type Database = {
           id: string
           kind: string
           layer: string
+          page_id: string
           scenario_id: string | null
           stroke: string
           stroke_width: number
@@ -436,6 +467,7 @@ export type Database = {
           id?: string
           kind: string
           layer?: string
+          page_id: string
           scenario_id?: string | null
           stroke?: string
           stroke_width?: number
@@ -450,6 +482,7 @@ export type Database = {
           id?: string
           kind?: string
           layer?: string
+          page_id?: string
           scenario_id?: string | null
           stroke?: string
           stroke_width?: number
@@ -461,6 +494,13 @@ export type Database = {
             columns: ["game_id"]
             isOneToOne: false
             referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "map_drawings_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
             referencedColumns: ["id"]
           },
           {
@@ -980,6 +1020,7 @@ export type Database = {
           layer: string
           light_radius: number
           owner_id: string
+          page_id: string
           size: number
           tint_color: string | null
           vision_radius: number
@@ -1005,6 +1046,7 @@ export type Database = {
           layer?: string
           light_radius?: number
           owner_id: string
+          page_id: string
           size?: number
           tint_color?: string | null
           vision_radius?: number
@@ -1030,13 +1072,22 @@ export type Database = {
           layer?: string
           light_radius?: number
           owner_id?: string
+          page_id?: string
           size?: number
           tint_color?: string | null
           vision_radius?: number
           x?: number
           y?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tokens_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       trainer_moves: {
         Row: {
@@ -1226,6 +1277,7 @@ export type Database = {
           created_at: string
           game_id: string
           id: string
+          page_id: string
           x1: number
           x2: number
           y1: number
@@ -1236,6 +1288,7 @@ export type Database = {
           created_at?: string
           game_id: string
           id?: string
+          page_id: string
           x1: number
           x2: number
           y1: number
@@ -1246,6 +1299,7 @@ export type Database = {
           created_at?: string
           game_id?: string
           id?: string
+          page_id?: string
           x1?: number
           x2?: number
           y1?: number
@@ -1257,6 +1311,13 @@ export type Database = {
             columns: ["game_id"]
             isOneToOne: false
             referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "walls_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
             referencedColumns: ["id"]
           },
         ]

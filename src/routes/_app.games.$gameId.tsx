@@ -69,7 +69,7 @@ function GameRoom() {
       // Note: invite_code is intentionally excluded — narrator fetches it via get_game_invite_code RPC.
       const { data, error } = await supabase
         .from("games")
-        .select("id,narrator_id,name,background_url,created_at,system,language,narrator_type,shiny_chance,overgrown_chance,contest_weights,grid_enabled,grid_snap,grid_size,grid_color,grid_opacity,grid_unit_m,grid_unit_label,fog_enabled,dynamic_lighting,master_volume,current_scenario_id")
+        .select("id,narrator_id,name,background_url,created_at,system,language,narrator_type,shiny_chance,overgrown_chance,contest_weights,grid_enabled,grid_snap,grid_size,grid_color,grid_opacity,grid_unit_m,grid_unit_label,fog_enabled,dynamic_lighting,master_volume,current_scenario_id,active_page_id")
         .eq("id", gameId)
         .single();
       if (error) throw error;
@@ -192,6 +192,7 @@ function GameRoom() {
       backgroundUrl={game.background_url}
       userId={user.id}
       isNarrator={isNarrator}
+      activePageId={(game as never as { active_page_id?: string | null }).active_page_id ?? null}
       onRoll={rollFromSheet}
       onOpenSheet={(kind, id, label) => openWindow({ kind, id, title: label })}
       gridSettings={{
@@ -896,8 +897,13 @@ function FilesPanel({
   }
 
   async function sendRowToMap(r: CharRow) {
+    const { data: g } = await supabase
+      .from("games").select("active_page_id").eq("id", gameId).maybeSingle();
+    const pageId = (g as { active_page_id?: string | null } | null)?.active_page_id ?? null;
+    if (!pageId) { toast.error("Nenhuma página ativa"); return; }
     const { error } = await supabase.from("tokens").insert({
       game_id: gameId,
+      page_id: pageId,
       character_kind: r.kind,
       character_id: r.id,
       label: r.label,

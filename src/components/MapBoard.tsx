@@ -12,6 +12,7 @@ import { TokenActionBar } from "@/components/TokenActionBar";
 import { TokenStatsBar } from "@/components/TokenStatsBar";
 import { TokenAvatar, TokenStatusBadges } from "@/components/TokenAvatar";
 import { TokenAppearanceDialog, type AppearanceToken } from "@/components/TokenAppearanceDialog";
+import { PageSwitcher } from "@/components/PageSwitcher";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export type DragCharacterPayload = {
@@ -100,6 +101,7 @@ export function MapBoard({
   backgroundUrl,
   userId,
   isNarrator,
+  activePageId,
   topLeftSlot,
   onRoll,
   onOpenSheet,
@@ -110,6 +112,7 @@ export function MapBoard({
   backgroundUrl: string | null;
   userId: string;
   isNarrator: boolean;
+  activePageId: string | null;
   topLeftSlot?: React.ReactNode;
   onRoll?: (label: string, n: number, penalty?: number, meta?: { characterKind: "trainer" | "pokemon"; characterId: string; imageUrl?: string | null }) => void;
   onOpenSheet?: (kind: "trainer" | "pokemon", id: string, label: string) => void;
@@ -139,6 +142,22 @@ export function MapBoard({
   const [drawWidth, setDrawWidth] = useState(3);
   const [drawLayer, setDrawLayer] = useState<"drawing" | "gm">("drawing");
   const [showGMLayer, setShowGMLayer] = useState(true);
+  const [showBackgrounds, setShowBackgrounds] = useState(true);
+  const [showTokens, setShowTokens] = useState(true);
+
+  // viewingPageId: which page this client renders.
+  // Narrator: starts at activePageId; can change locally without affecting players.
+  // Player: always follows activePageId from the games row.
+  const [viewingPageId, setViewingPageId] = useState<string | null>(activePageId);
+  useEffect(() => {
+    if (!isNarrator) {
+      setViewingPageId(activePageId);
+    } else if (!viewingPageId && activePageId) {
+      setViewingPageId(activePageId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePageId, isNarrator]);
+  const pageId = viewingPageId;
 
   // Ruler state (local only)
   const [ruler, setRuler] = useState<{ ax: number; ay: number; bx: number; by: number } | null>(null);
@@ -232,10 +251,11 @@ export function MapBoard({
 
 
   const { data: tokensRaw = [] } = useQuery({
-    queryKey: ["tokens", gameId],
+    queryKey: ["tokens", gameId, pageId],
+    enabled: !!pageId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("tokens").select("*").eq("game_id", gameId);
+        .from("tokens").select("*").eq("game_id", gameId).eq("page_id", pageId!);
       if (error) throw error;
       return (data ?? []) as Token[];
     },
@@ -269,16 +289,17 @@ export function MapBoard({
   );
 
   useEffect(() => {
+    if (!pageId) return;
     const ch = supabase
-      .channel(`tokens:${gameId}`)
+      .channel(`tokens:${gameId}:${pageId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "tokens", filter: `game_id=eq.${gameId}` },
-        () => qc.invalidateQueries({ queryKey: ["tokens", gameId] }),
+        { event: "*", schema: "public", table: "tokens", filter: `page_id=eq.${pageId}` },
+        () => qc.invalidateQueries({ queryKey: ["tokens", gameId, pageId] }),
       )
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [gameId, qc]);
+  }, [gameId, pageId, qc]);
 
   // Real-time updates from pokemon / trainers so token images, stats,
   // status conditions and attribute bonuses propagate live to every player.
@@ -315,24 +336,26 @@ export function MapBoard({
 
   // Drawings query + realtime
   const { data: drawings = [] } = useQuery({
-    queryKey: ["map_drawings", gameId],
+    queryKey: ["map_drawings", gameId, pageId],
+    enabled: !!pageId,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("map_drawings" as never).select("*").eq("game_id", gameId) as unknown as Promise<{ data: Drawing[] | null; error: { message: string } | null }>);
+      const { data, error } = await (supabase.from("map_drawings" as never).select("*").eq("game_id", gameId).eq("page_id", pageId!) as unknown as Promise<{ data: Drawing[] | null; error: { message: string } | null }>);
       if (error) throw new Error(error.message);
       return (data ?? []) as Drawing[];
     },
   });
   useEffect(() => {
+    if (!pageId) return;
     const ch = supabase
-      .channel(`drawings:${gameId}`)
+      .channel(`drawings:${gameId}:${pageId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "map_drawings", filter: `game_id=eq.${gameId}` },
-        () => qc.invalidateQueries({ queryKey: ["map_drawings", gameId] }),
+        { event: "*", schema: "public", table: "map_drawings", filter: `page_id=eq.${pageId}` },
+        () => qc.invalidateQueries({ queryKey: ["map_drawings", gameId, pageId] }),
       )
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [gameId, qc]);
+  }, [gameId, pageId, qc]);
 
   const visibleDrawings = useMemo(
     () => drawings.filter((d) => d.layer !== "gm" || (isNarrator && showGMLayer)),
@@ -352,24 +375,26 @@ export function MapBoard({
   useEffect(() => { bgLocalRef.current = bgLocal; }, [bgLocal]);
 
   const { data: mapBgsRaw = [] } = useQuery({
-    queryKey: ["map_backgrounds", gameId],
+    queryKey: ["map_backgrounds", gameId, pageId],
+    enabled: !!pageId,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("map_backgrounds" as never).select("*").eq("game_id", gameId).order("z_index", { ascending: true }) as unknown as Promise<{ data: MapBg[] | null; error: { message: string } | null }>);
+      const { data, error } = await (supabase.from("map_backgrounds" as never).select("*").eq("game_id", gameId).eq("page_id", pageId!).order("z_index", { ascending: true }) as unknown as Promise<{ data: MapBg[] | null; error: { message: string } | null }>);
       if (error) throw new Error(error.message);
       return (data ?? []) as MapBg[];
     },
   });
   useEffect(() => {
+    if (!pageId) return;
     const ch = supabase
-      .channel(`map_backgrounds:${gameId}`)
+      .channel(`map_backgrounds:${gameId}:${pageId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "map_backgrounds", filter: `game_id=eq.${gameId}` },
-        () => qc.invalidateQueries({ queryKey: ["map_backgrounds", gameId] }),
+        { event: "*", schema: "public", table: "map_backgrounds", filter: `page_id=eq.${pageId}` },
+        () => qc.invalidateQueries({ queryKey: ["map_backgrounds", gameId, pageId] }),
       )
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [gameId, qc]);
+  }, [gameId, pageId, qc]);
 
   const mapBgs = useMemo<MapBg[]>(
     () => mapBgsRaw.map((b) => ({ ...b, ...(bgLocal[b.id] ?? {}) })),
@@ -377,10 +402,10 @@ export function MapBoard({
   );
 
   async function addBackground(url: string) {
-    if (!isNarrator || !url) return;
+    if (!isNarrator || !url || !pageId) return;
     const maxZ = mapBgsRaw.reduce((m, b) => Math.max(m, b.z_index), 0);
     const { error } = await (supabase.from("map_backgrounds" as never).insert({
-      game_id: gameId, image_url: url, x: 0.2, y: 0.2, width: 0.4, height: 0.4, rotation: 0, z_index: maxZ + 1, created_by: userId,
+      game_id: gameId, page_id: pageId, image_url: url, x: 0.2, y: 0.2, width: 0.4, height: 0.4, rotation: 0, z_index: maxZ + 1, created_by: userId,
     } as never) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
   }
@@ -412,50 +437,57 @@ export function MapBoard({
   const fogActive = visibility.fogEnabled || visibility.dynamicLighting;
 
   const { data: fogRegions = [] } = useQuery({
-    queryKey: ["fog_regions", gameId],
+    queryKey: ["fog_regions", gameId, pageId],
+    enabled: !!pageId,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("fog_regions" as never).select("*").eq("game_id", gameId) as unknown as Promise<{ data: FogRegion[] | null; error: { message: string } | null }>);
+      const { data, error } = await (supabase.from("fog_regions" as never).select("*").eq("game_id", gameId).eq("page_id", pageId!) as unknown as Promise<{ data: FogRegion[] | null; error: { message: string } | null }>);
       if (error) throw new Error(error.message);
       return (data ?? []) as FogRegion[];
     },
   });
   const { data: walls = [] } = useQuery({
-    queryKey: ["walls", gameId],
+    queryKey: ["walls", gameId, pageId],
+    enabled: !!pageId,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("walls" as never).select("*").eq("game_id", gameId) as unknown as Promise<{ data: Wall[] | null; error: { message: string } | null }>);
+      const { data, error } = await (supabase.from("walls" as never).select("*").eq("game_id", gameId).eq("page_id", pageId!) as unknown as Promise<{ data: Wall[] | null; error: { message: string } | null }>);
       if (error) throw new Error(error.message);
       return (data ?? []) as Wall[];
     },
   });
   useEffect(() => {
-    const ch1 = supabase.channel(`fog:${gameId}`).on("postgres_changes",
-      { event: "*", schema: "public", table: "fog_regions", filter: `game_id=eq.${gameId}` },
-      () => qc.invalidateQueries({ queryKey: ["fog_regions", gameId] })).subscribe();
-    const ch2 = supabase.channel(`walls:${gameId}`).on("postgres_changes",
-      { event: "*", schema: "public", table: "walls", filter: `game_id=eq.${gameId}` },
-      () => qc.invalidateQueries({ queryKey: ["walls", gameId] })).subscribe();
+    if (!pageId) return;
+    const ch1 = supabase.channel(`fog:${gameId}:${pageId}`).on("postgres_changes",
+      { event: "*", schema: "public", table: "fog_regions", filter: `page_id=eq.${pageId}` },
+      () => qc.invalidateQueries({ queryKey: ["fog_regions", gameId, pageId] })).subscribe();
+    const ch2 = supabase.channel(`walls:${gameId}:${pageId}`).on("postgres_changes",
+      { event: "*", schema: "public", table: "walls", filter: `page_id=eq.${pageId}` },
+      () => qc.invalidateQueries({ queryKey: ["walls", gameId, pageId] })).subscribe();
     return () => { supabase.removeChannel(ch1); supabase.removeChannel(ch2); };
-  }, [gameId, qc]);
+  }, [gameId, pageId, qc]);
 
   async function insertFogRegion(ax: number, ay: number, bx: number, by: number, revealed: boolean) {
+    if (!pageId) return;
     const x = Math.min(ax, bx), y = Math.min(ay, by);
     const w = Math.abs(bx - ax), h = Math.abs(by - ay);
     if (w < 0.005 || h < 0.005) return;
-    const { error } = await (supabase.from("fog_regions" as never).insert({ game_id: gameId, x, y, w, h, revealed, author_id: userId } as never) as unknown as Promise<{ error: { message: string } | null }>);
+    const { error } = await (supabase.from("fog_regions" as never).insert({ game_id: gameId, page_id: pageId, x, y, w, h, revealed, author_id: userId } as never) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
   }
   async function clearFog() {
-    if (!confirm("Apagar toda a fog desta mesa?")) return;
-    const { error } = await (supabase.from("fog_regions" as never).delete().eq("game_id", gameId) as unknown as Promise<{ error: { message: string } | null }>);
+    if (!pageId) return;
+    if (!confirm("Apagar toda a fog desta página?")) return;
+    const { error } = await (supabase.from("fog_regions" as never).delete().eq("page_id", pageId) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
   }
   async function revealAll() {
-    const { error } = await (supabase.from("fog_regions" as never).insert({ game_id: gameId, x: 0, y: 0, w: 1, h: 1, revealed: true, author_id: userId } as never) as unknown as Promise<{ error: { message: string } | null }>);
+    if (!pageId) return;
+    const { error } = await (supabase.from("fog_regions" as never).insert({ game_id: gameId, page_id: pageId, x: 0, y: 0, w: 1, h: 1, revealed: true, author_id: userId } as never) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
   }
   async function insertWall(x1: number, y1: number, x2: number, y2: number) {
+    if (!pageId) return;
     if (Math.hypot(x2 - x1, y2 - y1) < 0.01) return;
-    const { error } = await (supabase.from("walls" as never).insert({ game_id: gameId, x1, y1, x2, y2, author_id: userId } as never) as unknown as Promise<{ error: { message: string } | null }>);
+    const { error } = await (supabase.from("walls" as never).insert({ game_id: gameId, page_id: pageId, x1, y1, x2, y2, author_id: userId } as never) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
   }
   async function deleteWall(id: string) {
@@ -463,8 +495,9 @@ export function MapBoard({
     if (error) toast.error(error.message);
   }
   async function clearWalls() {
-    if (!confirm("Apagar todas as paredes?")) return;
-    const { error } = await (supabase.from("walls" as never).delete().eq("game_id", gameId) as unknown as Promise<{ error: { message: string } | null }>);
+    if (!pageId) return;
+    if (!confirm("Apagar todas as paredes desta página?")) return;
+    const { error } = await (supabase.from("walls" as never).delete().eq("page_id", pageId) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
   }
   async function toggleGameFlag(field: "fog_enabled" | "dynamic_lighting", value: boolean) {
@@ -679,8 +712,10 @@ export function MapBoard({
     }
   }
   async function persistDrawing(d: Drawing) {
+    if (!pageId) return;
     const payload = {
       game_id: d.game_id,
+      page_id: pageId,
       layer: d.layer,
       kind: d.kind,
       geometry: d.geometry,
@@ -698,20 +733,23 @@ export function MapBoard({
     if (error) toast.error(error.message);
   }
   async function clearMyDrawings() {
-    if (!confirm("Apagar todos os seus desenhos neste mapa?")) return;
-    const q = supabase.from("map_drawings" as never).delete().eq("game_id", gameId).eq("author_id", userId);
+    if (!pageId) return;
+    if (!confirm("Apagar todos os seus desenhos nesta página?")) return;
+    const q = supabase.from("map_drawings" as never).delete().eq("page_id", pageId).eq("author_id", userId);
     const { error } = await (q as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
   }
 
   async function onDrop(e: React.DragEvent) {
     e.preventDefault();
+    if (!pageId) { toast.error("Nenhuma página ativa"); return; }
     const raw = e.dataTransfer.getData(DRAG_MIME);
     const { x, y } = pointToRel(e.clientX, e.clientY);
     if (raw) {
       const p = JSON.parse(raw) as DragCharacterPayload;
       const { error } = await supabase.from("tokens").insert({
         game_id: gameId,
+        page_id: pageId,
         character_kind: p.kind,
         character_id: p.id,
         label: p.label,
@@ -802,6 +840,15 @@ export function MapBoard({
     >
       {topLeftSlot && <div className="absolute right-3 top-3 z-30 flex items-center gap-2">{topLeftSlot}</div>}
 
+      {/* Page switcher (narrator only) */}
+      <PageSwitcher
+        gameId={gameId}
+        viewingPageId={viewingPageId}
+        activePageId={activePageId}
+        isNarrator={isNarrator}
+        onView={(id) => setViewingPageId(id)}
+      />
+
       {/* Map toolbar (top-left, collapsible) */}
       <MapToolbar
         mode={mode} setMode={setMode}
@@ -811,6 +858,8 @@ export function MapBoard({
         drawLayer={drawLayer} setDrawLayer={setDrawLayer}
         isNarrator={isNarrator}
         showGMLayer={showGMLayer} setShowGMLayer={setShowGMLayer}
+        showBackgrounds={showBackgrounds} setShowBackgrounds={setShowBackgrounds}
+        showTokens={showTokens} setShowTokens={setShowTokens}
         onClearMine={clearMyDrawings}
         isMobile={isMobile}
         visibility={visibility}
@@ -839,7 +888,7 @@ export function MapBoard({
         }}
       >
       {/* Multi-image background layer */}
-      {mapBgs.map((bg) => {
+      {showBackgrounds && mapBgs.map((bg) => {
         const isSel = selectedBgId === bg.id;
         const editable = isNarrator && mode === "background";
         return (
@@ -1020,7 +1069,7 @@ export function MapBoard({
         </div>
       )}
 
-      {tokens.map((t) => {
+      {(!isNarrator || showTokens) && tokens.map((t) => {
         const canMove = isNarrator || canActAsOwner(t);
         const isSelected = selectedTokenId === t.id;
         const isHover = hoverTokenId === t.id;
@@ -1305,6 +1354,8 @@ function MapToolbar({
   drawLayer, setDrawLayer,
   isNarrator,
   showGMLayer, setShowGMLayer,
+  showBackgrounds, setShowBackgrounds,
+  showTokens, setShowTokens,
   onClearMine,
   isMobile,
   visibility,
@@ -1322,6 +1373,8 @@ function MapToolbar({
   drawLayer: "drawing" | "gm"; setDrawLayer: (l: "drawing" | "gm") => void;
   isNarrator: boolean;
   showGMLayer: boolean; setShowGMLayer: (b: boolean) => void;
+  showBackgrounds: boolean; setShowBackgrounds: (b: boolean) => void;
+  showTokens: boolean; setShowTokens: (b: boolean) => void;
   onClearMine: () => void;
   isMobile?: boolean;
   visibility: Visibility;
@@ -1465,9 +1518,17 @@ function MapToolbar({
           )}
           <div className="flex flex-wrap gap-1 border-t border-border pt-1">
             {isNarrator && (
-              <ToolBtn active={!showGMLayer} onClick={() => setShowGMLayer(!showGMLayer)} title={showGMLayer ? "Esconder camada GM" : "Mostrar camada GM"}>
-                {showGMLayer ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-              </ToolBtn>
+              <>
+                <ToolBtn active={!showGMLayer} onClick={() => setShowGMLayer(!showGMLayer)} title={showGMLayer ? "Esconder camada GM" : "Mostrar camada GM"}>
+                  GM {showGMLayer ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                </ToolBtn>
+                <ToolBtn active={!showBackgrounds} onClick={() => setShowBackgrounds(!showBackgrounds)} title={showBackgrounds ? "Esconder backgrounds" : "Mostrar backgrounds"}>
+                  Bg {showBackgrounds ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                </ToolBtn>
+                <ToolBtn active={!showTokens} onClick={() => setShowTokens(!showTokens)} title={showTokens ? "Esconder tokens" : "Mostrar tokens"}>
+                  Tk {showTokens ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                </ToolBtn>
+              </>
             )}
             <ToolBtn onClick={onClearMine} title="Apagar meus desenhos"><Eraser className="h-3.5 w-3.5" /></ToolBtn>
           </div>
