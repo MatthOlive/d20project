@@ -303,7 +303,7 @@ export function PokemonSheet({
 
       // FORÇAR NA INTERFACE (Garante que aparece no ecrã de todos os que estão a ver o jogo)
       qc.setQueryData(["pokemon-moves", pokemonId], (old: any) => {
-        const moveDetails = allMoves.find((m) => m.id === moveId);
+        const moveDetails = allMovesList.find((m: Move) => m.id === moveId);
         return [
           ...(old || []),
           {
@@ -1008,7 +1008,7 @@ export function PokemonSheet({
                       imageUrl={displayImage}
                     />
                     {canEdit && (
-                      <Button size="icon" variant="ghost" onClick={() => removeMove(m.id)}>
+                      <Button size="icon" variant="ghost" onClick={() => deleteMove(m.id)}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     )}
