@@ -1518,9 +1518,17 @@ function MapToolbar({
           )}
           <div className="flex flex-wrap gap-1 border-t border-border pt-1">
             {isNarrator && (
-              <ToolBtn active={!showGMLayer} onClick={() => setShowGMLayer(!showGMLayer)} title={showGMLayer ? "Esconder camada GM" : "Mostrar camada GM"}>
-                {showGMLayer ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-              </ToolBtn>
+              <>
+                <ToolBtn active={!showGMLayer} onClick={() => setShowGMLayer(!showGMLayer)} title={showGMLayer ? "Esconder camada GM" : "Mostrar camada GM"}>
+                  GM {showGMLayer ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                </ToolBtn>
+                <ToolBtn active={!showBackgrounds} onClick={() => setShowBackgrounds(!showBackgrounds)} title={showBackgrounds ? "Esconder backgrounds" : "Mostrar backgrounds"}>
+                  Bg {showBackgrounds ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                </ToolBtn>
+                <ToolBtn active={!showTokens} onClick={() => setShowTokens(!showTokens)} title={showTokens ? "Esconder tokens" : "Mostrar tokens"}>
+                  Tk {showTokens ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                </ToolBtn>
+              </>
             )}
             <ToolBtn onClick={onClearMine} title="Apagar meus desenhos"><Eraser className="h-3.5 w-3.5" /></ToolBtn>
           </div>
