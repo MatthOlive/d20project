@@ -1354,6 +1354,8 @@ function MapToolbar({
   drawLayer, setDrawLayer,
   isNarrator,
   showGMLayer, setShowGMLayer,
+  showBackgrounds, setShowBackgrounds,
+  showTokens, setShowTokens,
   onClearMine,
   isMobile,
   visibility,
@@ -1371,6 +1373,8 @@ function MapToolbar({
   drawLayer: "drawing" | "gm"; setDrawLayer: (l: "drawing" | "gm") => void;
   isNarrator: boolean;
   showGMLayer: boolean; setShowGMLayer: (b: boolean) => void;
+  showBackgrounds: boolean; setShowBackgrounds: (b: boolean) => void;
+  showTokens: boolean; setShowTokens: (b: boolean) => void;
   onClearMine: () => void;
   isMobile?: boolean;
   visibility: Visibility;
