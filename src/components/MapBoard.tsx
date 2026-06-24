@@ -289,16 +289,17 @@ export function MapBoard({
   );
 
   useEffect(() => {
+    if (!pageId) return;
     const ch = supabase
-      .channel(`tokens:${gameId}`)
+      .channel(`tokens:${gameId}:${pageId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "tokens", filter: `game_id=eq.${gameId}` },
-        () => qc.invalidateQueries({ queryKey: ["tokens", gameId] }),
+        { event: "*", schema: "public", table: "tokens", filter: `page_id=eq.${pageId}` },
+        () => qc.invalidateQueries({ queryKey: ["tokens", gameId, pageId] }),
       )
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [gameId, qc]);
+  }, [gameId, pageId, qc]);
 
   // Real-time updates from pokemon / trainers so token images, stats,
   // status conditions and attribute bonuses propagate live to every player.
