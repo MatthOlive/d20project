@@ -712,8 +712,10 @@ export function MapBoard({
     }
   }
   async function persistDrawing(d: Drawing) {
+    if (!pageId) return;
     const payload = {
       game_id: d.game_id,
+      page_id: pageId,
       layer: d.layer,
       kind: d.kind,
       geometry: d.geometry,
@@ -731,20 +733,23 @@ export function MapBoard({
     if (error) toast.error(error.message);
   }
   async function clearMyDrawings() {
-    if (!confirm("Apagar todos os seus desenhos neste mapa?")) return;
-    const q = supabase.from("map_drawings" as never).delete().eq("game_id", gameId).eq("author_id", userId);
+    if (!pageId) return;
+    if (!confirm("Apagar todos os seus desenhos nesta página?")) return;
+    const q = supabase.from("map_drawings" as never).delete().eq("page_id", pageId).eq("author_id", userId);
     const { error } = await (q as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
   }
 
   async function onDrop(e: React.DragEvent) {
     e.preventDefault();
+    if (!pageId) { toast.error("Nenhuma página ativa"); return; }
     const raw = e.dataTransfer.getData(DRAG_MIME);
     const { x, y } = pointToRel(e.clientX, e.clientY);
     if (raw) {
       const p = JSON.parse(raw) as DragCharacterPayload;
       const { error } = await supabase.from("tokens").insert({
         game_id: gameId,
+        page_id: pageId,
         character_kind: p.kind,
         character_id: p.id,
         label: p.label,
