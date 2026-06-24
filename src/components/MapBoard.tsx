@@ -1069,7 +1069,7 @@ export function MapBoard({
         </div>
       )}
 
-      {tokens.map((t) => {
+      {(!isNarrator || showTokens) && tokens.map((t) => {
         const canMove = isNarrator || canActAsOwner(t);
         const isSelected = selectedTokenId === t.id;
         const isHover = hoverTokenId === t.id;
