@@ -101,6 +101,7 @@ export function MapBoard({
   backgroundUrl,
   userId,
   isNarrator,
+  activePageId,
   topLeftSlot,
   onRoll,
   onOpenSheet,
@@ -111,6 +112,7 @@ export function MapBoard({
   backgroundUrl: string | null;
   userId: string;
   isNarrator: boolean;
+  activePageId: string | null;
   topLeftSlot?: React.ReactNode;
   onRoll?: (label: string, n: number, penalty?: number, meta?: { characterKind: "trainer" | "pokemon"; characterId: string; imageUrl?: string | null }) => void;
   onOpenSheet?: (kind: "trainer" | "pokemon", id: string, label: string) => void;
