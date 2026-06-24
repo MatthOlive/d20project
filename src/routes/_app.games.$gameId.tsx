@@ -192,6 +192,7 @@ function GameRoom() {
       backgroundUrl={game.background_url}
       userId={user.id}
       isNarrator={isNarrator}
+      activePageId={(game as never as { active_page_id?: string | null }).active_page_id ?? null}
       onRoll={rollFromSheet}
       onOpenSheet={(kind, id, label) => openWindow({ kind, id, title: label })}
       gridSettings={{
