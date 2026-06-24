@@ -12,6 +12,7 @@ import { TokenActionBar } from "@/components/TokenActionBar";
 import { TokenStatsBar } from "@/components/TokenStatsBar";
 import { TokenAvatar, TokenStatusBadges } from "@/components/TokenAvatar";
 import { TokenAppearanceDialog, type AppearanceToken } from "@/components/TokenAppearanceDialog";
+import { PageSwitcher } from "@/components/PageSwitcher";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export type DragCharacterPayload = {
