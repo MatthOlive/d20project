@@ -336,24 +336,26 @@ export function MapBoard({
 
   // Drawings query + realtime
   const { data: drawings = [] } = useQuery({
-    queryKey: ["map_drawings", gameId],
+    queryKey: ["map_drawings", gameId, pageId],
+    enabled: !!pageId,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("map_drawings" as never).select("*").eq("game_id", gameId) as unknown as Promise<{ data: Drawing[] | null; error: { message: string } | null }>);
+      const { data, error } = await (supabase.from("map_drawings" as never).select("*").eq("game_id", gameId).eq("page_id", pageId!) as unknown as Promise<{ data: Drawing[] | null; error: { message: string } | null }>);
       if (error) throw new Error(error.message);
       return (data ?? []) as Drawing[];
     },
   });
   useEffect(() => {
+    if (!pageId) return;
     const ch = supabase
-      .channel(`drawings:${gameId}`)
+      .channel(`drawings:${gameId}:${pageId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "map_drawings", filter: `game_id=eq.${gameId}` },
-        () => qc.invalidateQueries({ queryKey: ["map_drawings", gameId] }),
+        { event: "*", schema: "public", table: "map_drawings", filter: `page_id=eq.${pageId}` },
+        () => qc.invalidateQueries({ queryKey: ["map_drawings", gameId, pageId] }),
       )
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [gameId, qc]);
+  }, [gameId, pageId, qc]);
 
   const visibleDrawings = useMemo(
     () => drawings.filter((d) => d.layer !== "gm" || (isNarrator && showGMLayer)),
@@ -373,24 +375,26 @@ export function MapBoard({
   useEffect(() => { bgLocalRef.current = bgLocal; }, [bgLocal]);
 
   const { data: mapBgsRaw = [] } = useQuery({
-    queryKey: ["map_backgrounds", gameId],
+    queryKey: ["map_backgrounds", gameId, pageId],
+    enabled: !!pageId,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("map_backgrounds" as never).select("*").eq("game_id", gameId).order("z_index", { ascending: true }) as unknown as Promise<{ data: MapBg[] | null; error: { message: string } | null }>);
+      const { data, error } = await (supabase.from("map_backgrounds" as never).select("*").eq("game_id", gameId).eq("page_id", pageId!).order("z_index", { ascending: true }) as unknown as Promise<{ data: MapBg[] | null; error: { message: string } | null }>);
       if (error) throw new Error(error.message);
       return (data ?? []) as MapBg[];
     },
   });
   useEffect(() => {
+    if (!pageId) return;
     const ch = supabase
-      .channel(`map_backgrounds:${gameId}`)
+      .channel(`map_backgrounds:${gameId}:${pageId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "map_backgrounds", filter: `game_id=eq.${gameId}` },
-        () => qc.invalidateQueries({ queryKey: ["map_backgrounds", gameId] }),
+        { event: "*", schema: "public", table: "map_backgrounds", filter: `page_id=eq.${pageId}` },
+        () => qc.invalidateQueries({ queryKey: ["map_backgrounds", gameId, pageId] }),
       )
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [gameId, qc]);
+  }, [gameId, pageId, qc]);
 
   const mapBgs = useMemo<MapBg[]>(
     () => mapBgsRaw.map((b) => ({ ...b, ...(bgLocal[b.id] ?? {}) })),
@@ -398,10 +402,10 @@ export function MapBoard({
   );
 
   async function addBackground(url: string) {
-    if (!isNarrator || !url) return;
+    if (!isNarrator || !url || !pageId) return;
     const maxZ = mapBgsRaw.reduce((m, b) => Math.max(m, b.z_index), 0);
     const { error } = await (supabase.from("map_backgrounds" as never).insert({
-      game_id: gameId, image_url: url, x: 0.2, y: 0.2, width: 0.4, height: 0.4, rotation: 0, z_index: maxZ + 1, created_by: userId,
+      game_id: gameId, page_id: pageId, image_url: url, x: 0.2, y: 0.2, width: 0.4, height: 0.4, rotation: 0, z_index: maxZ + 1, created_by: userId,
     } as never) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
   }
