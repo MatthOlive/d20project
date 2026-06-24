@@ -897,8 +897,11 @@ function FilesPanel({
   }
 
   async function sendRowToMap(r: CharRow) {
+    const pageId = (game as never as { active_page_id?: string | null })?.active_page_id ?? null;
+    if (!pageId) { toast.error("Nenhuma página ativa"); return; }
     const { error } = await supabase.from("tokens").insert({
       game_id: gameId,
+      page_id: pageId,
       character_kind: r.kind,
       character_id: r.id,
       label: r.label,
