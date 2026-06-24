@@ -840,6 +840,15 @@ export function MapBoard({
     >
       {topLeftSlot && <div className="absolute right-3 top-3 z-30 flex items-center gap-2">{topLeftSlot}</div>}
 
+      {/* Page switcher (narrator only) */}
+      <PageSwitcher
+        gameId={gameId}
+        viewingPageId={viewingPageId}
+        activePageId={activePageId}
+        isNarrator={isNarrator}
+        onView={(id) => setViewingPageId(id)}
+      />
+
       {/* Map toolbar (top-left, collapsible) */}
       <MapToolbar
         mode={mode} setMode={setMode}
@@ -849,6 +858,8 @@ export function MapBoard({
         drawLayer={drawLayer} setDrawLayer={setDrawLayer}
         isNarrator={isNarrator}
         showGMLayer={showGMLayer} setShowGMLayer={setShowGMLayer}
+        showBackgrounds={showBackgrounds} setShowBackgrounds={setShowBackgrounds}
+        showTokens={showTokens} setShowTokens={setShowTokens}
         onClearMine={clearMyDrawings}
         isMobile={isMobile}
         visibility={visibility}
