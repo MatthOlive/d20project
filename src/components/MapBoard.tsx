@@ -142,6 +142,22 @@ export function MapBoard({
   const [drawWidth, setDrawWidth] = useState(3);
   const [drawLayer, setDrawLayer] = useState<"drawing" | "gm">("drawing");
   const [showGMLayer, setShowGMLayer] = useState(true);
+  const [showBackgrounds, setShowBackgrounds] = useState(true);
+  const [showTokens, setShowTokens] = useState(true);
+
+  // viewingPageId: which page this client renders.
+  // Narrator: starts at activePageId; can change locally without affecting players.
+  // Player: always follows activePageId from the games row.
+  const [viewingPageId, setViewingPageId] = useState<string | null>(activePageId);
+  useEffect(() => {
+    if (!isNarrator) {
+      setViewingPageId(activePageId);
+    } else if (!viewingPageId && activePageId) {
+      setViewingPageId(activePageId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePageId, isNarrator]);
+  const pageId = viewingPageId;
 
   // Ruler state (local only)
   const [ruler, setRuler] = useState<{ ax: number; ay: number; bx: number; by: number } | null>(null);
