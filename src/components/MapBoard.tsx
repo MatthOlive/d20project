@@ -251,10 +251,11 @@ export function MapBoard({
 
 
   const { data: tokensRaw = [] } = useQuery({
-    queryKey: ["tokens", gameId],
+    queryKey: ["tokens", gameId, pageId],
+    enabled: !!pageId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("tokens").select("*").eq("game_id", gameId);
+        .from("tokens").select("*").eq("game_id", gameId).eq("page_id", pageId!);
       if (error) throw error;
       return (data ?? []) as Token[];
     },
