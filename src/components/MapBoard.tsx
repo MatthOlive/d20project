@@ -888,7 +888,7 @@ export function MapBoard({
         }}
       >
       {/* Multi-image background layer */}
-      {mapBgs.map((bg) => {
+      {showBackgrounds && mapBgs.map((bg) => {
         const isSel = selectedBgId === bg.id;
         const editable = isNarrator && mode === "background";
         return (
