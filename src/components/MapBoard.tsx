@@ -437,50 +437,57 @@ export function MapBoard({
   const fogActive = visibility.fogEnabled || visibility.dynamicLighting;
 
   const { data: fogRegions = [] } = useQuery({
-    queryKey: ["fog_regions", gameId],
+    queryKey: ["fog_regions", gameId, pageId],
+    enabled: !!pageId,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("fog_regions" as never).select("*").eq("game_id", gameId) as unknown as Promise<{ data: FogRegion[] | null; error: { message: string } | null }>);
+      const { data, error } = await (supabase.from("fog_regions" as never).select("*").eq("game_id", gameId).eq("page_id", pageId!) as unknown as Promise<{ data: FogRegion[] | null; error: { message: string } | null }>);
       if (error) throw new Error(error.message);
       return (data ?? []) as FogRegion[];
     },
   });
   const { data: walls = [] } = useQuery({
-    queryKey: ["walls", gameId],
+    queryKey: ["walls", gameId, pageId],
+    enabled: !!pageId,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("walls" as never).select("*").eq("game_id", gameId) as unknown as Promise<{ data: Wall[] | null; error: { message: string } | null }>);
+      const { data, error } = await (supabase.from("walls" as never).select("*").eq("game_id", gameId).eq("page_id", pageId!) as unknown as Promise<{ data: Wall[] | null; error: { message: string } | null }>);
       if (error) throw new Error(error.message);
       return (data ?? []) as Wall[];
     },
   });
   useEffect(() => {
-    const ch1 = supabase.channel(`fog:${gameId}`).on("postgres_changes",
-      { event: "*", schema: "public", table: "fog_regions", filter: `game_id=eq.${gameId}` },
-      () => qc.invalidateQueries({ queryKey: ["fog_regions", gameId] })).subscribe();
-    const ch2 = supabase.channel(`walls:${gameId}`).on("postgres_changes",
-      { event: "*", schema: "public", table: "walls", filter: `game_id=eq.${gameId}` },
-      () => qc.invalidateQueries({ queryKey: ["walls", gameId] })).subscribe();
+    if (!pageId) return;
+    const ch1 = supabase.channel(`fog:${gameId}:${pageId}`).on("postgres_changes",
+      { event: "*", schema: "public", table: "fog_regions", filter: `page_id=eq.${pageId}` },
+      () => qc.invalidateQueries({ queryKey: ["fog_regions", gameId, pageId] })).subscribe();
+    const ch2 = supabase.channel(`walls:${gameId}:${pageId}`).on("postgres_changes",
+      { event: "*", schema: "public", table: "walls", filter: `page_id=eq.${pageId}` },
+      () => qc.invalidateQueries({ queryKey: ["walls", gameId, pageId] })).subscribe();
     return () => { supabase.removeChannel(ch1); supabase.removeChannel(ch2); };
-  }, [gameId, qc]);
+  }, [gameId, pageId, qc]);
 
   async function insertFogRegion(ax: number, ay: number, bx: number, by: number, revealed: boolean) {
+    if (!pageId) return;
     const x = Math.min(ax, bx), y = Math.min(ay, by);
     const w = Math.abs(bx - ax), h = Math.abs(by - ay);
     if (w < 0.005 || h < 0.005) return;
-    const { error } = await (supabase.from("fog_regions" as never).insert({ game_id: gameId, x, y, w, h, revealed, author_id: userId } as never) as unknown as Promise<{ error: { message: string } | null }>);
+    const { error } = await (supabase.from("fog_regions" as never).insert({ game_id: gameId, page_id: pageId, x, y, w, h, revealed, author_id: userId } as never) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
   }
   async function clearFog() {
-    if (!confirm("Apagar toda a fog desta mesa?")) return;
-    const { error } = await (supabase.from("fog_regions" as never).delete().eq("game_id", gameId) as unknown as Promise<{ error: { message: string } | null }>);
+    if (!pageId) return;
+    if (!confirm("Apagar toda a fog desta página?")) return;
+    const { error } = await (supabase.from("fog_regions" as never).delete().eq("page_id", pageId) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
   }
   async function revealAll() {
-    const { error } = await (supabase.from("fog_regions" as never).insert({ game_id: gameId, x: 0, y: 0, w: 1, h: 1, revealed: true, author_id: userId } as never) as unknown as Promise<{ error: { message: string } | null }>);
+    if (!pageId) return;
+    const { error } = await (supabase.from("fog_regions" as never).insert({ game_id: gameId, page_id: pageId, x: 0, y: 0, w: 1, h: 1, revealed: true, author_id: userId } as never) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
   }
   async function insertWall(x1: number, y1: number, x2: number, y2: number) {
+    if (!pageId) return;
     if (Math.hypot(x2 - x1, y2 - y1) < 0.01) return;
-    const { error } = await (supabase.from("walls" as never).insert({ game_id: gameId, x1, y1, x2, y2, author_id: userId } as never) as unknown as Promise<{ error: { message: string } | null }>);
+    const { error } = await (supabase.from("walls" as never).insert({ game_id: gameId, page_id: pageId, x1, y1, x2, y2, author_id: userId } as never) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
   }
   async function deleteWall(id: string) {
@@ -488,8 +495,9 @@ export function MapBoard({
     if (error) toast.error(error.message);
   }
   async function clearWalls() {
-    if (!confirm("Apagar todas as paredes?")) return;
-    const { error } = await (supabase.from("walls" as never).delete().eq("game_id", gameId) as unknown as Promise<{ error: { message: string } | null }>);
+    if (!pageId) return;
+    if (!confirm("Apagar todas as paredes desta página?")) return;
+    const { error } = await (supabase.from("walls" as never).delete().eq("page_id", pageId) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
   }
   async function toggleGameFlag(field: "fog_enabled" | "dynamic_lighting", value: boolean) {
