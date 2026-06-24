@@ -897,7 +897,9 @@ function FilesPanel({
   }
 
   async function sendRowToMap(r: CharRow) {
-    const pageId = (game as never as { active_page_id?: string | null })?.active_page_id ?? null;
+    const { data: g } = await supabase
+      .from("games").select("active_page_id").eq("id", gameId).maybeSingle();
+    const pageId = (g as { active_page_id?: string | null } | null)?.active_page_id ?? null;
     if (!pageId) { toast.error("Nenhuma página ativa"); return; }
     const { error } = await supabase.from("tokens").insert({
       game_id: gameId,
