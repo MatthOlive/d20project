@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ChevronDown, Eye, Radio, Plus, Pencil, Trash2 } from "lucide-react";
 
-type Scenario = { id: string; name: string; background_url: string | null };
+type Scenario = { id: string; name: string; background_url: string | null; darkness_level?: number };
 
 /**
  * Page switcher for the tactical map (narrator only).
@@ -32,7 +32,7 @@ export function PageSwitcher({
     queryFn: async () => {
       const { data } = await supabase
         .from("scenarios")
-        .select("id,name,background_url")
+        .select("id,name,background_url,darkness_level")
         .eq("game_id", gameId)
         .order("created_at");
       return (data ?? []) as Scenario[];
@@ -81,6 +81,15 @@ export function PageSwitcher({
       const fallback = scenarios.find((x) => x.id !== s.id);
       if (fallback) onView(fallback.id);
     }
+  }
+
+
+  async function setDarkness(s: Scenario, value: number) {
+    const v = Math.max(0, Math.min(1, value));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from("scenarios") as any).update({ darkness_level: v }).eq("id", s.id);
+    qc.invalidateQueries({ queryKey: ["scenarios", gameId] });
+    qc.invalidateQueries({ queryKey: ["scenario-meta", s.id] });
   }
 
   if (!isNarrator) return null;
@@ -155,6 +164,24 @@ export function PageSwitcher({
               );
             })}
           </div>
+          {(() => {
+            const cur = scenarios.find((s) => s.id === viewingPageId);
+            if (!cur) return null;
+            const lvl = Math.round((cur.darkness_level ?? 0) * 100);
+            return (
+              <div className="mt-2 rounded-md border border-border bg-background px-2 py-1.5">
+                <div className="flex items-center justify-between text-[10px] font-semibold text-muted-foreground">
+                  <span>Escuridão da cena</span>
+                  <span className="text-foreground">{lvl}%</span>
+                </div>
+                <input
+                  type="range" min={0} max={100} step={5} value={lvl}
+                  onChange={(e) => setDarkness(cur, Number(e.target.value) / 100)}
+                  className="mt-1 w-full"
+                />
+              </div>
+            );
+          })()}
           <button
             type="button"
             onClick={createPage}

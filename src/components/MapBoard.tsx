@@ -12,6 +12,7 @@ import { TokenActionBar } from "@/components/TokenActionBar";
 import { TokenStatsBar } from "@/components/TokenStatsBar";
 import { TokenAvatar, TokenStatusBadges } from "@/components/TokenAvatar";
 import { TokenAppearanceDialog, type AppearanceToken } from "@/components/TokenAppearanceDialog";
+import { TokenLightDialog, type TokenLightInit } from "@/components/TokenLightDialog";
 import { PageSwitcher } from "@/components/PageSwitcher";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -48,7 +49,14 @@ type Token = {
   bar_value?: number | null;
   bar_max?: number | null;
   bar_color?: string;
+  light_enabled?: boolean;
+  light_radius_bright?: number;
+  light_radius_dim?: number;
+  light_color?: string;
+  light_angle?: number;
+  vision_enabled?: boolean;
 };
+
 
 type DrawKind = "freehand" | "rect" | "circle" | "line" | "text";
 
@@ -85,7 +93,7 @@ export type GridSettings = {
 type Mode = "select" | "ruler" | "draw" | "fog" | "walls" | "background";
 
 type FogRegion = { id: string; game_id: string; x: number; y: number; w: number; h: number; revealed: boolean; author_id: string };
-type Wall = { id: string; game_id: string; x1: number; y1: number; x2: number; y2: number };
+type Wall = { id: string; game_id: string; x1: number; y1: number; x2: number; y2: number; blocks_sight?: boolean; blocks_light?: boolean };
 type MapBg = { id: string; game_id: string; image_url: string; x: number; y: number; width: number; height: number; rotation: number; z_index: number };
 
 export type Visibility = { fogEnabled: boolean; dynamicLighting: boolean };
@@ -130,6 +138,7 @@ export function MapBoard({
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
   const [hoverTokenId, setHoverTokenId] = useState<string | null>(null);
   const [appearanceToken, setAppearanceToken] = useState<AppearanceToken | null>(null);
+  const [lightToken, setLightToken] = useState<TokenLightInit | null>(null);
   // (background image now rendered full-screen; no aspect-ratio coupling)
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -434,7 +443,7 @@ export function MapBoard({
   const [wallStart, setWallStart] = useState<{ x: number; y: number } | null>(null);
   const [wallCursor, setWallCursor] = useState<{ x: number; y: number } | null>(null);
   const [visEnabled, setVisEnabled] = useState(true);
-  const fogActive = visibility.fogEnabled || visibility.dynamicLighting;
+  // fogActive declared after pageMeta below.
 
   const { data: fogRegions = [] } = useQuery({
     queryKey: ["fog_regions", gameId, pageId],
@@ -454,6 +463,26 @@ export function MapBoard({
       return (data ?? []) as Wall[];
     },
   });
+
+  // Darkness ambient level for the viewing page (0..1).
+  const { data: pageMeta } = useQuery({
+    queryKey: ["scenario-meta", pageId],
+    enabled: !!pageId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("scenarios").select("darkness_level").eq("id", pageId!).maybeSingle();
+      return (data as { darkness_level: number } | null) ?? { darkness_level: 0 };
+    },
+  });
+  const darknessLevel = Math.max(0, Math.min(1, pageMeta?.darkness_level ?? 0));
+  const fogActive = visibility.fogEnabled || visibility.dynamicLighting || darknessLevel > 0;
+  useEffect(() => {
+    if (!pageId) return;
+    const ch = supabase.channel(`scenario-meta:${pageId}`).on("postgres_changes",
+      { event: "UPDATE", schema: "public", table: "scenarios", filter: `id=eq.${pageId}` },
+      () => qc.invalidateQueries({ queryKey: ["scenario-meta", pageId] })).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [pageId, qc]);
   useEffect(() => {
     if (!pageId) return;
     const ch1 = supabase.channel(`fog:${gameId}:${pageId}`).on("postgres_changes",
@@ -514,9 +543,37 @@ export function MapBoard({
     if (error) toast.error(error.message);
   }
 
-  // Visibility polygons (raycasting) — computed when dynamicLighting is on.
+  // Raycasting helper — returns visibility polygon in pixel coords.
+  function castPolygon(
+    ox: number, oy: number, radius: number,
+    wallsPx: { ax: number; ay: number; bx: number; by: number }[],
+  ): [number, number][] {
+    const N = 96;
+    const pts: [number, number][] = [];
+    for (let i = 0; i < N; i++) {
+      const ang = (i / N) * Math.PI * 2;
+      const dx = Math.cos(ang), dy = Math.sin(ang);
+      let bestT = radius;
+      for (const w of wallsPx) {
+        const sx = w.ax - ox, sy = w.ay - oy;
+        const rx = w.bx - w.ax, ry = w.by - w.ay;
+        const denom = dx * ry - dy * rx;
+        if (Math.abs(denom) < 1e-6) continue;
+        const tt = (sx * ry - sy * rx) / denom;
+        const uu = (sx * dy - sy * dx) / denom;
+        if (tt >= 0 && tt < bestT && uu >= 0 && uu <= 1) bestT = tt;
+      }
+      pts.push([ox + dx * bestT, oy + dy * bestT]);
+    }
+    return pts;
+  }
+  function ptsToPath(pts: [number, number][], W: number, H: number): string {
+    return pts.map(([px, py], i) => `${i === 0 ? "M" : "L"}${(px / W) * 1000},${(py / H) * 1000}`).join(" ") + " Z";
+  }
+
+  // Visibility polygons (vision) — used as fog mask reveals.
   const visibilityPolygons = useMemo(() => {
-    if (!visibility.dynamicLighting) return [] as string[];
+    if (!visibility.dynamicLighting && darknessLevel === 0) return [] as string[];
     const rect = (innerRef.current ?? boardRef.current)?.getBoundingClientRect();
     if (!rect) return [];
     const sources = isNarrator
@@ -524,34 +581,36 @@ export function MapBoard({
       : tokens.filter((t) => canActAsOwner(t) && (t.vision_radius ?? 0) > 0);
     if (sources.length === 0) return [];
     const W = rect.width, H = rect.height;
-    const wallsPx = walls.map((w) => ({ ax: w.x1 * W, ay: w.y1 * H, bx: w.x2 * W, by: w.y2 * H }));
-    const out: string[] = [];
-    for (const t of sources) {
+    const wallsPx = walls.filter((w) => w.blocks_sight !== false).map((w) => ({ ax: w.x1 * W, ay: w.y1 * H, bx: w.x2 * W, by: w.y2 * H }));
+    return sources.map((t) => ptsToPath(castPolygon(t.x * W, t.y * H, (t.vision_radius ?? 0) * gridSettings.size, wallsPx), W, H));
+  }, [tokens, walls, visibility.dynamicLighting, darknessLevel, isNarrator, userId, gridSettings.size]);
+
+  // Light polygons — colored tint, blocks_light only.
+  const lightPolygons = useMemo(() => {
+    if (!visibility.dynamicLighting && darknessLevel === 0) return [] as { path: string; color: string; cx: number; cy: number; r: number; bright: number }[];
+    const rect = (innerRef.current ?? boardRef.current)?.getBoundingClientRect();
+    if (!rect) return [];
+    const lights = tokens.filter((t) => t.light_enabled && ((t.light_radius_bright ?? 0) + (t.light_radius_dim ?? 0)) > 0);
+    if (lights.length === 0) return [];
+    const W = rect.width, H = rect.height;
+    const wallsPx = walls.filter((w) => w.blocks_light !== false).map((w) => ({ ax: w.x1 * W, ay: w.y1 * H, bx: w.x2 * W, by: w.y2 * H }));
+    return lights.map((t) => {
+      const bright = (t.light_radius_bright ?? 0) * gridSettings.size;
+      const dim = (t.light_radius_dim ?? 0) * gridSettings.size;
+      const total = bright + dim;
       const ox = t.x * W, oy = t.y * H;
-      const radius = (t.vision_radius ?? 0) * gridSettings.size;
-      const N = 96;
-      const pts: [number, number][] = [];
-      for (let i = 0; i < N; i++) {
-        const ang = (i / N) * Math.PI * 2;
-        const dx = Math.cos(ang), dy = Math.sin(ang);
-        let bestT = radius;
-        for (const w of wallsPx) {
-          const sx = w.ax - ox, sy = w.ay - oy;
-          const rx = w.bx - w.ax, ry = w.by - w.ay;
-          const denom = dx * ry - dy * rx;
-          if (Math.abs(denom) < 1e-6) continue;
-          const tt = (sx * ry - sy * rx) / denom;
-          const uu = (sx * dy - sy * dx) / denom;
-          if (tt >= 0 && tt < bestT && uu >= 0 && uu <= 1) bestT = tt;
-        }
-        pts.push([ox + dx * bestT, oy + dy * bestT]);
-      }
-      // Convert to viewBox 1000x1000 coords
-      const path = pts.map(([px, py], i) => `${i === 0 ? "M" : "L"}${(px / W) * 1000},${(py / H) * 1000}`).join(" ") + " Z";
-      out.push(path);
-    }
-    return out;
-  }, [tokens, walls, visibility.dynamicLighting, isNarrator, userId, gridSettings.size]);
+      const pts = castPolygon(ox, oy, total, wallsPx);
+      return {
+        path: ptsToPath(pts, W, H),
+        color: t.light_color ?? "#ffd27a",
+        cx: (ox / W) * 1000,
+        cy: (oy / H) * 1000,
+        r: (total / W) * 1000,
+        bright: total > 0 ? bright / total : 1,
+      };
+    });
+  }, [tokens, walls, visibility.dynamicLighting, darknessLevel, gridSettings.size]);
+  
   // ─────────────────────────────────────────────────────────
 
   function snap(v: number, dim: number) {
@@ -1010,9 +1069,13 @@ export function MapBoard({
               {visibility.fogEnabled && fogRegions.filter((r) => r.revealed).map((r) => (
                 <rect key={r.id} x={r.x * 1000} y={r.y * 1000} width={r.w * 1000} height={r.h * 1000} fill="black" />
               ))}
-              {/* Subtract visibility polygons (dynamic lighting) */}
+              {/* Subtract vision polygons */}
               {visibilityPolygons.map((d, i) => (
                 <path key={`vis-${i}`} d={d} fill="black" />
+              ))}
+              {/* Subtract light polygons (light reveals what is lit) */}
+              {lightPolygons.map((l, i) => (
+                <path key={`lit-${i}`} d={l.path} fill="black" />
               ))}
               {/* Re-cover hidden regions on top */}
               {visibility.fogEnabled && fogRegions.filter((r) => !r.revealed).map((r) => (
@@ -1020,12 +1083,35 @@ export function MapBoard({
               ))}
             </mask>
           </defs>
-          <rect
-            x="0" y="0" width="1000" height="1000"
-            fill="#000000"
-            opacity={isNarrator ? 0.5 : 1}
-            mask={`url(#fog-mask-${gameId})`}
-          />
+          {(() => {
+            const playerDark = visibility.fogEnabled ? 1 : Math.max(darknessLevel, visibility.dynamicLighting ? 0.85 : 0);
+            const op = isNarrator ? Math.min(0.5, playerDark) : playerDark;
+            return (
+              <rect
+                x="0" y="0" width="1000" height="1000"
+                fill="#000000"
+                opacity={op}
+                mask={`url(#fog-mask-${gameId})`}
+              />
+            );
+          })()}
+          {/* Colored light tint inside light polygons */}
+          {lightPolygons.length > 0 && (
+            <g style={{ mixBlendMode: "screen" }}>
+              <defs>
+                {lightPolygons.map((l, i) => (
+                  <radialGradient key={`lg-${i}`} id={`light-grad-${gameId}-${i}`} cx={l.cx} cy={l.cy} r={l.r} gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor={l.color} stopOpacity={0.55} />
+                    <stop offset={`${Math.round(l.bright * 100)}%`} stopColor={l.color} stopOpacity={0.4} />
+                    <stop offset="100%" stopColor={l.color} stopOpacity={0} />
+                  </radialGradient>
+                ))}
+              </defs>
+              {lightPolygons.map((l, i) => (
+                <path key={`lf-${i}`} d={l.path} fill={`url(#light-grad-${gameId}-${i})`} />
+              ))}
+            </g>
+          )}
           {/* Live fog rectangle preview */}
           {isNarrator && mode === "fog" && fogRect && (() => {
             const x = Math.min(fogRect.ax, fogRect.bx) * 1000;
@@ -1223,12 +1309,21 @@ export function MapBoard({
                       </button>
                       <button
                         type="button"
-                        onClick={() => setTokenVision(t)}
+                        onClick={() => setLightToken({
+                          id: t.id, label: t.label,
+                          light_enabled: !!t.light_enabled,
+                          light_radius_bright: t.light_radius_bright ?? 0,
+                          light_radius_dim: t.light_radius_dim ?? 0,
+                          light_color: t.light_color ?? "#ffd27a",
+                          vision_radius: t.vision_radius ?? 0,
+                        })}
                         className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-background px-2 text-[11px] font-semibold hover:bg-accent"
-                        title="Definir raio de visão deste token"
+                        title="Visão e luz emitida"
                       >
                         <Lightbulb className="h-3 w-3" />
-                        Visão{(t.vision_radius ?? 0) > 0 ? `: ${t.vision_radius}` : ""}
+                        Visão/Luz
+                        {(t.vision_radius ?? 0) > 0 && <span className="opacity-60">·{t.vision_radius}</span>}
+                        {t.light_enabled && <span className="opacity-60">·☼</span>}
                       </button>
                       <button
                         type="button"
@@ -1261,6 +1356,11 @@ export function MapBoard({
       token={appearanceToken}
       open={!!appearanceToken}
       onOpenChange={(v) => { if (!v) setAppearanceToken(null); }}
+    />
+    <TokenLightDialog
+      init={lightToken}
+      open={!!lightToken}
+      onOpenChange={(v) => { if (!v) setLightToken(null); }}
     />
     </>
   );

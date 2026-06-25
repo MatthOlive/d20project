@@ -887,6 +887,7 @@ export type Database = {
         Row: {
           background_url: string | null
           created_at: string
+          darkness_level: number
           game_id: string
           id: string
           name: string
@@ -895,6 +896,7 @@ export type Database = {
         Insert: {
           background_url?: string | null
           created_at?: string
+          darkness_level?: number
           game_id: string
           id?: string
           name?: string
@@ -903,6 +905,7 @@ export type Database = {
         Update: {
           background_url?: string | null
           created_at?: string
+          darkness_level?: number
           game_id?: string
           id?: string
           name?: string
@@ -1018,12 +1021,19 @@ export type Database = {
           image_url: string | null
           label: string
           layer: string
+          light_angle: number
+          light_color: string
+          light_enabled: boolean
           light_radius: number
+          light_radius_bright: number
+          light_radius_dim: number
           owner_id: string
           page_id: string
           size: number
           tint_color: string | null
+          vision_enabled: boolean
           vision_radius: number
+          vision_range: number
           x: number
           y: number
         }
@@ -1044,12 +1054,19 @@ export type Database = {
           image_url?: string | null
           label?: string
           layer?: string
+          light_angle?: number
+          light_color?: string
+          light_enabled?: boolean
           light_radius?: number
+          light_radius_bright?: number
+          light_radius_dim?: number
           owner_id: string
           page_id: string
           size?: number
           tint_color?: string | null
+          vision_enabled?: boolean
           vision_radius?: number
+          vision_range?: number
           x?: number
           y?: number
         }
@@ -1070,12 +1087,19 @@ export type Database = {
           image_url?: string | null
           label?: string
           layer?: string
+          light_angle?: number
+          light_color?: string
+          light_enabled?: boolean
           light_radius?: number
+          light_radius_bright?: number
+          light_radius_dim?: number
           owner_id?: string
           page_id?: string
           size?: number
           tint_color?: string | null
+          vision_enabled?: boolean
           vision_radius?: number
+          vision_range?: number
           x?: number
           y?: number
         }
@@ -1274,6 +1298,8 @@ export type Database = {
       walls: {
         Row: {
           author_id: string
+          blocks_light: boolean
+          blocks_sight: boolean
           created_at: string
           game_id: string
           id: string
@@ -1285,6 +1311,8 @@ export type Database = {
         }
         Insert: {
           author_id: string
+          blocks_light?: boolean
+          blocks_sight?: boolean
           created_at?: string
           game_id: string
           id?: string
@@ -1296,6 +1324,8 @@ export type Database = {
         }
         Update: {
           author_id?: string
+          blocks_light?: boolean
+          blocks_sight?: boolean
           created_at?: string
           game_id?: string
           id?: string
