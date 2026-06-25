@@ -80,7 +80,9 @@ export function PageSwitcher({
     if (viewingPageId === s.id) {
       const fallback = scenarios.find((x) => x.id !== s.id);
       if (fallback) onView(fallback.id);
+    }
   }
+
 
   async function setDarkness(s: Scenario, value: number) {
     const v = Math.max(0, Math.min(1, value));
