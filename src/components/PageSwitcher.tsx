@@ -80,7 +80,14 @@ export function PageSwitcher({
     if (viewingPageId === s.id) {
       const fallback = scenarios.find((x) => x.id !== s.id);
       if (fallback) onView(fallback.id);
-    }
+  }
+
+  async function setDarkness(s: Scenario, value: number) {
+    const v = Math.max(0, Math.min(1, value));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from("scenarios") as any).update({ darkness_level: v }).eq("id", s.id);
+    qc.invalidateQueries({ queryKey: ["scenarios", gameId] });
+    qc.invalidateQueries({ queryKey: ["scenario-meta", s.id] });
   }
 
   if (!isNarrator) return null;
