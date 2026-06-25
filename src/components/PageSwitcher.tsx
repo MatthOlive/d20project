@@ -164,6 +164,24 @@ export function PageSwitcher({
               );
             })}
           </div>
+          {(() => {
+            const cur = scenarios.find((s) => s.id === viewingPageId);
+            if (!cur) return null;
+            const lvl = Math.round((cur.darkness_level ?? 0) * 100);
+            return (
+              <div className="mt-2 rounded-md border border-border bg-background px-2 py-1.5">
+                <div className="flex items-center justify-between text-[10px] font-semibold text-muted-foreground">
+                  <span>Escuridão da cena</span>
+                  <span className="text-foreground">{lvl}%</span>
+                </div>
+                <input
+                  type="range" min={0} max={100} step={5} value={lvl}
+                  onChange={(e) => setDarkness(cur, Number(e.target.value) / 100)}
+                  className="mt-1 w-full"
+                />
+              </div>
+            );
+          })()}
           <button
             type="button"
             onClick={createPage}
