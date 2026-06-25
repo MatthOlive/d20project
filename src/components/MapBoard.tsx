@@ -92,7 +92,7 @@ export type GridSettings = {
 type Mode = "select" | "ruler" | "draw" | "fog" | "walls" | "background";
 
 type FogRegion = { id: string; game_id: string; x: number; y: number; w: number; h: number; revealed: boolean; author_id: string };
-type Wall = { id: string; game_id: string; x1: number; y1: number; x2: number; y2: number };
+type Wall = { id: string; game_id: string; x1: number; y1: number; x2: number; y2: number; blocks_sight?: boolean; blocks_light?: boolean };
 type MapBg = { id: string; game_id: string; image_url: string; x: number; y: number; width: number; height: number; rotation: number; z_index: number };
 
 export type Visibility = { fogEnabled: boolean; dynamicLighting: boolean };
