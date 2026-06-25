@@ -1357,6 +1357,11 @@ export function MapBoard({
       open={!!appearanceToken}
       onOpenChange={(v) => { if (!v) setAppearanceToken(null); }}
     />
+    <TokenLightDialog
+      init={lightToken}
+      open={!!lightToken}
+      onOpenChange={(v) => { if (!v) setLightToken(null); }}
+    />
     </>
   );
 }
