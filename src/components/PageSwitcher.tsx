@@ -32,7 +32,7 @@ export function PageSwitcher({
     queryFn: async () => {
       const { data } = await supabase
         .from("scenarios")
-        .select("id,name,background_url")
+        .select("id,name,background_url,darkness_level")
         .eq("game_id", gameId)
         .order("created_at");
       return (data ?? []) as Scenario[];
