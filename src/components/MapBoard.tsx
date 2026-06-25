@@ -48,7 +48,14 @@ type Token = {
   bar_value?: number | null;
   bar_max?: number | null;
   bar_color?: string;
+  light_enabled?: boolean;
+  light_radius_bright?: number;
+  light_radius_dim?: number;
+  light_color?: string;
+  light_angle?: number;
+  vision_enabled?: boolean;
 };
+
 
 type DrawKind = "freehand" | "rect" | "circle" | "line" | "text";
 
