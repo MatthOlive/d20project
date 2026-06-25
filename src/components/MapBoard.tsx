@@ -473,6 +473,7 @@ export function MapBoard({
     },
   });
   const darknessLevel = Math.max(0, Math.min(1, pageMeta?.darkness_level ?? 0));
+  const fogActive = visibility.fogEnabled || visibility.dynamicLighting || darknessLevel > 0;
   useEffect(() => {
     if (!pageId) return;
     const ch = supabase.channel(`scenario-meta:${pageId}`).on("postgres_changes",
