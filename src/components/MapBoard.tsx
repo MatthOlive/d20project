@@ -541,9 +541,37 @@ export function MapBoard({
     if (error) toast.error(error.message);
   }
 
-  // Visibility polygons (raycasting) — computed when dynamicLighting is on.
+  // Raycasting helper — returns visibility polygon in pixel coords.
+  function castPolygon(
+    ox: number, oy: number, radius: number,
+    wallsPx: { ax: number; ay: number; bx: number; by: number }[],
+  ): [number, number][] {
+    const N = 96;
+    const pts: [number, number][] = [];
+    for (let i = 0; i < N; i++) {
+      const ang = (i / N) * Math.PI * 2;
+      const dx = Math.cos(ang), dy = Math.sin(ang);
+      let bestT = radius;
+      for (const w of wallsPx) {
+        const sx = w.ax - ox, sy = w.ay - oy;
+        const rx = w.bx - w.ax, ry = w.by - w.ay;
+        const denom = dx * ry - dy * rx;
+        if (Math.abs(denom) < 1e-6) continue;
+        const tt = (sx * ry - sy * rx) / denom;
+        const uu = (sx * dy - sy * dx) / denom;
+        if (tt >= 0 && tt < bestT && uu >= 0 && uu <= 1) bestT = tt;
+      }
+      pts.push([ox + dx * bestT, oy + dy * bestT]);
+    }
+    return pts;
+  }
+  function ptsToPath(pts: [number, number][], W: number, H: number): string {
+    return pts.map(([px, py], i) => `${i === 0 ? "M" : "L"}${(px / W) * 1000},${(py / H) * 1000}`).join(" ") + " Z";
+  }
+
+  // Visibility polygons (vision) — used as fog mask reveals.
   const visibilityPolygons = useMemo(() => {
-    if (!visibility.dynamicLighting) return [] as string[];
+    if (!visibility.dynamicLighting && darknessLevel === 0) return [] as string[];
     const rect = (innerRef.current ?? boardRef.current)?.getBoundingClientRect();
     if (!rect) return [];
     const sources = isNarrator
@@ -551,33 +579,35 @@ export function MapBoard({
       : tokens.filter((t) => canActAsOwner(t) && (t.vision_radius ?? 0) > 0);
     if (sources.length === 0) return [];
     const W = rect.width, H = rect.height;
-    const wallsPx = walls.map((w) => ({ ax: w.x1 * W, ay: w.y1 * H, bx: w.x2 * W, by: w.y2 * H }));
-    const out: string[] = [];
-    for (const t of sources) {
+    const wallsPx = walls.filter((w) => w.blocks_sight !== false).map((w) => ({ ax: w.x1 * W, ay: w.y1 * H, bx: w.x2 * W, by: w.y2 * H }));
+    return sources.map((t) => ptsToPath(castPolygon(t.x * W, t.y * H, (t.vision_radius ?? 0) * gridSettings.size, wallsPx), W, H));
+  }, [tokens, walls, visibility.dynamicLighting, darknessLevel, isNarrator, userId, gridSettings.size]);
+
+  // Light polygons — colored tint, blocks_light only.
+  const lightPolygons = useMemo(() => {
+    if (!visibility.dynamicLighting && darknessLevel === 0) return [] as { path: string; color: string; cx: number; cy: number; r: number; bright: number }[];
+    const rect = (innerRef.current ?? boardRef.current)?.getBoundingClientRect();
+    if (!rect) return [];
+    const lights = tokens.filter((t) => t.light_enabled && ((t.light_radius_bright ?? 0) + (t.light_radius_dim ?? 0)) > 0);
+    if (lights.length === 0) return [];
+    const W = rect.width, H = rect.height;
+    const wallsPx = walls.filter((w) => w.blocks_light !== false).map((w) => ({ ax: w.x1 * W, ay: w.y1 * H, bx: w.x2 * W, by: w.y2 * H }));
+    return lights.map((t) => {
+      const bright = (t.light_radius_bright ?? 0) * gridSettings.size;
+      const dim = (t.light_radius_dim ?? 0) * gridSettings.size;
+      const total = bright + dim;
       const ox = t.x * W, oy = t.y * H;
-      const radius = (t.vision_radius ?? 0) * gridSettings.size;
-      const N = 96;
-      const pts: [number, number][] = [];
-      for (let i = 0; i < N; i++) {
-        const ang = (i / N) * Math.PI * 2;
-        const dx = Math.cos(ang), dy = Math.sin(ang);
-        let bestT = radius;
-        for (const w of wallsPx) {
-          const sx = w.ax - ox, sy = w.ay - oy;
-          const rx = w.bx - w.ax, ry = w.by - w.ay;
-          const denom = dx * ry - dy * rx;
-          if (Math.abs(denom) < 1e-6) continue;
-          const tt = (sx * ry - sy * rx) / denom;
-          const uu = (sx * dy - sy * dx) / denom;
-          if (tt >= 0 && tt < bestT && uu >= 0 && uu <= 1) bestT = tt;
-        }
-        pts.push([ox + dx * bestT, oy + dy * bestT]);
-      }
-      // Convert to viewBox 1000x1000 coords
-      const path = pts.map(([px, py], i) => `${i === 0 ? "M" : "L"}${(px / W) * 1000},${(py / H) * 1000}`).join(" ") + " Z";
-      out.push(path);
-    }
-    return out;
+      const pts = castPolygon(ox, oy, total, wallsPx);
+      return {
+        path: ptsToPath(pts, W, H),
+        color: t.light_color ?? "#ffd27a",
+        cx: (ox / W) * 1000,
+        cy: (oy / H) * 1000,
+        r: (total / W) * 1000,
+        bright: total > 0 ? bright / total : 1,
+      };
+    });
+  }, [tokens, walls, visibility.dynamicLighting, darknessLevel, gridSettings.size]);
   }, [tokens, walls, visibility.dynamicLighting, isNarrator, userId, gridSettings.size]);
   // ─────────────────────────────────────────────────────────
 
