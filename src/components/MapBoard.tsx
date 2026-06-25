@@ -461,6 +461,25 @@ export function MapBoard({
       return (data ?? []) as Wall[];
     },
   });
+
+  // Darkness ambient level for the viewing page (0..1).
+  const { data: pageMeta } = useQuery({
+    queryKey: ["scenario-meta", pageId],
+    enabled: !!pageId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("scenarios").select("darkness_level").eq("id", pageId!).maybeSingle();
+      return (data as { darkness_level: number } | null) ?? { darkness_level: 0 };
+    },
+  });
+  const darknessLevel = Math.max(0, Math.min(1, pageMeta?.darkness_level ?? 0));
+  useEffect(() => {
+    if (!pageId) return;
+    const ch = supabase.channel(`scenario-meta:${pageId}`).on("postgres_changes",
+      { event: "UPDATE", schema: "public", table: "scenarios", filter: `id=eq.${pageId}` },
+      () => qc.invalidateQueries({ queryKey: ["scenario-meta", pageId] })).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [pageId, qc]);
   useEffect(() => {
     if (!pageId) return;
     const ch1 = supabase.channel(`fog:${gameId}:${pageId}`).on("postgres_changes",
