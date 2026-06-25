@@ -1025,6 +1025,22 @@ function FilesPanel({
           </button>
           <button
             type="button"
+            onClick={() => reorderSibling(node.path, -1)}
+            className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+            title="Mover para cima"
+          >
+            <ChevronUp className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => reorderSibling(node.path, 1)}
+            className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+            title="Mover para baixo"
+          >
+            <ChevronDown className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
             onClick={() => addSubfolder(node.path)}
             className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
             title="Add subfolder"
