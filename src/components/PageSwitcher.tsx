@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ChevronDown, Eye, Radio, Plus, Pencil, Trash2 } from "lucide-react";
 
-type Scenario = { id: string; name: string; background_url: string | null };
+type Scenario = { id: string; name: string; background_url: string | null; darkness_level?: number };
 
 /**
  * Page switcher for the tactical map (narrator only).
