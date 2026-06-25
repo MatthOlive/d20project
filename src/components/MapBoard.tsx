@@ -1307,12 +1307,21 @@ export function MapBoard({
                       </button>
                       <button
                         type="button"
-                        onClick={() => setTokenVision(t)}
+                        onClick={() => setLightToken({
+                          id: t.id, label: t.label,
+                          light_enabled: !!t.light_enabled,
+                          light_radius_bright: t.light_radius_bright ?? 0,
+                          light_radius_dim: t.light_radius_dim ?? 0,
+                          light_color: t.light_color ?? "#ffd27a",
+                          vision_radius: t.vision_radius ?? 0,
+                        })}
                         className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-background px-2 text-[11px] font-semibold hover:bg-accent"
-                        title="Definir raio de visão deste token"
+                        title="Visão e luz emitida"
                       >
                         <Lightbulb className="h-3 w-3" />
-                        Visão{(t.vision_radius ?? 0) > 0 ? `: ${t.vision_radius}` : ""}
+                        Visão/Luz
+                        {(t.vision_radius ?? 0) > 0 && <span className="opacity-60">·{t.vision_radius}</span>}
+                        {t.light_enabled && <span className="opacity-60">·☼</span>}
                       </button>
                       <button
                         type="button"
