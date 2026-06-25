@@ -605,6 +605,13 @@ function FilesPanel({
   useEffect(() => {
     if (typeof window !== "undefined") localStorage.setItem(`folders:${gameId}`, JSON.stringify(collapsed));
   }, [collapsed, gameId]);
+  const [folderOrder, setFolderOrder] = useState<Record<string, number>>(() => {
+    if (typeof window === "undefined") return {};
+    try { return JSON.parse(localStorage.getItem(`folder-order:${gameId}`) ?? "{}"); } catch { return {}; }
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") localStorage.setItem(`folder-order:${gameId}`, JSON.stringify(folderOrder));
+  }, [folderOrder, gameId]);
   function toggleFolder(name: string) {
     setCollapsed((c) => ({ ...c, [name]: !c[name] }));
   }
