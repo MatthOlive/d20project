@@ -761,7 +761,37 @@ function FilesPanel({
       ...extraFolders,
     ]),
   );
-  const tree = buildFolderTree(folderPaths, rows);
+  const tree = buildFolderTree(folderPaths, rows, folderOrder);
+
+  function reorderSibling(path: string, dir: -1 | 1) {
+    const parts = path.split("/");
+    const parentPath = parts.slice(0, -1).join("/");
+    // Find sibling paths from current tree state
+    const allPaths = Array.from(new Set<string>([
+      ...folderPaths,
+      ...folderPaths.flatMap((p) => {
+        const segs = p.split("/");
+        return segs.map((_, i) => segs.slice(0, i + 1).join("/"));
+      }),
+    ]));
+    const siblings = allPaths.filter((p) => {
+      const pp = p.split("/").slice(0, -1).join("/");
+      return pp === parentPath;
+    });
+    siblings.sort((a, b) => {
+      const oa = folderOrder[a] ?? Number.MAX_SAFE_INTEGER;
+      const ob = folderOrder[b] ?? Number.MAX_SAFE_INTEGER;
+      if (oa !== ob) return oa - ob;
+      return a.localeCompare(b);
+    });
+    const idx = siblings.indexOf(path);
+    const target = idx + dir;
+    if (idx < 0 || target < 0 || target >= siblings.length) return;
+    [siblings[idx], siblings[target]] = [siblings[target], siblings[idx]];
+    const next = { ...folderOrder };
+    siblings.forEach((p, i) => { next[p] = i; });
+    setFolderOrder(next);
+  }
   const unfiled = rows.filter((r) => !r.folder);
 
   async function moveToFolder(row: CharRow, folder: string | null) {
