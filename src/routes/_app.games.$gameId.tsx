@@ -486,7 +486,7 @@ type FolderNode = {
   children: FolderNode[];
 };
 
-function buildFolderTree(paths: string[], rows: CharRow[]): FolderNode[] {
+function buildFolderTree(paths: string[], rows: CharRow[], order: Record<string, number> = {}): FolderNode[] {
   // Ensure all ancestors exist
   const expanded = new Set<string>();
   for (const p of paths) {
@@ -517,6 +517,17 @@ function buildFolderTree(paths: string[], rows: CharRow[]): FolderNode[] {
     const node = byPath.get(r.folder);
     if (node) node.items.push(r);
   }
+  const cmp = (a: FolderNode, b: FolderNode) => {
+    const oa = order[a.path] ?? Number.MAX_SAFE_INTEGER;
+    const ob = order[b.path] ?? Number.MAX_SAFE_INTEGER;
+    if (oa !== ob) return oa - ob;
+    return a.name.localeCompare(b.name);
+  };
+  const sortRec = (nodes: FolderNode[]) => {
+    nodes.sort(cmp);
+    for (const n of nodes) sortRec(n.children);
+  };
+  sortRec(root);
   return root;
 }
 
