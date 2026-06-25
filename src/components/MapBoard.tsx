@@ -608,7 +608,7 @@ export function MapBoard({
       };
     });
   }, [tokens, walls, visibility.dynamicLighting, darknessLevel, gridSettings.size]);
-  }, [tokens, walls, visibility.dynamicLighting, isNarrator, userId, gridSettings.size]);
+  
   // ─────────────────────────────────────────────────────────
 
   function snap(v: number, dim: number) {
