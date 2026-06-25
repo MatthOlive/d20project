@@ -486,7 +486,7 @@ type FolderNode = {
   children: FolderNode[];
 };
 
-function buildFolderTree(paths: string[], rows: CharRow[]): FolderNode[] {
+function buildFolderTree(paths: string[], rows: CharRow[], order: Record<string, number> = {}): FolderNode[] {
   // Ensure all ancestors exist
   const expanded = new Set<string>();
   for (const p of paths) {
@@ -517,6 +517,17 @@ function buildFolderTree(paths: string[], rows: CharRow[]): FolderNode[] {
     const node = byPath.get(r.folder);
     if (node) node.items.push(r);
   }
+  const cmp = (a: FolderNode, b: FolderNode) => {
+    const oa = order[a.path] ?? Number.MAX_SAFE_INTEGER;
+    const ob = order[b.path] ?? Number.MAX_SAFE_INTEGER;
+    if (oa !== ob) return oa - ob;
+    return a.name.localeCompare(b.name);
+  };
+  const sortRec = (nodes: FolderNode[]) => {
+    nodes.sort(cmp);
+    for (const n of nodes) sortRec(n.children);
+  };
+  sortRec(root);
   return root;
 }
 
@@ -594,6 +605,13 @@ function FilesPanel({
   useEffect(() => {
     if (typeof window !== "undefined") localStorage.setItem(`folders:${gameId}`, JSON.stringify(collapsed));
   }, [collapsed, gameId]);
+  const [folderOrder, setFolderOrder] = useState<Record<string, number>>(() => {
+    if (typeof window === "undefined") return {};
+    try { return JSON.parse(localStorage.getItem(`folder-order:${gameId}`) ?? "{}"); } catch { return {}; }
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") localStorage.setItem(`folder-order:${gameId}`, JSON.stringify(folderOrder));
+  }, [folderOrder, gameId]);
   function toggleFolder(name: string) {
     setCollapsed((c) => ({ ...c, [name]: !c[name] }));
   }
@@ -743,7 +761,37 @@ function FilesPanel({
       ...extraFolders,
     ]),
   );
-  const tree = buildFolderTree(folderPaths, rows);
+  const tree = buildFolderTree(folderPaths, rows, folderOrder);
+
+  function reorderSibling(path: string, dir: -1 | 1) {
+    const parts = path.split("/");
+    const parentPath = parts.slice(0, -1).join("/");
+    // Find sibling paths from current tree state
+    const allPaths = Array.from(new Set<string>([
+      ...folderPaths,
+      ...folderPaths.flatMap((p) => {
+        const segs = p.split("/");
+        return segs.map((_, i) => segs.slice(0, i + 1).join("/"));
+      }),
+    ]));
+    const siblings = allPaths.filter((p) => {
+      const pp = p.split("/").slice(0, -1).join("/");
+      return pp === parentPath;
+    });
+    siblings.sort((a, b) => {
+      const oa = folderOrder[a] ?? Number.MAX_SAFE_INTEGER;
+      const ob = folderOrder[b] ?? Number.MAX_SAFE_INTEGER;
+      if (oa !== ob) return oa - ob;
+      return a.localeCompare(b);
+    });
+    const idx = siblings.indexOf(path);
+    const target = idx + dir;
+    if (idx < 0 || target < 0 || target >= siblings.length) return;
+    [siblings[idx], siblings[target]] = [siblings[target], siblings[idx]];
+    const next = { ...folderOrder };
+    siblings.forEach((p, i) => { next[p] = i; });
+    setFolderOrder(next);
+  }
   const unfiled = rows.filter((r) => !r.folder);
 
   async function moveToFolder(row: CharRow, folder: string | null) {
@@ -974,6 +1022,22 @@ function FilesPanel({
             <Folder className="h-3.5 w-3.5" />
             <span className="truncate">{node.name}</span>
             <span className="ml-1 text-[10px] opacity-60">({totalCount})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => reorderSibling(node.path, -1)}
+            className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+            title="Mover para cima"
+          >
+            <ChevronUp className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => reorderSibling(node.path, 1)}
+            className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+            title="Mover para baixo"
+          >
+            <ChevronDown className="h-3.5 w-3.5" />
           </button>
           <button
             type="button"
