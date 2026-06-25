@@ -441,7 +441,7 @@ export function MapBoard({
   const [wallStart, setWallStart] = useState<{ x: number; y: number } | null>(null);
   const [wallCursor, setWallCursor] = useState<{ x: number; y: number } | null>(null);
   const [visEnabled, setVisEnabled] = useState(true);
-  const fogActive = visibility.fogEnabled || visibility.dynamicLighting || (pageMeta?.darkness_level ?? 0) > 0;
+  // fogActive declared after pageMeta below.
 
   const { data: fogRegions = [] } = useQuery({
     queryKey: ["fog_regions", gameId, pageId],
