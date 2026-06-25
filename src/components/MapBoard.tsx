@@ -1067,9 +1067,13 @@ export function MapBoard({
               {visibility.fogEnabled && fogRegions.filter((r) => r.revealed).map((r) => (
                 <rect key={r.id} x={r.x * 1000} y={r.y * 1000} width={r.w * 1000} height={r.h * 1000} fill="black" />
               ))}
-              {/* Subtract visibility polygons (dynamic lighting) */}
+              {/* Subtract vision polygons */}
               {visibilityPolygons.map((d, i) => (
                 <path key={`vis-${i}`} d={d} fill="black" />
+              ))}
+              {/* Subtract light polygons (light reveals what is lit) */}
+              {lightPolygons.map((l, i) => (
+                <path key={`lit-${i}`} d={l.path} fill="black" />
               ))}
               {/* Re-cover hidden regions on top */}
               {visibility.fogEnabled && fogRegions.filter((r) => !r.revealed).map((r) => (
@@ -1077,12 +1081,35 @@ export function MapBoard({
               ))}
             </mask>
           </defs>
-          <rect
-            x="0" y="0" width="1000" height="1000"
-            fill="#000000"
-            opacity={isNarrator ? 0.5 : 1}
-            mask={`url(#fog-mask-${gameId})`}
-          />
+          {(() => {
+            const playerDark = visibility.fogEnabled ? 1 : Math.max(darknessLevel, visibility.dynamicLighting ? 0.85 : 0);
+            const op = isNarrator ? Math.min(0.5, playerDark) : playerDark;
+            return (
+              <rect
+                x="0" y="0" width="1000" height="1000"
+                fill="#000000"
+                opacity={op}
+                mask={`url(#fog-mask-${gameId})`}
+              />
+            );
+          })()}
+          {/* Colored light tint inside light polygons */}
+          {lightPolygons.length > 0 && (
+            <g style={{ mixBlendMode: "screen" }}>
+              <defs>
+                {lightPolygons.map((l, i) => (
+                  <radialGradient key={`lg-${i}`} id={`light-grad-${gameId}-${i}`} cx={l.cx} cy={l.cy} r={l.r} gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor={l.color} stopOpacity={0.55} />
+                    <stop offset={`${Math.round(l.bright * 100)}%`} stopColor={l.color} stopOpacity={0.4} />
+                    <stop offset="100%" stopColor={l.color} stopOpacity={0} />
+                  </radialGradient>
+                ))}
+              </defs>
+              {lightPolygons.map((l, i) => (
+                <path key={`lf-${i}`} d={l.path} fill={`url(#light-grad-${gameId}-${i})`} />
+              ))}
+            </g>
+          )}
           {/* Live fog rectangle preview */}
           {isNarrator && mode === "fog" && fogRect && (() => {
             const x = Math.min(fogRect.ax, fogRect.bx) * 1000;
