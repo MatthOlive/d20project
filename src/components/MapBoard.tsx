@@ -138,6 +138,7 @@ export function MapBoard({
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
   const [hoverTokenId, setHoverTokenId] = useState<string | null>(null);
   const [appearanceToken, setAppearanceToken] = useState<AppearanceToken | null>(null);
+  const [lightToken, setLightToken] = useState<TokenLightInit | null>(null);
   // (background image now rendered full-screen; no aspect-ratio coupling)
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
