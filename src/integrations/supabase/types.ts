@@ -131,6 +131,7 @@ export type Database = {
           joined_at: string
           role: Database["public"]["Enums"]["game_role"]
           user_id: string
+          viewing_page_id: string | null
         }
         Insert: {
           display_name?: string | null
@@ -138,6 +139,7 @@ export type Database = {
           joined_at?: string
           role?: Database["public"]["Enums"]["game_role"]
           user_id: string
+          viewing_page_id?: string | null
         }
         Update: {
           display_name?: string | null
@@ -145,6 +147,7 @@ export type Database = {
           joined_at?: string
           role?: Database["public"]["Enums"]["game_role"]
           user_id?: string
+          viewing_page_id?: string | null
         }
         Relationships: [
           {
@@ -152,6 +155,13 @@ export type Database = {
             columns: ["game_id"]
             isOneToOne: false
             referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_members_viewing_page_id_fkey"
+            columns: ["viewing_page_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
             referencedColumns: ["id"]
           },
         ]

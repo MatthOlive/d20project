@@ -1,0 +1,1 @@
+ALTER TABLE public.game_members ADD COLUMN IF NOT EXISTS viewing_page_id uuid REFERENCES public.scenarios(id) ON DELETE SET NULL;
