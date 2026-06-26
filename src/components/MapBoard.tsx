@@ -155,18 +155,50 @@ export function MapBoard({
   const [showBackgrounds, setShowBackgrounds] = useState(true);
   const [showTokens, setShowTokens] = useState(true);
 
+  // For players: a per-user override (game_members.viewing_page_id) lets the
+  // narrator route specific players to a different scenario. If no override,
+  // the player follows the game's active_page_id.
+  const { data: memberOverride = null } = useQuery<string | null>({
+    queryKey: ["my-viewing-page", gameId, userId],
+    enabled: !isNarrator,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("game_members")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .select("viewing_page_id" as any)
+        .eq("game_id", gameId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      return ((data as { viewing_page_id?: string | null } | null)?.viewing_page_id) ?? null;
+    },
+  });
+  useEffect(() => {
+    if (isNarrator) return;
+    const ch = supabase
+      .channel(`my-member:${gameId}:${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "game_members", filter: `game_id=eq.${gameId}` },
+        () => qc.invalidateQueries({ queryKey: ["my-viewing-page", gameId, userId] }),
+      )
+      .subscribe();
+    return () => { void supabase.removeChannel(ch); };
+  }, [gameId, userId, isNarrator, qc]);
+
+  const playerEffectivePage = memberOverride ?? activePageId;
+
   // viewingPageId: which page this client renders.
   // Narrator: starts at activePageId; can change locally without affecting players.
-  // Player: always follows activePageId from the games row.
+  // Player: always follows playerEffectivePage (override or activePageId).
   const [viewingPageId, setViewingPageId] = useState<string | null>(activePageId);
   useEffect(() => {
     if (!isNarrator) {
-      setViewingPageId(activePageId);
+      setViewingPageId(playerEffectivePage);
     } else if (!viewingPageId && activePageId) {
       setViewingPageId(activePageId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePageId, isNarrator]);
+  }, [activePageId, isNarrator, playerEffectivePage]);
   const pageId = viewingPageId;
 
   // Ruler state (local only)
