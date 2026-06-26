@@ -222,9 +222,8 @@ export function PokemonSheet({
     queryKey: ["all-moves"],
     enabled: isNarrator,
     queryFn: async () => {
-      const { data, error } = await supabase.from("moves").select("*").order("name");
-      if (error) throw error;
-      return (data ?? []) as Move[];
+      const { fetchAllPaged } = await import("@/lib/supabase-paged");
+      return await fetchAllPaged<Move>("moves", "*", { orderBy: "name", ascending: true });
     },
   });
   const allMovesForNarrator = useMemo(
