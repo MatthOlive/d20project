@@ -847,10 +847,11 @@ export function MapBoard({
 
   function onTokenPointerDown(e: React.PointerEvent, t: Token, canMove: boolean) {
     if (!canMove || mode !== "select") return;
-    if (e.pointerType === "mouse") return; // mouse keeps native HTML5 drag
+    if (e.button !== undefined && e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
     setDragId(t.id);
+    setSelectedTokenId(t.id);
     const move = (ev: PointerEvent) => {
       const { x, y } = pointToRel(ev.clientX, ev.clientY);
       qc.setQueryData<Token[]>(["tokens", gameId], (old) =>
