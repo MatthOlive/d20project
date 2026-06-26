@@ -198,6 +198,7 @@ function GameRoom() {
       gridSettings={{
         enabled: (game as never as { grid_enabled?: boolean }).grid_enabled ?? true,
         snap: (game as never as { grid_snap?: boolean }).grid_snap ?? true,
+        snapMode: ((game as never as { grid_snap_mode?: string }).grid_snap_mode as "center" | "line" | "free" | undefined) ?? "center",
         size: (game as never as { grid_size?: number }).grid_size ?? 56,
         color: (game as never as { grid_color?: string }).grid_color ?? "#000000",
         opacity: (game as never as { grid_opacity?: number }).grid_opacity ?? 30,
