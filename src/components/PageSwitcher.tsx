@@ -52,7 +52,7 @@ export function PageSwitcher({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .select("user_id,display_name,role,viewing_page_id" as any)
         .eq("game_id", gameId);
-      return (data ?? []) as Member[];
+      return ((data ?? []) as unknown) as Member[];
     },
   });
 
