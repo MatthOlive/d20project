@@ -2115,8 +2115,7 @@ function AbilitiesCompendium() {
   const { data: list = [] } = useQuery({
     queryKey: ["compendium-abilities"],
     queryFn: async () => {
-      const { data } = await supabase.from("abilities").select("*").order("name");
-      return (data ?? []) as AbilityRow[];
+      return await fetchAllPaged<AbilityRow>("abilities", "*", { orderBy: "name", ascending: true });
     },
   });
   const filtered = list.filter((a) => !q || a.name.toLowerCase().includes(q.toLowerCase()));
