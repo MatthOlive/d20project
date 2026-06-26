@@ -83,6 +83,7 @@ type Drawing = {
 export type GridSettings = {
   enabled: boolean;
   snap: boolean;
+  snapMode?: "center" | "line" | "free";
   size: number;
   color: string;
   opacity: number; // 0-100
@@ -99,7 +100,7 @@ type MapBg = { id: string; game_id: string; image_url: string; x: number; y: num
 export type Visibility = { fogEnabled: boolean; dynamicLighting: boolean };
 
 const DEFAULT_GRID: GridSettings = {
-  enabled: true, snap: true, size: 56, color: "#000000",
+  enabled: true, snap: true, snapMode: "center", size: 56, color: "#000000",
   opacity: 30, unitMeters: 1.5, unitLabel: "m",
 };
 const DEFAULT_VIS: Visibility = { fogEnabled: false, dynamicLighting: false };
