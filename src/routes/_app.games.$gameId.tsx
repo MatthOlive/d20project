@@ -2234,7 +2234,7 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
       .update({
         shiny_chance: s, overgrown_chance: o, contest_weights: cw, spdef_uses_insight: spdefIns,
         effectiveness_flat: effFlat,
-        grid_enabled: gridEnabled, grid_snap: gridSnap, grid_size: gs,
+        grid_enabled: gridEnabled, grid_snap: gridSnap, grid_snap_mode: gridSnapMode, grid_size: gs,
         grid_color: gridColor, grid_opacity: go, grid_unit_m: um, grid_unit_label: gridUnitLabel,
       } as never)
       .eq("id", gameId);
