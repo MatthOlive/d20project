@@ -1981,8 +1981,7 @@ function PokedexCompendium() {
   const { data: list = [] } = useQuery({
     queryKey: ["compendium-species"],
     queryFn: async () => {
-      const { data } = await supabase.from("species").select("*").order("dex_number");
-      return (data ?? []) as SpeciesRow[];
+      return await fetchAllPaged<SpeciesRow>("species", "*", { orderBy: "dex_number", ascending: true });
     },
   });
   const filtered = list.filter((s) => !q || s.name.toLowerCase().includes(q.toLowerCase()));
