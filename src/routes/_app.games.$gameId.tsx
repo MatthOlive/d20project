@@ -2169,6 +2169,7 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
   const [effFlat, setEffFlat] = useState<boolean>(true);
   const [gridEnabled, setGridEnabled] = useState(true);
   const [gridSnap, setGridSnap] = useState(true);
+  const [gridSnapMode, setGridSnapMode] = useState<"center" | "line" | "free">("center");
   const [gridSize, setGridSize] = useState(56);
   const [gridColor, setGridColor] = useState("#000000");
   const [gridOpacity, setGridOpacity] = useState(30);
