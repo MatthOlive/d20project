@@ -181,6 +181,7 @@ export type Database = {
           grid_opacity: number
           grid_size: number
           grid_snap: boolean
+          grid_snap_mode: string
           grid_unit_label: string
           grid_unit_m: number
           id: string
@@ -209,6 +210,7 @@ export type Database = {
           grid_opacity?: number
           grid_size?: number
           grid_snap?: boolean
+          grid_snap_mode?: string
           grid_unit_label?: string
           grid_unit_m?: number
           id?: string
@@ -237,6 +239,7 @@ export type Database = {
           grid_opacity?: number
           grid_size?: number
           grid_snap?: boolean
+          grid_snap_mode?: string
           grid_unit_label?: string
           grid_unit_m?: number
           id?: string

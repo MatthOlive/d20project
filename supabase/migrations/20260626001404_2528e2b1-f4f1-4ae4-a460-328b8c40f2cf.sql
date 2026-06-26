@@ -1,0 +1,1 @@
+ALTER TABLE public.games ADD COLUMN IF NOT EXISTS grid_snap_mode text NOT NULL DEFAULT 'center';
