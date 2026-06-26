@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllPaged } from "@/lib/supabase-paged";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
@@ -69,7 +70,7 @@ function GameRoom() {
       // Note: invite_code is intentionally excluded — narrator fetches it via get_game_invite_code RPC.
       const { data, error } = await supabase
         .from("games")
-        .select("id,narrator_id,name,background_url,created_at,system,language,narrator_type,shiny_chance,overgrown_chance,contest_weights,grid_enabled,grid_snap,grid_size,grid_color,grid_opacity,grid_unit_m,grid_unit_label,fog_enabled,dynamic_lighting,master_volume,current_scenario_id,active_page_id")
+        .select("id,narrator_id,name,background_url,created_at,system,language,narrator_type,shiny_chance,overgrown_chance,contest_weights,grid_enabled,grid_snap,grid_snap_mode,grid_size,grid_color,grid_opacity,grid_unit_m,grid_unit_label,fog_enabled,dynamic_lighting,master_volume,current_scenario_id,active_page_id")
         .eq("id", gameId)
         .single();
       if (error) throw error;
@@ -83,8 +84,11 @@ function GameRoom() {
   const { data: speciesList } = useQuery({
     queryKey: ["species-list"],
     queryFn: async () => {
-      const { data } = await supabase.from("species").select("id,name").order("dex_number");
-      return data ?? [];
+      return await fetchAllPaged<{ id: string; name: string }>(
+        "species",
+        "id,name",
+        { orderBy: "dex_number", ascending: true },
+      );
     },
   });
 
@@ -198,6 +202,7 @@ function GameRoom() {
       gridSettings={{
         enabled: (game as never as { grid_enabled?: boolean }).grid_enabled ?? true,
         snap: (game as never as { grid_snap?: boolean }).grid_snap ?? true,
+        snapMode: ((game as never as { grid_snap_mode?: string }).grid_snap_mode as "center" | "line" | "free" | undefined) ?? "center",
         size: (game as never as { grid_size?: number }).grid_size ?? 56,
         color: (game as never as { grid_color?: string }).grid_color ?? "#000000",
         opacity: (game as never as { grid_opacity?: number }).grid_opacity ?? 30,
@@ -1889,16 +1894,6 @@ function MapTopDisclosure({
       </button>
       {open && (
         <div className="mt-1 flex flex-wrap items-center justify-center gap-1.5 rounded-lg border border-border bg-card/95 p-2 shadow-lg backdrop-blur">
-          <ImageSourceDialog
-            title="Definir background do mapa"
-            maxBytes={5_000_000}
-            onPick={(url: string) => setBackgroundUrl(url)}
-            trigger={
-              <button type="button" className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-background px-2 text-xs font-semibold hover:bg-accent">
-                <ImageIcon className="h-3.5 w-3.5" /> Set background
-              </button>
-            }
-          />
           <div className="flex items-center gap-0.5 rounded-md border border-border bg-background px-1">
             <button
               type="button"
@@ -1986,8 +1981,7 @@ function PokedexCompendium() {
   const { data: list = [] } = useQuery({
     queryKey: ["compendium-species"],
     queryFn: async () => {
-      const { data } = await supabase.from("species").select("*").order("dex_number");
-      return (data ?? []) as SpeciesRow[];
+      return await fetchAllPaged<SpeciesRow>("species", "*", { orderBy: "dex_number", ascending: true });
     },
   });
   const filtered = list.filter((s) => !q || s.name.toLowerCase().includes(q.toLowerCase()));
@@ -2051,8 +2045,7 @@ function MovesCompendium() {
   const { data: list = [] } = useQuery({
     queryKey: ["compendium-moves"],
     queryFn: async () => {
-      const { data } = await supabase.from("moves").select("*").order("name");
-      return (data ?? []) as MoveRow[];
+      return await fetchAllPaged<MoveRow>("moves", "*", { orderBy: "name", ascending: true });
     },
   });
   const filtered = list.filter((m) =>
@@ -2122,8 +2115,7 @@ function AbilitiesCompendium() {
   const { data: list = [] } = useQuery({
     queryKey: ["compendium-abilities"],
     queryFn: async () => {
-      const { data } = await supabase.from("abilities").select("*").order("name");
-      return (data ?? []) as AbilityRow[];
+      return await fetchAllPaged<AbilityRow>("abilities", "*", { orderBy: "name", ascending: true });
     },
   });
   const filtered = list.filter((a) => !q || a.name.toLowerCase().includes(q.toLowerCase()));
@@ -2169,6 +2161,7 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
   const [effFlat, setEffFlat] = useState<boolean>(true);
   const [gridEnabled, setGridEnabled] = useState(true);
   const [gridSnap, setGridSnap] = useState(true);
+  const [gridSnapMode, setGridSnapMode] = useState<"center" | "line" | "free">("center");
   const [gridSize, setGridSize] = useState(56);
   const [gridColor, setGridColor] = useState("#000000");
   const [gridOpacity, setGridOpacity] = useState(30);
@@ -2185,7 +2178,7 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
     (async () => {
       const { data, error } = await supabase
         .from("games")
-        .select("shiny_chance,overgrown_chance,contest_weights,spdef_uses_insight,effectiveness_flat,grid_enabled,grid_snap,grid_size,grid_color,grid_opacity,grid_unit_m,grid_unit_label")
+        .select("shiny_chance,overgrown_chance,contest_weights,spdef_uses_insight,effectiveness_flat,grid_enabled,grid_snap,grid_snap_mode,grid_size,grid_color,grid_opacity,grid_unit_m,grid_unit_label")
         .eq("id", gameId)
         .single();
       if (error) {
@@ -2197,7 +2190,7 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
         shiny_chance?: number; overgrown_chance?: number;
         contest_weights?: Record<string, number> | null; spdef_uses_insight?: boolean;
         effectiveness_flat?: boolean;
-        grid_enabled?: boolean; grid_snap?: boolean; grid_size?: number;
+        grid_enabled?: boolean; grid_snap?: boolean; grid_snap_mode?: string; grid_size?: number;
         grid_color?: string; grid_opacity?: number; grid_unit_m?: number; grid_unit_label?: string;
       } | null;
       setShiny(row?.shiny_chance ?? 10);
@@ -2206,6 +2199,7 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
       setEffFlat(row?.effectiveness_flat === undefined || row?.effectiveness_flat === null ? true : Boolean(row.effectiveness_flat));
       setGridEnabled(row?.grid_enabled ?? true);
       setGridSnap(row?.grid_snap ?? true);
+      setGridSnapMode(((row?.grid_snap_mode as "center" | "line" | "free" | undefined) ?? "center"));
       setGridSize(row?.grid_size ?? 56);
       setGridColor(row?.grid_color ?? "#000000");
       setGridOpacity(row?.grid_opacity ?? 30);
@@ -2232,7 +2226,7 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
       .update({
         shiny_chance: s, overgrown_chance: o, contest_weights: cw, spdef_uses_insight: spdefIns,
         effectiveness_flat: effFlat,
-        grid_enabled: gridEnabled, grid_snap: gridSnap, grid_size: gs,
+        grid_enabled: gridEnabled, grid_snap: gridSnap, grid_snap_mode: gridSnapMode, grid_size: gs,
         grid_color: gridColor, grid_opacity: go, grid_unit_m: um, grid_unit_label: gridUnitLabel,
       } as never)
       .eq("id", gameId);
@@ -2303,6 +2297,19 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
               <label className="flex items-center gap-2 text-xs">
                 <Checkbox checked={gridSnap} onCheckedChange={(v) => setGridSnap(!!v)} /> Snap-to-grid
               </label>
+              <div>
+                <Label className="text-xs">Modo de snap</Label>
+                <select
+                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-xs"
+                  value={gridSnapMode}
+                  disabled={!gridSnap}
+                  onChange={(e) => setGridSnapMode(e.target.value as "center" | "line" | "free")}
+                >
+                  <option value="center">Centro do quadrado</option>
+                  <option value="line">Linhas da grelha</option>
+                  <option value="free">Livre</option>
+                </select>
+              </div>
               <div>
                 <Label className="text-xs">Tamanho da célula (px)</Label>
                 <Input type="number" min={16} max={256} value={gridSize} onChange={(e) => setGridSize(Number(e.target.value))} />

@@ -83,6 +83,7 @@ type Drawing = {
 export type GridSettings = {
   enabled: boolean;
   snap: boolean;
+  snapMode?: "center" | "line" | "free";
   size: number;
   color: string;
   opacity: number; // 0-100
@@ -99,7 +100,7 @@ type MapBg = { id: string; game_id: string; image_url: string; x: number; y: num
 export type Visibility = { fogEnabled: boolean; dynamicLighting: boolean };
 
 const DEFAULT_GRID: GridSettings = {
-  enabled: true, snap: true, size: 56, color: "#000000",
+  enabled: true, snap: true, snapMode: "center", size: 56, color: "#000000",
   opacity: 30, unitMeters: 1.5, unitLabel: "m",
 };
 const DEFAULT_VIS: Visibility = { fogEnabled: false, dynamicLighting: false };
@@ -154,18 +155,50 @@ export function MapBoard({
   const [showBackgrounds, setShowBackgrounds] = useState(true);
   const [showTokens, setShowTokens] = useState(true);
 
+  // For players: a per-user override (game_members.viewing_page_id) lets the
+  // narrator route specific players to a different scenario. If no override,
+  // the player follows the game's active_page_id.
+  const { data: memberOverride = null } = useQuery<string | null>({
+    queryKey: ["my-viewing-page", gameId, userId],
+    enabled: !isNarrator,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("game_members")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .select("viewing_page_id" as any)
+        .eq("game_id", gameId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      return ((data as { viewing_page_id?: string | null } | null)?.viewing_page_id) ?? null;
+    },
+  });
+  useEffect(() => {
+    if (isNarrator) return;
+    const ch = supabase
+      .channel(`my-member:${gameId}:${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "game_members", filter: `game_id=eq.${gameId}` },
+        () => qc.invalidateQueries({ queryKey: ["my-viewing-page", gameId, userId] }),
+      )
+      .subscribe();
+    return () => { void supabase.removeChannel(ch); };
+  }, [gameId, userId, isNarrator, qc]);
+
+  const playerEffectivePage = memberOverride ?? activePageId;
+
   // viewingPageId: which page this client renders.
   // Narrator: starts at activePageId; can change locally without affecting players.
-  // Player: always follows activePageId from the games row.
+  // Player: always follows playerEffectivePage (override or activePageId).
   const [viewingPageId, setViewingPageId] = useState<string | null>(activePageId);
   useEffect(() => {
     if (!isNarrator) {
-      setViewingPageId(activePageId);
+      setViewingPageId(playerEffectivePage);
     } else if (!viewingPageId && activePageId) {
       setViewingPageId(activePageId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePageId, isNarrator]);
+  }, [activePageId, isNarrator, playerEffectivePage]);
   const pageId = viewingPageId;
 
   // Ruler state (local only)
@@ -614,10 +647,19 @@ export function MapBoard({
   // ─────────────────────────────────────────────────────────
 
   function snap(v: number, dim: number) {
-    if (!gridSettings.snap || !gridSettings.enabled) return Math.max(0, Math.min(1, v));
+    if (!gridSettings.enabled) return Math.max(0, Math.min(1, v));
+    const mode = gridSettings.snapMode ?? (gridSettings.snap ? "line" : "free");
+    if (mode === "free" || !gridSettings.snap) return Math.max(0, Math.min(1, v));
     const px = v * dim;
-    const cell = Math.round(px / gridSettings.size) * gridSettings.size;
-    return Math.max(0, Math.min(1, cell / dim));
+    const size = gridSettings.size;
+    let cellPx: number;
+    if (mode === "center") {
+      cellPx = Math.floor(px / size) * size + size / 2;
+    } else {
+      // "line": snap to nearest gridline intersection
+      cellPx = Math.round(px / size) * size;
+    }
+    return Math.max(0, Math.min(1, cellPx / dim));
   }
 
   function pointToRelRaw(clientX: number, clientY: number) {
@@ -837,10 +879,11 @@ export function MapBoard({
 
   function onTokenPointerDown(e: React.PointerEvent, t: Token, canMove: boolean) {
     if (!canMove || mode !== "select") return;
-    if (e.pointerType === "mouse") return; // mouse keeps native HTML5 drag
+    if (e.button !== undefined && e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
     setDragId(t.id);
+    setSelectedTokenId(t.id);
     const move = (ev: PointerEvent) => {
       const { x, y } = pointToRel(ev.clientX, ev.clientY);
       qc.setQueryData<Token[]>(["tokens", gameId], (old) =>
@@ -1165,14 +1208,6 @@ export function MapBoard({
           <div
             key={t.id}
               data-map-token
-            draggable={canMove && mode === "select"}
-            onDragStart={(e) => {
-              if (!canMove || mode !== "select") return;
-              setDragId(t.id);
-              e.dataTransfer.effectAllowed = "move";
-              const img = new Image();
-              e.dataTransfer.setDragImage(img, 0, 0);
-            }}
             onPointerDown={(e) => onTokenPointerDown(e, t, canMove)}
             onMouseEnter={() => setHoverTokenId(t.id)}
             onMouseLeave={() => setHoverTokenId((cur) => (cur === t.id ? null : cur))}

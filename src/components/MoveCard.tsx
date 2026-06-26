@@ -79,16 +79,26 @@ export function MoveCard({
       className={cn("overflow-hidden rounded-lg border-2 shadow-sm bg-card text-card-foreground", className)}
       style={{ borderColor: tcol.bg }}
     >
-      <div className="flex items-center justify-between p-2 text-white" style={{ backgroundColor: tcol.bg }}>
-        <div className="flex flex-col">
-          <span className="text-sm font-bold tracking-wide uppercase">{data.name}</span>
-          {hasStab && (
-            <span className="mt-0.5 inline-block self-start rounded bg-white/20 px-1 py-px text-[9px] font-bold uppercase tracking-wider text-white">
-              STAB
+      <div className="flex items-center justify-between gap-2 p-2 text-white" style={{ backgroundColor: tcol.bg }}>
+        <div className="flex flex-col min-w-0">
+          <span className="text-sm font-bold tracking-wide uppercase truncate">{data.name}</span>
+          <div className="mt-0.5 flex flex-wrap items-center gap-1">
+            <span className="inline-block rounded bg-black/25 px-1 py-px text-[9px] font-bold uppercase tracking-wider">
+              {data.type}
             </span>
-          )}
+            {data.category && (
+              <span className="inline-block rounded bg-white/25 px-1 py-px text-[9px] font-bold uppercase tracking-wider">
+                {data.category}
+              </span>
+            )}
+            {hasStab && (
+              <span className="inline-block rounded bg-amber-400 px-1 py-px text-[9px] font-bold uppercase tracking-wider text-amber-950">
+                STAB
+              </span>
+            )}
+          </div>
         </div>
-        <div className="flex flex-col items-end">
+        <div className="flex flex-col items-end shrink-0">
           <span className="text-[10px] font-medium opacity-80">Power</span>
           <span className="font-mono text-base font-bold leading-none">{data.power}</span>
         </div>
