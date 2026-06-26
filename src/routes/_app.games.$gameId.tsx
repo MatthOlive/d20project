@@ -2045,8 +2045,7 @@ function MovesCompendium() {
   const { data: list = [] } = useQuery({
     queryKey: ["compendium-moves"],
     queryFn: async () => {
-      const { data } = await supabase.from("moves").select("*").order("name");
-      return (data ?? []) as MoveRow[];
+      return await fetchAllPaged<MoveRow>("moves", "*", { orderBy: "name", ascending: true });
     },
   });
   const filtered = list.filter((m) =>
