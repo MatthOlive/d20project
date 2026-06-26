@@ -1176,14 +1176,6 @@ export function MapBoard({
           <div
             key={t.id}
               data-map-token
-            draggable={canMove && mode === "select"}
-            onDragStart={(e) => {
-              if (!canMove || mode !== "select") return;
-              setDragId(t.id);
-              e.dataTransfer.effectAllowed = "move";
-              const img = new Image();
-              e.dataTransfer.setDragImage(img, 0, 0);
-            }}
             onPointerDown={(e) => onTokenPointerDown(e, t, canMove)}
             onMouseEnter={() => setHoverTokenId(t.id)}
             onMouseLeave={() => setHoverTokenId((cur) => (cur === t.id ? null : cur))}
