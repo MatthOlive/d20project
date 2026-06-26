@@ -615,10 +615,19 @@ export function MapBoard({
   // ─────────────────────────────────────────────────────────
 
   function snap(v: number, dim: number) {
-    if (!gridSettings.snap || !gridSettings.enabled) return Math.max(0, Math.min(1, v));
+    if (!gridSettings.enabled) return Math.max(0, Math.min(1, v));
+    const mode = gridSettings.snapMode ?? (gridSettings.snap ? "line" : "free");
+    if (mode === "free" || !gridSettings.snap) return Math.max(0, Math.min(1, v));
     const px = v * dim;
-    const cell = Math.round(px / gridSettings.size) * gridSettings.size;
-    return Math.max(0, Math.min(1, cell / dim));
+    const size = gridSettings.size;
+    let cellPx: number;
+    if (mode === "center") {
+      cellPx = Math.floor(px / size) * size + size / 2;
+    } else {
+      // "line": snap to nearest gridline intersection
+      cellPx = Math.round(px / size) * size;
+    }
+    return Math.max(0, Math.min(1, cellPx / dim));
   }
 
   function pointToRelRaw(clientX: number, clientY: number) {
