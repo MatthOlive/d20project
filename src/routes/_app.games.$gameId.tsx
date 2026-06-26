@@ -84,8 +84,11 @@ function GameRoom() {
   const { data: speciesList } = useQuery({
     queryKey: ["species-list"],
     queryFn: async () => {
-      const { data } = await supabase.from("species").select("id,name").order("dex_number");
-      return data ?? [];
+      return await fetchAllPaged<{ id: string; name: string }>(
+        "species",
+        "id,name",
+        { orderBy: "dex_number", ascending: true },
+      );
     },
   });
 
