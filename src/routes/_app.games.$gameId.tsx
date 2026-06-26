@@ -2306,6 +2306,19 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
                 <Checkbox checked={gridSnap} onCheckedChange={(v) => setGridSnap(!!v)} /> Snap-to-grid
               </label>
               <div>
+                <Label className="text-xs">Modo de snap</Label>
+                <select
+                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-xs"
+                  value={gridSnapMode}
+                  disabled={!gridSnap}
+                  onChange={(e) => setGridSnapMode(e.target.value as "center" | "line" | "free")}
+                >
+                  <option value="center">Centro do quadrado</option>
+                  <option value="line">Linhas da grelha</option>
+                  <option value="free">Livre</option>
+                </select>
+              </div>
+              <div>
                 <Label className="text-xs">Tamanho da célula (px)</Label>
                 <Input type="number" min={16} max={256} value={gridSize} onChange={(e) => setGridSize(Number(e.target.value))} />
               </div>
