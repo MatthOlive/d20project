@@ -587,11 +587,11 @@ function FilesPanel({
   const { data: speciesWithBiomes } = useQuery({
     queryKey: ["species-biomes"],
     queryFn: async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data } = await (supabase.from("species") as any)
-        .select("id,name,biomes,suggested_rank")
-        .order("dex_number");
-      return (data ?? []) as { id: string; name: string; biomes: string[]; suggested_rank: string | null }[];
+      return await fetchAllPaged<{ id: string; name: string; biomes: string[]; suggested_rank: string | null }>(
+        "species",
+        "id,name,biomes,suggested_rank",
+        { orderBy: "dex_number", ascending: true },
+      );
     },
   });
 
@@ -655,14 +655,14 @@ function FilesPanel({
   const { data: speciesList } = useQuery({
     queryKey: ["species-list-full"],
     queryFn: async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data } = await (supabase.from("species") as any)
-        .select("id,name,evolutions,suggested_rank,is_starter,is_legendary")
-        .order("dex_number");
-      return (data ?? []) as Array<{
+      return await fetchAllPaged<{
         id: string; name: string; evolutions: string[];
         suggested_rank: string | null; is_starter: boolean; is_legendary: boolean;
-      }>;
+      }>(
+        "species",
+        "id,name,evolutions,suggested_rank,is_starter,is_legendary",
+        { orderBy: "dex_number", ascending: true },
+      );
     },
   });
 
