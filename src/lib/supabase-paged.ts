@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Fetch all rows from a Supabase table, bypassing the default 2000-row limit
+ * Fetch all rows from a Supabase table, bypassing the default 1000-row limit
  * by paging via `.range()`. Use for catalogs that may exceed 2000 entries
  * (species, moves, abilities).
  */
@@ -10,7 +10,7 @@ export async function fetchAllPaged<T = unknown>(
   select: string,
   opts?: { orderBy?: string; ascending?: boolean; pageSize?: number },
 ): Promise<T[]> {
-  const pageSize = opts?.pageSize ?? 2000;
+  const pageSize = opts?.pageSize ?? 1000;
   const orderBy = opts?.orderBy;
   const ascending = opts?.ascending ?? true;
   const all: T[] = [];
