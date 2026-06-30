@@ -31,7 +31,7 @@ import { MacroBar } from "@/components/MacroBar";
 import { MusicPanel } from "@/components/MusicPanel";
 import { MusicPlayer } from "@/components/MusicPlayer";
 import { toast } from "sonner";
-import { Copy, Crown, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Swords, ChevronDown, ChevronUp, ChevronRight, Dices, ZoomIn, ZoomOut, RotateCcw, MessageSquare } from "lucide-react";
+import { Copy, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Swords, ChevronDown, ChevronUp, ChevronRight, Dices, MessageSquare } from "lucide-react";
 import { rollD6, rollShiny, POKEMON_ATTRS, SOCIAL_ATTRS, POKEMON_TYPES, RANKS, RANK_LABELS, TYPE_COLORS, type PokemonType, type Rank } from "@/lib/pokerole";
 import { rollPokemonAutofill } from "@/lib/pokemon-autofill";
 import { REACTION_DECK } from "@/lib/contest";
@@ -209,9 +209,6 @@ function GameRoom() {
       toolbarSlot={isNarrator ? (
         <div className="flex flex-col gap-1.5">
           <div className="grid grid-cols-2 gap-1">
-            <span className="inline-flex h-8 items-center justify-center gap-1 rounded-md bg-primary px-2 text-[10px] font-bold uppercase text-primary-foreground shadow">
-              <Crown className="h-3 w-3" /> Narrator
-            </span>
             <InviteButton url={inviteUrl} />
             <GameSettingsButton gameId={gameId} />
             <Button
@@ -222,29 +219,6 @@ function GameRoom() {
             >
               <Swords className="mr-1 h-3.5 w-3.5" /> Turn Order
             </Button>
-          </div>
-          <div className="flex flex-wrap items-center gap-1 border-t border-border pt-1.5">
-            <div className="flex items-center gap-0.5 rounded-md border border-border bg-background px-1">
-              <button
-                type="button"
-                title="Zoom out background"
-                className="inline-flex h-7 w-7 items-center justify-center rounded hover:bg-accent"
-                onClick={() => window.dispatchEvent(new CustomEvent("map-zoom", { detail: { delta: -0.1 } }))}
-              ><ZoomOut className="h-3.5 w-3.5" /></button>
-              <button
-                type="button"
-                title="Zoom in background"
-                className="inline-flex h-7 w-7 items-center justify-center rounded hover:bg-accent"
-                onClick={() => window.dispatchEvent(new CustomEvent("map-zoom", { detail: { delta: 0.1 } }))}
-              ><ZoomIn className="h-3.5 w-3.5" /></button>
-              <button
-                type="button"
-                title="Reset background size"
-                className="inline-flex h-7 w-7 items-center justify-center rounded hover:bg-accent"
-                onClick={() => window.dispatchEvent(new CustomEvent("map-zoom", { detail: { reset: true } }))}
-              ><RotateCcw className="h-3.5 w-3.5" /></button>
-            </div>
-            <ScenarioButtons gameId={gameId} currentBg={game.background_url} />
           </div>
         </div>
       ) : undefined}
