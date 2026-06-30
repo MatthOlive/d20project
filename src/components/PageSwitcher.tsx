@@ -137,8 +137,7 @@ export function PageSwitcher({
         className={`${embedded ? "w-full justify-between" : "inline-flex"} h-8 items-center gap-1.5 rounded-lg border border-border bg-card/95 px-2.5 text-xs font-semibold shadow-lg backdrop-blur hover:bg-accent`}
         title="Trocar de página"
       >
-        <span className="shrink-0 opacity-60">Página:</span>
-        <span className="max-w-[180px] flex-1 truncate text-left">{current?.name ?? "—"}</span>
+        <span className="flex-1 truncate text-center">Páginas</span>
         {viewingPageId && viewingPageId === activePageId && (
           <Radio className="h-3 w-3 text-emerald-500" aria-label="Ativa para jogadores" />
         )}
