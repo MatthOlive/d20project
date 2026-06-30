@@ -866,7 +866,7 @@ export function MapBoard({
     if (dragId) {
       const t = tokens.find((tk) => tk.id === dragId);
       if (!t) return;
-      qc.setQueryData<Token[]>(["tokens", gameId], (old) =>
+      qc.setQueryData<Token[]>(["tokens", gameId, pageId], (old) =>
         (old ?? []).map((tk) => (tk.id === dragId ? { ...tk, x, y } : tk)));
       const { error } = await supabase.from("tokens").update({ x, y }).eq("id", dragId);
       if (error) toast.error(error.message);
@@ -884,11 +884,18 @@ export function MapBoard({
     if (e.button !== undefined && e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
-    setDragId(t.id);
     setSelectedTokenId(t.id);
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let didDrag = false;
     const move = (ev: PointerEvent) => {
+      if (!didDrag && Math.hypot(ev.clientX - startX, ev.clientY - startY) < 4) return;
+      if (!didDrag) {
+        didDrag = true;
+        setDragId(t.id);
+      }
       const { x, y } = pointToRel(ev.clientX, ev.clientY);
-      qc.setQueryData<Token[]>(["tokens", gameId], (old) =>
+      qc.setQueryData<Token[]>(["tokens", gameId, pageId], (old) =>
         (old ?? []).map((tk) => (tk.id === t.id ? { ...tk, x, y } : tk)),
       );
     };
@@ -896,8 +903,9 @@ export function MapBoard({
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", up);
-      const { x, y } = pointToRel(ev.clientX, ev.clientY);
       setDragId(null);
+      if (!didDrag) return;
+      const { x, y } = pointToRel(ev.clientX, ev.clientY);
       const { error } = await supabase.from("tokens").update({ x, y }).eq("id", t.id);
       if (error) toast.error(error.message);
     };
@@ -1217,7 +1225,7 @@ export function MapBoard({
             onClick={(e) => {
               if (mode !== "select") return;
               e.stopPropagation();
-              setSelectedTokenId((cur) => (cur === t.id ? null : t.id));
+              setSelectedTokenId(t.id);
             }}
             className="group absolute -translate-x-1/2 -translate-y-1/2 select-none"
             style={{
