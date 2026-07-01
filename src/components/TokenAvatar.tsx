@@ -55,17 +55,18 @@ const STATUS_ICONS: Record<string, { emoji: string; color: string; title: string
 };
 
 export function TokenAvatar({
-  kind, id, fallbackImage, label,
+  kind, id, fallbackImage, label, variant = "token",
 }: {
   kind: "trainer" | "pokemon";
   id: string;
   fallbackImage: string | null;
   label: string;
+  variant?: "token" | "handout";
 }) {
   const { data } = useCharacter(kind, id);
   const img = data?.image_url ?? fallbackImage;
   return img ? (
-    <img src={img} alt={label} className="h-full w-full rounded-full object-cover" draggable={false} />
+    <img src={img} alt={label} className={`h-full w-full object-cover ${variant === "handout" ? "rounded-none" : "rounded-full"}`} draggable={false} />
   ) : (
     <span className="text-xs font-bold">{label.slice(0, 2).toUpperCase()}</span>
   );
