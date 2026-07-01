@@ -16,6 +16,8 @@ export type TokenLightInit = {
   light_radius_bright: number;
   light_radius_dim: number;
   light_color: string;
+  light_angle: number;
+  light_direction: number;
   vision_radius: number;
 };
 
@@ -30,6 +32,8 @@ export function TokenLightDialog({
   const [bright, setBright] = useState(0);
   const [dim, setDim] = useState(0);
   const [color, setColor] = useState("#ffd27a");
+  const [angle, setAngle] = useState(360);
+  const [direction, setDirection] = useState(0);
   const [vision, setVision] = useState(0);
 
   useEffect(() => {
@@ -38,6 +42,8 @@ export function TokenLightDialog({
     setBright(init.light_radius_bright);
     setDim(init.light_radius_dim);
     setColor(init.light_color || "#ffd27a");
+    setAngle(init.light_angle || 360);
+    setDirection(Math.round(((init.light_direction || 0) * 180) / Math.PI));
     setVision(init.vision_radius);
   }, [init]);
 
@@ -51,6 +57,8 @@ export function TokenLightDialog({
         light_radius_bright: Math.max(0, Math.min(60, bright)),
         light_radius_dim: Math.max(0, Math.min(60, dim)),
         light_color: color,
+        light_angle: Math.max(1, Math.min(360, Math.round(angle))),
+        light_direction: ((Math.round(direction) % 360) * Math.PI) / 180,
         vision_radius: Math.max(0, Math.min(60, vision)),
       } as any)
       .eq("id", init.id);
@@ -96,6 +104,47 @@ export function TokenLightDialog({
               <input type="color" value={color} onChange={(e) => setColor(e.target.value)}
                 disabled={!enabled} className="h-7 w-12 cursor-pointer rounded border border-border bg-transparent" />
               <span className="text-[10px] text-muted-foreground">{color}</span>
+            </div>
+            <div className="grid gap-2">
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <Label className="text-[10px]">Angulo do cone</Label>
+                  <span className="text-[10px] text-muted-foreground">{angle} graus</span>
+                </div>
+                <input
+                  type="range"
+                  min={1}
+                  max={360}
+                  value={angle}
+                  onChange={(e) => setAngle(Number(e.target.value) || 360)}
+                  disabled={!enabled}
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <Label className="text-[10px]">Direcao</Label>
+                  <span className="text-[10px] text-muted-foreground">{direction} graus</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={359}
+                  value={direction}
+                  onChange={(e) => setDirection(Number(e.target.value) || 0)}
+                  disabled={!enabled || angle >= 360}
+                  className="w-full"
+                />
+                <div className="mt-2 flex justify-center">
+                  <div className="relative h-20 w-20 rounded-full border border-border bg-muted">
+                    <div
+                      className="absolute left-1/2 top-1/2 h-1 w-8 origin-left rounded bg-primary"
+                      style={{ transform: `rotate(${direction}deg) translateY(-50%)` }}
+                    />
+                    <div className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary" />
+                  </div>
+                </div>
+              </div>
             </div>
             <p className="text-[10px] text-muted-foreground">
               A luz revela área e adiciona tinta colorida. Paredes que bloqueiam luz cortam o feixe.
