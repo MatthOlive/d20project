@@ -6,7 +6,7 @@ import {
   X, MousePointer2, Ruler, Pencil, Square, Circle as CircleIcon,
   Minus, Type as TypeIcon, Eraser, Eye, EyeOff, CloudFog, Box, Lightbulb, Trash2,
   ChevronLeft, ChevronRight, Image as ImageIcon, Plus, RotateCw, ArrowUp, ArrowDown,
-  Palette,
+  Palette, DoorOpen, DoorClosed, Lock, Unlock,
 } from "lucide-react";
 import { TokenActionBar } from "@/components/TokenActionBar";
 import { TokenStatsBar } from "@/components/TokenStatsBar";
@@ -54,7 +54,10 @@ type Token = {
   light_radius_dim?: number;
   light_color?: string;
   light_angle?: number;
+  light_direction?: number;
   vision_enabled?: boolean;
+  style?: "token" | "handout";
+  explored_mask?: unknown;
 };
 
 
@@ -92,9 +95,23 @@ export type GridSettings = {
 };
 
 type Mode = "select" | "ruler" | "draw" | "fog" | "walls" | "background";
+type WallKind = "wall" | "door" | "window";
+type WallTool = "select" | "single" | "poly" | "vision" | "door" | "window";
 
 type FogRegion = { id: string; game_id: string; x: number; y: number; w: number; h: number; revealed: boolean; author_id: string };
-type Wall = { id: string; game_id: string; x1: number; y1: number; x2: number; y2: number; blocks_sight?: boolean; blocks_light?: boolean };
+type Wall = {
+  id: string;
+  game_id: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  kind?: WallKind;
+  is_open?: boolean;
+  locked?: boolean;
+  blocks_sight?: boolean;
+  blocks_light?: boolean;
+};
 type MapBg = { id: string; game_id: string; image_url: string; x: number; y: number; width: number; height: number; rotation: number; z_index: number };
 
 export type Visibility = { fogEnabled: boolean; dynamicLighting: boolean };
@@ -475,10 +492,33 @@ export function MapBoard({
   // ───────────── Fog of War + Walls (Phase 2) ─────────────
   const [fogTool, setFogTool] = useState<"reveal" | "hide">("reveal");
   const [fogRect, setFogRect] = useState<{ ax: number; ay: number; bx: number; by: number } | null>(null);
+  const [wallTool, setWallTool] = useState<WallTool>("single");
   const [wallStart, setWallStart] = useState<{ x: number; y: number } | null>(null);
+  const [wallPolyFirst, setWallPolyFirst] = useState<{ x: number; y: number } | null>(null);
   const [wallCursor, setWallCursor] = useState<{ x: number; y: number } | null>(null);
+  const [selectedWallId, setSelectedWallId] = useState<string | null>(null);
   const [visEnabled, setVisEnabled] = useState(true);
   // fogActive declared after pageMeta below.
+
+  useEffect(() => {
+    if (mode !== "walls") return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setWallStart(null);
+        setWallPolyFirst(null);
+        setWallCursor(null);
+        setSelectedWallId(null);
+      }
+      if (e.key === "Enter" && wallTool === "poly" && wallStart && wallPolyFirst) {
+        void insertWall(wallStart.x, wallStart.y, wallPolyFirst.x, wallPolyFirst.y);
+        setWallStart(null);
+        setWallPolyFirst(null);
+        setWallCursor(null);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [mode, wallTool, wallStart, wallPolyFirst]);
 
   const { data: fogRegions = [] } = useQuery({
     queryKey: ["fog_regions", gameId, pageId],
@@ -548,11 +588,38 @@ export function MapBoard({
     const { error } = await (supabase.from("fog_regions" as never).insert({ game_id: gameId, page_id: pageId, x: 0, y: 0, w: 1, h: 1, revealed: true, author_id: userId } as never) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
   }
-  async function insertWall(x1: number, y1: number, x2: number, y2: number) {
+  async function insertWall(
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    opts: { kind?: WallKind; blocks_sight?: boolean; blocks_light?: boolean } = {},
+  ) {
     if (!pageId) return;
     if (Math.hypot(x2 - x1, y2 - y1) < 0.01) return;
-    const { error } = await (supabase.from("walls" as never).insert({ game_id: gameId, page_id: pageId, x1, y1, x2, y2, author_id: userId } as never) as unknown as Promise<{ error: { message: string } | null }>);
+    const { error } = await (supabase.from("walls" as never).insert({
+      game_id: gameId,
+      page_id: pageId,
+      x1,
+      y1,
+      x2,
+      y2,
+      kind: opts.kind ?? "wall",
+      blocks_sight: opts.blocks_sight ?? true,
+      blocks_light: opts.blocks_light ?? true,
+      is_open: false,
+      locked: false,
+      author_id: userId,
+    } as never) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
+  }
+  async function updateWall(id: string, patch: Partial<Wall>) {
+    const { error } = await (supabase.from("walls" as never).update(patch as never).eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+  async function toggleDoor(w: Wall) {
+    if (!isNarrator || w.locked || ((w.kind ?? "wall") === "wall")) return;
+    await updateWall(w.id, { is_open: !w.is_open });
   }
   async function deleteWall(id: string) {
     const { error } = await (supabase.from("walls" as never).delete().eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
@@ -582,11 +649,16 @@ export function MapBoard({
   function castPolygon(
     ox: number, oy: number, radius: number,
     wallsPx: { ax: number; ay: number; bx: number; by: number }[],
+    cone?: { angle: number; direction: number },
   ): [number, number][] {
-    const N = 96;
+    const fullCircle = !cone || cone.angle >= Math.PI * 2 - 0.001;
+    const N = fullCircle ? 96 : Math.max(12, Math.ceil(96 * (cone.angle / (Math.PI * 2))));
     const pts: [number, number][] = [];
+    if (!fullCircle) pts.push([ox, oy]);
     for (let i = 0; i < N; i++) {
-      const ang = (i / N) * Math.PI * 2;
+      const ang = fullCircle
+        ? (i / N) * Math.PI * 2
+        : cone.direction - cone.angle / 2 + (i / Math.max(1, N - 1)) * cone.angle;
       const dx = Math.cos(ang), dy = Math.sin(ang);
       let bestT = radius;
       for (const w of wallsPx) {
@@ -616,7 +688,7 @@ export function MapBoard({
       : tokens.filter((t) => canActAsOwner(t) && (t.vision_radius ?? 0) > 0);
     if (sources.length === 0) return [];
     const W = rect.width, H = rect.height;
-    const wallsPx = walls.filter((w) => w.blocks_sight !== false).map((w) => ({ ax: w.x1 * W, ay: w.y1 * H, bx: w.x2 * W, by: w.y2 * H }));
+    const wallsPx = walls.filter((w) => !w.is_open && w.blocks_sight !== false).map((w) => ({ ax: w.x1 * W, ay: w.y1 * H, bx: w.x2 * W, by: w.y2 * H }));
     return sources.map((t) => ptsToPath(castPolygon(t.x * W, t.y * H, (t.vision_radius ?? 0) * gridSettings.size, wallsPx), W, H));
   }, [tokens, walls, visibility.dynamicLighting, darknessLevel, isNarrator, userId, gridSettings.size]);
 
@@ -628,13 +700,17 @@ export function MapBoard({
     const lights = tokens.filter((t) => t.light_enabled && ((t.light_radius_bright ?? 0) + (t.light_radius_dim ?? 0)) > 0);
     if (lights.length === 0) return [];
     const W = rect.width, H = rect.height;
-    const wallsPx = walls.filter((w) => w.blocks_light !== false).map((w) => ({ ax: w.x1 * W, ay: w.y1 * H, bx: w.x2 * W, by: w.y2 * H }));
+    const wallsPx = walls.filter((w) => !w.is_open && w.blocks_light !== false).map((w) => ({ ax: w.x1 * W, ay: w.y1 * H, bx: w.x2 * W, by: w.y2 * H }));
     return lights.map((t) => {
       const bright = (t.light_radius_bright ?? 0) * gridSettings.size;
       const dim = (t.light_radius_dim ?? 0) * gridSettings.size;
       const total = bright + dim;
       const ox = t.x * W, oy = t.y * H;
-      const pts = castPolygon(ox, oy, total, wallsPx);
+      const coneAngle = ((t.light_angle ?? 360) * Math.PI) / 180;
+      const pts = castPolygon(ox, oy, total, wallsPx, {
+        angle: coneAngle,
+        direction: t.light_direction ?? 0,
+      });
       return {
         path: ptsToPath(pts, W, H),
         color: t.light_color ?? "#ffd27a",
@@ -741,13 +817,29 @@ export function MapBoard({
     }
     if (mode === "walls" && isNarrator) {
       const p = pointToRelRaw(e.clientX, e.clientY);
+      if (wallTool === "select") return;
+      const wallOpts =
+        wallTool === "vision"
+          ? { kind: "wall" as WallKind, blocks_sight: true, blocks_light: false }
+          : wallTool === "door"
+            ? { kind: "door" as WallKind, blocks_sight: true, blocks_light: true }
+            : wallTool === "window"
+              ? { kind: "window" as WallKind, blocks_sight: true, blocks_light: false }
+              : { kind: "wall" as WallKind, blocks_sight: true, blocks_light: true };
       if (!wallStart) {
         setWallStart({ x: p.x, y: p.y });
+        if (wallTool === "poly") setWallPolyFirst({ x: p.x, y: p.y });
         setWallCursor({ x: p.x, y: p.y });
       } else {
-        void insertWall(wallStart.x, wallStart.y, p.x, p.y);
-        setWallStart(null);
-        setWallCursor(null);
+        void insertWall(wallStart.x, wallStart.y, p.x, p.y, wallOpts);
+        if (wallTool === "poly") {
+          setWallStart({ x: p.x, y: p.y });
+          setWallCursor({ x: p.x, y: p.y });
+        } else {
+          setWallStart(null);
+          setWallPolyFirst(null);
+          setWallCursor(null);
+        }
       }
       return;
     }
@@ -932,6 +1024,7 @@ export function MapBoard({
     const meters = cells * gridSettings.unitMeters;
     return { distPx, cells, meters };
   }, [ruler, gridSettings.size, gridSettings.unitMeters]);
+  const selectedWall = walls.find((w) => w.id === selectedWallId) ?? null;
 
   return (
     <>
@@ -966,6 +1059,10 @@ export function MapBoard({
         isMobile={isMobile}
         visibility={visibility}
         fogTool={fogTool} setFogTool={setFogTool}
+        wallTool={wallTool} setWallTool={setWallTool}
+        selectedWall={selectedWall}
+        onUpdateWall={updateWall}
+        onDeleteWall={deleteWall}
         onClearFog={clearFog}
         onRevealAll={revealAll}
         onClearWalls={clearWalls}
@@ -1087,21 +1184,43 @@ export function MapBoard({
       {/* Walls layer — visible to narrator only */}
       {isNarrator && (walls.length > 0 || (wallStart && wallCursor)) && (
         <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1000 1000" preserveAspectRatio="none">
-          {walls.map((w) => (
+          {walls.map((w) => {
+            const kind = w.kind ?? "wall";
+            const selected = selectedWallId === w.id;
+            const mx = ((w.x1 + w.x2) / 2) * 1000;
+            const my = ((w.y1 + w.y2) / 2) * 1000;
+            const color = kind === "door" ? "#f59e0b" : kind === "window" ? "#38bdf8" : w.blocks_light === false ? "#a78bfa" : "#ef4444";
+            return (
             <g key={w.id}>
               <line
                 x1={w.x1 * 1000} y1={w.y1 * 1000} x2={w.x2 * 1000} y2={w.y2 * 1000}
-                stroke="#ef4444" strokeWidth={3} strokeDasharray="4 3" strokeLinecap="round"
-                vectorEffect="non-scaling-stroke" opacity={0.85}
+                stroke={color} strokeWidth={selected ? 5 : 3} strokeDasharray={w.is_open ? "2 8" : kind === "wall" ? "4 3" : "8 4"} strokeLinecap="round"
+                vectorEffect="non-scaling-stroke" opacity={w.is_open ? 0.45 : 0.9}
               />
               {mode === "walls" && (
-                <g style={{ cursor: "pointer", pointerEvents: "auto" }} onClick={() => deleteWall(w.id)}>
-                  <circle cx={(w.x1 + w.x2) / 2 * 1000} cy={(w.y1 + w.y2) / 2 * 1000} r={8} fill="hsl(0 84% 60%)" />
-                  <text x={(w.x1 + w.x2) / 2 * 1000} y={(w.y1 + w.y2) / 2 * 1000 + 4} fontSize={11} textAnchor="middle" fill="white" fontWeight="bold">×</text>
+                <g
+                  style={{ cursor: "pointer", pointerEvents: "auto" }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedWallId(w.id);
+                    if (kind !== "wall" && wallTool !== "select") void toggleDoor(w);
+                  }}
+                >
+                  <circle cx={mx} cy={my} r={kind === "wall" ? 8 : 12} fill={selected ? "#fbbf24" : color} />
+                  {kind === "wall" ? (
+                    <text x={mx} y={my + 4} fontSize={11} textAnchor="middle" fill="white" fontWeight="bold">{selected ? "✓" : "•"}</text>
+                  ) : (
+                    <foreignObject x={mx - 8} y={my - 8} width={16} height={16}>
+                      <div className="flex h-4 w-4 items-center justify-center text-white">
+                        {w.is_open ? <DoorOpen className="h-3.5 w-3.5" /> : <DoorClosed className="h-3.5 w-3.5" />}
+                      </div>
+                    </foreignObject>
+                  )}
                 </g>
               )}
             </g>
-          ))}
+            );
+          })}
           {wallStart && wallCursor && (
             <line
               x1={wallStart.x * 1000} y1={wallStart.y * 1000}
@@ -1215,6 +1334,7 @@ export function MapBoard({
         const isHover = hoverTokenId === t.id;
         const showStats = isSelected || isHover;
         const onGmLayer = (t.layer ?? "tokens") === "gm";
+        const isHandout = t.style === "handout";
         return (
           <div
             key={t.id}
@@ -1242,7 +1362,7 @@ export function MapBoard({
             title={t.label}
           >
             {/* Auras (rendered behind the avatar, sized in grid cells) */}
-            {[
+            {!isHandout && [
               { r: t.aura1_radius ?? 0, c: t.aura1_color ?? "#22c55e" },
               { r: t.aura2_radius ?? 0, c: t.aura2_color ?? "#3b82f6" },
             ].map((a, i) => a.r > 0 ? (
@@ -1259,7 +1379,7 @@ export function MapBoard({
                 }}
               />
             ) : null)}
-            {showStats && (
+            {!isHandout && showStats && (
               <div className="pointer-events-none absolute left-1/2 -top-2 -translate-x-1/2 -translate-y-full">
                 <TokenStatsBar
                   kind={t.character_kind}
@@ -1287,14 +1407,15 @@ export function MapBoard({
                 </span>
               </div>
             )}
-            <div className={`relative flex h-full w-full items-center justify-center rounded-full border-2 ${isSelected ? "border-amber-400 ring-2 ring-amber-400/50" : onGmLayer ? "border-purple-500 ring-2 ring-purple-500/40 border-dashed" : "border-primary ring-2 ring-background"} bg-card shadow-md`}>
+            <div className={`relative flex h-full w-full items-center justify-center ${isHandout ? "" : `rounded-full border-2 ${isSelected ? "border-amber-400 ring-2 ring-amber-400/50" : onGmLayer ? "border-purple-500 ring-2 ring-purple-500/40 border-dashed" : "border-primary ring-2 ring-background"} bg-card shadow-md`}`}>
               <TokenAvatar
                 kind={t.character_kind}
                 id={t.character_id}
                 fallbackImage={t.image_url ?? null}
                 label={t.label}
+                variant={isHandout ? "handout" : "token"}
               />
-              <TokenStatusBadges kind={t.character_kind} id={t.character_id} />
+              {!isHandout && <TokenStatusBadges kind={t.character_kind} id={t.character_id} />}
               {t.tint_color && (
                 <div
                   className="pointer-events-none absolute inset-0 rounded-full"
@@ -1361,6 +1482,8 @@ export function MapBoard({
                           light_radius_bright: t.light_radius_bright ?? 0,
                           light_radius_dim: t.light_radius_dim ?? 0,
                           light_color: t.light_color ?? "#ffd27a",
+                          light_angle: t.light_angle ?? 360,
+                          light_direction: t.light_direction ?? 0,
                           vision_radius: t.vision_radius ?? 0,
                         })}
                         className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-background px-2 text-[11px] font-semibold hover:bg-accent"
@@ -1506,6 +1629,10 @@ function MapToolbar({
   isMobile,
   visibility,
   fogTool, setFogTool,
+  wallTool, setWallTool,
+  selectedWall,
+  onUpdateWall,
+  onDeleteWall,
   onClearFog, onRevealAll, onClearWalls,
   onToggleFog, onToggleLighting,
   visEnabled, setVisEnabled,
@@ -1527,6 +1654,10 @@ function MapToolbar({
   isMobile?: boolean;
   visibility: Visibility;
   fogTool: "reveal" | "hide"; setFogTool: (t: "reveal" | "hide") => void;
+  wallTool: WallTool; setWallTool: (t: WallTool) => void;
+  selectedWall: Wall | null;
+  onUpdateWall: (id: string, patch: Partial<Wall>) => void | Promise<void>;
+  onDeleteWall: (id: string) => void | Promise<void>;
   onClearFog: () => void;
   onRevealAll: () => void;
   onClearWalls: () => void;
@@ -1640,7 +1771,59 @@ function MapToolbar({
           )}
           {mode === "walls" && isNarrator && (
             <div className="flex flex-col gap-1 border-t border-border pt-1">
-              <p className="px-1 text-[10px] text-muted-foreground">Clique 2x para criar parede</p>
+              <div className="px-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Paredes & Fog</div>
+              <div className="grid grid-cols-3 gap-1">
+                <ToolBtn active={wallTool === "select"} onClick={() => setWallTool("select")} title="Selecionar parede"><MousePointer2 className="h-3.5 w-3.5" /></ToolBtn>
+                <ToolBtn active={wallTool === "single"} onClick={() => setWallTool("single")} title="Parede unica: 2 cliques">Parede</ToolBtn>
+                <ToolBtn active={wallTool === "poly"} onClick={() => setWallTool("poly")} title="Linha continua. Enter fecha, Esc cancela">Poly</ToolBtn>
+                <ToolBtn active={wallTool === "vision"} onClick={() => setWallTool("vision")} title="Bloqueia visao, mas nao luz">Visao</ToolBtn>
+                <ToolBtn active={wallTool === "door"} onClick={() => setWallTool("door")} title="Porta abre/fecha ao clicar"><DoorClosed className="h-3.5 w-3.5" /></ToolBtn>
+                <ToolBtn active={wallTool === "window"} onClick={() => setWallTool("window")} title="Janela bloqueia visao, nao luz"><DoorOpen className="h-3.5 w-3.5" /></ToolBtn>
+              </div>
+              {selectedWall && (
+                <div className="space-y-1 rounded border border-border bg-background/70 p-1.5">
+                  <div className="flex items-center justify-between text-[10px] font-bold uppercase text-muted-foreground">
+                    <span>{selectedWall.kind ?? "wall"}</span>
+                    <button type="button" className="rounded p-1 hover:bg-accent" onClick={() => onDeleteWall(selectedWall.id)} title="Excluir parede">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <label className="flex items-center gap-1 text-[11px]">
+                    <input
+                      type="checkbox"
+                      checked={selectedWall.blocks_sight !== false}
+                      onChange={(e) => onUpdateWall(selectedWall.id, { blocks_sight: e.target.checked })}
+                    />
+                    Bloqueia visao
+                  </label>
+                  <label className="flex items-center gap-1 text-[11px]">
+                    <input
+                      type="checkbox"
+                      checked={selectedWall.blocks_light !== false}
+                      onChange={(e) => onUpdateWall(selectedWall.id, { blocks_light: e.target.checked })}
+                    />
+                    Bloqueia luz
+                  </label>
+                  {(selectedWall.kind === "door" || selectedWall.kind === "window") && (
+                    <div className="flex flex-wrap gap-1">
+                      <ToolBtn
+                        active={!!selectedWall.is_open}
+                        onClick={() => onUpdateWall(selectedWall.id, { is_open: !selectedWall.is_open })}
+                        title={selectedWall.is_open ? "Fechar" : "Abrir"}
+                      >
+                        {selectedWall.is_open ? <DoorOpen className="h-3.5 w-3.5" /> : <DoorClosed className="h-3.5 w-3.5" />}
+                      </ToolBtn>
+                      <ToolBtn
+                        active={!!selectedWall.locked}
+                        onClick={() => onUpdateWall(selectedWall.id, { locked: !selectedWall.locked })}
+                        title={selectedWall.locked ? "Destrancar" : "Trancar"}
+                      >
+                        {selectedWall.locked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+                      </ToolBtn>
+                    </div>
+                  )}
+                </div>
+              )}
               <ToolBtn onClick={onClearWalls} title="Apagar todas as paredes"><Trash2 className="h-3.5 w-3.5" /></ToolBtn>
             </div>
           )}
