@@ -112,7 +112,25 @@ type Wall = {
   blocks_sight?: boolean;
   blocks_light?: boolean;
 };
-type MapBg = { id: string; game_id: string; image_url: string; x: number; y: number; width: number; height: number; rotation: number; z_index: number };
+type MapBg = {
+  id: string;
+  game_id: string;
+  image_url: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  z_index: number;
+  crop_x?: number;
+  crop_y?: number;
+  crop_w?: number;
+  crop_h?: number;
+  tile_group?: string | null;
+  tile_col?: number | null;
+  tile_row?: number | null;
+};
+type BackgroundAddOptions = { cols?: number; rows?: number };
 
 export type Visibility = { fogEnabled: boolean; dynamicLighting: boolean };
 
@@ -462,12 +480,40 @@ export function MapBoard({
     [mapBgsRaw, bgLocal],
   );
 
-  async function addBackground(url: string) {
+  async function addBackground(url: string, options: BackgroundAddOptions = {}) {
     if (!isNarrator || !url || !pageId) return;
     const maxZ = mapBgsRaw.reduce((m, b) => Math.max(m, b.z_index), 0);
-    const { error } = await (supabase.from("map_backgrounds" as never).insert({
-      game_id: gameId, page_id: pageId, image_url: url, x: 0.2, y: 0.2, width: 0.4, height: 0.4, rotation: 0, z_index: maxZ + 1, created_by: userId,
-    } as never) as unknown as Promise<{ error: { message: string } | null }>);
+    const cols = Math.max(1, Math.min(12, Math.floor(options.cols ?? 1)));
+    const rows = Math.max(1, Math.min(12, Math.floor(options.rows ?? 1)));
+    const group = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const totalWidth = 0.6;
+    const totalHeight = 0.6;
+    const startX = 0.2;
+    const startY = 0.2;
+    const records = Array.from({ length: rows * cols }, (_, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      return {
+        game_id: gameId,
+        page_id: pageId,
+        image_url: url,
+        x: startX + (col * totalWidth) / cols,
+        y: startY + (row * totalHeight) / rows,
+        width: totalWidth / cols,
+        height: totalHeight / rows,
+        rotation: 0,
+        z_index: maxZ + 1 + i,
+        created_by: userId,
+        crop_x: col / cols,
+        crop_y: row / rows,
+        crop_w: 1 / cols,
+        crop_h: 1 / rows,
+        tile_group: rows * cols > 1 ? group : null,
+        tile_col: rows * cols > 1 ? col : null,
+        tile_row: rows * cols > 1 ? row : null,
+      };
+    });
+    const { error } = await (supabase.from("map_backgrounds" as never).insert(records as never) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
   }
   async function deleteBackground(id: string) {
@@ -724,10 +770,50 @@ export function MapBoard({
   
   // ─────────────────────────────────────────────────────────
 
+  const [exploredPaths, setExploredPaths] = useState<string[]>([]);
+  const exploredStorageKey = useMemo(() => `fog-memory:${gameId}:${pageId ?? "none"}:${userId}`, [gameId, pageId, userId]);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(exploredStorageKey);
+      const parsed = raw ? JSON.parse(raw) : [];
+      setExploredPaths(Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string").slice(-160) : []);
+    } catch {
+      setExploredPaths([]);
+    }
+  }, [exploredStorageKey]);
+
+  useEffect(() => {
+    if (isNarrator || visibilityPolygons.length === 0) return;
+    setExploredPaths((prev) => {
+      const unique = Array.from(new Set([...prev, ...visibilityPolygons].filter(Boolean))).slice(-160);
+      try { window.localStorage.setItem(exploredStorageKey, JSON.stringify(unique)); } catch {}
+      return unique;
+    });
+  }, [isNarrator, visibilityPolygons, exploredStorageKey]);
+
+  useEffect(() => {
+    if (isNarrator || exploredPaths.length === 0) return;
+    const ownerToken = tokens.find((t) => canActAsOwner(t) && (t.vision_radius ?? 0) > 0);
+    if (!ownerToken) return;
+    const timer = window.setTimeout(() => {
+      void (supabase.from("tokens" as never).update({ explored_mask: exploredPaths.slice(-160) } as never).eq("id", ownerToken.id) as unknown as Promise<{ error: { message: string } | null }>);
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  }, [isNarrator, exploredPaths, tokens]);
+
+  const savedExploredPaths = useMemo(() => {
+    const paths = tokens.flatMap((t) => {
+      if (!canActAsOwner(t) || !Array.isArray(t.explored_mask)) return [];
+      return t.explored_mask.filter((v): v is string => typeof v === "string");
+    });
+    return Array.from(new Set([...paths, ...exploredPaths])).slice(-200);
+  }, [tokens, exploredPaths, userId]);
+
   function snap(v: number, dim: number) {
-    if (!gridSettings.enabled) return Math.max(0, Math.min(1, v));
+    if (!gridSettings.enabled) return v;
     const mode = gridSettings.snapMode ?? (gridSettings.snap ? "line" : "free");
-    if (mode === "free" || !gridSettings.snap) return Math.max(0, Math.min(1, v));
+    if (mode === "free" || !gridSettings.snap) return v;
     const px = v * dim;
     const size = gridSettings.size;
     let cellPx: number;
@@ -737,15 +823,15 @@ export function MapBoard({
       // "line": snap to nearest gridline intersection
       cellPx = Math.round(px / size) * size;
     }
-    return Math.max(0, Math.min(1, cellPx / dim));
+    return cellPx / dim;
   }
 
   function pointToRelRaw(clientX: number, clientY: number) {
     const target = innerRef.current ?? boardRef.current!;
     const rect = target.getBoundingClientRect();
     return {
-      x: Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)),
-      y: Math.max(0, Math.min(1, (clientY - rect.top) / rect.height)),
+      x: (clientX - rect.left) / rect.width,
+      y: (clientY - rect.top) / rect.height,
       rectW: rect.width, rectH: rect.height,
     };
   }
@@ -1025,6 +1111,9 @@ export function MapBoard({
     return { distPx, cells, meters };
   }, [ruler, gridSettings.size, gridSettings.unitMeters]);
   const selectedWall = walls.find((w) => w.id === selectedWallId) ?? null;
+  const viewportGridSize = Math.max(4, gridSettings.size * zoom);
+  const viewportGridOffsetX = ((pan.x % viewportGridSize) + viewportGridSize) % viewportGridSize;
+  const viewportGridOffsetY = ((pan.y % viewportGridSize) + viewportGridSize) % viewportGridSize;
 
   return (
     <>
@@ -1044,6 +1133,18 @@ export function MapBoard({
       }}
     >
       {topLeftSlot && <div className="absolute right-3 top-3 z-30 flex items-center gap-2">{topLeftSlot}</div>}
+
+      {gridSettings.enabled && (
+        <div
+          className="pointer-events-none absolute inset-0 z-[1]"
+          style={{
+            opacity: Math.max(0, Math.min(1, gridSettings.opacity / 100)),
+            backgroundImage:
+              `repeating-linear-gradient(to right, transparent 0, transparent ${Math.max(0, viewportGridSize - 1)}px, ${gridSettings.color} ${Math.max(0, viewportGridSize - 1)}px, ${gridSettings.color} ${viewportGridSize}px), repeating-linear-gradient(to bottom, transparent 0, transparent ${Math.max(0, viewportGridSize - 1)}px, ${gridSettings.color} ${Math.max(0, viewportGridSize - 1)}px, ${gridSettings.color} ${viewportGridSize}px)`,
+            backgroundPosition: `${viewportGridOffsetX}px ${viewportGridOffsetY}px`,
+          }}
+        />
+      )}
 
       <MapToolbar
         mode={mode} setMode={setMode}
@@ -1101,6 +1202,10 @@ export function MapBoard({
       {showBackgrounds && mapBgs.map((bg) => {
         const isSel = selectedBgId === bg.id;
         const editable = isNarrator && mode === "background";
+        const cropX = bg.crop_x ?? 0;
+        const cropY = bg.crop_y ?? 0;
+        const cropW = bg.crop_w ?? 1;
+        const cropH = bg.crop_h ?? 1;
         return (
           <div
             key={bg.id}
@@ -1121,13 +1226,21 @@ export function MapBoard({
               bgDragRef.current = { id: bg.id, kind: "move", sx: e.clientX, sy: e.clientY, ox: bg.x, oy: bg.y };
             }}
           >
-            <img
-              src={bg.image_url}
-              alt=""
-              draggable={false}
-              className="pointer-events-none h-full w-full select-none"
-              style={{ objectFit: "fill" }}
-            />
+            <div className="pointer-events-none relative h-full w-full overflow-hidden">
+              <img
+                src={bg.image_url}
+                alt=""
+                draggable={false}
+                className="absolute select-none"
+                style={{
+                  left: `${-(cropX / cropW) * 100}%`,
+                  top: `${-(cropY / cropH) * 100}%`,
+                  width: `${100 / cropW}%`,
+                  height: `${100 / cropH}%`,
+                  objectFit: "fill",
+                }}
+              />
+            </div>
             {editable && isSel && (
               <>
                 {/* resize handle (bottom-right) */}
@@ -1157,19 +1270,6 @@ export function MapBoard({
           </div>
         );
       })}
-
-      {/* grid overlay */}
-      {gridSettings.enabled && (
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            opacity: Math.max(0, Math.min(1, gridSettings.opacity / 100)),
-            backgroundImage:
-              `linear-gradient(to right, ${gridSettings.color} 1px, transparent 1px), linear-gradient(to bottom, ${gridSettings.color} 1px, transparent 1px)`,
-            backgroundSize: `${gridSettings.size}px ${gridSettings.size}px`,
-          }}
-        />
-      )}
 
       {/* Drawings SVG layer */}
       <svg
@@ -1250,12 +1350,29 @@ export function MapBoard({
               {lightPolygons.map((l, i) => (
                 <path key={`lit-${i}`} d={l.path} fill="black" />
               ))}
+              {savedExploredPaths.map((d, i) => (
+                <path key={`memory-${i}`} d={d} fill="black" />
+              ))}
               {/* Re-cover hidden regions on top */}
               {visibility.fogEnabled && fogRegions.filter((r) => !r.revealed).map((r) => (
                 <rect key={r.id} x={r.x * 1000} y={r.y * 1000} width={r.w * 1000} height={r.h * 1000} fill="white" />
               ))}
             </mask>
+            <mask id={`fog-memory-mask-${gameId}`}>
+              <rect x="0" y="0" width="1000" height="1000" fill="black" />
+              {savedExploredPaths.map((d, i) => (
+                <path key={`memory-soft-${i}`} d={d} fill="white" />
+              ))}
+            </mask>
           </defs>
+          {savedExploredPaths.length > 0 && !isNarrator && (
+            <rect
+              x="0" y="0" width="1000" height="1000"
+              fill="#000000"
+              opacity={0.28}
+              mask={`url(#fog-memory-mask-${gameId})`}
+            />
+          )}
           {(() => {
             const playerDark = visibility.fogEnabled ? 1 : Math.max(darknessLevel, visibility.dynamicLighting ? 0.85 : 0);
             const op = isNarrator ? Math.min(0.5, playerDark) : playerDark;
@@ -1664,7 +1781,7 @@ function MapToolbar({
   onToggleFog: (v: boolean) => void;
   onToggleLighting: (v: boolean) => void;
   visEnabled: boolean; setVisEnabled: (b: boolean) => void;
-  onAddBackground: (url: string) => void | Promise<void>;
+  onAddBackground: (url: string, options?: BackgroundAddOptions) => void | Promise<void>;
   onDeleteSelectedBg?: () => void;
   onSendBgBack?: () => void;
   onBringBgFront?: () => void;
@@ -1901,20 +2018,23 @@ function ToolBtn({ active, onClick, title, children }: { active?: boolean; onCli
   );
 }
 
-function BgUrlAdd({ onAdd }: { onAdd: (url: string) => void | Promise<void> }) {
+function BgUrlAdd({ onAdd }: { onAdd: (url: string, options?: BackgroundAddOptions) => void | Promise<void> }) {
   const [url, setUrl] = useState("");
+  const [cols, setCols] = useState(1);
+  const [rows, setRows] = useState(1);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const tileOptions = { cols, rows };
   async function submitUrl() {
     const u = url.trim();
     if (!u) return;
-    await onAdd(u);
+    await onAdd(u, tileOptions);
     setUrl("");
   }
   function handleFile(file: File) {
     if (!file.type.startsWith("image/")) { toast.error("Selecione uma imagem"); return; }
     if (file.size > 5_000_000) { toast.error("Imagem muito grande (>5MB)"); return; }
     const reader = new FileReader();
-    reader.onload = () => { void onAdd(String(reader.result)); };
+    reader.onload = () => { void onAdd(String(reader.result), tileOptions); };
     reader.readAsDataURL(file);
   }
   return (
@@ -1935,6 +2055,30 @@ function BgUrlAdd({ onAdd }: { onAdd: (url: string) => void | Promise<void> }) {
         >
           <Plus className="h-3.5 w-3.5" />
         </button>
+      </div>
+      <div className="grid grid-cols-2 gap-1">
+        <label className="flex items-center gap-1 text-[10px] text-muted-foreground">
+          Colunas
+          <input
+            type="number"
+            min={1}
+            max={12}
+            value={cols}
+            onChange={(e) => setCols(Math.max(1, Math.min(12, Number(e.target.value) || 1)))}
+            className="h-7 w-full rounded border border-input bg-background px-2 text-[11px] text-foreground"
+          />
+        </label>
+        <label className="flex items-center gap-1 text-[10px] text-muted-foreground">
+          Linhas
+          <input
+            type="number"
+            min={1}
+            max={12}
+            value={rows}
+            onChange={(e) => setRows(Math.max(1, Math.min(12, Number(e.target.value) || 1)))}
+            className="h-7 w-full rounded border border-input bg-background px-2 text-[11px] text-foreground"
+          />
+        </label>
       </div>
       <input
         ref={fileInputRef}
