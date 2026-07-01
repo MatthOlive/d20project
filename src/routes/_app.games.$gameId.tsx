@@ -30,6 +30,7 @@ import { MapBoard, DRAG_MIME, type DragCharacterPayload } from "@/components/Map
 import { MacroBar } from "@/components/MacroBar";
 import { MusicPanel } from "@/components/MusicPanel";
 import { MusicPlayer } from "@/components/MusicPlayer";
+import { DeckPanel } from "@/components/DeckPanel";
 import { toast } from "sonner";
 import { Copy, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Swords, ChevronDown, ChevronUp, ChevronRight, Dices, MessageSquare } from "lucide-react";
 import { rollD6, rollShiny, POKEMON_ATTRS, SOCIAL_ATTRS, POKEMON_TYPES, RANKS, RANK_LABELS, TYPE_COLORS, type PokemonType, type Rank } from "@/lib/pokerole";
@@ -252,7 +253,7 @@ function GameRoom() {
   );
 
   if (isMobile) {
-    const baseTabs = ["map", "chat", "compendium", "files", "music"] as const;
+    const baseTabs = ["map", "chat", "compendium", "files", "decks", "music"] as const;
     type BaseTab = (typeof baseTabs)[number];
     const sheetTabKey = (w: OpenWindow) => `sheet:${w.kind}:${w.id}`;
     const isSheetTab = mobileTab.startsWith("sheet:");
@@ -261,8 +262,6 @@ function GameRoom() {
     // If user opened a sheet from another tab, auto-switch to its tab.
     // If the active sheet was closed, fall back to map.
     function onClickBaseTab(t: BaseTab) {
-      // Switching to a base tab closes any open sheet tabs (as requested).
-      if (windows.length > 0) setWindows([]);
       setMobileTab(t);
     }
 
@@ -281,7 +280,7 @@ function GameRoom() {
               onClick={() => onClickBaseTab(t)}
               className={`shrink-0 rounded-md px-2 py-2 text-xs font-bold uppercase ${mobileTab === t ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
             >
-              {t === "map" ? "Mapa" : t === "chat" ? "Chat" : t === "compendium" ? "Compendium" : t === "files" ? "Files" : "Música"}
+              {t === "map" ? "Mapa" : t === "chat" ? "Chat" : t === "compendium" ? "Compendium" : t === "files" ? "Files" : t === "decks" ? "Decks" : "Música"}
             </button>
           ))}
           {windows.map((w) => {
@@ -328,6 +327,11 @@ function GameRoom() {
               <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindowMobile} isMobile />
             </div>
           )}
+          {mobileTab === "decks" && (
+            <div className="h-full overflow-hidden">
+              <DeckPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} />
+            </div>
+          )}
           {mobileTab === "music" && (
             <div className="h-full overflow-hidden">
               <MusicPanel gameId={gameId} isNarrator={isNarrator} />
@@ -363,10 +367,11 @@ function GameRoom() {
               <OnlinePresence gameId={gameId} userId={user.id} isNarrator={isNarrator} />
             </div>
             <Tabs defaultValue="chat" className="flex min-h-0 flex-1 flex-col">
-              <TabsList className="m-2 grid shrink-0 grid-cols-4">
+              <TabsList className="m-2 grid shrink-0 grid-cols-5">
                 <TabsTrigger value="chat">Chat</TabsTrigger>
                 <TabsTrigger value="compendium">Compendium</TabsTrigger>
                 <TabsTrigger value="files">Files</TabsTrigger>
+                <TabsTrigger value="decks">Decks</TabsTrigger>
                 <TabsTrigger value="music">Música</TabsTrigger>
               </TabsList>
               <TabsContent value="chat" className="mt-0 min-h-0 flex-1 overflow-hidden">
@@ -377,6 +382,9 @@ function GameRoom() {
               </TabsContent>
               <TabsContent value="files" className="mt-0 min-h-0 flex-1 overflow-auto p-3">
                 <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindow} />
+              </TabsContent>
+              <TabsContent value="decks" className="mt-0 min-h-0 flex-1 overflow-hidden">
+                <DeckPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} />
               </TabsContent>
               <TabsContent value="music" className="mt-0 min-h-0 flex-1 overflow-hidden">
                 <MusicPanel gameId={gameId} isNarrator={isNarrator} />
@@ -928,6 +936,18 @@ function FilesPanel({
             : <User className="h-3.5 w-3.5 shrink-0" />}
           <span className="truncate">{r.label}</span>
         </button>
+        {isMobile && (
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            className="h-9 shrink-0 px-2"
+            onClick={() => sendRowToMap(r)}
+            title="Enviar para o mapa"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </Button>
+        )}
       </div>
     );
   }
