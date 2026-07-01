@@ -21,6 +21,11 @@ export type TokenLightInit = {
   vision_radius: number;
 };
 
+function isSchemaCacheColumnError(error: { message?: string } | null | undefined, columns: string[]) {
+  const message = error?.message ?? "";
+  return message.includes("schema cache") && columns.some((column) => message.includes(column));
+}
+
 export function TokenLightDialog({
   open, onOpenChange, init,
 }: {
@@ -49,19 +54,34 @@ export function TokenLightDialog({
 
   async function save() {
     if (!init) return;
+    const basePayload = {
+      light_enabled: enabled,
+      light_radius_bright: Math.max(0, Math.min(60, bright)),
+      light_radius_dim: Math.max(0, Math.min(60, dim)),
+      light_color: color,
+      vision_radius: Math.max(0, Math.min(60, vision)),
+    };
+    const fullPayload = {
+      ...basePayload,
+      light_angle: Math.max(1, Math.min(360, Math.round(angle))),
+      light_direction: ((Math.round(direction) % 360) * Math.PI) / 180,
+    };
     const { error } = await supabase
       .from("tokens")
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .update({
-        light_enabled: enabled,
-        light_radius_bright: Math.max(0, Math.min(60, bright)),
-        light_radius_dim: Math.max(0, Math.min(60, dim)),
-        light_color: color,
-        light_angle: Math.max(1, Math.min(360, Math.round(angle))),
-        light_direction: ((Math.round(direction) % 360) * Math.PI) / 180,
-        vision_radius: Math.max(0, Math.min(60, vision)),
-      } as any)
+      .update(fullPayload as any)
       .eq("id", init.id);
+    if (isSchemaCacheColumnError(error, ["light_angle", "light_direction"])) {
+      const retry = await supabase
+        .from("tokens")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .update(basePayload as any)
+        .eq("id", init.id);
+      if (retry.error) { toast.error(retry.error.message); return; }
+      toast.warning("Luz salva sem cone. Aplique a migracao no Supabase para ativar angulo e direcao.");
+      onOpenChange(false);
+      return;
+    }
     if (error) { toast.error(error.message); return; }
     toast.success("Iluminação atualizada");
     onOpenChange(false);
