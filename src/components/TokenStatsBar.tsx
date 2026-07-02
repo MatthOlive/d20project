@@ -16,14 +16,49 @@ type Defenses = { def: number; spDef: number; spDefUsesInsight: boolean };
 export function TokenStatsBar({
   kind, id, gameId, editable, expanded,
 }: {
-  kind: "trainer" | "pokemon";
+  kind: "trainer" | "pokemon" | "t20";
   id: string;
   gameId?: string;
   editable: boolean;
   expanded: boolean;
 }) {
+  if (kind === "t20") return <T20Stats id={id} editable={editable} expanded={expanded} />;
   if (kind === "trainer") return <TrainerStats id={id} gameId={gameId} editable={editable} expanded={expanded} />;
   return <PokemonStats id={id} gameId={gameId} editable={editable} expanded={expanded} />;
+}
+
+function T20Stats({ id, editable, expanded }: { id: string; editable: boolean; expanded: boolean }) {
+  const qc = useQueryClient();
+  const { data } = useQuery({
+    queryKey: ["token-t20-stats", id],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("t20_characters" as never) as any)
+        .select("hp_current,hp_max,mp_current,mp_max,defense")
+        .eq("id", id)
+        .single();
+      if (error) throw error;
+      return data as { hp_current: number; hp_max: number; mp_current: number; mp_max: number; defense: number };
+    },
+  });
+  if (!data) return null;
+
+  async function patch(field: "hp_current" | "mp_current", value: number) {
+    qc.setQueryData(["token-t20-stats", id], (old: typeof data) => old ? { ...old, [field]: value } : old);
+    const { error } = await (supabase.from("t20_characters" as never) as any).update({ [field]: value }).eq("id", id);
+    if (error) toast.error(error.message);
+    qc.invalidateQueries({ queryKey: ["t20-character", id] });
+  }
+
+  return (
+    <StatsRow
+      stats={[
+        { label: "PV", cur: data.hp_current ?? data.hp_max, max: data.hp_max ?? 0, color: "#22c55e", onChange: (n) => patch("hp_current", n) },
+        { label: "PM", cur: data.mp_current ?? data.mp_max, max: data.mp_max ?? 0, color: "#3b82f6", onChange: (n) => patch("mp_current", n) },
+      ]}
+      defenses={{ def: data.defense ?? 10, spDef: 0, spDefUsesInsight: false }}
+      editable={editable && expanded}
+    />
+  );
 }
 
 

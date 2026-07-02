@@ -17,7 +17,7 @@ import { PageSwitcher } from "@/components/PageSwitcher";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export type DragCharacterPayload = {
-  kind: "pokemon" | "trainer";
+  kind: "pokemon" | "trainer" | "t20";
   id: string;
   label: string;
   imageUrl?: string | null;
@@ -29,7 +29,7 @@ export const DRAG_MIME = "application/x-pokerole-character";
 type Token = {
   id: string;
   game_id: string;
-  character_kind: "pokemon" | "trainer";
+  character_kind: "pokemon" | "trainer" | "t20";
   character_id: string;
   label: string;
   image_url: string | null;
@@ -139,6 +139,12 @@ const DEFAULT_GRID: GridSettings = {
   opacity: 30, unitMeters: 1.5, unitLabel: "m",
 };
 const DEFAULT_VIS: Visibility = { fogEnabled: false, dynamicLighting: false };
+const WALL_SCHEMA_COLUMNS = ["kind", "is_open", "locked", "blocks_sight", "blocks_light"];
+
+function isSchemaCacheColumnError(error: { message?: string } | null | undefined, columns: string[]) {
+  const message = error?.message ?? "";
+  return message.includes("schema cache") && columns.some((column) => message.includes(column));
+}
 
 export function MapBoard({
   gameId,
@@ -160,8 +166,8 @@ export function MapBoard({
   activePageId: string | null;
   topLeftSlot?: React.ReactNode;
   toolbarSlot?: React.ReactNode;
-  onRoll?: (label: string, n: number, penalty?: number, meta?: { characterKind: "trainer" | "pokemon"; characterId: string; imageUrl?: string | null }) => void;
-  onOpenSheet?: (kind: "trainer" | "pokemon", id: string, label: string) => void;
+  onRoll?: (label: string, n: number, penalty?: number, meta?: { characterKind: "trainer" | "pokemon" | "t20"; characterId: string; imageUrl?: string | null }) => void;
+  onOpenSheet?: (kind: "trainer" | "pokemon" | "t20", id: string, label: string) => void;
   gridSettings?: GridSettings;
   visibility?: Visibility;
 }) {
@@ -643,24 +649,44 @@ export function MapBoard({
   ) {
     if (!pageId) return;
     if (Math.hypot(x2 - x1, y2 - y1) < 0.01) return;
-    const { error } = await (supabase.from("walls" as never).insert({
+    const basePayload = {
       game_id: gameId,
       page_id: pageId,
       x1,
       y1,
       x2,
       y2,
+      author_id: userId,
+    };
+    const fullPayload = {
+      ...basePayload,
       kind: opts.kind ?? "wall",
       blocks_sight: opts.blocks_sight ?? true,
       blocks_light: opts.blocks_light ?? true,
       is_open: false,
       locked: false,
-      author_id: userId,
-    } as never) as unknown as Promise<{ error: { message: string } | null }>);
+    };
+    const { error } = await (supabase.from("walls" as never).insert(fullPayload as never) as unknown as Promise<{ error: { message: string } | null }>);
+    if (isSchemaCacheColumnError(error, WALL_SCHEMA_COLUMNS)) {
+      const retry = await (supabase.from("walls" as never).insert(basePayload as never) as unknown as Promise<{ error: { message: string } | null }>);
+      if (retry.error) toast.error(retry.error.message);
+      else toast.warning("Parede salva como basica. Aplique a migracao no Supabase para ativar portas, janelas e bloqueios avancados.");
+      return;
+    }
     if (error) toast.error(error.message);
   }
   async function updateWall(id: string, patch: Partial<Wall>) {
     const { error } = await (supabase.from("walls" as never).update(patch as never).eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
+    if (isSchemaCacheColumnError(error, WALL_SCHEMA_COLUMNS)) {
+      const fallback = Object.fromEntries(Object.entries(patch).filter(([key]) => !WALL_SCHEMA_COLUMNS.includes(key)));
+      if (Object.keys(fallback).length === 0) {
+        toast.warning("Esse ajuste precisa da migracao de paredes aplicada no Supabase.");
+        return;
+      }
+      const retry = await (supabase.from("walls" as never).update(fallback as never).eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
+      if (retry.error) toast.error(retry.error.message);
+      return;
+    }
     if (error) toast.error(error.message);
   }
   async function toggleDoor(w: Wall) {
@@ -797,7 +823,10 @@ export function MapBoard({
     const ownerToken = tokens.find((t) => canActAsOwner(t) && (t.vision_radius ?? 0) > 0);
     if (!ownerToken) return;
     const timer = window.setTimeout(() => {
-      void (supabase.from("tokens" as never).update({ explored_mask: exploredPaths.slice(-160) } as never).eq("id", ownerToken.id) as unknown as Promise<{ error: { message: string } | null }>);
+      void (async () => {
+        const { error } = await (supabase.from("tokens" as never).update({ explored_mask: exploredPaths.slice(-160) } as never).eq("id", ownerToken.id) as unknown as Promise<{ error: { message: string } | null }>);
+        if (error && !isSchemaCacheColumnError(error, ["explored_mask"])) toast.error(error.message);
+      })();
     }, 1200);
     return () => window.clearTimeout(timer);
   }, [isNarrator, exploredPaths, tokens]);

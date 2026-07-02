@@ -13,22 +13,54 @@ import { GenericRollButton, painPenaltyFor, STATUS_CONDITIONS } from "@/componen
 import { POKEMON_ATTRS, ATTRS, SOCIAL_ATTRS, TRAINER_SKILLS, SKILLS, RANK_BONUS } from "@/lib/pokerole";
 import { MoveCard } from "@/components/MoveCard";
 import { MoveRollDialog, computeMoveStats, type MoveData } from "@/components/MoveRollDialog";
+import { T20_QUICK_ROLLS } from "@/lib/tormenta20";
 
 type Props = {
-  kind: "trainer" | "pokemon";
+  kind: "trainer" | "pokemon" | "t20";
   id: string;
   label: string;
   gameId: string;
   userId: string;
-  onRoll: (label: string, n: number, penalty?: number, meta?: { characterKind: "trainer" | "pokemon"; characterId: string; imageUrl?: string | null }) => void;
+  onRoll: (label: string, n: number, penalty?: number, meta?: { characterKind: "trainer" | "pokemon" | "t20"; characterId: string; imageUrl?: string | null }) => void;
   onClose: () => void;
   onOpenSheet: () => void;
   extra?: React.ReactNode;
 };
 
 export function TokenActionBar(p: Props) {
+  if (p.kind === "t20") return <T20Bar {...p} />;
   if (p.kind === "trainer") return <TrainerBar {...p} />;
   return <PokemonBar {...p} />;
+}
+
+function T20Bar({ id, label, onRoll, onClose, onOpenSheet, extra }: Props) {
+  const { data: c } = useQuery({
+    queryKey: ["token-t20", id],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("t20_characters" as never) as any)
+        .select("image_url,skills")
+        .eq("id", id)
+        .single();
+      if (error) throw error;
+      return data as { image_url: string | null; skills: Record<string, number> | null };
+    },
+  });
+  const quick = T20_QUICK_ROLLS.slice(0, 4);
+  return (
+    <Shell onClose={onClose} title={label} onOpenSheet={onOpenSheet} loading={!c}>
+      {quick.map((item) => (
+        <ActionBtn
+          key={item.label}
+          icon={item.label === "Iniciativa" ? <Zap className="h-3.5 w-3.5" /> : <Dices className="h-3.5 w-3.5" />}
+          label={item.label}
+          onClick={() => onRoll(`${label} - ${item.label}`, c?.skills?.[item.skill] ?? 0, 0, { characterKind: "t20", characterId: id, imageUrl: c?.image_url })}
+        />
+      ))}
+      <ActionBtn icon={<Dices className="h-3.5 w-3.5" />} label="d20"
+        onClick={() => onRoll(`${label} - Teste`, 0, 0, { characterKind: "t20", characterId: id, imageUrl: c?.image_url })} />
+      {extra}
+    </Shell>
+  );
 }
 
 function TrainerBar({ id, label, onRoll, onClose, onOpenSheet, extra }: Props) {

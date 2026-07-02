@@ -470,19 +470,45 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
 
   // Legacy simple roll message
   const rd = msg.roll_data as unknown as {
-    dice: number[];
-    successes: number;
-    ones: number;
+    dice?: number[];
+    successes?: number;
+    ones?: number;
     faces?: number;
     modifier?: number;
     mode?: "sum" | "success";
+    system?: string;
+    die?: number;
+    total?: number;
   } | null;
   if (msg.kind === "roll" && rd) {
+    if (rd.system === "t20" || typeof rd.die === "number") {
+      const die = rd.die ?? 0;
+      const mod = rd.modifier ?? 0;
+      const total = rd.total ?? die + mod;
+      return (
+        <div className="rounded-lg border border-border bg-card p-3">
+          <div className="mb-1.5 flex items-baseline justify-between text-xs">
+            <span className="font-semibold text-foreground">{authorName}</span>
+            <span className="text-muted-foreground">rolled {msg.body}</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-md border border-primary bg-primary/10 px-2 text-base font-bold tabular-nums text-primary">
+              {die}
+            </span>
+            <span className="ml-2 rounded-full bg-primary/15 px-2.5 py-0.5 text-xs font-bold text-primary">
+              total {total}
+              {mod !== 0 ? ` (${die}${mod > 0 ? ` +${mod}` : ` ${mod}`})` : ""}
+            </span>
+          </div>
+        </div>
+      );
+    }
     const faces = rd.faces ?? 6;
     const isD6 = faces === 6;
     const mod = rd.modifier ?? 0;
     const mode = rd.mode ?? (isD6 ? "success" : "sum");
-    const sum = rd.dice.reduce((a, b) => a + b, 0);
+    const dice = rd.dice ?? [];
+    const sum = dice.reduce((a, b) => a + b, 0);
     const total = sum + mod;
 
     return (
@@ -492,7 +518,7 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
           <span className="text-muted-foreground">rolled {msg.body}</span>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          {rd.dice.map((d, i) => (
+          {dice.map((d, i) => (
             <span
               key={i}
               className={cn(
@@ -510,9 +536,9 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
           {mode === "success" ? (
             <>
               <span className="ml-2 rounded-full bg-success/15 px-2.5 py-0.5 text-xs font-bold text-success">
-                {rd.successes} success{rd.successes === 1 ? "" : "es"}
+                {rd.successes ?? 0} success{rd.successes === 1 ? "" : "es"}
               </span>
-              {rd.ones > 0 && (
+              {(rd.ones ?? 0) > 0 && (
                 <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive">
                   {rd.ones} × 1
                 </span>

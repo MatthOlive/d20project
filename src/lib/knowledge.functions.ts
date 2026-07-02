@@ -127,15 +127,19 @@ export async function searchKnowledge(
   supabase: any,
   query: string,
   k = 6,
+  source?: string,
 ): Promise<string[]> {
   try {
     const [embedding] = await embedBatch([query]);
     const { data, error } = await supabase.rpc("match_knowledge", {
       query_embedding: `[${embedding.join(",")}]`,
-      match_count: k,
+      match_count: source ? Math.max(k * 4, 24) : k,
     });
     if (error || !data) return [];
-    return (data as { content: string }[]).map((r) => r.content);
+    return (data as { content: string; source?: string }[])
+      .filter((r) => !source || r.source === source)
+      .slice(0, k)
+      .map((r) => r.content);
   } catch {
     return [];
   }

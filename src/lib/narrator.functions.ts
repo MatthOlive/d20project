@@ -359,16 +359,21 @@ const TOOLS = [
 
 type Msg = { role: "system" | "user" | "assistant" | "tool"; content: string; tool_call_id?: string; tool_calls?: unknown };
 
-async function callGateway(messages: Msg[]) {
+async function callGateway(messages: Msg[], tools: typeof TOOLS | null = TOOLS) {
   const apiKey = process.env.LOVABLE_API_KEY;
   if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
+  const body: Record<string, unknown> = {
+    model: "google/gemini-2.5-pro",
+    messages,
+  };
+  if (tools) {
+    body.tools = tools;
+    body.tool_choice = "auto";
+  }
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-pro",
-      messages, tools: TOOLS, tool_choice: "auto",
-    }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     if (res.status === 429) throw new Error("AI rate limit. Wait a moment.");
@@ -408,11 +413,12 @@ export const narratorTurn = createServerFn({ method: "POST" })
     if (!narratorCheck) throw new Error("Only the narrator may invoke the AI.");
 
 
-    const [{ data: game }, { data: chat }, { data: pokes }, { data: trainers }, { data: init }, { data: members }] = await Promise.all([
-      supabase.from("games").select("id,name,narrator_type,language").eq("id", data.gameId).single(),
+    const [{ data: game }, { data: chat }, { data: pokes }, { data: trainers }, { data: t20Chars }, { data: init }, { data: members }] = await Promise.all([
+      supabase.from("games").select("id,name,narrator_type,language,system").eq("id", data.gameId).single(),
       supabase.from("chat_messages").select("kind,body,roll_data,created_at,user_id").eq("game_id", data.gameId).order("created_at", { ascending: false }).limit(40),
       supabase.from("pokemon").select("id,nickname,rank,current_hp,hp,current_attrs,ai_spawned,species:species_id(name)").eq("game_id", data.gameId),
       supabase.from("trainers").select("id,name,rank,current_hp,attrs,ai_spawned").eq("game_id", data.gameId),
+      (supabase.from("t20_characters" as never) as any).select("id,name,race,class_name,level,hp_current,hp_max,mp_current,mp_max,defense,skills").eq("game_id", data.gameId),
       supabase.from("initiative").select("character_name,successes,position").eq("game_id", data.gameId).order("position"),
       supabase.from("game_members").select("user_id,role").eq("game_id", data.gameId),
     ]);
@@ -420,6 +426,7 @@ export const narratorTurn = createServerFn({ method: "POST" })
 
     const playerCount = ((members ?? []) as { role: string }[]).filter((m) => m.role === "player").length;
     const lang = (game.language as string) || "pt-BR";
+    const gameSystem = (game.system as string | null) ?? "pokerole";
     const langDirective = LANG_INSTRUCTION[lang] ?? LANG_INSTRUCTION["en"];
 
     const transcript = ((chat ?? []) as { kind: string; body: string; roll_data: { successes?: number; label?: string; dice?: number[] } | null }[])
@@ -436,7 +443,7 @@ export const narratorTurn = createServerFn({ method: "POST" })
     const ragQuery = data.userPrompt
       ?? (chat?.[0] as { body?: string } | undefined)?.body
       ?? game.name;
-    const passages = await searchKnowledge(supabase, String(ragQuery), 6);
+    const passages = await searchKnowledge(supabase, String(ragQuery), 6, gameSystem);
     const ragBlock = passages.length
       ? `RULEBOOK EXCERPTS (use as ground truth):\n${passages.map((p, i) => `[${i + 1}] ${p}`).join("\n\n")}`
       : "(No rulebook excerpts indexed — rely on core mechanics below.)";
@@ -466,7 +473,7 @@ export const narratorTurn = createServerFn({ method: "POST" })
     const narratorMsgCount = ((chat ?? []) as { kind: string }[]).filter((m) => m.kind === "narrator").length;
     const isFirstTurn = narratorMsgCount === 0;
 
-    const systemContent = `You are the AI Game Master for a Pokérole 2.0 session titled "${game.name as string}".
+    const pokeroleSystemContent = `You are the AI Game Master for a Pokérole 2.0 session titled "${game.name as string}".
 
 LANGUAGE: ${langDirective}
 
@@ -495,6 +502,46 @@ YOUR ROLE — act like a real tabletop RPG narrator:
 - Always end your reply with a clear prompt.
 - Stay warm, dramatic, concise (≤ 320 words).`;
 
+    const t20PartySummary = "T20 CHARACTERS: " + (((t20Chars ?? []) as {
+      name: string; race: string | null; class_name: string | null; level: number;
+      hp_current: number; hp_max: number; mp_current: number; mp_max: number; defense: number;
+      skills: Record<string, number> | null;
+    }[]).map((c) =>
+      `${c.name} (${c.race ?? "no race"} ${c.class_name ?? "no class"} level ${c.level}, HP ${c.hp_current}/${c.hp_max}, MP ${c.mp_current}/${c.mp_max}, Defense ${c.defense}, Initiative ${c.skills?.Iniciativa ?? 0})`,
+    ).join("; ") || "none");
+
+    const t20SystemContent = `You are the AI Game Master for a Tormenta 20 session titled "${game.name as string}".
+
+LANGUAGE: ${langDirective}
+
+${ragBlock}
+
+CORE TABLE BEHAVIOR:
+- Use Tormenta 20 style adjudication: d20 + modifier versus difficulty or opposed result.
+- Do not use Pokérole dice pools, successes, moves, ranks or Pokémon mechanics in this game.
+- Read [ROLL] entries carefully. For T20 rolls, roll_data.total is the final result and roll_data.die is the natural d20.
+- When combat begins, ask players for Iniciativa if it is not already rolled. Use the initiative panel totals when present.
+- Treat HP/PV, MP/PM and Defense/Defesa from character sheets as current mechanical state.
+- Powers and spells may be stored in the character sheet catalog. Refer to those entries when players mention them.
+- If rulebook excerpts are missing, ask for the relevant rule or make a conservative temporary ruling.
+
+CURRENT PARTY STATE:
+${t20PartySummary}
+
+LOBBY: ${playerCount} player(s) currently in the game.
+
+INITIATIVE:
+${initSummary}
+
+YOUR ROLE:
+- ${isFirstTurn ? `THIS IS THE OPENING. Greet the table, ask what kind of Tormenta 20 adventure they want, and set a clear first scene.` : `Continue the story. React to player actions and roll results in 2-4 vivid paragraphs.`}
+- Ask for specific T20 rolls by name, for example Iniciativa, Luta, Pontaria, Fortitude, Reflexos, Vontade, Percepcao, Diplomacia.
+- Keep narration vivid but concise.
+- Always end with a clear prompt.
+- Stay warm, dramatic, concise (<= 320 words).`;
+
+    const systemContent = gameSystem === "t20" ? t20SystemContent : pokeroleSystemContent;
+
     const userTurnContent = data.userPrompt?.trim()
       ? `Latest chat:\n${transcript}\n\nMost recent player input: ${data.userPrompt.trim()}`
       : `Latest chat:\n${transcript}\n\n(Continue the scene based on the most recent player activity.)`;
@@ -506,7 +553,7 @@ YOUR ROLE — act like a real tabletop RPG narrator:
 
     let finalText = "";
     for (let round = 0; round < 3; round++) {
-      const json = await callGateway(messages);
+      const json = await callGateway(messages, gameSystem === "t20" ? null : TOOLS);
       const choice = json?.choices?.[0]?.message;
       if (!choice) throw new Error("Empty AI response");
       const toolCalls = choice.tool_calls as { id: string; function: { name: string; arguments: string } }[] | undefined;
