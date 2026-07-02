@@ -75,14 +75,15 @@ function AuthPage() {
   }
 
   async function signInWithGoogle() {
-    const redirectTo = typeof window !== "undefined"
+    const configuredRedirect = import.meta.env.VITE_AUTH_REDIRECT_URL as string | undefined;
+    const redirectTo = configuredRedirect || (typeof window !== "undefined"
       ? `${window.location.origin}/auth`
-      : undefined;
+      : undefined);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo },
     });
-    if (error) toast.error(error.message);
+    if (error) toast.error(formatAuthError(error.message));
   }
 
 
@@ -151,4 +152,12 @@ function AuthPage() {
       </div>
     </div>
   );
+}
+
+function formatAuthError(message: string) {
+  if (message.toLowerCase().includes("missing oauth secret")) {
+    return "O login com Google ainda nao foi configurado no Supabase. Ative o provedor Google no painel do Supabase ou use email e senha por enquanto.";
+  }
+
+  return message;
 }
