@@ -1,0 +1,16 @@
+[package]
+name = "d20-project"
+version = "0.2.0"
+description = "D20 Project desktop app"
+authors = ["MatthOlive"]
+edition = "2021"
+
+[lib]
+name = "d20_project_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
