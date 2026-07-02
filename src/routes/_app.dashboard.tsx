@@ -46,7 +46,7 @@ function Dashboard() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("games")
-        .select("id,name,background_url,narrator_id,created_at,language,game_members(user_id,role)")
+        .select("id,name,background_url,narrator_id,created_at,language,system,game_members(user_id,role)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -198,6 +198,7 @@ function Dashboard() {
           games.map((g) => {
             const isOwner = g.narrator_id === user?.id;
             const memberCount = g.game_members?.length ?? 0;
+            const systemLabel = RPG_SYSTEMS.find((s) => s.id === (g as { system?: string }).system)?.label ?? "PokÃ©role 2.0";
             const card = (
               <div className="relative">
                 {selectMode && isOwner && (
@@ -231,7 +232,7 @@ function Dashboard() {
                     )}
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {memberCount} {memberCount === 1 ? t("member") : t("members")}
+                    {systemLabel} Â· {memberCount} {memberCount === 1 ? t("member") : t("members")}
                   </p>
                 </div>
               </div>

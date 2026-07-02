@@ -6,10 +6,21 @@ import { supabase } from "@/integrations/supabase/client";
  * are wired centrally in MapBoard's realtime channel, which invalidates
  * `token-pokemon`/`token-trainer` queries on any change to the source row.
  */
-function useCharacter(kind: "trainer" | "pokemon", id: string) {
+function useCharacter(kind: "trainer" | "pokemon" | "t20", id: string) {
   return useQuery({
-    queryKey: [kind === "trainer" ? "token-trainer-status" : "token-pokemon-status", id],
+    queryKey: [kind === "trainer" ? "token-trainer-status" : kind === "pokemon" ? "token-pokemon-status" : "token-t20-status", id],
     queryFn: async () => {
+      if (kind === "t20") {
+        const { data, error } = await (supabase.from("t20_characters" as never) as any)
+          .select("image_url")
+          .eq("id", id)
+          .maybeSingle();
+        if (error) throw error;
+        return {
+          image_url: (data as { image_url?: string | null } | null)?.image_url ?? null,
+          status: [] as string[],
+        };
+      }
       if (kind === "trainer") {
         const { data, error } = await supabase
           .from("trainers")
@@ -57,7 +68,7 @@ const STATUS_ICONS: Record<string, { emoji: string; color: string; title: string
 export function TokenAvatar({
   kind, id, fallbackImage, label, variant = "token",
 }: {
-  kind: "trainer" | "pokemon";
+  kind: "trainer" | "pokemon" | "t20";
   id: string;
   fallbackImage: string | null;
   label: string;
@@ -75,7 +86,7 @@ export function TokenAvatar({
 export function TokenStatusBadges({
   kind, id,
 }: {
-  kind: "trainer" | "pokemon";
+  kind: "trainer" | "pokemon" | "t20";
   id: string;
 }) {
   const { data } = useCharacter(kind, id);

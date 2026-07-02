@@ -26,6 +26,7 @@ import { OnlinePresence } from "@/components/OnlinePresence";
 
 import { PokemonSheet } from "@/components/PokemonSheet";
 import { SheetTabs } from "@/components/SheetTabs";
+import { T20CharacterSheet } from "@/components/T20CharacterSheet";
 import { MapBoard, DRAG_MIME, type DragCharacterPayload } from "@/components/MapBoard";
 import { MacroBar } from "@/components/MacroBar";
 import { MusicPanel } from "@/components/MusicPanel";
@@ -34,6 +35,7 @@ import { DeckPanel } from "@/components/DeckPanel";
 import { toast } from "sonner";
 import { Copy, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Swords, ChevronDown, ChevronUp, ChevronRight, Dices, MessageSquare } from "lucide-react";
 import { rollD6, rollShiny, POKEMON_ATTRS, SOCIAL_ATTRS, POKEMON_TYPES, RANKS, RANK_LABELS, TYPE_COLORS, type PokemonType, type Rank } from "@/lib/pokerole";
+import { T20_CLASSES, T20_MECHANICS, T20_MECHANICS_CATEGORY_ORDER, T20_RACES, defaultT20Attributes, defaultT20Skills, rollD20 } from "@/lib/tormenta20";
 import { rollPokemonAutofill } from "@/lib/pokemon-autofill";
 import { REACTION_DECK } from "@/lib/contest";
 
@@ -56,7 +58,8 @@ export const Route = createFileRoute("/_app/games/$gameId")({
 
 type OpenWindow =
   | { kind: "pokemon"; id: string; title: string }
-  | { kind: "trainer"; id: string; title: string };
+  | { kind: "trainer"; id: string; title: string }
+  | { kind: "t20"; id: string; title: string };
 
 function GameRoom() {
   const { gameId } = Route.useParams();
@@ -113,7 +116,7 @@ function GameRoom() {
     const raw = params.get("sheet");
     if (!raw) return;
     const [kind, id, ...labelParts] = raw.split(":");
-    if ((kind === "trainer" || kind === "pokemon") && id) {
+    if ((kind === "trainer" || kind === "pokemon" || kind === "t20") && id) {
       openWindow({ kind, id, title: decodeURIComponent(labelParts.join(":") || id) });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -125,9 +128,36 @@ function GameRoom() {
     label: string,
     n: number,
     penalty = 0,
-    meta?: { characterKind: "trainer" | "pokemon"; characterId: string; imageUrl?: string | null },
+    meta?: { characterKind: "trainer" | "pokemon" | "t20"; characterId: string; imageUrl?: string | null },
   ) {
     if (!user) return;
+    if (meta?.characterKind === "t20" || game?.system === "t20") {
+      const modifier = n - (penalty || 0);
+      const result = rollD20(modifier);
+      const finalLabel = modifier === 0 ? label : `${label} (${modifier >= 0 ? "+" : ""}${modifier})`;
+      await supabase.from("chat_messages").insert({
+        game_id: gameId, user_id: user.id, kind: "roll",
+        body: finalLabel, roll_data: { ...result, label: finalLabel },
+      });
+      if (meta && /iniciativa|initiative/i.test(label)) {
+        const name = label.split("-")[0]?.trim() || label;
+        await supabase
+          .from("initiative")
+          .delete()
+          .eq("game_id", gameId)
+          .eq("character_ref", meta.characterId);
+        await supabase.from("initiative").insert({
+          game_id: gameId,
+          character_kind: meta.characterKind,
+          character_ref: meta.characterId,
+          character_name: name,
+          image_url: meta.imageUrl ?? null,
+          successes: result.total,
+          position: 0,
+        });
+      }
+      return;
+    }
     // Pain penalty reduces the dice pool, NOT successes.
     const finalPool = Math.max(0, n - (penalty || 0));
     const result = rollD6(finalPool);
@@ -183,6 +213,7 @@ function GameRoom() {
     </div>
   );
   if (gameLoading || !game || !user) return <div className="p-8 text-sm text-muted-foreground">Carregando jogo…</div>;
+  const gameSystem = (game as { system?: string | null }).system ?? "pokerole";
 
   const mapBoard = (
     <MapBoard
@@ -246,7 +277,9 @@ function GameRoom() {
         >
           {w.kind === "pokemon"
             ? <PokemonSheet pokemonId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(w.kind, w.id); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
-            : <SheetTabs trainerId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(w.kind, w.id); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />}
+            : w.kind === "trainer"
+              ? <SheetTabs trainerId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(w.kind, w.id); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
+              : <T20CharacterSheet characterId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(w.kind, w.id); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />}
         </FloatingWindow>
       ))}
     </div>
@@ -320,11 +353,11 @@ function GameRoom() {
             </div>
           )}
           {mobileTab === "compendium" && (
-            <div className="h-full overflow-auto p-3"><CompendiumPanel /></div>
+            <div className="h-full overflow-auto p-3"><CompendiumPanel system={gameSystem} /></div>
           )}
           {mobileTab === "files" && (
             <div className="h-full overflow-auto p-3">
-              <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindowMobile} isMobile />
+              <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindowMobile} isMobile system={gameSystem} />
             </div>
           )}
           {mobileTab === "decks" && (
@@ -341,7 +374,9 @@ function GameRoom() {
             <div className="absolute inset-0 overflow-auto bg-background">
               {activeSheet.kind === "pokemon"
                 ? <PokemonSheet pokemonId={activeSheet.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(activeSheet.kind, activeSheet.id); setMobileTab("map"); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
-                : <SheetTabs trainerId={activeSheet.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(activeSheet.kind, activeSheet.id); setMobileTab("map"); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />}
+                : activeSheet.kind === "trainer"
+                  ? <SheetTabs trainerId={activeSheet.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(activeSheet.kind, activeSheet.id); setMobileTab("map"); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
+                  : <T20CharacterSheet characterId={activeSheet.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(activeSheet.kind, activeSheet.id); setMobileTab("map"); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />}
             </div>
           )}
         </div>
@@ -378,10 +413,10 @@ function GameRoom() {
                 <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} isGameOwner={isNarrator} />
               </TabsContent>
               <TabsContent value="compendium" className="mt-0 min-h-0 flex-1 overflow-auto p-3">
-                <CompendiumPanel />
+                <CompendiumPanel system={gameSystem} />
               </TabsContent>
               <TabsContent value="files" className="mt-0 min-h-0 flex-1 overflow-auto p-3">
-                <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindow} />
+                <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindow} system={gameSystem} />
               </TabsContent>
               <TabsContent value="decks" className="mt-0 min-h-0 flex-1 overflow-hidden">
                 <DeckPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} />
@@ -470,7 +505,8 @@ function InviteButton({ url }: { url: string }) {
 
 type CharRow =
   | { kind: "trainer"; id: string; label: string; owner_id: string; image_url: string | null; folder: string | null; sprite_url?: string | null }
-  | { kind: "pokemon"; id: string; label: string; owner_id: string; image_url: string | null; folder: string | null; sprite_url: string | null };
+  | { kind: "pokemon"; id: string; label: string; owner_id: string; image_url: string | null; folder: string | null; sprite_url: string | null }
+  | { kind: "t20"; id: string; label: string; owner_id: string; image_url: string | null; folder: string | null; sprite_url?: string | null };
 
 const FOLDER_MIME = "application/x-pokerole-sheet";
 const FOLDER_PATH_MIME = "application/x-pokerole-folder-path";
@@ -533,18 +569,24 @@ function FilesPanel({
   isNarrator,
   onOpen,
   isMobile = false,
+  system = "pokerole",
 }: {
   gameId: string;
   userId: string;
   isNarrator: boolean;
   onOpen: (w: OpenWindow) => void;
   isMobile?: boolean;
+  system?: string;
 }) {
 
   const qc = useQueryClient();
   const [pkmDialogOpen, setPkmDialogOpen] = useState(false);
   const [newPkmSpecies, setNewPkmSpecies] = useState<string>("");
   const [newPkmOvergrown, setNewPkmOvergrown] = useState(false);
+  const [t20DialogOpen, setT20DialogOpen] = useState(false);
+  const [newT20Name, setNewT20Name] = useState("");
+  const [newT20Race, setNewT20Race] = useState("");
+  const [newT20Class, setNewT20Class] = useState("");
   const [randomOpen, setRandomOpen] = useState(false);
   const [fStarter, setFStarter] = useState(false);
   const [fFirst, setFFirst] = useState(false);
@@ -617,13 +659,15 @@ function FilesPanel({
   async function bulkDelete() {
     if (selected.size === 0) return;
     if (!confirm(`Delete ${selected.size} selected sheet(s)? This cannot be undone.`)) return;
-    const pkmIds: string[] = [], trIds: string[] = [];
+    const pkmIds: string[] = [], trIds: string[] = [], t20Ids: string[] = [];
     for (const k of selected) {
       const [kind, id] = k.split(":");
       if (kind === "pokemon") pkmIds.push(id); else if (kind === "trainer") trIds.push(id);
+      else if (kind === "t20") t20Ids.push(id);
     }
     if (pkmIds.length) await supabase.from("pokemon").delete().in("id", pkmIds);
     if (trIds.length) await supabase.from("trainers").delete().in("id", trIds);
+    if (t20Ids.length) await (supabase.from("t20_characters" as never) as any).delete().in("id", t20Ids);
     setSelected(new Set()); setSelectMode(false);
     qc.invalidateQueries({ queryKey: ["characters", gameId] });
     toast.success("Deleted");
@@ -640,6 +684,19 @@ function FilesPanel({
         pokemon: (pkm.data ?? []) as { id: string; nickname: string | null; owner_id: string; image_url: string | null; folder: string | null; species: { name: string; sprite_url: string | null } }[],
         trainers: (tr.data ?? []) as { id: string; name: string; owner_id: string; image_url: string | null; folder: string | null }[],
       };
+    },
+  });
+
+  const { data: t20Characters } = useQuery({
+    queryKey: ["t20-characters", gameId],
+    enabled: system === "t20",
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("t20_characters" as never) as any)
+        .select("id,name,owner_id,image_url,folder")
+        .eq("game_id", gameId)
+        .order("created_at");
+      if (error) throw error;
+      return (data ?? []) as { id: string; name: string; owner_id: string; image_url: string | null; folder: string | null }[];
     },
   });
 
@@ -738,18 +795,53 @@ function FilesPanel({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const createT20Character = useMutation({
+    mutationFn: async () => {
+      const name = newT20Name.trim() || "Novo personagem";
+      const { data, error } = await (supabase.from("t20_characters" as never) as any)
+        .insert({
+          game_id: gameId,
+          owner_id: userId,
+          name,
+          race: newT20Race || null,
+          class_name: newT20Class || null,
+          attributes: defaultT20Attributes(),
+          skills: defaultT20Skills(),
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data as { id: string; name: string };
+    },
+    onSuccess: (c) => {
+      qc.invalidateQueries({ queryKey: ["t20-characters", gameId] });
+      qc.invalidateQueries({ queryKey: ["characters", gameId] });
+      setT20DialogOpen(false);
+      setNewT20Name("");
+      setNewT20Race("");
+      setNewT20Class("");
+      onOpen({ kind: "t20", id: c.id, title: c.name });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
 
-  const rows: CharRow[] = [
-    ...(characters?.trainers ?? []).map<CharRow>((t) => ({
-      kind: "trainer", id: t.id, label: t.name, owner_id: t.owner_id,
-      image_url: t.image_url, folder: t.folder, sprite_url: null,
-    })),
-    ...(characters?.pokemon ?? []).map<CharRow>((p) => ({
-      kind: "pokemon", id: p.id, label: p.nickname ?? p.species.name, owner_id: p.owner_id,
-      image_url: p.image_url, folder: p.folder, sprite_url: p.species.sprite_url,
-    })),
-  ];
+
+  const rows: CharRow[] = system === "t20"
+    ? (t20Characters ?? []).map<CharRow>((c) => ({
+      kind: "t20", id: c.id, label: c.name, owner_id: c.owner_id,
+      image_url: c.image_url, folder: c.folder, sprite_url: null,
+    }))
+    : [
+      ...(characters?.trainers ?? []).map<CharRow>((t) => ({
+        kind: "trainer", id: t.id, label: t.name, owner_id: t.owner_id,
+        image_url: t.image_url, folder: t.folder, sprite_url: null,
+      })),
+      ...(characters?.pokemon ?? []).map<CharRow>((p) => ({
+        kind: "pokemon", id: p.id, label: p.nickname ?? p.species.name, owner_id: p.owner_id,
+        image_url: p.image_url, folder: p.folder, sprite_url: p.species.sprite_url,
+      })),
+    ];
 
   const folderPaths = Array.from(
     new Set<string>([
@@ -792,8 +884,8 @@ function FilesPanel({
 
   async function moveToFolder(row: CharRow, folder: string | null) {
     if (row.folder === folder) return;
-    const table = row.kind === "trainer" ? "trainers" : "pokemon";
-    const { error } = await supabase.from(table).update({ folder }).eq("id", row.id);
+    const table = row.kind === "trainer" ? "trainers" : row.kind === "pokemon" ? "pokemon" : "t20_characters";
+    const { error } = await (supabase.from(table as never) as any).update({ folder }).eq("id", row.id);
     if (error) { toast.error(error.message); return; }
     qc.invalidateQueries({ queryKey: ["characters", gameId] });
   }
@@ -821,8 +913,8 @@ function FilesPanel({
       if (r.folder === oldPath || r.folder.startsWith(prefix)) {
         const remainder = r.folder === oldPath ? "" : r.folder.slice(oldPath.length);
         const newFolderPath = newPath + remainder;
-        const table = r.kind === "trainer" ? "trainers" : "pokemon";
-        updates.push(Promise.resolve(supabase.from(table).update({ folder: newFolderPath }).eq("id", r.id)));
+        const table = r.kind === "trainer" ? "trainers" : r.kind === "pokemon" ? "pokemon" : "t20_characters";
+        updates.push(Promise.resolve((supabase.from(table as never) as any).update({ folder: newFolderPath }).eq("id", r.id)));
       }
     }
     const results = await Promise.all(updates);
@@ -869,8 +961,8 @@ function FilesPanel({
     if (!confirm(msg)) return;
     const updates: Promise<unknown>[] = [];
     for (const r of inFolder) {
-      const table = r.kind === "trainer" ? "trainers" : "pokemon";
-      updates.push(Promise.resolve(supabase.from(table).update({ folder: null }).eq("id", r.id)));
+      const table = r.kind === "trainer" ? "trainers" : r.kind === "pokemon" ? "pokemon" : "t20_characters";
+      updates.push(Promise.resolve((supabase.from(table as never) as any).update({ folder: null }).eq("id", r.id)));
     }
     await Promise.all(updates);
     setExtraFolders((prev) => prev.filter((p) => p !== path && !p.startsWith(prefix)));
@@ -972,8 +1064,8 @@ function FilesPanel({
   }
   async function deleteRow(r: CharRow) {
     if (!confirm(`Deletar "${r.label}"?`)) return;
-    const table = r.kind === "trainer" ? "trainers" : "pokemon";
-    const { error } = await supabase.from(table).delete().eq("id", r.id);
+    const table = r.kind === "trainer" ? "trainers" : r.kind === "pokemon" ? "pokemon" : "t20_characters";
+    const { error } = await (supabase.from(table as never) as any).delete().eq("id", r.id);
     if (error) { toast.error(error.message); return; }
     qc.invalidateQueries({ queryKey: ["characters", gameId] });
     toast.success("Deletado");
@@ -1007,7 +1099,7 @@ function FilesPanel({
           if (!raw) return;
           e.preventDefault();
           e.stopPropagation();
-          const { kind, id } = JSON.parse(raw) as { kind: "trainer" | "pokemon"; id: string };
+          const { kind, id } = JSON.parse(raw) as { kind: "trainer" | "pokemon" | "t20"; id: string };
           const row = rows.find((r) => r.kind === kind && r.id === id);
           if (row) moveToFolder(row, node.path);
         }}
@@ -1106,7 +1198,7 @@ function FilesPanel({
           const raw = e.dataTransfer.getData(FOLDER_MIME);
           if (!raw) return;
           e.preventDefault();
-          const { kind, id } = JSON.parse(raw) as { kind: "trainer" | "pokemon"; id: string };
+          const { kind, id } = JSON.parse(raw) as { kind: "trainer" | "pokemon" | "t20"; id: string };
           const row = rows.find((r) => r.kind === kind && r.id === id);
           if (row) moveToFolder(row, null);
         }}
@@ -1137,13 +1229,61 @@ function FilesPanel({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold">Characters</h3>
+        <h3 className="text-sm font-bold">{system === "t20" ? "Personagens" : "Characters"}</h3>
         <div className="flex flex-wrap gap-1.5">
-          <Button size="sm" variant="outline" onClick={() => createTrainer.mutate()}>
-            <User className="mr-1 h-3.5 w-3.5" /> Trainer
-          </Button>
-          <MinimalSheetButton gameId={gameId} userId={userId} onCreated={(id: string, name: string) => { qc.invalidateQueries({ queryKey: ["characters", gameId] }); onOpen({ kind: "trainer", id, title: name }); }} />
-          <Dialog open={pkmDialogOpen} onOpenChange={setPkmDialogOpen}>
+          {system === "t20" ? (
+            <Dialog open={t20DialogOpen} onOpenChange={setT20DialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm">
+                  <User className="mr-1 h-3.5 w-3.5" /> Personagem
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Novo personagem T20</DialogTitle></DialogHeader>
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-xs">Nome</Label>
+                    <Input value={newT20Name} onChange={(e) => setNewT20Name(e.target.value)} placeholder="Nome do personagem" />
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <div>
+                      <Label className="text-xs">Raca</Label>
+                      <Select value={newT20Race || "none"} onValueChange={(v) => setNewT20Race(v === "none" ? "" : v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">-</SelectItem>
+                          {T20_RACES.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Classe</Label>
+                      <Select value={newT20Class || "none"} onValueChange={(v) => setNewT20Class(v === "none" ? "" : v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">-</SelectItem>
+                          {T20_CLASSES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button onClick={() => createT20Character.mutate()} disabled={createT20Character.isPending}>
+                    Criar
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          ) : (
+            <>
+              <Button size="sm" variant="outline" onClick={() => createTrainer.mutate()}>
+                <User className="mr-1 h-3.5 w-3.5" /> Trainer
+              </Button>
+              <MinimalSheetButton gameId={gameId} userId={userId} onCreated={(id: string, name: string) => { qc.invalidateQueries({ queryKey: ["characters", gameId] }); onOpen({ kind: "trainer", id, title: name }); }} />
+            </>
+          )}
+          {system !== "t20" && <Dialog open={pkmDialogOpen} onOpenChange={setPkmDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm"><Sparkles className="mr-1 h-3.5 w-3.5" /> Pokémon</Button>
             </DialogTrigger>
@@ -1311,10 +1451,10 @@ function FilesPanel({
                 <Button onClick={() => createPokemon.mutate(undefined)} disabled={createPokemon.isPending}>Create</Button>
               </DialogFooter>
             </DialogContent>
-          </Dialog>
+          </Dialog>}
 
           {/* Route Manager — narrator only */}
-          {isNarrator && (
+          {system !== "t20" && isNarrator && (
             <Dialog open={routeMgrOpen} onOpenChange={setRouteMgrOpen}>
               <DialogContent className="max-w-lg">
                 <DialogHeader><DialogTitle>Rotas de captura</DialogTitle></DialogHeader>
@@ -1605,7 +1745,33 @@ function ScenarioButtons({ gameId, currentBg }: { gameId: string; currentBg: str
 // Compendium: Pokédex, Moves by type, Abilities
 // ============================================================
 
-function CompendiumPanel() {
+function CompendiumPanel({ system = "pokerole" }: { system?: string }) {
+  if (system === "t20") {
+    return (
+      <Tabs defaultValue="rules" className="flex h-full flex-col">
+        <TabsList className="grid grid-cols-3">
+          <TabsTrigger value="rules">Regras</TabsTrigger>
+          <TabsTrigger value="skills">Pericias</TabsTrigger>
+          <TabsTrigger value="notes">Notas</TabsTrigger>
+        </TabsList>
+        <TabsContent value="rules" className="flex-1 overflow-hidden"><MechanicsCompendium mechanics={T20_MECHANICS} categories={T20_MECHANICS_CATEGORY_ORDER} /></TabsContent>
+        <TabsContent value="skills" className="flex-1 overflow-auto p-3">
+          <T20SkillsReference />
+        </TabsContent>
+        <TabsContent value="notes" className="flex-1 overflow-auto p-3">
+          <div className="space-y-2 rounded-md border border-border bg-card p-3 text-sm">
+            <h3 className="font-bold">Tormenta 20 no D20 Project</h3>
+            <p className="text-muted-foreground">
+              Esta e uma primeira integracao jogavel: fichas, tokens, PV/PM, Defesa, rolagens d20 e ordem de iniciativa.
+            </p>
+            <p className="text-muted-foreground">
+              As regras detalhadas continuam no seu material de mesa. O app guarda os valores finais para facilitar o jogo sem prender voce a uma automacao rigida.
+            </p>
+          </div>
+        </TabsContent>
+      </Tabs>
+    );
+  }
   return (
     <Tabs defaultValue="mechanics" className="flex h-full flex-col">
       <TabsList className="grid grid-cols-4">
@@ -1744,14 +1910,24 @@ const MECHANICS: { title: string; body: string; category: string }[] = [
 
 const MECHANICS_CATEGORY_ORDER = ["Básico", "Combate", "Mental & Vontade", "Progressão", "Especial", "Social", "Skills", "Itens"];
 
-function MechanicsCompendium() {
+function MechanicsCompendium({
+  mechanics = MECHANICS,
+  categories = MECHANICS_CATEGORY_ORDER,
+}: {
+  mechanics?: { title: string; body: string; category: string }[];
+  categories?: readonly string[];
+}) {
   const [q, setQ] = useState("");
-  const filtered = MECHANICS.filter(
+  const filtered = mechanics.filter(
     (m) => !q || m.title.toLowerCase().includes(q.toLowerCase()) || m.body.toLowerCase().includes(q.toLowerCase()),
   );
-  const groups = MECHANICS_CATEGORY_ORDER
+  const knownGroups = categories
     .map((cat) => ({ cat, items: filtered.filter((m) => m.category === cat) }))
     .filter((g) => g.items.length > 0);
+  const known = new Set(categories);
+  const extraGroups = Array.from(new Set(filtered.map((m) => m.category).filter((cat) => !known.has(cat))))
+    .map((cat) => ({ cat, items: filtered.filter((m) => m.category === cat) }));
+  const groups = [...knownGroups, ...extraGroups];
   return (
     <div className="flex h-full flex-col gap-2 p-2">
       <Input placeholder="Search rules…" value={q} onChange={(e) => setQ(e.target.value)} className="h-8 text-sm" />
@@ -1771,6 +1947,30 @@ function MechanicsCompendium() {
         ))}
         {groups.length === 0 && <p className="p-4 text-center text-xs text-muted-foreground">No matches.</p>}
       </div>
+    </div>
+  );
+}
+
+function T20SkillsReference() {
+  const groups = [
+    { title: "Combate", items: ["Iniciativa", "Luta", "Pontaria"] },
+    { title: "Resistencias", items: ["Fortitude", "Reflexos", "Vontade"] },
+    { title: "Exploracao", items: ["Acrobacia", "Atletismo", "Cavalgar", "Furtividade", "Ladinagem", "Percepcao", "Pilotagem", "Sobrevivencia"] },
+    { title: "Conhecimento", items: ["Conhecimento", "Cura", "Guerra", "Investigacao", "Misticismo", "Nobreza", "Oficio", "Religiao"] },
+    { title: "Social", items: ["Adestramento", "Atuacao", "Diplomacia", "Enganacao", "Intimidacao", "Intuicao", "Jogatina"] },
+  ];
+  return (
+    <div className="space-y-3">
+      {groups.map((g) => (
+        <section key={g.title} className="rounded-md border border-border bg-card p-3">
+          <h3 className="mb-2 text-sm font-bold">{g.title}</h3>
+          <div className="flex flex-wrap gap-1.5">
+            {g.items.map((item) => (
+              <span key={item} className="rounded-md bg-muted px-2 py-1 text-xs font-semibold">{item}</span>
+            ))}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }
