@@ -2,14 +2,14 @@
 
 ## Dependencias
 
-- [ ] Remover `@lovable.dev/cloud-auth-js`.
-- [ ] Remover `@lovable.dev/vite-tanstack-config`.
+- [x] Remover `@lovable.dev/cloud-auth-js`.
+- [x] Remover `@lovable.dev/vite-tanstack-config`.
 - [ ] Substituir `vite.config.ts` por config Vite/TanStack propria.
 - [ ] Conferir se Cloudflare plugin ainda sera usado ou se o deploy vai para Vercel/Netlify.
 
 ## Autenticacao
 
-- [ ] Trocar `src/integrations/lovable/index.ts` por OAuth direto do Supabase.
+- [x] Trocar `src/integrations/lovable/index.ts` por OAuth direto do Supabase.
 - [ ] Atualizar `src/routes/auth.tsx` para usar `supabase.auth.signInWithOAuth`.
 - [ ] Configurar redirect URLs no Supabase novo:
   - URL de producao web.
