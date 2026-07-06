@@ -32,6 +32,118 @@ export type Database = {
         }
         Relationships: []
       }
+      card_discards: {
+        Row: {
+          card_id: string
+          created_at: string
+          deck_id: string
+          id: string
+          public: boolean
+        }
+        Insert: {
+          card_id: string
+          created_at?: string
+          deck_id: string
+          id?: string
+          public?: boolean
+        }
+        Update: {
+          card_id?: string
+          created_at?: string
+          deck_id?: string
+          id?: string
+          public?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_discards_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "card_discards_deck_id_fkey"
+            columns: ["deck_id"]
+            isOneToOne: false
+            referencedRelation: "decks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      card_hands: {
+        Row: {
+          card_ids: string[]
+          created_at: string
+          deck_id: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          card_ids?: string[]
+          created_at?: string
+          deck_id: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          card_ids?: string[]
+          created_at?: string
+          deck_id?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_hands_deck_id_fkey"
+            columns: ["deck_id"]
+            isOneToOne: false
+            referencedRelation: "decks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cards: {
+        Row: {
+          back: string
+          created_at: string
+          deck_id: string
+          front: string
+          id: string
+          image_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          back?: string
+          created_at?: string
+          deck_id: string
+          front: string
+          id?: string
+          image_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          back?: string
+          created_at?: string
+          deck_id?: string
+          front?: string
+          id?: string
+          image_url?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cards_deck_id_fkey"
+            columns: ["deck_id"]
+            isOneToOne: false
+            referencedRelation: "decks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_messages: {
         Row: {
           body: string
@@ -63,6 +175,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "chat_messages_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      decks: {
+        Row: {
+          created_at: string
+          game_id: string
+          id: string
+          name: string
+          shuffled_order: string[]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          game_id: string
+          id?: string
+          name: string
+          shuffled_order?: string[]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          game_id?: string
+          id?: string
+          name?: string
+          shuffled_order?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decks_game_id_fkey"
             columns: ["game_id"]
             isOneToOne: false
             referencedRelation: "games"
@@ -396,12 +543,19 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          crop_h: number
+          crop_w: number
+          crop_x: number
+          crop_y: number
           game_id: string
           height: number
           id: string
           image_url: string
           page_id: string
           rotation: number
+          tile_col: number | null
+          tile_group: string | null
+          tile_row: number | null
           updated_at: string
           width: number
           x: number
@@ -411,12 +565,19 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          crop_h?: number
+          crop_w?: number
+          crop_x?: number
+          crop_y?: number
           game_id: string
           height?: number
           id?: string
           image_url: string
           page_id: string
           rotation?: number
+          tile_col?: number | null
+          tile_group?: string | null
+          tile_row?: number | null
           updated_at?: string
           width?: number
           x?: number
@@ -426,12 +587,19 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          crop_h?: number
+          crop_w?: number
+          crop_x?: number
+          crop_y?: number
           game_id?: string
           height?: number
           id?: string
           image_url?: string
           page_id?: string
           rotation?: number
+          tile_col?: number | null
+          tile_group?: string | null
+          tile_row?: number | null
           updated_at?: string
           width?: number
           x?: number
