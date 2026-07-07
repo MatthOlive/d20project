@@ -276,6 +276,7 @@ function loadUserMap(path) {
 }
 
 function parseCsv(text) {
+  const delimiter = detectCsvDelimiter(text);
   const rows = [];
   let field = "";
   let row = [];
@@ -299,7 +300,7 @@ function parseCsv(text) {
 
     if (char === '"') {
       quoted = true;
-    } else if (char === ",") {
+    } else if (char === delimiter) {
       row.push(field);
       field = "";
     } else if (char === "\n") {
@@ -329,6 +330,13 @@ function parseCsv(text) {
       });
       return out;
     });
+}
+
+function detectCsvDelimiter(text) {
+  const firstLine = text.split(/\r?\n/, 1)[0] ?? "";
+  const semicolons = (firstLine.match(/;/g) ?? []).length;
+  const commas = (firstLine.match(/,/g) ?? []).length;
+  return semicolons > commas ? ";" : ",";
 }
 
 function parseCell(value) {
