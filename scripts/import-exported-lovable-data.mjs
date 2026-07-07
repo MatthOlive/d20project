@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const envPath = argValue("--env") ?? ".env.migration.local";
@@ -154,6 +154,7 @@ function loadRows(table) {
     join(dataDir, `public.${table}.json`),
     join(dataDir, `${table}.csv`),
     join(dataDir, `public.${table}.csv`),
+    ...exportedFileCandidates(table),
   ];
 
   const path = candidates.find((candidate) => existsSync(candidate));
@@ -170,6 +171,17 @@ function loadRows(table) {
   if (Array.isArray(parsed.rows)) return parsed.rows;
   if (Array.isArray(parsed.data)) return parsed.data;
   throw new Error(`${path} precisa ser uma lista JSON ou ter "rows"/"data".`);
+}
+
+function exportedFileCandidates(table) {
+  if (!existsSync(dataDir)) return [];
+
+  const prefixes = [`${table}-export-`, `public.${table}-export-`];
+  return readdirSync(dataDir)
+    .filter((name) => prefixes.some((prefix) => name.startsWith(prefix)))
+    .filter((name) => name.endsWith(".csv") || name.endsWith(".json"))
+    .sort()
+    .map((name) => join(dataDir, name));
 }
 
 function transformRow(table, row, clearDeferred) {
@@ -254,7 +266,8 @@ function loadUserMap(path) {
     if (!trimmed || trimmed.startsWith("#")) continue;
     if (index === 0 && trimmed.toLowerCase().includes("old")) continue;
 
-    const [oldId, newId] = trimmed.split(",").map((part) => part?.trim());
+    const separator = trimmed.includes(";") ? ";" : ",";
+    const [oldId, newId] = trimmed.split(separator).map((part) => part?.trim());
     if (!oldId || !newId) throw new Error(`Linha invalida em ${path}: ${line}`);
     map.set(oldId.toLowerCase(), newId);
   }
