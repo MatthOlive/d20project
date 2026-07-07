@@ -1,0 +1,9 @@
+OLD_SUPABASE_URL=https://zatlumoknvhbyssnupmc.supabase.co
+OLD_SUPABASE_SERVICE_ROLE_KEY=cole_a_service_role_key_do_supabase_antigo_aqui
+
+NEW_SUPABASE_URL=https://vgacodixwgwivxczqsnt.supabase.co
+NEW_SUPABASE_SERVICE_ROLE_KEY=cole_a_service_role_key_do_supabase_novo_aqui
+
+# Usada apenas para usuarios que ainda nao existem no Supabase novo.
+# Eles devem trocar/redefinir a senha depois.
+TEMP_USER_PASSWORD=TroqueEssaSenhaTemporaria123!
