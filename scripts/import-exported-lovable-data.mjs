@@ -17,12 +17,12 @@ const tables = [
   "natures",
   "species",
   "species_moves",
-  "routes",
   "t20_powers",
   "t20_spells",
   "games",
   "profiles",
   "game_members",
+  "routes",
   "scenarios",
   "trainers",
   "pokemon",
@@ -110,6 +110,70 @@ const deferredFields = {
   game_members: ["viewing_page_id"],
 };
 
+const rowDefaults = {
+  scenarios: {
+    notes: "",
+  },
+  trainers: {
+    achievements: {},
+    allowed_editors: [],
+    allowed_viewers: [],
+    attr_bonus: {},
+    attr_points: {},
+    attrs: {},
+    badges: {},
+    bag: "",
+    bag_list: [],
+    battle_items: "",
+    battle_items_list: [],
+    confidence: 0,
+    contest_rank: "normal",
+    custom_skills: {},
+    is_minimal: false,
+    money: 0,
+    notoriety: {},
+    notes: "",
+    pokedex: {},
+    potions: {},
+    skills: {},
+    social_attr_bonus: {},
+    social_attr_points: {},
+    social_attrs: {},
+    status_conditions: [],
+    trainings: {},
+    retrains: 0,
+  },
+  pokemon: {
+    allowed_editors: [],
+    allowed_viewers: [],
+    attr_bonus: {},
+    attr_points: {},
+    current_attrs: {},
+    confidence: 0,
+    happiness: 0,
+    hp: 0,
+    is_overgrown: false,
+    is_shiny: false,
+    loyalty: 0,
+    marked: false,
+    modifiers: {},
+    notes: "",
+    skills: {},
+    social_attr_bonus: {},
+    social_attr_points: {},
+    social_attrs: {},
+    status: [],
+    trainings: {},
+    battles: 0,
+    retrains: 0,
+    victories: 0,
+    will: 0,
+  },
+  t20_characters: {
+    notes: "",
+  },
+};
+
 main().catch((error) => {
   console.error(`\nImportacao interrompida: ${error.message}`);
   process.exit(1);
@@ -186,6 +250,10 @@ function exportedFileCandidates(table) {
 
 function transformRow(table, row, clearDeferred) {
   const out = { ...row };
+
+  for (const [field, value] of Object.entries(rowDefaults[table] ?? {})) {
+    if (out[field] === null || out[field] === undefined) out[field] = value;
+  }
 
   for (const field of userFields[table] ?? []) {
     if (!out[field]) continue;
