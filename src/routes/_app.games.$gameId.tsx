@@ -646,6 +646,61 @@ function FilesPanel({
   } | null>(null);
   const suppressClickRef = useRef(false);
   const [dragPreview, setDragPreview] = useState<{ label: string; x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    function updateFromWindow(e: PointerEvent) {
+      const drag = pointerDragRef.current;
+      if (!drag || drag.pointerId !== e.pointerId) return;
+      const distance = Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY);
+      if (!drag.active && distance > 6) {
+        drag.active = true;
+        const lp = longPressRef.current;
+        if (lp?.timer) clearTimeout(lp.timer);
+        longPressRef.current = null;
+      }
+      if (!drag.active) return;
+      e.preventDefault();
+      setDragPreview({ label: drag.row.label, x: e.clientX, y: e.clientY });
+      const folder = folderTargetFromPoint(e.clientX, e.clientY);
+      setDropHover(folder === undefined ? null : (folder ?? "__root__"));
+    }
+
+    function finishFromWindow(e: PointerEvent) {
+      const drag = pointerDragRef.current;
+      if (!drag || drag.pointerId !== e.pointerId) return;
+      pointerDragRef.current = null;
+      setDragPreview(null);
+      setDropHover(null);
+      if (!drag.active) return;
+      e.preventDefault();
+      suppressClickRef.current = true;
+      const folder = folderTargetFromPoint(e.clientX, e.clientY);
+      if (folder !== undefined) {
+        void moveToFolder(drag.row, folder);
+        return;
+      }
+      window.dispatchEvent(new CustomEvent(CHARACTER_POINTER_DROP_EVENT, {
+        detail: { payload: drag.payload, clientX: e.clientX, clientY: e.clientY },
+      }));
+    }
+
+    function cancelFromWindow(e: PointerEvent) {
+      const drag = pointerDragRef.current;
+      if (!drag || drag.pointerId !== e.pointerId) return;
+      pointerDragRef.current = null;
+      setDragPreview(null);
+      setDropHover(null);
+    }
+
+    window.addEventListener("pointermove", updateFromWindow, { passive: false });
+    window.addEventListener("pointerup", finishFromWindow);
+    window.addEventListener("pointercancel", cancelFromWindow);
+    return () => {
+      window.removeEventListener("pointermove", updateFromWindow);
+      window.removeEventListener("pointerup", finishFromWindow);
+      window.removeEventListener("pointercancel", cancelFromWindow);
+    };
+  }, [gameId, rows, folderPaths]);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
     if (typeof window === "undefined") return {};
     try { return JSON.parse(localStorage.getItem(`folders:${gameId}`) ?? "{}"); } catch { return {}; }
@@ -1087,11 +1142,9 @@ function FilesPanel({
           <Checkbox checked={selected.has(key)} onCheckedChange={() => toggleSelected(key)} />
         )}
         <button
-          draggable={!selectMode}
+          draggable={false}
           onDragStart={(e) => {
-            e.dataTransfer.setData(DRAG_MIME, JSON.stringify(mapPayload));
-            e.dataTransfer.setData(FOLDER_MIME, JSON.stringify({ kind: r.kind, id: r.id, folder: r.folder }));
-            e.dataTransfer.effectAllowed = "copyMove";
+            e.preventDefault();
           }}
           onPointerDown={(e) => {
             startLongPress(e);
