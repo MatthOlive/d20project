@@ -700,7 +700,7 @@ function FilesPanel({
       window.removeEventListener("pointerup", finishFromWindow);
       window.removeEventListener("pointercancel", cancelFromWindow);
     };
-  }, [gameId, rows, folderPaths]);
+  }, [gameId]);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
     if (typeof window === "undefined") return {};
     try { return JSON.parse(localStorage.getItem(`folders:${gameId}`) ?? "{}"); } catch { return {}; }
