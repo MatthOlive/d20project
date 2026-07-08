@@ -487,7 +487,9 @@ export function MapBoard({
   );
 
   async function addBackground(url: string, options: BackgroundAddOptions = {}) {
-    if (!isNarrator || !url || !pageId) return;
+    if (!isNarrator) { toast.error("Apenas o narrador pode adicionar imagens ao cenário."); return; }
+    if (!pageId) { toast.error("Nenhuma página ativa."); return; }
+    if (!url) { toast.error("Informe uma imagem."); return; }
     const maxZ = mapBgsRaw.reduce((m, b) => Math.max(m, b.z_index), 0);
     const cols = Math.max(1, Math.min(12, Math.floor(options.cols ?? 1)));
     const rows = Math.max(1, Math.min(12, Math.floor(options.rows ?? 1)));
@@ -1053,6 +1055,23 @@ export function MapBoard({
   async function onDrop(e: React.DragEvent) {
     e.preventDefault();
     if (!pageId) { toast.error("Nenhuma página ativa"); return; }
+    const imageFile = Array.from(e.dataTransfer.files ?? []).find((file) => file.type.startsWith("image/"));
+    if (imageFile) {
+      if (!isNarrator || mode !== "background") {
+        toast.error("Para soltar uma imagem no mapa, use o modo Backgrounds como narrador.");
+        return;
+      }
+      if (imageFile.size > 5_000_000) { toast.error("Imagem muito grande (>5MB)"); return; }
+      const reader = new FileReader();
+      reader.onload = () => { void addBackground(String(reader.result)); };
+      reader.readAsDataURL(imageFile);
+      return;
+    }
+    const uri = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain");
+    if (uri && /^https?:\/\//i.test(uri.trim()) && mode === "background") {
+      await addBackground(uri.trim());
+      return;
+    }
     const raw = e.dataTransfer.getData(DRAG_MIME);
     const { x, y } = pointToRel(e.clientX, e.clientY);
     if (raw) {

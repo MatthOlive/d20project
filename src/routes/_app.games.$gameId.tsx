@@ -884,8 +884,11 @@ function FilesPanel({
 
   async function moveToFolder(row: CharRow, folder: string | null) {
     if (row.folder === folder) return;
-    const table = row.kind === "trainer" ? "trainers" : row.kind === "pokemon" ? "pokemon" : "t20_characters";
-    const { error } = await (supabase.from(table as never) as any).update({ folder }).eq("id", row.id);
+    const { error } = await (supabase.rpc("set_character_folder" as never, {
+      p_kind: row.kind,
+      p_character_id: row.id,
+      p_folder: folder,
+    } as never) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) { toast.error(error.message); return; }
     qc.invalidateQueries({ queryKey: ["characters", gameId] });
   }
@@ -913,8 +916,11 @@ function FilesPanel({
       if (r.folder === oldPath || r.folder.startsWith(prefix)) {
         const remainder = r.folder === oldPath ? "" : r.folder.slice(oldPath.length);
         const newFolderPath = newPath + remainder;
-        const table = r.kind === "trainer" ? "trainers" : r.kind === "pokemon" ? "pokemon" : "t20_characters";
-        updates.push(Promise.resolve((supabase.from(table as never) as any).update({ folder: newFolderPath }).eq("id", r.id)));
+        updates.push(Promise.resolve(supabase.rpc("set_character_folder" as never, {
+          p_kind: r.kind,
+          p_character_id: r.id,
+          p_folder: newFolderPath,
+        } as never)));
       }
     }
     const results = await Promise.all(updates);
@@ -961,8 +967,11 @@ function FilesPanel({
     if (!confirm(msg)) return;
     const updates: Promise<unknown>[] = [];
     for (const r of inFolder) {
-      const table = r.kind === "trainer" ? "trainers" : r.kind === "pokemon" ? "pokemon" : "t20_characters";
-      updates.push(Promise.resolve((supabase.from(table as never) as any).update({ folder: null }).eq("id", r.id)));
+      updates.push(Promise.resolve(supabase.rpc("set_character_folder" as never, {
+        p_kind: r.kind,
+        p_character_id: r.id,
+        p_folder: null,
+      } as never)));
     }
     await Promise.all(updates);
     setExtraFolders((prev) => prev.filter((p) => p !== path && !p.startsWith(prefix)));

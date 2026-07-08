@@ -31,8 +31,12 @@ export function ImageSourceDialog({
     if (file.size > maxBytes) { toast.error(`Imagem deve ser menor que ${Math.round(maxBytes / 1_000_000)} MB.`); return; }
     const reader = new FileReader();
     reader.onload = async () => {
-      await onPick(reader.result as string);
-      setOpen(false);
+      try {
+        await onPick(reader.result as string);
+        setOpen(false);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Não foi possível salvar a imagem.");
+      }
     };
     reader.readAsDataURL(file);
   }
@@ -40,9 +44,13 @@ export function ImageSourceDialog({
   async function applyUrl() {
     const u = url.trim();
     if (!u) { toast.error("Cole uma URL de imagem."); return; }
-    await onPick(u);
-    setUrl("");
-    setOpen(false);
+    try {
+      await onPick(u);
+      setUrl("");
+      setOpen(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível salvar a imagem.");
+    }
   }
 
   return (
