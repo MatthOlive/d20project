@@ -889,7 +889,14 @@ function FilesPanel({
       p_character_id: row.id,
       p_folder: folder,
     } as never) as unknown as Promise<{ error: { message: string } | null }>);
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      const table = row.kind === "trainer" ? "trainers" : row.kind === "pokemon" ? "pokemon" : "t20_characters";
+      const fallback = await ((supabase.from(table as never) as any).update({ folder }).eq("id", row.id) as Promise<{ error: { message: string } | null }>);
+      if (fallback.error) {
+        toast.error(`${error.message}. ${fallback.error.message}`);
+        return;
+      }
+    }
     qc.invalidateQueries({ queryKey: ["characters", gameId] });
   }
 
@@ -1024,7 +1031,6 @@ function FilesPanel({
           onPointerCancel={cancelLongPress}
           onPointerLeave={cancelLongPress}
           onContextMenu={(e) => {
-            if (!isMobile) return;
             e.preventDefault();
             setCtxMenu({ row: r, x: e.clientX, y: e.clientY, mode: "main" });
           }}
@@ -1037,18 +1043,26 @@ function FilesPanel({
             : <User className="h-3.5 w-3.5 shrink-0" />}
           <span className="truncate">{r.label}</span>
         </button>
-        {isMobile && (
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            className="h-9 shrink-0 px-2"
-            onClick={() => sendRowToMap(r)}
-            title="Enviar para o mapa"
-          >
-            <Plus className="h-3.5 w-3.5" />
-          </Button>
-        )}
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          className="h-9 shrink-0 px-2"
+          onClick={() => sendRowToMap(r)}
+          title="Enviar para o mapa"
+        >
+          <Plus className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-9 shrink-0 px-2"
+          onClick={(e) => setCtxMenu({ row: r, x: e.clientX, y: e.clientY, mode: "move" })}
+          title="Mover para pasta"
+        >
+          <Folder className="h-3.5 w-3.5" />
+        </Button>
       </div>
     );
   }
@@ -1058,7 +1072,18 @@ function FilesPanel({
       .from("games").select("active_page_id").eq("id", gameId).maybeSingle();
     const pageId = (g as { active_page_id?: string | null } | null)?.active_page_id ?? null;
     if (!pageId) { toast.error("Nenhuma página ativa"); return; }
-    const { error } = await supabase.from("tokens").insert({
+    const { error } = await (supabase.rpc("create_token_from_character" as never, {
+      p_game_id: gameId,
+      p_page_id: pageId,
+      p_character_kind: r.kind,
+      p_character_id: r.id,
+      p_label: r.label,
+      p_image_url: r.image_url ?? (r.kind === "pokemon" ? r.sprite_url : null),
+      p_x: 0.5,
+      p_y: 0.5,
+    } as never) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) {
+      const fallback = await supabase.from("tokens").insert({
       game_id: gameId,
       page_id: pageId,
       character_kind: r.kind,
@@ -1067,9 +1092,10 @@ function FilesPanel({
       image_url: r.image_url ?? (r.kind === "pokemon" ? r.sprite_url : null),
       owner_id: r.owner_id,
       x: 0.5, y: 0.5,
-    });
-    if (error) toast.error(error.message);
-    else toast.success("Enviado para o mapa");
+      });
+      if (fallback.error) { toast.error(`${error.message}. ${fallback.error.message}`); return; }
+    }
+    toast.success("Enviado para o mapa");
   }
   async function deleteRow(r: CharRow) {
     if (!confirm(`Deletar "${r.label}"?`)) return;

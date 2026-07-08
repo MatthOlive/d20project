@@ -1076,17 +1076,29 @@ export function MapBoard({
     const { x, y } = pointToRel(e.clientX, e.clientY);
     if (raw) {
       const p = JSON.parse(raw) as DragCharacterPayload;
-      const { error } = await supabase.from("tokens").insert({
-        game_id: gameId,
-        page_id: pageId,
-        character_kind: p.kind,
-        character_id: p.id,
-        label: p.label,
-        image_url: p.imageUrl ?? null,
-        owner_id: p.ownerId,
-        x, y,
-      });
-      if (error) toast.error(error.message);
+      const { error } = await (supabase.rpc("create_token_from_character" as never, {
+        p_game_id: gameId,
+        p_page_id: pageId,
+        p_character_kind: p.kind,
+        p_character_id: p.id,
+        p_label: p.label,
+        p_image_url: p.imageUrl ?? null,
+        p_x: x,
+        p_y: y,
+      } as never) as unknown as Promise<{ error: { message: string } | null }>);
+      if (error) {
+        const fallback = await supabase.from("tokens").insert({
+          game_id: gameId,
+          page_id: pageId,
+          character_kind: p.kind,
+          character_id: p.id,
+          label: p.label,
+          image_url: p.imageUrl ?? null,
+          owner_id: p.ownerId,
+          x, y,
+        });
+        if (fallback.error) toast.error(`${error.message}. ${fallback.error.message}`);
+      }
       return;
     }
     if (dragId) {
