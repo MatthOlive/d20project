@@ -648,40 +648,63 @@ function FilesPanel({
   const [dragPreview, setDragPreview] = useState<{ label: string; x: number; y: number } | null>(null);
 
   useEffect(() => {
-    function updateFromWindow(e: PointerEvent) {
+    function updateDragAt(clientX: number, clientY: number) {
       const drag = pointerDragRef.current;
-      if (!drag || drag.pointerId !== e.pointerId) return;
-      const distance = Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY);
+      if (!drag) return false;
+      const distance = Math.hypot(clientX - drag.startX, clientY - drag.startY);
       if (!drag.active && distance > 6) {
         drag.active = true;
         const lp = longPressRef.current;
         if (lp?.timer) clearTimeout(lp.timer);
         longPressRef.current = null;
       }
-      if (!drag.active) return;
-      e.preventDefault();
-      setDragPreview({ label: drag.row.label, x: e.clientX, y: e.clientY });
-      const folder = folderTargetFromPoint(e.clientX, e.clientY);
+      if (!drag.active) return false;
+      setDragPreview({ label: drag.row.label, x: clientX, y: clientY });
+      const folder = folderTargetFromPoint(clientX, clientY);
       setDropHover(folder === undefined ? null : (folder ?? "__root__"));
+      return true;
+    }
+
+    function finishDragAt(clientX: number, clientY: number) {
+      const drag = pointerDragRef.current;
+      pointerDragRef.current = null;
+      setDragPreview(null);
+      setDropHover(null);
+      if (!drag?.active) return false;
+      suppressClickRef.current = true;
+      const folder = folderTargetFromPoint(clientX, clientY);
+      if (folder !== undefined) {
+        void moveToFolder(drag.row, folder);
+        return true;
+      }
+      window.dispatchEvent(new CustomEvent(CHARACTER_POINTER_DROP_EVENT, {
+        detail: { payload: drag.payload, clientX, clientY },
+      }));
+      return true;
+    }
+
+    function updateFromWindow(e: PointerEvent) {
+      const drag = pointerDragRef.current;
+      if (!drag || drag.pointerId !== e.pointerId) return;
+      if (updateDragAt(e.clientX, e.clientY)) e.preventDefault();
     }
 
     function finishFromWindow(e: PointerEvent) {
       const drag = pointerDragRef.current;
       if (!drag || drag.pointerId !== e.pointerId) return;
-      pointerDragRef.current = null;
-      setDragPreview(null);
-      setDropHover(null);
-      if (!drag.active) return;
-      e.preventDefault();
-      suppressClickRef.current = true;
-      const folder = folderTargetFromPoint(e.clientX, e.clientY);
-      if (folder !== undefined) {
-        void moveToFolder(drag.row, folder);
-        return;
-      }
-      window.dispatchEvent(new CustomEvent(CHARACTER_POINTER_DROP_EVENT, {
-        detail: { payload: drag.payload, clientX: e.clientX, clientY: e.clientY },
-      }));
+      if (finishDragAt(e.clientX, e.clientY)) e.preventDefault();
+    }
+
+    function updateFromMouse(e: MouseEvent) {
+      const drag = pointerDragRef.current;
+      if (!drag || drag.pointerId !== -1) return;
+      if (updateDragAt(e.clientX, e.clientY)) e.preventDefault();
+    }
+
+    function finishFromMouse(e: MouseEvent) {
+      const drag = pointerDragRef.current;
+      if (!drag || drag.pointerId !== -1) return;
+      if (finishDragAt(e.clientX, e.clientY)) e.preventDefault();
     }
 
     function cancelFromWindow(e: PointerEvent) {
@@ -695,10 +718,14 @@ function FilesPanel({
     window.addEventListener("pointermove", updateFromWindow, { passive: false });
     window.addEventListener("pointerup", finishFromWindow);
     window.addEventListener("pointercancel", cancelFromWindow);
+    window.addEventListener("mousemove", updateFromMouse, { passive: false });
+    window.addEventListener("mouseup", finishFromMouse);
     return () => {
       window.removeEventListener("pointermove", updateFromWindow);
       window.removeEventListener("pointerup", finishFromWindow);
       window.removeEventListener("pointercancel", cancelFromWindow);
+      window.removeEventListener("mousemove", updateFromMouse);
+      window.removeEventListener("mouseup", finishFromMouse);
     };
   }, [gameId]);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
@@ -1072,6 +1099,18 @@ function FilesPanel({
     e.currentTarget.setPointerCapture?.(e.pointerId);
   }
 
+  function beginMouseDrag(e: React.MouseEvent, row: CharRow, payload: DragCharacterPayload) {
+    if (selectMode || e.button !== 0) return;
+    pointerDragRef.current = {
+      row,
+      payload,
+      pointerId: -1,
+      startX: e.clientX,
+      startY: e.clientY,
+      active: false,
+    };
+  }
+
   function updatePointerDrag(e: React.PointerEvent) {
     const drag = pointerDragRef.current;
     if (!drag || drag.pointerId !== e.pointerId) return;
@@ -1149,18 +1188,12 @@ function FilesPanel({
         <div
           role="button"
           tabIndex={0}
-          draggable={!selectMode}
+          draggable={false}
           onDragStart={(e) => {
-            if (selectMode) {
-              e.preventDefault();
-              return;
-            }
-            const folderPayload = JSON.stringify({ kind: r.kind, id: r.id });
-            const mapPayloadRaw = JSON.stringify(mapPayload);
-            e.dataTransfer.setData(FOLDER_MIME, folderPayload);
-            e.dataTransfer.setData(DRAG_MIME, mapPayloadRaw);
-            e.dataTransfer.setData("text/plain", r.label);
-            e.dataTransfer.effectAllowed = "copyMove";
+            e.preventDefault();
+          }}
+          onMouseDown={(e) => {
+            beginMouseDrag(e, r, mapPayload);
           }}
           onPointerDown={(e) => {
             if (e.pointerType === "mouse") return;
