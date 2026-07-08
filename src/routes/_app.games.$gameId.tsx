@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllPaged } from "@/lib/supabase-paged";
@@ -1137,16 +1137,24 @@ function FilesPanel({
       longPressRef.current = null;
     };
     return (
-      <div key={key} className="flex items-center gap-1.5">
+      <div
+        key={key}
+        className="flex items-center gap-1.5"
+        draggable={false}
+        onDragStartCapture={(e) => e.preventDefault()}
+        style={{ userSelect: "none", WebkitUserDrag: "none" } as CSSProperties}
+      >
         {selectMode && (
           <Checkbox checked={selected.has(key)} onCheckedChange={() => toggleSelected(key)} />
         )}
-        <button
+        <div
+          role="button"
+          tabIndex={0}
           draggable={false}
-          onDragStart={(e) => {
-            e.preventDefault();
-          }}
+          onDragStart={(e) => e.preventDefault()}
+          onMouseDown={(e) => e.preventDefault()}
           onPointerDown={(e) => {
+            e.preventDefault();
             startLongPress(e);
             beginPointerDrag(e, r, mapPayload);
           }}
@@ -1179,12 +1187,18 @@ function FilesPanel({
           }}
           className={`flex w-full items-center gap-2 rounded-md border ${selected.has(key) ? "border-primary bg-primary/5" : "border-border bg-card"} px-3 py-2 text-left text-sm hover:border-primary`}
           style={{ touchAction: "none" }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              selectMode ? toggleSelected(key) : onOpen({ kind: r.kind, id: r.id, title: r.label });
+            }
+          }}
         >
           {r.kind === "pokemon" && r.sprite_url
-            ? <img src={r.sprite_url} alt="" className="h-6 w-6 shrink-0" />
+            ? <img src={r.sprite_url} alt="" draggable={false} className="h-6 w-6 shrink-0" style={{ WebkitUserDrag: "none" } as CSSProperties} />
             : <User className="h-3.5 w-3.5 shrink-0" />}
           <span className="truncate">{r.label}</span>
-        </button>
+        </div>
       </div>
     );
   }
