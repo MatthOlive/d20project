@@ -27,7 +27,7 @@ import { OnlinePresence } from "@/components/OnlinePresence";
 import { PokemonSheet } from "@/components/PokemonSheet";
 import { SheetTabs } from "@/components/SheetTabs";
 import { T20CharacterSheet } from "@/components/T20CharacterSheet";
-import { MapBoard, DRAG_MIME, type DragCharacterPayload } from "@/components/MapBoard";
+import { MapBoard, DRAG_MIME, CHARACTER_POINTER_DROP_EVENT, type DragCharacterPayload } from "@/components/MapBoard";
 import { MacroBar } from "@/components/MacroBar";
 import { MusicPanel } from "@/components/MusicPanel";
 import { MusicPlayer } from "@/components/MusicPlayer";
@@ -636,6 +636,16 @@ function FilesPanel({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [ctxMenu, setCtxMenu] = useState<{ row: CharRow; x: number; y: number; mode: "main" | "move" } | null>(null);
   const longPressRef = useRef<{ timer: ReturnType<typeof setTimeout> | null; sx: number; sy: number } | null>(null);
+  const pointerDragRef = useRef<{
+    row: CharRow;
+    payload: DragCharacterPayload;
+    pointerId: number;
+    startX: number;
+    startY: number;
+    active: boolean;
+  } | null>(null);
+  const suppressClickRef = useRef(false);
+  const [dragPreview, setDragPreview] = useState<{ label: string; x: number; y: number } | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
     if (typeof window === "undefined") return {};
     try { return JSON.parse(localStorage.getItem(`folders:${gameId}`) ?? "{}"); } catch { return {}; }
@@ -986,6 +996,64 @@ function FilesPanel({
     toast.success("Pasta removida");
   }
 
+  function folderTargetFromPoint(clientX: number, clientY: number): string | null | undefined {
+    const el = document.elementFromPoint(clientX, clientY) as HTMLElement | null;
+    const target = el?.closest("[data-file-folder-target]") as HTMLElement | null;
+    if (!target) return undefined;
+    const path = target.dataset.fileFolderTarget;
+    return path === "__root__" ? null : (path ?? undefined);
+  }
+
+  function beginPointerDrag(e: React.PointerEvent, row: CharRow, payload: DragCharacterPayload) {
+    if (selectMode || e.button !== 0) return;
+    pointerDragRef.current = {
+      row,
+      payload,
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      active: false,
+    };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  }
+
+  function updatePointerDrag(e: React.PointerEvent) {
+    const drag = pointerDragRef.current;
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    const distance = Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY);
+    if (!drag.active && distance > 6) {
+      drag.active = true;
+      const lp = longPressRef.current;
+      if (lp?.timer) clearTimeout(lp.timer);
+      longPressRef.current = null;
+    }
+    if (!drag.active) return;
+    e.preventDefault();
+    setDragPreview({ label: drag.row.label, x: e.clientX, y: e.clientY });
+    const folder = folderTargetFromPoint(e.clientX, e.clientY);
+    setDropHover(folder === undefined ? null : (folder ?? "__root__"));
+  }
+
+  async function finishPointerDrag(e: React.PointerEvent) {
+    const drag = pointerDragRef.current;
+    pointerDragRef.current = null;
+    setDragPreview(null);
+    setDropHover(null);
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+    if (!drag.active) return;
+    e.preventDefault();
+    suppressClickRef.current = true;
+    const folder = folderTargetFromPoint(e.clientX, e.clientY);
+    if (folder !== undefined) {
+      await moveToFolder(drag.row, folder);
+      return;
+    }
+    window.dispatchEvent(new CustomEvent(CHARACTER_POINTER_DROP_EVENT, {
+      detail: { payload: drag.payload, clientX: e.clientX, clientY: e.clientY },
+    }));
+  }
+
   function renderItem(r: CharRow) {
     const key = `${r.kind}:${r.id}`;
     const mapPayload: DragCharacterPayload = {
@@ -1025,44 +1093,45 @@ function FilesPanel({
             e.dataTransfer.setData(FOLDER_MIME, JSON.stringify({ kind: r.kind, id: r.id, folder: r.folder }));
             e.dataTransfer.effectAllowed = "copyMove";
           }}
-          onPointerDown={startLongPress}
-          onPointerMove={moveLongPress}
-          onPointerUp={cancelLongPress}
-          onPointerCancel={cancelLongPress}
+          onPointerDown={(e) => {
+            startLongPress(e);
+            beginPointerDrag(e, r, mapPayload);
+          }}
+          onPointerMove={(e) => {
+            moveLongPress(e);
+            updatePointerDrag(e);
+          }}
+          onPointerUp={(e) => {
+            cancelLongPress();
+            void finishPointerDrag(e);
+          }}
+          onPointerCancel={(e) => {
+            cancelLongPress();
+            pointerDragRef.current = null;
+            setDragPreview(null);
+            setDropHover(null);
+            e.currentTarget.releasePointerCapture?.(e.pointerId);
+          }}
           onPointerLeave={cancelLongPress}
           onContextMenu={(e) => {
             e.preventDefault();
             setCtxMenu({ row: r, x: e.clientX, y: e.clientY, mode: "main" });
           }}
-          onClick={() => selectMode ? toggleSelected(key) : onOpen({ kind: r.kind, id: r.id, title: r.label })}
+          onClick={() => {
+            if (suppressClickRef.current) {
+              suppressClickRef.current = false;
+              return;
+            }
+            selectMode ? toggleSelected(key) : onOpen({ kind: r.kind, id: r.id, title: r.label });
+          }}
           className={`flex w-full items-center gap-2 rounded-md border ${selected.has(key) ? "border-primary bg-primary/5" : "border-border bg-card"} px-3 py-2 text-left text-sm hover:border-primary`}
-          style={isMobile ? { touchAction: "manipulation" } : undefined}
+          style={{ touchAction: "none" }}
         >
           {r.kind === "pokemon" && r.sprite_url
             ? <img src={r.sprite_url} alt="" className="h-6 w-6 shrink-0" />
             : <User className="h-3.5 w-3.5 shrink-0" />}
           <span className="truncate">{r.label}</span>
         </button>
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          className="h-9 shrink-0 px-2"
-          onClick={() => sendRowToMap(r)}
-          title="Enviar para o mapa"
-        >
-          <Plus className="h-3.5 w-3.5" />
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="h-9 shrink-0 px-2"
-          onClick={(e) => setCtxMenu({ row: r, x: e.clientX, y: e.clientY, mode: "move" })}
-          title="Mover para pasta"
-        >
-          <Folder className="h-3.5 w-3.5" />
-        </Button>
       </div>
     );
   }
@@ -1113,6 +1182,7 @@ function FilesPanel({
     const totalCount = node.items.length + node.children.reduce((acc, c) => acc + countDeep(c), 0);
     return (
       <div
+        data-file-folder-target={node.path}
         onDragOver={(e) => {
           if (e.dataTransfer.types.includes(FOLDER_MIME) || e.dataTransfer.types.includes(FOLDER_PATH_MIME)) {
             e.preventDefault();
@@ -1214,6 +1284,7 @@ function FilesPanel({
     const isCollapsed = !!collapsed[key];
     return (
       <div
+        data-file-folder-target="__root__"
         onDragOver={(e) => {
           if (e.dataTransfer.types.includes(FOLDER_MIME) || e.dataTransfer.types.includes(FOLDER_PATH_MIME)) {
             e.preventDefault();
@@ -1624,6 +1695,15 @@ function FilesPanel({
           <p className="text-xs text-muted-foreground">No characters yet. Create one to get started.</p>
         )}
       </div>
+
+      {dragPreview && (
+        <div
+          className="pointer-events-none fixed z-[9999] max-w-48 rounded-md border border-primary bg-popover px-3 py-2 text-sm font-semibold text-popover-foreground shadow-xl"
+          style={{ left: dragPreview.x + 12, top: dragPreview.y + 12 }}
+        >
+          {dragPreview.label}
+        </div>
+      )}
 
       {ctxMenu && (
         <>
