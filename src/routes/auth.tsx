@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { ArrowRight, Dice5, Sparkles, Users } from "lucide-react";
 import loginHero from "@/assets/login-hero.png";
+import { DesktopUpdater } from "@/components/DesktopUpdater";
 
 export const Route = createFileRoute("/auth")({
   component: AuthPage,
@@ -159,6 +160,7 @@ function AuthPage() {
           <div className="space-y-2 text-center text-[10px] font-black uppercase tracking-[0.14em] text-zinc-400">
             <p>Não consegue iniciar sessão?</p>
             <button type="button" className="text-zinc-500 hover:text-red-600">Criar conta</button>
+            <DesktopUpdater compact />
           </div>
         </aside>
 

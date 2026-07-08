@@ -1,0 +1,57 @@
+name: Desktop Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, for example v0.2.2"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    name: Build Windows installer
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend dependencies
+        run: npm install --no-package-lock --no-audit --no-fund
+
+      - name: Build signed desktop app
+        env:
+          CI: true
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npx tauri build --ci
+
+      - name: Create updater manifest
+        env:
+          GITHUB_REF_NAME: ${{ inputs.tag }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node scripts/make-tauri-latest-json.mjs
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag }}
+          name: D20 Project ${{ inputs.tag }}
+          draft: false
+          prerelease: false
+          files: |
+            src-tauri/target/release/bundle/nsis/D20 Project_*_x64-setup.exe
+            src-tauri/target/release/bundle/nsis/D20 Project_*_x64-setup.exe.sig
+            src-tauri/target/release/bundle/nsis/latest.json

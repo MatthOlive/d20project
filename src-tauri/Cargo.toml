@@ -1,6 +1,6 @@
 [package]
 name = "d20-project"
-version = "0.2.1"
+version = "0.2.2"
 description = "D20 Project desktop app"
 authors = ["MatthOlive"]
 edition = "2021"
@@ -13,4 +13,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+serde_json = "1.0.150"
 tauri = { version = "2", features = [] }
+tauri-plugin-process = "2.3.1"
+tauri-plugin-updater = "2.10.1"
