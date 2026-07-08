@@ -1269,7 +1269,7 @@ function FilesPanel({
       character_id: r.id,
       label: r.label,
       image_url: r.image_url ?? (r.kind === "pokemon" ? r.sprite_url : null),
-      owner_id: r.owner_id,
+      owner_id: userId,
       x: 0.5, y: 0.5,
       });
       if (fallback.error) { toast.error(`${error.message}. ${fallback.error.message}`); return; }
