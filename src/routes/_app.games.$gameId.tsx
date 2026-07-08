@@ -1141,8 +1141,7 @@ function FilesPanel({
         key={key}
         className="flex items-center gap-1.5"
         draggable={false}
-        onDragStartCapture={(e) => e.preventDefault()}
-        style={{ userSelect: "none", WebkitUserDrag: "none" } as CSSProperties}
+        style={{ userSelect: "none" }}
       >
         {selectMode && (
           <Checkbox checked={selected.has(key)} onCheckedChange={() => toggleSelected(key)} />
@@ -1150,10 +1149,21 @@ function FilesPanel({
         <div
           role="button"
           tabIndex={0}
-          draggable={false}
-          onDragStart={(e) => e.preventDefault()}
-          onMouseDown={(e) => e.preventDefault()}
+          draggable={!selectMode}
+          onDragStart={(e) => {
+            if (selectMode) {
+              e.preventDefault();
+              return;
+            }
+            const folderPayload = JSON.stringify({ kind: r.kind, id: r.id });
+            const mapPayloadRaw = JSON.stringify(mapPayload);
+            e.dataTransfer.setData(FOLDER_MIME, folderPayload);
+            e.dataTransfer.setData(DRAG_MIME, mapPayloadRaw);
+            e.dataTransfer.setData("text/plain", r.label);
+            e.dataTransfer.effectAllowed = "copyMove";
+          }}
           onPointerDown={(e) => {
+            if (e.pointerType === "mouse") return;
             e.preventDefault();
             startLongPress(e);
             beginPointerDrag(e, r, mapPayload);
