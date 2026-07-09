@@ -678,6 +678,7 @@ function FilesPanel({
         return true;
       }
       window.dispatchEvent(new CustomEvent(CHARACTER_POINTER_DROP_EVENT, {
+        cancelable: true,
         detail: { payload: drag.payload, clientX, clientY },
       }));
       return true;
@@ -1144,6 +1145,7 @@ function FilesPanel({
       return;
     }
     window.dispatchEvent(new CustomEvent(CHARACTER_POINTER_DROP_EVENT, {
+      cancelable: true,
       detail: { payload: drag.payload, clientX: e.clientX, clientY: e.clientY },
     }));
   }

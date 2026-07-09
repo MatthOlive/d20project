@@ -118,6 +118,15 @@ export function SheetTabs(props: {
     qc.invalidateQueries({ queryKey: ["characters", gameId] });
   }
 
+  function nextFreeTeamSlot(exceptPokemonId?: string): number | null {
+    const usedSlots = new Set(
+      roster
+        .filter((r) => r.id !== exceptPokemonId && r.team_slot != null)
+        .map((r) => r.team_slot!),
+    );
+    return SLOTS.find((slot) => !usedSlots.has(slot)) ?? null;
+  }
+
   async function assignPokemonToTrainer(pokemonId: string, teamSlot: number | null) {
     const { error } = await (supabase.rpc("assign_pokemon_to_trainer" as never, {
       p_pokemon_id: pokemonId,
@@ -130,6 +139,67 @@ export function SheetTabs(props: {
       .update({ owner_trainer_id: trainerId, team_slot: teamSlot })
       .eq("id", pokemonId);
     if (fallback.error) throw new Error(`${error.message}. ${fallback.error.message}`);
+  }
+
+  async function movePokemonToTrainer(
+    pokemonId: string,
+    label: string,
+    target: { kind: "pc" } | { kind: "slot"; slot: number } | { kind: "auto" },
+  ) {
+    const teamSlot =
+      target.kind === "pc" ? null :
+      target.kind === "slot" ? target.slot :
+      nextFreeTeamSlot(pokemonId);
+
+    if (target.kind === "slot") {
+      const occupied = roster.find((r) => r.id !== pokemonId && r.team_slot === target.slot);
+      if (occupied) await assignPokemonToTrainer(occupied.id, null);
+    }
+
+    await assignPokemonToTrainer(pokemonId, teamSlot);
+    await registerInPokedex(pokemonId);
+    invalidateRoster();
+
+    if (teamSlot == null) {
+      setActive({ kind: "pc" });
+      toast.success(`${label} guardado no PC`);
+    } else {
+      setActive({ kind: "slot", slot: teamSlot, pokemonId });
+      toast.success(`${label} adicionado ao slot ${teamSlot}`);
+    }
+  }
+
+  function targetFromPoint(clientX: number, clientY: number): { kind: "pc" } | { kind: "slot"; slot: number } | { kind: "auto" } | null {
+    const elements = document.elementsFromPoint(clientX, clientY);
+    const pcHit = elements.some((el) =>
+      el instanceof HTMLElement && !!el.closest('[data-pokemon-pc-drop-target="true"]')
+    );
+    if (pcHit) return { kind: "pc" };
+
+    const slotTarget = elements
+      .map((el) => el instanceof HTMLElement ? el.closest<HTMLElement>("[data-pokemon-slot-drop-target]") : null)
+      .find(Boolean);
+    const slot = Number(slotTarget?.dataset.pokemonSlotDropTarget);
+    if (Number.isInteger(slot) && SLOTS.includes(slot as (typeof SLOTS)[number])) {
+      return { kind: "slot", slot };
+    }
+
+    const sheetHit = elements.some((el) =>
+      el instanceof HTMLElement && !!el.closest('[data-trainer-sheet-drop-target="true"]')
+    );
+    if (!sheetHit) return null;
+    return active.kind === "pc" || active.kind === "pcPokemon" ? { kind: "pc" } : { kind: "auto" };
+  }
+
+  async function movePayloadToTarget(
+    payload: DragCharacterPayload | { id: string; label: string },
+    target: { kind: "pc" } | { kind: "slot"; slot: number } | { kind: "auto" },
+  ) {
+    if ("kind" in payload && payload.kind !== "pokemon") {
+      toast.error("Apenas Pokemon podem entrar no time/PC.");
+      return;
+    }
+    await movePokemonToTrainer(payload.id, payload.label, target);
   }
 
   // Auto-register a pokemon (and its species) in this trainer's Pokédex as captured.
@@ -155,49 +225,30 @@ export function SheetTabs(props: {
     qc.invalidateQueries({ queryKey: ["trainer", trainerId] });
   }
 
-  // Drop a pokemon anywhere on the trainer sheet:
-  // - if PC tab is active → store in PC (team_slot = null)
-  // - otherwise → assign to next empty team slot (or PC if team is full)
   async function handleSheetDrop(e: React.DragEvent<HTMLDivElement>) {
+    const target = targetFromPoint(e.clientX, e.clientY)
+      ?? (active.kind === "pc" || active.kind === "pcPokemon" ? { kind: "pc" as const } : { kind: "auto" as const });
     const slotRaw = e.dataTransfer.getData(SLOT_DRAG_MIME);
-    if (slotRaw && (active.kind === "pc" || active.kind === "pcPokemon")) {
-      e.preventDefault();
-      e.stopPropagation();
-      try {
-        const p = JSON.parse(slotRaw) as { id: string; label: string };
-        await assignPokemonToTrainer(p.id, null);
-        toast.success(`${p.label} movido para o PC`);
-        invalidateRoster();
-        setActive({ kind: "pc" });
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Nao foi possivel mover para o PC.");
-      }
-      return;
-    }
-
-    const raw = e.dataTransfer.getData(DRAG_MIME);
-    if (!raw) return;
+    const characterRaw = e.dataTransfer.getData(DRAG_MIME);
+    if (!slotRaw && !characterRaw) return;
     e.preventDefault();
     e.stopPropagation();
+
     try {
-      const p = JSON.parse(raw) as DragCharacterPayload;
-      if (p.kind !== "pokemon") return;
-      const wantPc = active.kind === "pc" || active.kind === "pcPokemon";
-      const usedSlots = new Set(roster.filter((r) => r.id !== p.id && r.team_slot != null).map((r) => r.team_slot!));
-      const nextSlot = wantPc ? null : (SLOTS.find((s) => !usedSlots.has(s)) ?? null);
-      await assignPokemonToTrainer(p.id, nextSlot);
-      await registerInPokedex(p.id);
-      toast.success(nextSlot != null ? `${p.label} adicionado ao slot ${nextSlot}` : `${p.label} guardado no PC`);
-      invalidateRoster();
-      if (nextSlot != null) setActive({ kind: "slot", slot: nextSlot, pokemonId: p.id });
-      else setActive({ kind: "pc" });
+      if (slotRaw) {
+        await movePayloadToTarget(JSON.parse(slotRaw) as { id: string; label: string }, target);
+        return;
+      }
+      await movePayloadToTarget(JSON.parse(characterRaw) as DragCharacterPayload, target);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Nao foi possivel mover este Pokemon.");
     }
   }
+
   function handleSheetDragOver(e: React.DragEvent<HTMLDivElement>) {
     if (e.dataTransfer.types.includes(DRAG_MIME) || e.dataTransfer.types.includes(SLOT_DRAG_MIME)) {
       e.preventDefault();
+      e.stopPropagation();
       e.dataTransfer.dropEffect = "move";
     }
   }
@@ -206,25 +257,20 @@ export function SheetTabs(props: {
     function onPointerDrop(e: Event) {
       const detail = (e as CustomEvent).detail as { payload?: DragCharacterPayload; clientX?: number; clientY?: number } | undefined;
       if (!detail?.payload || detail.payload.kind !== "pokemon" || typeof detail.clientX !== "number" || typeof detail.clientY !== "number") return;
-      const hitPc = document
-        .elementsFromPoint(detail.clientX, detail.clientY)
-        .some((el) => el instanceof HTMLElement && !!el.closest('[data-pokemon-pc-drop-target="true"]'));
-      if (!hitPc) return;
+      const target = targetFromPoint(detail.clientX, detail.clientY);
+      if (!target) return;
+      e.preventDefault();
       void (async () => {
         try {
-          await assignPokemonToTrainer(detail.payload!.id, null);
-          await registerInPokedex(detail.payload!.id);
-          toast.success(`${detail.payload!.label} guardado no PC`);
-          invalidateRoster();
-          setActive({ kind: "pc" });
+          await movePayloadToTarget(detail.payload!, target);
         } catch (error) {
-          toast.error(error instanceof Error ? error.message : "Nao foi possivel guardar no PC.");
+          toast.error(error instanceof Error ? error.message : "Nao foi possivel mover este Pokemon.");
         }
       })();
     }
-    window.addEventListener(CHARACTER_POINTER_DROP_EVENT, onPointerDrop);
-    return () => window.removeEventListener(CHARACTER_POINTER_DROP_EVENT, onPointerDrop);
-  }, [trainerId, roster]);
+    window.addEventListener(CHARACTER_POINTER_DROP_EVENT, onPointerDrop, { capture: true });
+    return () => window.removeEventListener(CHARACTER_POINTER_DROP_EVENT, onPointerDrop, { capture: true });
+  }, [active.kind, roster, trainerId]);
 
   if (trainerMeta?.is_minimal) {
     const canEdit = isNarrator || trainerMeta.owner_id === userId || (trainerMeta.allowed_editors ?? []).includes(userId);
@@ -232,7 +278,12 @@ export function SheetTabs(props: {
   }
 
   return (
-    <div className="flex h-full min-h-0 w-full" onDragOver={handleSheetDragOver} onDrop={handleSheetDrop}>
+    <div
+      className="flex h-full min-h-0 w-full"
+      data-trainer-sheet-drop-target="true"
+      onDragOver={handleSheetDragOver}
+      onDrop={handleSheetDrop}
+    >
       {/* Vertical tab rail */}
       <div className="flex w-14 shrink-0 flex-col gap-1 border-r border-border bg-muted/40 p-1.5">
         <TabButton
@@ -253,25 +304,36 @@ export function SheetTabs(props: {
               onClick={() => setActive({ kind: "slot", slot, pokemonId: pokemon?.id ?? null })}
               title={pokemon ? `${nameFor(pokemon)} — arraste para o PC para guardar, ou para outro slot para trocar` : `Slot ${slot}`}
               tone={pokemon ? "team" : "empty"}
+              slotTarget={slot}
               draggable={!!pokemon}
               onDragStart={pokemon ? (e) => {
                 e.dataTransfer.effectAllowed = "move";
                 e.dataTransfer.setData(SLOT_DRAG_MIME, JSON.stringify({ id: pokemon.id, label: nameFor(pokemon), fromSlot: slot }));
               } : undefined}
               onDragOver={(e) => {
-                if (e.dataTransfer.types.includes(SLOT_DRAG_MIME)) {
+                if (e.dataTransfer.types.includes(SLOT_DRAG_MIME) || e.dataTransfer.types.includes(DRAG_MIME)) {
                   e.preventDefault();
+                  e.stopPropagation();
                   e.dataTransfer.dropEffect = "move";
                 }
               }}
               onDrop={async (e) => {
                 const raw = e.dataTransfer.getData(SLOT_DRAG_MIME);
-                if (!raw) return;
+                const characterRaw = e.dataTransfer.getData(DRAG_MIME);
+                if (!raw && !characterRaw) return;
                 e.preventDefault();
                 e.stopPropagation();
                 try {
+                  if (characterRaw) {
+                    await movePayloadToTarget(JSON.parse(characterRaw) as DragCharacterPayload, { kind: "slot", slot });
+                    return;
+                  }
                   const p = JSON.parse(raw) as { id: string; label: string; fromSlot?: number };
-                  if (p.fromSlot == null || p.fromSlot === slot) return;
+                  if (p.fromSlot == null) {
+                    await movePayloadToTarget(p, { kind: "slot", slot });
+                    return;
+                  }
+                  if (p.fromSlot === slot) return;
                   const target = roster.find((r) => r.team_slot === slot);
                   // Temporarily park source in null to dodge unique-slot constraint
                   const upd1 = await supabase.from("pokemon").update({ team_slot: null }).eq("id", p.id);
@@ -303,6 +365,7 @@ export function SheetTabs(props: {
           onDragOver={(e) => {
             if (e.dataTransfer.types.includes(DRAG_MIME) || e.dataTransfer.types.includes(SLOT_DRAG_MIME)) {
               e.preventDefault();
+              e.stopPropagation();
               e.dataTransfer.dropEffect = "move";
             }
           }}
@@ -448,7 +511,7 @@ export function SheetTabs(props: {
 const SLOT_DRAG_MIME = "application/x-pokerole-slot-move+json";
 
 function TabButton({
-  active, onClick, children, title, tone, onDragOver, onDrop, draggable, onDragStart, dropTarget,
+  active, onClick, children, title, tone, onDragOver, onDrop, draggable, onDragStart, dropTarget, slotTarget,
 }: {
   active: boolean;
   onClick: () => void;
@@ -460,6 +523,7 @@ function TabButton({
   draggable?: boolean;
   onDragStart?: React.DragEventHandler<HTMLButtonElement>;
   dropTarget?: boolean;
+  slotTarget?: number;
 }) {
   return (
     <button
@@ -471,6 +535,7 @@ function TabButton({
       draggable={draggable}
       onDragStart={onDragStart}
       data-pokemon-pc-drop-target={dropTarget ? "true" : undefined}
+      data-pokemon-slot-drop-target={slotTarget}
       className={cn(
         "flex h-11 w-full items-center justify-center rounded-md border transition",
         active

@@ -1083,10 +1083,14 @@ export function MapBoard({
   useEffect(() => {
     function onPointerDrop(e: Event) {
       const detail = (e as CustomEvent).detail as { payload?: DragCharacterPayload; clientX?: number; clientY?: number } | undefined;
+      if (e.defaultPrevented) return;
       if (!detail?.payload || typeof detail.clientX !== "number" || typeof detail.clientY !== "number") return;
       const handledBySheet = document
         .elementsFromPoint(detail.clientX, detail.clientY)
-        .some((el) => el instanceof HTMLElement && !!el.closest('[data-pokemon-pc-drop-target="true"]'));
+        .some((el) => el instanceof HTMLElement && (
+          !!el.closest('[data-trainer-sheet-drop-target="true"]') ||
+          !!el.closest('[data-pokemon-pc-drop-target="true"]')
+        ));
       if (handledBySheet) return;
       const rect = (innerRef.current ?? boardRef.current)?.getBoundingClientRect();
       if (!rect) return;
