@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
+import { DesktopUpdater } from "@/components/DesktopUpdater";
 
 export const Route = createFileRoute("/_app")({
   beforeLoad: async () => {
@@ -34,6 +35,7 @@ function AppLayout() {
             <span className="text-base font-extrabold tracking-tight">D20 Project</span>
           </Link>
           <div className="flex items-center gap-3 text-sm">
+            <DesktopUpdater compact />
             <span className="hidden sm:inline opacity-90">{user?.email}</span>
             <Button variant="secondary" size="sm" onClick={signOut}>
               <LogOut className="mr-1.5 h-4 w-4" /> Sign out

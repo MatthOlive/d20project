@@ -17,6 +17,7 @@ function isTauriDesktop() {
 export function DesktopUpdater({ compact = false }: { compact?: boolean }) {
   const [state, setState] = useState<UpdateState>({ status: "idle" });
   const [updateResource, setUpdateResource] = useState<unknown>(null);
+  const appVersion = (import.meta.env.VITE_APP_VERSION as string | undefined) ?? null;
 
   async function checkForUpdates({ silent = false }: { silent?: boolean } = {}) {
     if (!isTauriDesktop()) return;
@@ -74,11 +75,11 @@ export function DesktopUpdater({ compact = false }: { compact?: boolean }) {
     <div className={className}>
       {state.status === "idle" && (
         <button type="button" onClick={() => void checkForUpdates()} className="hover:text-red-600">
-          Verificar atualizacoes
+          {appVersion ? `${appVersion} · verificar atualizacao` : "Verificar atualizacoes"}
         </button>
       )}
       {state.status === "checking" && <span>Verificando atualizacoes...</span>}
-      {state.status === "none" && <span>App atualizado</span>}
+      {state.status === "none" && <span>{appVersion ? `${appVersion} · atualizado` : "App atualizado"}</span>}
       {state.status === "available" && (
         <div className="space-y-2">
           <p>Atualizacao {state.version} disponivel</p>

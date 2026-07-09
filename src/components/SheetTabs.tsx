@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,8 @@ import { CHARACTER_POINTER_DROP_EVENT, DRAG_MIME, type DragCharacterPayload } fr
 import { User, Boxes, Plus, ShoppingCart, FileText, ArrowUpFromLine, Flag, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+export const TRAINER_SHEET_POINTER_DROP_EVENT = "d20-trainer-sheet-pointer-drop";
 
 type SlotPokemon = {
   id: string;
@@ -52,6 +54,18 @@ export function SheetTabs(props: {
   const { trainerId, gameId, userId, isNarrator } = props;
   const qc = useQueryClient();
   const [active, setActive] = useState<Tab>({ kind: "trainer" });
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const teamPointerDragRef = useRef<{
+    id: string;
+    label: string;
+    fromSlot: number;
+    pointerId: number;
+    startX: number;
+    startY: number;
+    active: boolean;
+  } | null>(null);
+  const suppressTeamClickRef = useRef(false);
+  const [teamDragPreview, setTeamDragPreview] = useState<{ label: string; x: number; y: number } | null>(null);
 
   // Detect minimal sheet (just image + description)
   const { data: trainerMeta } = useQuery({
@@ -145,7 +159,10 @@ export function SheetTabs(props: {
     pokemonId: string,
     label: string,
     target: { kind: "pc" } | { kind: "slot"; slot: number } | { kind: "auto" },
+    sourceSlot?: number,
   ) {
+    if (target.kind === "slot" && sourceSlot === target.slot) return;
+
     const teamSlot =
       target.kind === "pc" ? null :
       target.kind === "slot" ? target.slot :
@@ -153,7 +170,14 @@ export function SheetTabs(props: {
 
     if (target.kind === "slot") {
       const occupied = roster.find((r) => r.id !== pokemonId && r.team_slot === target.slot);
-      if (occupied) await assignPokemonToTrainer(occupied.id, null);
+      if (occupied) {
+        if (sourceSlot != null && sourceSlot !== target.slot) {
+          await assignPokemonToTrainer(pokemonId, null);
+          await assignPokemonToTrainer(occupied.id, sourceSlot);
+        } else {
+          await assignPokemonToTrainer(occupied.id, null);
+        }
+      }
     }
 
     await assignPokemonToTrainer(pokemonId, teamSlot);
@@ -188,18 +212,19 @@ export function SheetTabs(props: {
       el instanceof HTMLElement && !!el.closest('[data-trainer-sheet-drop-target="true"]')
     );
     if (!sheetHit) return null;
+    if (active.kind === "slot") return { kind: "slot", slot: active.slot };
     return active.kind === "pc" || active.kind === "pcPokemon" ? { kind: "pc" } : { kind: "auto" };
   }
 
   async function movePayloadToTarget(
-    payload: DragCharacterPayload | { id: string; label: string },
+    payload: DragCharacterPayload | { id: string; label: string; fromSlot?: number },
     target: { kind: "pc" } | { kind: "slot"; slot: number } | { kind: "auto" },
   ) {
     if ("kind" in payload && payload.kind !== "pokemon") {
       toast.error("Apenas Pokemon podem entrar no time/PC.");
       return;
     }
-    await movePokemonToTrainer(payload.id, payload.label, target);
+    await movePokemonToTrainer(payload.id, payload.label, target, "fromSlot" in payload ? payload.fromSlot : undefined);
   }
 
   // Auto-register a pokemon (and its species) in this trainer's Pokédex as captured.
@@ -236,7 +261,7 @@ export function SheetTabs(props: {
 
     try {
       if (slotRaw) {
-        await movePayloadToTarget(JSON.parse(slotRaw) as { id: string; label: string }, target);
+        await movePayloadToTarget(JSON.parse(slotRaw) as { id: string; label: string; fromSlot?: number }, target);
         return;
       }
       await movePayloadToTarget(JSON.parse(characterRaw) as DragCharacterPayload, target);
@@ -253,13 +278,31 @@ export function SheetTabs(props: {
     }
   }
 
+  function beginTeamPointerDrag(e: React.PointerEvent, pokemon: SlotPokemon, fromSlot: number) {
+    if (e.button !== 0) return;
+    teamPointerDragRef.current = {
+      id: pokemon.id,
+      label: nameFor(pokemon),
+      fromSlot,
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      active: false,
+    };
+  }
+
   useEffect(() => {
-    function onPointerDrop(e: Event) {
+    function handlePointerDrop(e: Event) {
       const detail = (e as CustomEvent).detail as { payload?: DragCharacterPayload; clientX?: number; clientY?: number } | undefined;
-      if (!detail?.payload || detail.payload.kind !== "pokemon" || typeof detail.clientX !== "number" || typeof detail.clientY !== "number") return;
+      if (!detail?.payload || typeof detail.clientX !== "number" || typeof detail.clientY !== "number") return;
       const target = targetFromPoint(detail.clientX, detail.clientY);
       if (!target) return;
       e.preventDefault();
+      e.stopPropagation();
+      if (detail.payload.kind !== "pokemon") {
+        toast.error("Apenas Pokemon podem entrar no time/PC.");
+        return;
+      }
       void (async () => {
         try {
           await movePayloadToTarget(detail.payload!, target);
@@ -268,9 +311,56 @@ export function SheetTabs(props: {
         }
       })();
     }
-    window.addEventListener(CHARACTER_POINTER_DROP_EVENT, onPointerDrop, { capture: true });
-    return () => window.removeEventListener(CHARACTER_POINTER_DROP_EVENT, onPointerDrop, { capture: true });
-  }, [active.kind, roster, trainerId]);
+
+    const root = rootRef.current;
+    root?.addEventListener(TRAINER_SHEET_POINTER_DROP_EVENT, handlePointerDrop);
+    window.addEventListener(CHARACTER_POINTER_DROP_EVENT, handlePointerDrop, { capture: true });
+    return () => {
+      root?.removeEventListener(TRAINER_SHEET_POINTER_DROP_EVENT, handlePointerDrop);
+      window.removeEventListener(CHARACTER_POINTER_DROP_EVENT, handlePointerDrop, { capture: true });
+    };
+  }, [active, roster, trainerId]);
+
+  useEffect(() => {
+    function move(e: PointerEvent) {
+      const drag = teamPointerDragRef.current;
+      if (!drag || drag.pointerId !== e.pointerId) return;
+      const distance = Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY);
+      if (!drag.active && distance > 6) drag.active = true;
+      if (!drag.active) return;
+      e.preventDefault();
+      setTeamDragPreview({ label: drag.label, x: e.clientX, y: e.clientY });
+    }
+
+    function up(e: PointerEvent) {
+      const drag = teamPointerDragRef.current;
+      if (!drag || drag.pointerId !== e.pointerId) return;
+      teamPointerDragRef.current = null;
+      setTeamDragPreview(null);
+      if (!drag.active) return;
+      e.preventDefault();
+      suppressTeamClickRef.current = true;
+      const target = targetFromPoint(e.clientX, e.clientY);
+      if (!target) return;
+      void movePayloadToTarget({ id: drag.id, label: drag.label, fromSlot: drag.fromSlot }, target);
+    }
+
+    function cancel(e: PointerEvent) {
+      const drag = teamPointerDragRef.current;
+      if (!drag || drag.pointerId !== e.pointerId) return;
+      teamPointerDragRef.current = null;
+      setTeamDragPreview(null);
+    }
+
+    window.addEventListener("pointermove", move, { passive: false });
+    window.addEventListener("pointerup", up, { passive: false });
+    window.addEventListener("pointercancel", cancel);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", cancel);
+    };
+  }, [active, roster, trainerId]);
 
   if (trainerMeta?.is_minimal) {
     const canEdit = isNarrator || trainerMeta.owner_id === userId || (trainerMeta.allowed_editors ?? []).includes(userId);
@@ -279,6 +369,7 @@ export function SheetTabs(props: {
 
   return (
     <div
+      ref={rootRef}
       className="flex h-full min-h-0 w-full"
       data-trainer-sheet-drop-target="true"
       onDragOver={handleSheetDragOver}
@@ -301,10 +392,17 @@ export function SheetTabs(props: {
             <TabButton
               key={slot}
               active={isActive}
-              onClick={() => setActive({ kind: "slot", slot, pokemonId: pokemon?.id ?? null })}
+              onClick={() => {
+                if (suppressTeamClickRef.current) {
+                  suppressTeamClickRef.current = false;
+                  return;
+                }
+                setActive({ kind: "slot", slot, pokemonId: pokemon?.id ?? null });
+              }}
               title={pokemon ? `${nameFor(pokemon)} — arraste para o PC para guardar, ou para outro slot para trocar` : `Slot ${slot}`}
               tone={pokemon ? "team" : "empty"}
               slotTarget={slot}
+              onPointerDown={pokemon ? (e) => beginTeamPointerDrag(e, pokemon, slot) : undefined}
               draggable={!!pokemon}
               onDragStart={pokemon ? (e) => {
                 e.dataTransfer.effectAllowed = "move";
@@ -504,6 +602,14 @@ export function SheetTabs(props: {
           <Shop trainerId={trainerId} />
         )}
       </div>
+      {teamDragPreview && (
+        <div
+          className="pointer-events-none fixed z-[9999] max-w-48 rounded-md border border-primary bg-popover px-3 py-2 text-sm font-semibold text-popover-foreground shadow-xl"
+          style={{ left: teamDragPreview.x + 12, top: teamDragPreview.y + 12 }}
+        >
+          {teamDragPreview.label}
+        </div>
+      )}
     </div>
   );
 }
@@ -511,7 +617,7 @@ export function SheetTabs(props: {
 const SLOT_DRAG_MIME = "application/x-pokerole-slot-move+json";
 
 function TabButton({
-  active, onClick, children, title, tone, onDragOver, onDrop, draggable, onDragStart, dropTarget, slotTarget,
+  active, onClick, children, title, tone, onDragOver, onDrop, draggable, onDragStart, onPointerDown, dropTarget, slotTarget,
 }: {
   active: boolean;
   onClick: () => void;
@@ -522,6 +628,7 @@ function TabButton({
   onDrop?: React.DragEventHandler<HTMLButtonElement>;
   draggable?: boolean;
   onDragStart?: React.DragEventHandler<HTMLButtonElement>;
+  onPointerDown?: React.PointerEventHandler<HTMLButtonElement>;
   dropTarget?: boolean;
   slotTarget?: number;
 }) {
@@ -534,8 +641,10 @@ function TabButton({
       onDrop={onDrop}
       draggable={draggable}
       onDragStart={onDragStart}
+      onPointerDown={onPointerDown}
       data-pokemon-pc-drop-target={dropTarget ? "true" : undefined}
       data-pokemon-slot-drop-target={slotTarget}
+      style={onPointerDown ? { touchAction: "none" } : undefined}
       className={cn(
         "flex h-11 w-full items-center justify-center rounded-md border transition",
         active

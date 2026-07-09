@@ -25,7 +25,7 @@ import { FloatingWindow } from "@/components/FloatingWindow";
 import { OnlinePresence } from "@/components/OnlinePresence";
 
 import { PokemonSheet } from "@/components/PokemonSheet";
-import { SheetTabs } from "@/components/SheetTabs";
+import { SheetTabs, TRAINER_SHEET_POINTER_DROP_EVENT } from "@/components/SheetTabs";
 import { T20CharacterSheet } from "@/components/T20CharacterSheet";
 import { MapBoard, DRAG_MIME, CHARACTER_POINTER_DROP_EVENT, type DragCharacterPayload } from "@/components/MapBoard";
 import { MacroBar } from "@/components/MacroBar";
@@ -677,6 +677,9 @@ function FilesPanel({
         void moveToFolder(drag.row, folder);
         return true;
       }
+      if (dispatchTrainerSheetDrop(drag.payload, clientX, clientY)) {
+        return true;
+      }
       window.dispatchEvent(new CustomEvent(CHARACTER_POINTER_DROP_EVENT, {
         cancelable: true,
         detail: { payload: drag.payload, clientX, clientY },
@@ -1087,6 +1090,25 @@ function FilesPanel({
     return path === "__root__" ? null : (path ?? undefined);
   }
 
+  function trainerSheetTargetFromPoint(clientX: number, clientY: number): HTMLElement | null {
+    return document
+      .elementsFromPoint(clientX, clientY)
+      .map((el) => el instanceof HTMLElement ? el.closest<HTMLElement>('[data-trainer-sheet-drop-target="true"]') : null)
+      .find(Boolean) ?? null;
+  }
+
+  function dispatchTrainerSheetDrop(payload: DragCharacterPayload, clientX: number, clientY: number) {
+    const target = trainerSheetTargetFromPoint(clientX, clientY);
+    if (!target) return false;
+    const event = new CustomEvent(TRAINER_SHEET_POINTER_DROP_EVENT, {
+      bubbles: true,
+      cancelable: true,
+      detail: { payload, clientX, clientY },
+    });
+    target.dispatchEvent(event);
+    return event.defaultPrevented;
+  }
+
   function beginPointerDrag(e: React.PointerEvent, row: CharRow, payload: DragCharacterPayload) {
     if (selectMode || e.button !== 0) return;
     pointerDragRef.current = {
@@ -1142,6 +1164,9 @@ function FilesPanel({
     const folder = folderTargetFromPoint(e.clientX, e.clientY);
     if (folder !== undefined) {
       await moveToFolder(drag.row, folder);
+      return;
+    }
+    if (dispatchTrainerSheetDrop(drag.payload, e.clientX, e.clientY)) {
       return;
     }
     window.dispatchEvent(new CustomEvent(CHARACTER_POINTER_DROP_EVENT, {
