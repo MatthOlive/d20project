@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ import { TrainerSheet } from "@/components/TrainerSheet";
 import { ImageSourceDialog } from "@/components/ImageSourceDialog";
 import { PokemonSheet } from "@/components/PokemonSheet";
 import { Shop } from "@/components/Shop";
-import { DRAG_MIME, type DragCharacterPayload } from "@/components/MapBoard";
+import { CHARACTER_POINTER_DROP_EVENT, DRAG_MIME, type DragCharacterPayload } from "@/components/MapBoard";
 import { User, Boxes, Plus, ShoppingCart, FileText, ArrowUpFromLine, Flag, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -118,6 +118,20 @@ export function SheetTabs(props: {
     qc.invalidateQueries({ queryKey: ["characters", gameId] });
   }
 
+  async function assignPokemonToTrainer(pokemonId: string, teamSlot: number | null) {
+    const { error } = await (supabase.rpc("assign_pokemon_to_trainer" as never, {
+      p_pokemon_id: pokemonId,
+      p_trainer_id: trainerId,
+      p_team_slot: teamSlot,
+    } as never) as unknown as Promise<{ error: { message: string } | null }>);
+    if (!error) return;
+
+    const fallback = await supabase.from("pokemon")
+      .update({ owner_trainer_id: trainerId, team_slot: teamSlot })
+      .eq("id", pokemonId);
+    if (fallback.error) throw new Error(`${error.message}. ${fallback.error.message}`);
+  }
+
   // Auto-register a pokemon (and its species) in this trainer's Pokédex as captured.
   async function registerInPokedex(pokemonId: string) {
     const { data: pkm } = await supabase
@@ -145,6 +159,21 @@ export function SheetTabs(props: {
   // - if PC tab is active → store in PC (team_slot = null)
   // - otherwise → assign to next empty team slot (or PC if team is full)
   async function handleSheetDrop(e: React.DragEvent<HTMLDivElement>) {
+    const slotRaw = e.dataTransfer.getData(SLOT_DRAG_MIME);
+    if (slotRaw && (active.kind === "pc" || active.kind === "pcPokemon")) {
+      e.preventDefault();
+      try {
+        const p = JSON.parse(slotRaw) as { id: string; label: string };
+        await assignPokemonToTrainer(p.id, null);
+        toast.success(`${p.label} movido para o PC`);
+        invalidateRoster();
+        setActive({ kind: "pc" });
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Nao foi possivel mover para o PC.");
+      }
+      return;
+    }
+
     const raw = e.dataTransfer.getData(DRAG_MIME);
     if (!raw) return;
     e.preventDefault();
@@ -154,23 +183,46 @@ export function SheetTabs(props: {
       const wantPc = active.kind === "pc" || active.kind === "pcPokemon";
       const usedSlots = new Set(roster.filter((r) => r.id !== p.id && r.team_slot != null).map((r) => r.team_slot!));
       const nextSlot = wantPc ? null : (SLOTS.find((s) => !usedSlots.has(s)) ?? null);
-      const { error } = await supabase.from("pokemon")
-        .update({ owner_trainer_id: trainerId, team_slot: nextSlot })
-        .eq("id", p.id);
-      if (error) { toast.error(error.message); return; }
+      await assignPokemonToTrainer(p.id, nextSlot);
       await registerInPokedex(p.id);
       toast.success(nextSlot != null ? `${p.label} adicionado ao slot ${nextSlot}` : `${p.label} guardado no PC`);
       invalidateRoster();
       if (nextSlot != null) setActive({ kind: "slot", slot: nextSlot, pokemonId: p.id });
       else setActive({ kind: "pc" });
-    } catch { /* ignore */ }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Nao foi possivel mover este Pokemon.");
+    }
   }
   function handleSheetDragOver(e: React.DragEvent<HTMLDivElement>) {
-    if (e.dataTransfer.types.includes(DRAG_MIME)) {
+    if (e.dataTransfer.types.includes(DRAG_MIME) || e.dataTransfer.types.includes(SLOT_DRAG_MIME)) {
       e.preventDefault();
       e.dataTransfer.dropEffect = "move";
     }
   }
+
+  useEffect(() => {
+    function onPointerDrop(e: Event) {
+      const detail = (e as CustomEvent).detail as { payload?: DragCharacterPayload; clientX?: number; clientY?: number } | undefined;
+      if (!detail?.payload || detail.payload.kind !== "pokemon" || typeof detail.clientX !== "number" || typeof detail.clientY !== "number") return;
+      const hitPc = document
+        .elementsFromPoint(detail.clientX, detail.clientY)
+        .some((el) => el instanceof HTMLElement && !!el.closest('[data-pokemon-pc-drop-target="true"]'));
+      if (!hitPc) return;
+      void (async () => {
+        try {
+          await assignPokemonToTrainer(detail.payload!.id, null);
+          await registerInPokedex(detail.payload!.id);
+          toast.success(`${detail.payload!.label} guardado no PC`);
+          invalidateRoster();
+          setActive({ kind: "pc" });
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "Nao foi possivel guardar no PC.");
+        }
+      })();
+    }
+    window.addEventListener(CHARACTER_POINTER_DROP_EVENT, onPointerDrop);
+    return () => window.removeEventListener(CHARACTER_POINTER_DROP_EVENT, onPointerDrop);
+  }, [trainerId, roster]);
 
   if (trainerMeta?.is_minimal) {
     const canEdit = isNarrator || trainerMeta.owner_id === userId || (trainerMeta.allowed_editors ?? []).includes(userId);
@@ -244,6 +296,7 @@ export function SheetTabs(props: {
           active={active.kind === "pc" || active.kind === "pcPokemon"}
           onClick={() => setActive({ kind: "pc" })}
           tone="pc"
+          dropTarget
           title="PC (Box) — arraste um Pokémon dos Files ou do seu time aqui para guardar"
           onDragOver={(e) => {
             if (e.dataTransfer.types.includes(DRAG_MIME) || e.dataTransfer.types.includes(SLOT_DRAG_MIME)) {
@@ -258,12 +311,13 @@ export function SheetTabs(props: {
               e.preventDefault();
               try {
                 const p = JSON.parse(slotRaw) as { id: string; label: string };
-                const { error } = await supabase.from("pokemon").update({ team_slot: null }).eq("id", p.id);
-                if (error) { toast.error(error.message); return; }
+                await assignPokemonToTrainer(p.id, null);
                 toast.success(`${p.label} movido para o PC`);
                 invalidateRoster();
                 setActive({ kind: "pc" });
-              } catch { /* ignore */ }
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : "Nao foi possivel mover para o PC.");
+              }
               return;
             }
             // From map/files → PC
@@ -273,15 +327,14 @@ export function SheetTabs(props: {
             try {
               const p = JSON.parse(raw) as DragCharacterPayload;
               if (p.kind !== "pokemon") { toast.error("Apenas Pokémon podem ir para o PC."); return; }
-              const { error } = await supabase.from("pokemon")
-                .update({ owner_trainer_id: trainerId, team_slot: null })
-                .eq("id", p.id);
-              if (error) { toast.error(error.message); return; }
+              await assignPokemonToTrainer(p.id, null);
               await registerInPokedex(p.id);
               toast.success(`${p.label} guardado no PC`);
               invalidateRoster();
               setActive({ kind: "pc" });
-            } catch { /* ignore */ }
+            } catch (error) {
+              toast.error(error instanceof Error ? error.message : "Nao foi possivel guardar no PC.");
+            }
           }}
         >
           <Boxes className="h-4 w-4" />
@@ -341,8 +394,12 @@ export function SheetTabs(props: {
               const usedSlots = new Set(roster.filter((r) => r.team_slot != null).map((r) => r.team_slot!));
               const nextSlot = SLOTS.find((s) => !usedSlots.has(s));
               if (!nextSlot) { toast.error("Equipe cheia (6 Pokémon)."); return; }
-              const { error } = await supabase.from("pokemon").update({ team_slot: nextSlot }).eq("id", pid);
-              if (error) { toast.error(error.message); return; }
+              try {
+                await assignPokemonToTrainer(pid, nextSlot);
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : "Nao foi possivel adicionar ao time.");
+                return;
+              }
               toast.success(`Adicionado ao slot ${nextSlot}`);
               invalidateRoster();
               setActive({ kind: "slot", slot: nextSlot, pokemonId: pid });
@@ -387,7 +444,7 @@ export function SheetTabs(props: {
 const SLOT_DRAG_MIME = "application/x-pokerole-slot-move+json";
 
 function TabButton({
-  active, onClick, children, title, tone, onDragOver, onDrop, draggable, onDragStart,
+  active, onClick, children, title, tone, onDragOver, onDrop, draggable, onDragStart, dropTarget,
 }: {
   active: boolean;
   onClick: () => void;
@@ -398,6 +455,7 @@ function TabButton({
   onDrop?: React.DragEventHandler<HTMLButtonElement>;
   draggable?: boolean;
   onDragStart?: React.DragEventHandler<HTMLButtonElement>;
+  dropTarget?: boolean;
 }) {
   return (
     <button
@@ -408,6 +466,7 @@ function TabButton({
       onDrop={onDrop}
       draggable={draggable}
       onDragStart={onDragStart}
+      data-pokemon-pc-drop-target={dropTarget ? "true" : undefined}
       className={cn(
         "flex h-11 w-full items-center justify-center rounded-md border transition",
         active
@@ -564,7 +623,7 @@ function PcGrid({
 }) {
   const [releaseTarget, setReleaseTarget] = useState<SlotPokemon | null>(null);
   return (
-    <div className="space-y-3 p-4">
+    <div className="space-y-3 p-4" data-pokemon-pc-drop-target="true">
       <div className="flex items-center gap-2">
         <Boxes className="h-4 w-4 text-success" />
         <h3 className="text-sm font-bold">PC · Caixa de Pokémon</h3>
