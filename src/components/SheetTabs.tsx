@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -445,7 +445,15 @@ export function SheetTabs(props: {
               }}
             >
               {sprite
-                ? <img src={sprite} alt={nameFor(pokemon)} className="h-7 w-7 object-contain" />
+                ? (
+                  <img
+                    src={sprite}
+                    alt={nameFor(pokemon)}
+                    draggable={false}
+                    className="h-7 w-7 select-none object-contain"
+                    style={{ WebkitUserDrag: "none" } as CSSProperties}
+                  />
+                )
                 : <span className="text-[10px] font-bold text-muted-foreground">{slot}</span>}
             </TabButton>
           );
@@ -636,11 +644,17 @@ function TabButton({
       onDragOver={onDragOver}
       onDrop={onDrop}
       draggable={draggable}
-      onDragStart={onDragStart}
+      onDragStart={(e) => {
+        if (onDragStart) {
+          onDragStart(e);
+          return;
+        }
+        e.preventDefault();
+      }}
       onPointerDown={onPointerDown}
       data-pokemon-pc-drop-target={dropTarget ? "true" : undefined}
       data-pokemon-slot-drop-target={slotTarget}
-      style={onPointerDown ? { touchAction: "none" } : undefined}
+      style={onPointerDown ? ({ touchAction: "none", WebkitUserDrag: "none", userSelect: "none" } as CSSProperties) : undefined}
       className={cn(
         "flex h-11 w-full items-center justify-center rounded-md border transition",
         active
