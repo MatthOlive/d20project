@@ -11,16 +11,17 @@ type UpdateState =
   | { status: "error"; message: string };
 
 function isTauriDesktop() {
-  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+  return typeof window !== "undefined" && ("__TAURI_INTERNALS__" in window || "__TAURI__" in window);
 }
 
 export function DesktopUpdater({ compact = false }: { compact?: boolean }) {
   const [state, setState] = useState<UpdateState>({ status: "idle" });
   const [updateResource, setUpdateResource] = useState<unknown>(null);
-  const appVersion = (import.meta.env.VITE_APP_VERSION as string | undefined) ?? null;
+  const appVersion = (import.meta.env.VITE_APP_VERSION as string | undefined) ?? "dev";
+  const desktop = isTauriDesktop();
 
   async function checkForUpdates({ silent = false }: { silent?: boolean } = {}) {
-    if (!isTauriDesktop()) return;
+    if (!desktop) return;
     try {
       if (!silent) setState({ status: "checking" });
       const { check } = await import("@tauri-apps/plugin-updater");
@@ -65,8 +66,6 @@ export function DesktopUpdater({ compact = false }: { compact?: boolean }) {
     void checkForUpdates({ silent: true });
   }, []);
 
-  if (!isTauriDesktop()) return null;
-
   const className = compact
     ? "text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-400"
     : "rounded-md border border-border bg-card p-3 text-sm text-muted-foreground";
@@ -75,11 +74,11 @@ export function DesktopUpdater({ compact = false }: { compact?: boolean }) {
     <div className={className}>
       {state.status === "idle" && (
         <button type="button" onClick={() => void checkForUpdates()} className="hover:text-red-600">
-          {appVersion ? `${appVersion} · verificar atualizacao` : "Verificar atualizacoes"}
+          {desktop ? `${appVersion} - verificar atualizacao` : `${appVersion} - web`}
         </button>
       )}
       {state.status === "checking" && <span>Verificando atualizacoes...</span>}
-      {state.status === "none" && <span>{appVersion ? `${appVersion} · atualizado` : "App atualizado"}</span>}
+      {state.status === "none" && <span>{`${appVersion} - atualizado`}</span>}
       {state.status === "available" && (
         <div className="space-y-2">
           <p>Atualizacao {state.version} disponivel</p>
@@ -92,7 +91,7 @@ export function DesktopUpdater({ compact = false }: { compact?: boolean }) {
         <span>Baixando atualizacao{state.progress === null ? "..." : ` ${state.progress}%`}</span>
       )}
       {state.status === "ready" && <span>Reiniciando...</span>}
-      {state.status === "error" && <span title={state.message}>Atualizador indisponivel</span>}
+      {state.status === "error" && <span title={state.message}>{`${appVersion} - atualizador indisponivel`}</span>}
     </div>
   );
 }

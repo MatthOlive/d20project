@@ -403,11 +403,7 @@ export function SheetTabs(props: {
               tone={pokemon ? "team" : "empty"}
               slotTarget={slot}
               onPointerDown={pokemon ? (e) => beginTeamPointerDrag(e, pokemon, slot) : undefined}
-              draggable={!!pokemon}
-              onDragStart={pokemon ? (e) => {
-                e.dataTransfer.effectAllowed = "move";
-                e.dataTransfer.setData(SLOT_DRAG_MIME, JSON.stringify({ id: pokemon.id, label: nameFor(pokemon), fromSlot: slot }));
-              } : undefined}
+              draggable={false}
               onDragOver={(e) => {
                 if (e.dataTransfer.types.includes(SLOT_DRAG_MIME) || e.dataTransfer.types.includes(DRAG_MIME)) {
                   e.preventDefault();

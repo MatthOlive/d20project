@@ -1106,7 +1106,7 @@ function FilesPanel({
       detail: { payload, clientX, clientY },
     });
     target.dispatchEvent(event);
-    return event.defaultPrevented;
+    return true;
   }
 
   function beginPointerDrag(e: React.PointerEvent, row: CharRow, payload: DragCharacterPayload) {
