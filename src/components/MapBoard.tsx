@@ -1084,6 +1084,10 @@ export function MapBoard({
     function onPointerDrop(e: Event) {
       const detail = (e as CustomEvent).detail as { payload?: DragCharacterPayload; clientX?: number; clientY?: number } | undefined;
       if (!detail?.payload || typeof detail.clientX !== "number" || typeof detail.clientY !== "number") return;
+      const handledBySheet = document
+        .elementsFromPoint(detail.clientX, detail.clientY)
+        .some((el) => el instanceof HTMLElement && !!el.closest('[data-pokemon-pc-drop-target="true"]'));
+      if (handledBySheet) return;
       const rect = (innerRef.current ?? boardRef.current)?.getBoundingClientRect();
       if (!rect) return;
       const inside =

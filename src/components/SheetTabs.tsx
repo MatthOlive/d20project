@@ -162,6 +162,7 @@ export function SheetTabs(props: {
     const slotRaw = e.dataTransfer.getData(SLOT_DRAG_MIME);
     if (slotRaw && (active.kind === "pc" || active.kind === "pcPokemon")) {
       e.preventDefault();
+      e.stopPropagation();
       try {
         const p = JSON.parse(slotRaw) as { id: string; label: string };
         await assignPokemonToTrainer(p.id, null);
@@ -177,6 +178,7 @@ export function SheetTabs(props: {
     const raw = e.dataTransfer.getData(DRAG_MIME);
     if (!raw) return;
     e.preventDefault();
+    e.stopPropagation();
     try {
       const p = JSON.parse(raw) as DragCharacterPayload;
       if (p.kind !== "pokemon") return;
@@ -309,6 +311,7 @@ export function SheetTabs(props: {
             const slotRaw = e.dataTransfer.getData(SLOT_DRAG_MIME);
             if (slotRaw) {
               e.preventDefault();
+              e.stopPropagation();
               try {
                 const p = JSON.parse(slotRaw) as { id: string; label: string };
                 await assignPokemonToTrainer(p.id, null);
@@ -324,6 +327,7 @@ export function SheetTabs(props: {
             const raw = e.dataTransfer.getData(DRAG_MIME);
             if (!raw) return;
             e.preventDefault();
+            e.stopPropagation();
             try {
               const p = JSON.parse(raw) as DragCharacterPayload;
               if (p.kind !== "pokemon") { toast.error("Apenas Pokémon podem ir para o PC."); return; }
