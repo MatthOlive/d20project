@@ -110,6 +110,44 @@ function normalizeIntegerInput(value: string, min?: number): string {
   return String(readIntegerInput(value, min));
 }
 
+function RollNumberInput({
+  value,
+  onValueChange,
+  min,
+  className,
+}: {
+  value: string;
+  onValueChange: (value: string) => void;
+  min?: number;
+  className?: string;
+}) {
+  const allowNegative = typeof min !== "number" || min < 0;
+
+  function setIfNumeric(next: string) {
+    const isValid =
+      next === "" ||
+      (allowNegative && next === "-") ||
+      (allowNegative ? /^-?\d+$/.test(next) : /^\d+$/.test(next));
+    if (isValid) onValueChange(next);
+  }
+
+  return (
+    <Input
+      type="text"
+      inputMode={allowNegative ? "text" : "numeric"}
+      value={value}
+      onPointerDown={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+      onFocus={(e) => e.currentTarget.select()}
+      onBlur={(e) => onValueChange(normalizeIntegerInput(e.currentTarget.value, min))}
+      onChange={(e) => setIfNumeric(e.currentTarget.value)}
+      className={`text-center font-semibold tabular-nums ${className ?? ""}`}
+    />
+  );
+}
+
 export type ComputedMoveStats = {
   accPool: number;
   dmgPool: number;
@@ -464,12 +502,9 @@ export function MoveRollDialog({
                 Pool: {accPool}d6 → rolando {finalAccPool}d6
               </p>
             </div>
-            <Input
-              type="number"
+            <RollNumberInput
               value={accBonusText}
-              onFocus={(e) => e.currentTarget.select()}
-              onBlur={(e) => setAccBonusText(normalizeIntegerInput(e.target.value))}
-              onChange={(e) => setAccBonusText(e.target.value)}
+              onValueChange={setAccBonusText}
               className="h-9 w-20"
             />
           </div>
@@ -479,25 +514,19 @@ export function MoveRollDialog({
             <div className="mt-2 grid grid-cols-2 gap-2">
               <div>
                 <Label className="text-[10px] text-muted-foreground">Margem de crítico</Label>
-                <Input
-                  type="number"
+                <RollNumberInput
                   min={0}
                   value={critMarginText}
-                  onFocus={(e) => e.currentTarget.select()}
-                  onBlur={(e) => setCritMarginText(normalizeIntegerInput(e.target.value, 0))}
-                  onChange={(e) => setCritMarginText(e.target.value)}
+                  onValueChange={setCritMarginText}
                   className="h-8"
                 />
               </div>
               <div>
                 <Label className="text-[10px] text-muted-foreground">Ações já feitas no turno</Label>
-                <Input
-                  type="number"
+                <RollNumberInput
                   min={0}
                   value={actionsText}
-                  onFocus={(e) => e.currentTarget.select()}
-                  onBlur={(e) => setActionsText(normalizeIntegerInput(e.target.value, 0))}
-                  onChange={(e) => setActionsText(e.target.value)}
+                  onValueChange={setActionsText}
                   className="h-8"
                 />
               </div>
@@ -517,12 +546,9 @@ export function MoveRollDialog({
                     Base: {dmgPool}d6{hasStab ? " (incl. STAB)" : ""}
                   </p>
                 </div>
-                <Input
-                  type="number"
+                <RollNumberInput
                   value={dmgBonusText}
-                  onFocus={(e) => e.currentTarget.select()}
-                  onBlur={(e) => setDmgBonusText(normalizeIntegerInput(e.target.value))}
-                  onChange={(e) => setDmgBonusText(e.target.value)}
+                  onValueChange={setDmgBonusText}
                   className="h-9 w-20"
                 />
               </div>
@@ -578,13 +604,10 @@ export function MoveRollDialog({
                       {painPenalty > 0 ? ` · −${painPenalty} dado(s) por dor` : ""}
                     </p>
                   </div>
-                  <Input
-                    type="number"
+                  <RollNumberInput
                     min={0}
                     value={targetDefText}
-                    onFocus={(e) => e.currentTarget.select()}
-                    onBlur={(e) => setTargetDefText(normalizeIntegerInput(e.target.value, 0))}
-                    onChange={(e) => setTargetDefText(e.target.value)}
+                    onValueChange={setTargetDefText}
                     className="h-9 w-20"
                   />
                 </div>
