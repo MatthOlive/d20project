@@ -20,7 +20,7 @@ export function DesktopUpdater({ compact = false }: { compact?: boolean }) {
   const appVersion = (import.meta.env.VITE_APP_VERSION as string | undefined) ?? "dev";
   const desktop = isTauriDesktop();
 
-  async function checkForUpdates({ silent = false }: { silent?: boolean } = {}) {
+  async function checkForUpdates({ silent = false, autoInstall = false }: { silent?: boolean; autoInstall?: boolean } = {}) {
     if (!desktop) return;
     try {
       if (!silent) setState({ status: "checking" });
@@ -32,16 +32,18 @@ export function DesktopUpdater({ compact = false }: { compact?: boolean }) {
       }
       setUpdateResource(update);
       setState({ status: "available", version: update.version });
-    } catch (error) {
-      if (!silent) {
-        setState({ status: "error", message: error instanceof Error ? error.message : "Nao foi possivel verificar atualizacoes." });
+      if (autoInstall) {
+        await installUpdate(update);
       }
+    } catch (error) {
+      setState({ status: "error", message: error instanceof Error ? error.message : "Nao foi possivel verificar atualizacoes." });
     }
   }
 
-  async function installUpdate() {
-    if (!updateResource || typeof updateResource !== "object") return;
-    const update = updateResource as {
+  async function installUpdate(updateOverride?: unknown) {
+    const selectedUpdate = updateOverride ?? updateResource;
+    if (!selectedUpdate || typeof selectedUpdate !== "object") return;
+    const update = selectedUpdate as {
       downloadAndInstall: (onEvent?: (event: { event: string; data?: { contentLength?: number; chunkLength?: number } }) => void) => Promise<void>;
     };
     let downloaded = 0;
@@ -63,7 +65,7 @@ export function DesktopUpdater({ compact = false }: { compact?: boolean }) {
   }
 
   useEffect(() => {
-    void checkForUpdates({ silent: true });
+    void checkForUpdates({ silent: false, autoInstall: true });
   }, []);
 
   const className = compact
@@ -91,7 +93,11 @@ export function DesktopUpdater({ compact = false }: { compact?: boolean }) {
         <span>Baixando atualizacao{state.progress === null ? "..." : ` ${state.progress}%`}</span>
       )}
       {state.status === "ready" && <span>Reiniciando...</span>}
-      {state.status === "error" && <span title={state.message}>{`${appVersion} - atualizador indisponivel`}</span>}
+      {state.status === "error" && (
+        <button type="button" title={state.message} onClick={() => void checkForUpdates({ autoInstall: true })} className="hover:text-red-600">
+          {`${appVersion} - atualizador indisponivel`}
+        </button>
+      )}
     </div>
   );
 }
