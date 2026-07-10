@@ -141,6 +141,243 @@ export function MoveCard({
   );
 }
 
+export function MoveRollResultCard({ message }: { message: MoveRollMessage }) {
+  const targets = message.damage?.targets?.filter(Boolean) ?? [];
+  const hasTargets = targets.length > 0;
+  const crit = message.accuracy.crit;
+  const chance = message.chance ?? [];
+  const chanceSuccesses = chance.reduce((sum, item) => sum + item.successes, 0);
+  const hasDamageBubble = !!message.damage && !message.damage.isStatus && !hasTargets;
+
+  return (
+    <div className="w-full max-w-[390px] overflow-hidden rounded-[1.75rem] border-[3px] border-neutral-950 bg-white text-neutral-950 shadow-xl">
+      <div className="relative border-b-[3px] border-neutral-950 px-4 pb-2 pt-3">
+        <div className="pr-24">
+          <h3 className="truncate text-3xl font-black uppercase leading-none tracking-wide">{message.card.name}</h3>
+          <div className="mt-1 flex max-w-full flex-wrap gap-1">
+            <span className="rounded-md border-2 border-neutral-950 px-1.5 py-0.5 text-[11px] font-semibold uppercase leading-none">
+              {message.card.type}
+            </span>
+            {message.card.category && (
+              <span className="rounded-md border-2 border-neutral-950 px-1.5 py-0.5 text-[11px] font-semibold uppercase leading-none">
+                {message.card.category}
+              </span>
+            )}
+            {message.hasStab && (
+              <span className="rounded-md bg-neutral-950 px-1.5 py-0.5 text-[11px] font-bold uppercase leading-none text-white">
+                STAB
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="absolute right-3 top-2 flex flex-col items-center">
+          <span className="text-[21px] font-black uppercase leading-none tracking-[0.18em]">Power</span>
+          <div className="mt-[-2px] flex h-16 w-16 items-center justify-center rounded-full border-[3px] border-neutral-950 bg-white text-4xl font-black leading-none">
+            {message.card.power}
+          </div>
+        </div>
+      </div>
+
+      <section className="border-b-[3px] border-neutral-950 px-4 py-3">
+        <SectionPill>Accuracy</SectionPill>
+        <div className="mt-3 grid grid-cols-[120px_1fr] items-center gap-3">
+          <ResultCircle
+            label="Success"
+            value={message.accuracy.successes}
+            dice={message.accuracy.dice}
+          />
+          <div className="space-y-3 text-right text-2xl font-light uppercase tracking-wide">
+            <p>
+              Needed <span className="ml-4 font-semibold">{crit?.required ?? 1}</span>
+            </p>
+            <p>
+              Critical <span className="ml-4 font-semibold">{crit?.critRequired ?? 4}</span>
+            </p>
+          </div>
+        </div>
+        {crit?.isCrit && (
+          <p className="mt-1 text-center text-2xl font-black uppercase leading-none">
+            Critical
+            <br />
+            Hit
+          </p>
+        )}
+      </section>
+
+      {hasTargets ? (
+        <section className="border-b-[3px] border-neutral-950 px-4 py-3">
+          <div className="grid grid-cols-[1fr_48px_82px_42px] items-end gap-2">
+            <SectionPill className="col-span-1">Per Target</SectionPill>
+            <span className="text-center text-[18px] font-light uppercase leading-none">Def / SpDef</span>
+            <span className="text-center text-[15px] font-light uppercase leading-none">Super / Not Very</span>
+            <span className="text-center text-[18px] font-light uppercase leading-none">Dmg</span>
+          </div>
+          <div className="mt-2 space-y-1.5">
+            {targets.map((target, index) => (
+              <div key={`${target.name}-${index}`} className="grid grid-cols-[1fr_48px_82px_42px] items-center gap-2">
+                <span className="truncate text-2xl font-light uppercase">{target.name}</span>
+                <span className="text-center text-2xl font-light tabular-nums">{target.def}</span>
+                <span className="text-center text-sm font-light uppercase leading-none">
+                  {target.immune ? "Immune" : target.effLabel}
+                </span>
+                <span className="text-center text-2xl font-light tabular-nums">{target.finalDamage}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : hasDamageBubble ? (
+        <section className="border-b-[3px] border-neutral-950 px-4 py-3">
+          <SectionPill>Dmg</SectionPill>
+          <div className="mt-3 rounded-full border-[3px] border-neutral-950 px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-black uppercase tracking-wide">Damage roll</p>
+                <p className="truncate text-[11px] uppercase text-neutral-500">
+                  {message.card.damagePoolText}
+                  {message.damage?.critBonus ? ` + ${message.damage.critBonus} crit die` : ""}
+                </p>
+              </div>
+              <ResultBadge
+                label="DMG"
+                value={message.damage?.successes ?? 0}
+                dice={message.damage?.dice ?? []}
+                tone="dark"
+              />
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      <section className="px-4 py-3">
+        <SectionPill>Effect</SectionPill>
+        <div className="mt-3 grid grid-cols-[110px_1fr] gap-3">
+          {chance.length > 0 ? (
+            <ResultCircle
+              label="Success"
+              value={chanceSuccesses}
+              dice={chance.flatMap((item) => item.dice)}
+              highlight={(die) => die === 6}
+            />
+          ) : (
+            <div className="hidden sm:block" />
+          )}
+          <div className="space-y-1 text-[18px] font-light leading-snug text-neutral-500">
+            {message.card.effect ? (
+              <p className="whitespace-pre-wrap">{message.card.effect}</p>
+            ) : (
+              <p>Sem efeito adicional.</p>
+            )}
+            {chance.map((item, index) => (
+              <p key={`${item.label}-${index}`} className="text-sm uppercase text-neutral-700">
+                {item.label}: {item.successes} success
+              </p>
+            ))}
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function SectionPill({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex w-fit items-center rounded-lg border-[3px] border-neutral-950 px-1.5 py-0.5 text-[22px] font-black uppercase leading-none",
+        className,
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+function ResultCircle({
+  label,
+  value,
+  dice,
+  highlight,
+}: {
+  label: string;
+  value: number;
+  dice: number[];
+  highlight?: (die: number) => boolean;
+}) {
+  return (
+    <HoverCard openDelay={80} closeDelay={80}>
+      <HoverCardTrigger asChild>
+        <span className="inline-flex cursor-help flex-col items-center">
+          <span className="text-xl font-black uppercase leading-none tracking-[0.25em]">{label}</span>
+          <span className="mt-[-2px] flex h-24 w-24 items-center justify-center rounded-full border-[3px] border-neutral-950 bg-white text-6xl font-black leading-none">
+            {value}
+          </span>
+        </span>
+      </HoverCardTrigger>
+      <DiceHoverContent dice={dice} highlight={highlight} />
+    </HoverCard>
+  );
+}
+
+function ResultBadge({
+  label,
+  value,
+  dice,
+  tone = "light",
+}: {
+  label: string;
+  value: number;
+  dice: number[];
+  tone?: "light" | "dark";
+}) {
+  return (
+    <HoverCard openDelay={80} closeDelay={80}>
+      <HoverCardTrigger asChild>
+        <span
+          className={cn(
+            "inline-flex cursor-help items-center gap-2 rounded-full border-[3px] border-neutral-950 px-4 py-1.5 text-lg font-black uppercase",
+            tone === "dark" ? "bg-neutral-950 text-white" : "bg-white text-neutral-950",
+          )}
+        >
+          {label} <span className="text-3xl leading-none">{value}</span>
+        </span>
+      </HoverCardTrigger>
+      <DiceHoverContent dice={dice} />
+    </HoverCard>
+  );
+}
+
+function DiceHoverContent({ dice, highlight }: { dice: number[]; highlight?: (die: number) => boolean }) {
+  const isHit = highlight ?? ((die: number) => die >= 4);
+  return (
+    <HoverCardContent side="top" align="center" className="w-auto max-w-[280px] p-2">
+      <span className="mb-1 block border-b pb-0.5 text-[11px] font-semibold text-muted-foreground">
+        Dados rolados:
+      </span>
+      {dice.length === 0 ? (
+        <span className="text-[11px] italic text-muted-foreground">Nenhum dado.</span>
+      ) : (
+        <span className="flex flex-wrap gap-1">
+          {dice.map((die, index) => (
+            <span
+              key={index}
+              className={cn(
+                "inline-flex h-5 min-w-5 items-center justify-center rounded border px-1 text-[10px] font-bold",
+                isHit(die)
+                  ? "border-success bg-success text-success-foreground"
+                  : die === 1
+                    ? "border-destructive/40 bg-destructive/10 text-destructive"
+                    : "border-border bg-muted text-foreground",
+              )}
+            >
+              {die}
+            </span>
+          ))}
+        </span>
+      )}
+    </HoverCardContent>
+  );
+}
+
 export function SuccessHover({
   label,
   successes,

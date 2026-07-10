@@ -10,7 +10,7 @@ import { drawReactionCard } from "@/lib/contest";
 import { cn } from "@/lib/utils";
 import { narratorTurn } from "@/lib/narrator.functions";
 import { toast } from "sonner";
-import { MoveCard, SuccessHover, type MoveRollMessage } from "@/components/MoveCard";
+import { MoveCard, MoveRollResultCard, SuccessHover, type MoveRollMessage } from "@/components/MoveCard";
 import { FloatingWindow } from "@/components/FloatingWindow";
 
 type Msg = {
@@ -389,19 +389,12 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
             </span>
           )}
         </div>
+        <MoveRollResultCard message={m} />
+        {false && (
         <MoveCard
           data={m.card}
           hasStab={m.hasStab}
-          accuracySlot={
-            <span className="inline-flex items-center gap-1">
-              <SuccessHover label="success" successes={m.accuracy.successes} dice={m.accuracy.dice} />
-              {crit && (
-                <span className="text-[10px] text-muted-foreground">
-                  need {crit.required} (crit {crit.critRequired})
-                </span>
-              )}
-            </span>
-          }
+          accuracySlot={null}
           damageSlot={
             m.damage?.targets && m.damage.targets.length > 0
               ? null
@@ -464,6 +457,7 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
             ) : null
           }
         />
+        )}
       </div>
     );
   }
