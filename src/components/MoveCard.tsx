@@ -148,91 +148,114 @@ export function MoveRollResultCard({ message }: { message: MoveRollMessage }) {
   const chance = message.chance ?? [];
   const chanceSuccesses = chance.reduce((sum, item) => sum + item.successes, 0);
   const hasDamageBubble = !!message.damage && !message.damage.isStatus && !hasTargets;
+  const tcol = TYPE_COLORS[message.card.type as keyof typeof TYPE_COLORS] ?? { bg: "#888", fg: "#fff" };
 
   return (
-    <div className="w-full max-w-[390px] overflow-hidden rounded-[1.75rem] border-[3px] border-neutral-950 bg-white text-neutral-950 shadow-xl">
-      <div className="relative border-b-[3px] border-neutral-950 px-4 pb-2 pt-3">
+    <div
+      className="w-full max-w-[410px] overflow-hidden rounded-xl border bg-card text-card-foreground shadow-lg"
+      style={{ borderColor: tcol.bg }}
+    >
+      <div className="relative px-4 pb-3 pt-3 text-white" style={{ backgroundColor: tcol.bg, color: tcol.fg }}>
         <div className="pr-24">
-          <h3 className="truncate text-3xl font-black uppercase leading-none tracking-wide">{message.card.name}</h3>
-          <div className="mt-1 flex max-w-full flex-wrap gap-1">
-            <span className="rounded-md border-2 border-neutral-950 px-1.5 py-0.5 text-[11px] font-semibold uppercase leading-none">
+          <h3 className="truncate text-2xl font-black uppercase leading-none tracking-wide">{message.card.name}</h3>
+          <div className="mt-2 flex max-w-full flex-wrap gap-1">
+            <span className="rounded bg-black/25 px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none tracking-wider">
               {message.card.type}
             </span>
             {message.card.category && (
-              <span className="rounded-md border-2 border-neutral-950 px-1.5 py-0.5 text-[11px] font-semibold uppercase leading-none">
+              <span className="rounded bg-white/25 px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none tracking-wider">
                 {message.card.category}
               </span>
             )}
             {message.hasStab && (
-              <span className="rounded-md bg-neutral-950 px-1.5 py-0.5 text-[11px] font-bold uppercase leading-none text-white">
+              <span className="rounded bg-amber-400 px-1.5 py-0.5 text-[10px] font-black uppercase leading-none text-amber-950">
                 STAB
               </span>
             )}
           </div>
         </div>
-        <div className="absolute right-3 top-2 flex flex-col items-center">
-          <span className="text-[21px] font-black uppercase leading-none tracking-[0.18em]">Power</span>
-          <div className="mt-[-2px] flex h-16 w-16 items-center justify-center rounded-full border-[3px] border-neutral-950 bg-white text-4xl font-black leading-none">
+        <div className="absolute right-3 top-3 flex flex-col items-center">
+          <span className="text-[10px] font-black uppercase leading-none tracking-[0.24em] opacity-85">Power</span>
+          <div className="mt-1 flex h-14 w-14 items-center justify-center rounded-full border-2 border-white/80 bg-background text-3xl font-black leading-none text-foreground shadow-sm">
             {message.card.power}
           </div>
         </div>
       </div>
 
-      <section className="border-b-[3px] border-neutral-950 px-4 py-3">
-        <SectionPill>Accuracy</SectionPill>
-        <div className="mt-3 grid grid-cols-[120px_1fr] items-center gap-3">
+      <section className="border-b border-border px-4 py-3">
+        <SectionPill accent={tcol.bg}>Accuracy</SectionPill>
+        <div className="mt-3 grid grid-cols-[104px_1fr] items-center gap-3">
           <ResultCircle
             label="Success"
             value={message.accuracy.successes}
             dice={message.accuracy.dice}
+            accent={tcol.bg}
+            foreground={tcol.fg}
           />
-          <div className="space-y-3 text-right text-2xl font-light uppercase tracking-wide">
-            <p>
-              Needed <span className="ml-4 font-semibold">{crit?.required ?? 1}</span>
+          <div className="space-y-2 text-right text-sm uppercase tracking-wide text-muted-foreground">
+            <p className="flex items-center justify-end gap-3">
+              <span>Needed</span>
+              <span className="min-w-8 rounded-md bg-muted px-2 py-1 text-center text-xl font-black text-foreground">
+                {crit?.required ?? 1}
+              </span>
             </p>
-            <p>
-              Critical <span className="ml-4 font-semibold">{crit?.critRequired ?? 4}</span>
+            <p className="flex items-center justify-end gap-3">
+              <span>Critical</span>
+              <span className="min-w-8 rounded-md bg-muted px-2 py-1 text-center text-xl font-black text-foreground">
+                {crit?.critRequired ?? 4}
+              </span>
             </p>
           </div>
         </div>
         {crit?.isCrit && (
-          <p className="mt-1 text-center text-2xl font-black uppercase leading-none">
-            Critical
-            <br />
-            Hit
+          <p className="mt-2 rounded-md bg-amber-400/15 px-2 py-1 text-center text-sm font-black uppercase text-amber-500">
+            Critical Hit +1 dado
           </p>
         )}
       </section>
 
       {hasTargets ? (
-        <section className="border-b-[3px] border-neutral-950 px-4 py-3">
-          <div className="grid grid-cols-[1fr_48px_82px_42px] items-end gap-2">
-            <SectionPill className="col-span-1">Per Target</SectionPill>
-            <span className="text-center text-[18px] font-light uppercase leading-none">Def / SpDef</span>
-            <span className="text-center text-[15px] font-light uppercase leading-none">Super / Not Very</span>
-            <span className="text-center text-[18px] font-light uppercase leading-none">Dmg</span>
+        <section className="border-b border-border px-4 py-3">
+          <div className="grid grid-cols-[1fr_52px_86px_44px] items-end gap-2">
+            <SectionPill accent={tcol.bg} className="col-span-1">Per Target</SectionPill>
+            <span className="text-center text-[10px] font-bold uppercase leading-tight text-muted-foreground">Def / SpDef</span>
+            <span className="text-center text-[10px] font-bold uppercase leading-tight text-muted-foreground">Type</span>
+            <span className="text-center text-[10px] font-bold uppercase leading-tight text-muted-foreground">Dmg</span>
           </div>
-          <div className="mt-2 space-y-1.5">
+          <div className="mt-2 overflow-hidden rounded-lg border border-border">
             {targets.map((target, index) => (
-              <div key={`${target.name}-${index}`} className="grid grid-cols-[1fr_48px_82px_42px] items-center gap-2">
-                <span className="truncate text-2xl font-light uppercase">{target.name}</span>
-                <span className="text-center text-2xl font-light tabular-nums">{target.def}</span>
-                <span className="text-center text-sm font-light uppercase leading-none">
+              <div
+                key={`${target.name}-${index}`}
+                className={cn(
+                  "grid grid-cols-[1fr_52px_86px_44px] items-center gap-2 px-2 py-2 text-xs",
+                  index % 2 === 0 ? "bg-muted/30" : "bg-card",
+                )}
+              >
+                <span className="truncate font-bold">{target.name}</span>
+                <span className="text-center font-mono text-sm font-bold tabular-nums">{target.def}</span>
+                <span className="text-center text-[10px] font-semibold uppercase leading-tight text-muted-foreground">
                   {target.immune ? "Immune" : target.effLabel}
                 </span>
-                <span className="text-center text-2xl font-light tabular-nums">{target.finalDamage}</span>
+                <span
+                  className={cn(
+                    "rounded px-1.5 py-1 text-center font-mono text-sm font-black tabular-nums",
+                    target.immune ? "bg-muted text-muted-foreground" : "bg-destructive/15 text-destructive",
+                  )}
+                >
+                  {target.finalDamage}
+                </span>
               </div>
             ))}
           </div>
         </section>
       ) : hasDamageBubble ? (
-        <section className="border-b-[3px] border-neutral-950 px-4 py-3">
-          <SectionPill>Dmg</SectionPill>
-          <div className="mt-3 rounded-full border-[3px] border-neutral-950 px-4 py-3">
+        <section className="border-b border-border px-4 py-3">
+          <SectionPill accent={tcol.bg}>Damage</SectionPill>
+          <div className="mt-3 rounded-xl border border-border bg-muted/35 px-3 py-3">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-sm font-black uppercase tracking-wide">Damage roll</p>
-                <p className="truncate text-[11px] uppercase text-neutral-500">
+                <p className="text-xs font-black uppercase tracking-wide text-foreground">Damage roll</p>
+                <p className="truncate text-[11px] uppercase text-muted-foreground">
                   {message.card.damagePoolText}
                   {message.damage?.critBonus ? ` + ${message.damage.critBonus} crit die` : ""}
                 </p>
@@ -241,7 +264,8 @@ export function MoveRollResultCard({ message }: { message: MoveRollMessage }) {
                 label="DMG"
                 value={message.damage?.successes ?? 0}
                 dice={message.damage?.dice ?? []}
-                tone="dark"
+                accent={tcol.bg}
+                foreground={tcol.fg}
               />
             </div>
           </div>
@@ -249,26 +273,26 @@ export function MoveRollResultCard({ message }: { message: MoveRollMessage }) {
       ) : null}
 
       <section className="px-4 py-3">
-        <SectionPill>Effect</SectionPill>
-        <div className="mt-3 grid grid-cols-[110px_1fr] gap-3">
+        <SectionPill accent={tcol.bg}>Effect</SectionPill>
+        <div className={cn("mt-3 gap-3", chance.length > 0 ? "grid grid-cols-[104px_1fr]" : "block")}>
           {chance.length > 0 ? (
             <ResultCircle
               label="Success"
               value={chanceSuccesses}
               dice={chance.flatMap((item) => item.dice)}
               highlight={(die) => die === 6}
+              accent={tcol.bg}
+              foreground={tcol.fg}
             />
-          ) : (
-            <div className="hidden sm:block" />
-          )}
-          <div className="space-y-1 text-[18px] font-light leading-snug text-neutral-500">
+          ) : null}
+          <div className="space-y-1 text-sm leading-relaxed text-muted-foreground">
             {message.card.effect ? (
               <p className="whitespace-pre-wrap">{message.card.effect}</p>
             ) : (
               <p>Sem efeito adicional.</p>
             )}
             {chance.map((item, index) => (
-              <p key={`${item.label}-${index}`} className="text-sm uppercase text-neutral-700">
+              <p key={`${item.label}-${index}`} className="text-xs font-semibold uppercase text-foreground">
                 {item.label}: {item.successes} success
               </p>
             ))}
@@ -279,13 +303,22 @@ export function MoveRollResultCard({ message }: { message: MoveRollMessage }) {
   );
 }
 
-function SectionPill({ children, className }: { children: ReactNode; className?: string }) {
+function SectionPill({
+  children,
+  className,
+  accent,
+}: {
+  children: ReactNode;
+  className?: string;
+  accent?: string;
+}) {
   return (
     <span
       className={cn(
-        "inline-flex w-fit items-center rounded-lg border-[3px] border-neutral-950 px-1.5 py-0.5 text-[22px] font-black uppercase leading-none",
+        "inline-flex w-fit items-center rounded-md border px-2 py-1 text-[11px] font-black uppercase leading-none tracking-wider",
         className,
       )}
+      style={accent ? { borderColor: accent, color: accent } : undefined}
     >
       {children}
     </span>
@@ -297,18 +330,25 @@ function ResultCircle({
   value,
   dice,
   highlight,
+  accent,
+  foreground,
 }: {
   label: string;
   value: number;
   dice: number[];
   highlight?: (die: number) => boolean;
+  accent?: string;
+  foreground?: string;
 }) {
   return (
     <HoverCard openDelay={80} closeDelay={80}>
       <HoverCardTrigger asChild>
         <span className="inline-flex cursor-help flex-col items-center">
-          <span className="text-xl font-black uppercase leading-none tracking-[0.25em]">{label}</span>
-          <span className="mt-[-2px] flex h-24 w-24 items-center justify-center rounded-full border-[3px] border-neutral-950 bg-white text-6xl font-black leading-none">
+          <span className="text-[11px] font-black uppercase leading-none tracking-[0.18em] text-muted-foreground">{label}</span>
+          <span
+            className="mt-1 flex h-20 w-20 items-center justify-center rounded-full border-2 bg-background text-5xl font-black leading-none shadow-sm"
+            style={accent ? { borderColor: accent, color: accent } : undefined}
+          >
             {value}
           </span>
         </span>
@@ -322,23 +362,23 @@ function ResultBadge({
   label,
   value,
   dice,
-  tone = "light",
+  accent,
+  foreground,
 }: {
   label: string;
   value: number;
   dice: number[];
-  tone?: "light" | "dark";
+  accent?: string;
+  foreground?: string;
 }) {
   return (
     <HoverCard openDelay={80} closeDelay={80}>
       <HoverCardTrigger asChild>
         <span
-          className={cn(
-            "inline-flex cursor-help items-center gap-2 rounded-full border-[3px] border-neutral-950 px-4 py-1.5 text-lg font-black uppercase",
-            tone === "dark" ? "bg-neutral-950 text-white" : "bg-white text-neutral-950",
-          )}
+          className="inline-flex cursor-help items-center gap-2 rounded-full px-4 py-1.5 text-sm font-black uppercase shadow-sm"
+          style={accent ? { backgroundColor: accent, color: foreground ?? "#fff" } : undefined}
         >
-          {label} <span className="text-3xl leading-none">{value}</span>
+          {label} <span className="text-2xl leading-none">{value}</span>
         </span>
       </HoverCardTrigger>
       <DiceHoverContent dice={dice} />
