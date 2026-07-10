@@ -100,6 +100,16 @@ export function parseMoveExtras(effect: string | null | undefined): {
   return { chance, extra };
 }
 
+function readIntegerInput(value: string, min?: number): number {
+  const parsed = Number.parseInt(value, 10);
+  const next = Number.isFinite(parsed) ? parsed : 0;
+  return typeof min === "number" ? Math.max(min, next) : next;
+}
+
+function normalizeIntegerInput(value: string, min?: number): string {
+  return String(readIntegerInput(value, min));
+}
+
 export type ComputedMoveStats = {
   accPool: number;
   dmgPool: number;
@@ -280,17 +290,22 @@ export function MoveRollDialog({
   triggerLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [accBonus, setAccBonus] = useState(0);
-  const [dmgBonus, setDmgBonus] = useState(0);
-  const [targetDef, setTargetDef] = useState(0);
-  const [critMargin, setCritMargin] = useState(0);
-  const [actions, setActions] = useState(0);
+  const [accBonusText, setAccBonusText] = useState("0");
+  const [dmgBonusText, setDmgBonusText] = useState("0");
+  const [targetDefText, setTargetDefText] = useState("0");
+  const [critMarginText, setCritMarginText] = useState("0");
+  const [actionsText, setActionsText] = useState("0");
   const [selectedTokenIds, setSelectedTokenIds] = useState<string[]>([]);
   const spdefUsesInsight = useGameSpdefUsesInsight(gameId);
   const effectivenessFlat = useGameEffectivenessFlat(gameId);
   const { tokens, infoMap } = useTargetsForGame(gameId, open && !isStatus);
   const extras = useMemo(() => parseMoveExtras(move.effect), [move.effect]);
   const [extraOn, setExtraOn] = useState<boolean[]>(() => extras.extra.map(() => false));
+  const accBonus = readIntegerInput(accBonusText);
+  const dmgBonus = readIntegerInput(dmgBonusText);
+  const targetDef = readIntegerInput(targetDefText, 0);
+  const critMargin = readIntegerInput(critMarginText, 0);
+  const actions = readIntegerInput(actionsText, 0);
 
   useEffect(() => {
     if (!open) setSelectedTokenIds([]);
@@ -409,11 +424,11 @@ export function MoveRollDialog({
     });
     if (error) toast.error(error.message);
     setOpen(false);
-    setAccBonus(0);
-    setDmgBonus(0);
-    setTargetDef(0);
-    setCritMargin(0);
-    setActions(0);
+    setAccBonusText("0");
+    setDmgBonusText("0");
+    setTargetDefText("0");
+    setCritMarginText("0");
+    setActionsText("0");
     setSelectedTokenIds([]);
     setExtraOn(extras.extra.map(() => false));
   }
@@ -451,8 +466,10 @@ export function MoveRollDialog({
             </div>
             <Input
               type="number"
-              value={accBonus}
-              onChange={(e) => setAccBonus(parseInt(e.target.value) || 0)}
+              value={accBonusText}
+              onFocus={(e) => e.currentTarget.select()}
+              onBlur={(e) => setAccBonusText(normalizeIntegerInput(e.target.value))}
+              onChange={(e) => setAccBonusText(e.target.value)}
               className="h-9 w-20"
             />
           </div>
@@ -465,8 +482,10 @@ export function MoveRollDialog({
                 <Input
                   type="number"
                   min={0}
-                  value={critMargin}
-                  onChange={(e) => setCritMargin(Math.max(0, parseInt(e.target.value) || 0))}
+                  value={critMarginText}
+                  onFocus={(e) => e.currentTarget.select()}
+                  onBlur={(e) => setCritMarginText(normalizeIntegerInput(e.target.value, 0))}
+                  onChange={(e) => setCritMarginText(e.target.value)}
                   className="h-8"
                 />
               </div>
@@ -475,8 +494,10 @@ export function MoveRollDialog({
                 <Input
                   type="number"
                   min={0}
-                  value={actions}
-                  onChange={(e) => setActions(Math.max(0, parseInt(e.target.value) || 0))}
+                  value={actionsText}
+                  onFocus={(e) => e.currentTarget.select()}
+                  onBlur={(e) => setActionsText(normalizeIntegerInput(e.target.value, 0))}
+                  onChange={(e) => setActionsText(e.target.value)}
                   className="h-8"
                 />
               </div>
@@ -498,8 +519,10 @@ export function MoveRollDialog({
                 </div>
                 <Input
                   type="number"
-                  value={dmgBonus}
-                  onChange={(e) => setDmgBonus(parseInt(e.target.value) || 0)}
+                  value={dmgBonusText}
+                  onFocus={(e) => e.currentTarget.select()}
+                  onBlur={(e) => setDmgBonusText(normalizeIntegerInput(e.target.value))}
+                  onChange={(e) => setDmgBonusText(e.target.value)}
                   className="h-9 w-20"
                 />
               </div>
@@ -558,8 +581,10 @@ export function MoveRollDialog({
                   <Input
                     type="number"
                     min={0}
-                    value={targetDef}
-                    onChange={(e) => setTargetDef(Math.max(0, parseInt(e.target.value) || 0))}
+                    value={targetDefText}
+                    onFocus={(e) => e.currentTarget.select()}
+                    onBlur={(e) => setTargetDefText(normalizeIntegerInput(e.target.value, 0))}
+                    onChange={(e) => setTargetDefText(e.target.value)}
                     className="h-9 w-20"
                   />
                 </div>
