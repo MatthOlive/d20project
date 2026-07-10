@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Dices } from "lucide-react";
+import { ChevronDown, ChevronUp, Dices } from "lucide-react";
 import { toast } from "sonner";
 import {
   resolveSkillValue,
@@ -122,6 +122,7 @@ function RollNumberInput({
   className?: string;
 }) {
   const allowNegative = typeof min !== "number" || min < 0;
+  const current = readIntegerInput(value, min);
 
   function setIfNumeric(next: string) {
     const isValid =
@@ -131,20 +132,54 @@ function RollNumberInput({
     if (isValid) onValueChange(next);
   }
 
+  function step(delta: number) {
+    onValueChange(String(typeof min === "number" ? Math.max(min, current + delta) : current + delta));
+  }
+
   return (
-    <Input
-      type="text"
-      inputMode={allowNegative ? "text" : "numeric"}
-      value={value}
+    <div
+      className={`relative shrink-0 ${className ?? ""}`}
       onPointerDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
-      onFocus={(e) => e.currentTarget.select()}
-      onBlur={(e) => onValueChange(normalizeIntegerInput(e.currentTarget.value, min))}
-      onChange={(e) => setIfNumeric(e.currentTarget.value)}
-      className={`text-center font-semibold tabular-nums ${className ?? ""}`}
-    />
+    >
+      <Input
+        type="text"
+        inputMode={allowNegative ? "text" : "numeric"}
+        value={value}
+        onFocus={(e) => e.currentTarget.select()}
+        onBlur={(e) => onValueChange(normalizeIntegerInput(e.currentTarget.value, min))}
+        onChange={(e) => setIfNumeric(e.currentTarget.value)}
+        className="h-full w-full pr-7 text-center font-semibold tabular-nums"
+      />
+      <div className="absolute bottom-1 right-1 top-1 flex w-5 flex-col overflow-hidden rounded-sm border border-border/70 bg-muted/40">
+        <button
+          type="button"
+          aria-label="Aumentar"
+          className="flex min-h-0 flex-1 items-center justify-center text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            step(1);
+          }}
+        >
+          <ChevronUp className="h-3 w-3" />
+        </button>
+        <button
+          type="button"
+          aria-label="Diminuir"
+          className="flex min-h-0 flex-1 items-center justify-center border-t border-border/70 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            step(-1);
+          }}
+        >
+          <ChevronDown className="h-3 w-3" />
+        </button>
+      </div>
+    </div>
   );
 }
 
