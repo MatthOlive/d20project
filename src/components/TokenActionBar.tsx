@@ -342,7 +342,11 @@ function MovesButton({
       <Button size="sm" variant="outline" className="h-7" onClick={() => setOpen(true)}>
         <Dices className="h-3.5 w-3.5" /><span className="ml-1">Moves</span>
       </Button>
-      <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
+      <DialogContent
+        className="max-h-[85vh] max-w-3xl overflow-y-auto"
+        onWheelCapture={(e) => e.stopPropagation()}
+        onPointerDownOutside={() => setOpen(false)}
+      >
         <DialogHeader><DialogTitle>{label} — Moves</DialogTitle></DialogHeader>
         <div className="grid gap-3 sm:grid-cols-2">
           {moves.map((m) => {

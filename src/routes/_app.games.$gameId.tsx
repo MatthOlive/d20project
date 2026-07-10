@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,7 +33,7 @@ import { MusicPanel } from "@/components/MusicPanel";
 import { MusicPlayer } from "@/components/MusicPlayer";
 import { DeckPanel } from "@/components/DeckPanel";
 import { toast } from "sonner";
-import { Copy, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Swords, ChevronDown, ChevronUp, ChevronRight, Dices, MessageSquare } from "lucide-react";
+import { ArrowLeft, Copy, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Swords, ChevronDown, ChevronUp, ChevronRight, Dices, MessageSquare } from "lucide-react";
 import { rollD6, rollShiny, POKEMON_ATTRS, SOCIAL_ATTRS, POKEMON_TYPES, RANKS, RANK_LABELS, TYPE_COLORS, type PokemonType, type Rank } from "@/lib/pokerole";
 import { T20_CLASSES, T20_MECHANICS, T20_MECHANICS_CATEGORY_ORDER, T20_RACES, defaultT20Attributes, defaultT20Skills, rollD20 } from "@/lib/tormenta20";
 import { rollPokemonAutofill } from "@/lib/pokemon-autofill";
@@ -238,22 +238,29 @@ function GameRoom() {
         fogEnabled: (game as never as { fog_enabled?: boolean }).fog_enabled ?? false,
         dynamicLighting: (game as never as { dynamic_lighting?: boolean }).dynamic_lighting ?? false,
       }}
-      toolbarSlot={isNarrator ? (
+      toolbarSlot={(
         <div className="flex flex-col gap-1.5">
-          <div className="grid grid-cols-2 gap-1">
-            <InviteButton url={inviteUrl} />
-            <GameSettingsButton gameId={gameId} />
-            <Button
-              size="sm"
-              variant="secondary"
-              className="h-8 justify-start"
-              onClick={() => setTurnOrderOpen((v) => !v)}
-            >
-              <Swords className="mr-1 h-3.5 w-3.5" /> Turn Order
-            </Button>
-          </div>
+          <Button asChild size="sm" variant="secondary" className="h-8 justify-start">
+            <Link to="/dashboard">
+              <ArrowLeft className="mr-1 h-3.5 w-3.5" /> Dashboard
+            </Link>
+          </Button>
+          {isNarrator && (
+            <div className="grid grid-cols-2 gap-1">
+              <InviteButton url={inviteUrl} />
+              <GameSettingsButton gameId={gameId} />
+              <Button
+                size="sm"
+                variant="secondary"
+                className="h-8 justify-start"
+                onClick={() => setTurnOrderOpen((v) => !v)}
+              >
+                <Swords className="mr-1 h-3.5 w-3.5" /> Turn Order
+              </Button>
+            </div>
+          )}
         </div>
-      ) : undefined}
+      )}
     />
   );
 
@@ -304,7 +311,7 @@ function GameRoom() {
     };
 
     return (
-      <div className="relative flex h-[calc(100vh-4rem)] w-full flex-col">
+      <div className="relative flex h-screen w-full flex-col">
         <h1 className="sr-only">{game.name ? `${game.name} — D20 Project game room` : "D20 Project game room"}</h1>
         <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border bg-card p-1">
           {baseTabs.map((t) => (
@@ -386,7 +393,7 @@ function GameRoom() {
   }
 
   return (
-    <div className="relative h-[calc(100vh-4rem)] w-full px-3 py-3">
+    <div className="relative h-screen w-full px-3 py-3">
       <h1 className="sr-only">{game.name ? `${game.name} — D20 Project game room` : "D20 Project game room"}</h1>
       <MusicPlayer gameId={gameId} />
       {/* Fullscreen map */}
