@@ -7,6 +7,9 @@ on:
         description: "Release tag, for example v0.2.2"
         required: true
         type: string
+  push:
+    tags:
+      - "v*"
 
 permissions:
   contents: write
@@ -15,6 +18,8 @@ jobs:
   windows:
     name: Build Windows installer
     runs-on: windows-latest
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
 
     steps:
       - name: Checkout
@@ -36,7 +41,7 @@ jobs:
           CI: true
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-          VITE_APP_VERSION: ${{ inputs.tag }}
+          VITE_APP_VERSION: ${{ env.RELEASE_TAG }}
           SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -45,15 +50,15 @@ jobs:
 
       - name: Create updater manifest
         env:
-          GITHUB_REF_NAME: ${{ inputs.tag }}
+          GITHUB_REF_NAME: ${{ env.RELEASE_TAG }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: node scripts/make-tauri-latest-json.mjs
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.tag }}
-          name: D20 Project ${{ inputs.tag }}
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: D20 Project ${{ env.RELEASE_TAG }}
           draft: false
           prerelease: false
           files: |
