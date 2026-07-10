@@ -14,6 +14,26 @@ import { I18nProvider } from "@/lib/i18n";
 import { initTheme } from "@/components/ThemeToggle";
 import "../styles.css";
 
+function isTauriDesktop() {
+  return typeof window !== "undefined" && ("__TAURI_INTERNALS__" in window || "__TAURI__" in window);
+}
+
+function clearDesktopWebCache() {
+  if (typeof window === "undefined") return;
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.getRegistrations()
+      .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+      .catch((error) => console.warn("[Desktop] Service worker cleanup failed", error));
+  }
+
+  if ("caches" in window) {
+    caches.keys()
+      .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
+      .catch((error) => console.warn("[Desktop] Cache cleanup failed", error));
+  }
+}
+
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -118,18 +138,27 @@ function RootComponent() {
 
   useEffect(() => {
     initTheme();
-    if (typeof window !== "undefined" && "serviceWorker" in navigator && import.meta.env.PROD) {
+    const desktop = isTauriDesktop();
+    if (desktop) {
+      clearDesktopWebCache();
+    } else if (typeof window !== "undefined" && "serviceWorker" in navigator && import.meta.env.PROD) {
       navigator.serviceWorker.register("/sw.js").catch((error) => {
         console.warn("[PWA] Service worker registration failed", error);
       });
     }
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
-        router.invalidate();
-        queryClient.invalidateQueries();
-      }
-    });
-    return () => subscription.unsubscribe();
+    let unsubscribe: (() => void) | undefined;
+    try {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+        if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
+          router.invalidate();
+          queryClient.invalidateQueries();
+        }
+      });
+      unsubscribe = () => subscription.unsubscribe();
+    } catch (error) {
+      console.warn("[Auth] Auth listener failed during startup", error);
+    }
+    return () => unsubscribe?.();
   }, [router, queryClient]);
 
   return (
