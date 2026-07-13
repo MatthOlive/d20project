@@ -25,8 +25,10 @@ export function useAuth() {
     try {
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
         if (!mounted) return;
+        window.clearTimeout(timeout);
         setSession(s);
         setUser(s?.user ?? null);
+        setLoading(false);
       });
       unsubscribe = () => subscription.unsubscribe();
 

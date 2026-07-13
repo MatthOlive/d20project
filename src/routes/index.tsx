@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { useAuth } from "@/hooks/use-auth";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -19,13 +19,36 @@ export const Route = createFileRoute("/")({
 });
 
 function Landing() {
-  const { user, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (loading) return;
-    navigate({ to: user ? "/dashboard" : "/auth" });
-  }, [user, loading, navigate]);
+    let cancelled = false;
+    let finished = false;
+
+    function go(to: "/auth" | "/dashboard") {
+      if (cancelled || finished) return;
+      finished = true;
+      navigate({ to, replace: true });
+    }
+
+    const fallback = window.setTimeout(() => go("/auth"), 4500);
+
+    supabase.auth.getSession()
+      .then(({ data }) => {
+        window.clearTimeout(fallback);
+        go(data.session ? "/dashboard" : "/auth");
+      })
+      .catch((error) => {
+        console.warn("[Startup] Could not restore initial session", error);
+        window.clearTimeout(fallback);
+        go("/auth");
+      });
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(fallback);
+    };
+  }, [navigate]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
