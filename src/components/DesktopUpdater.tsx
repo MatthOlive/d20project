@@ -14,6 +14,65 @@ function isTauriDesktop() {
   return typeof window !== "undefined" && ("__TAURI_INTERNALS__" in window || "__TAURI__" in window);
 }
 
+let autoUpdatePromise: Promise<void> | null = null;
+
+async function downloadAndInstallUpdate(
+  update: unknown,
+  onState?: (state: UpdateState) => void,
+) {
+  if (!update || typeof update !== "object") return;
+  const selectedUpdate = update as {
+    downloadAndInstall: (onEvent?: (event: { event: string; data?: { contentLength?: number; chunkLength?: number } }) => void) => Promise<void>;
+  };
+  let downloaded = 0;
+  let total: number | null = null;
+  onState?.({ status: "downloading", progress: null });
+  await selectedUpdate.downloadAndInstall((event) => {
+    if (event.event === "Started") {
+      total = event.data?.contentLength ?? null;
+      onState?.({ status: "downloading", progress: null });
+    } else if (event.event === "Progress") {
+      downloaded += event.data?.chunkLength ?? 0;
+      onState?.({ status: "downloading", progress: total ? Math.round((downloaded / total) * 100) : null });
+    } else if (event.event === "Finished") {
+      onState?.({ status: "ready" });
+    }
+  });
+  const { relaunch } = await import("@tauri-apps/plugin-process");
+  await relaunch();
+}
+
+function startAutomaticDesktopUpdate(onState?: (state: UpdateState) => void) {
+  if (!isTauriDesktop()) return null;
+  if (autoUpdatePromise) return autoUpdatePromise;
+
+  autoUpdatePromise = (async () => {
+    try {
+      onState?.({ status: "checking" });
+      const { check } = await import("@tauri-apps/plugin-updater");
+      const update = await check();
+      if (!update) {
+        onState?.({ status: "none" });
+        return;
+      }
+      onState?.({ status: "available", version: update.version });
+      await downloadAndInstallUpdate(update, onState);
+    } catch (error) {
+      onState?.({ status: "error", message: error instanceof Error ? error.message : "Nao foi possivel verificar atualizacoes." });
+    }
+  })();
+
+  return autoUpdatePromise;
+}
+
+export function DesktopAutoUpdater() {
+  useEffect(() => {
+    void startAutomaticDesktopUpdate();
+  }, []);
+
+  return null;
+}
+
 export function DesktopUpdater({ compact = false }: { compact?: boolean }) {
   const [state, setState] = useState<UpdateState>({ status: "idle" });
   const [updateResource, setUpdateResource] = useState<unknown>(null);
@@ -42,30 +101,13 @@ export function DesktopUpdater({ compact = false }: { compact?: boolean }) {
 
   async function installUpdate(updateOverride?: unknown) {
     const selectedUpdate = updateOverride ?? updateResource;
-    if (!selectedUpdate || typeof selectedUpdate !== "object") return;
-    const update = selectedUpdate as {
-      downloadAndInstall: (onEvent?: (event: { event: string; data?: { contentLength?: number; chunkLength?: number } }) => void) => Promise<void>;
-    };
-    let downloaded = 0;
-    let total: number | null = null;
-    setState({ status: "downloading", progress: null });
-    await update.downloadAndInstall((event) => {
-      if (event.event === "Started") {
-        total = event.data?.contentLength ?? null;
-        setState({ status: "downloading", progress: null });
-      } else if (event.event === "Progress") {
-        downloaded += event.data?.chunkLength ?? 0;
-        setState({ status: "downloading", progress: total ? Math.round((downloaded / total) * 100) : null });
-      } else if (event.event === "Finished") {
-        setState({ status: "ready" });
-      }
-    });
-    const { relaunch } = await import("@tauri-apps/plugin-process");
-    await relaunch();
+    await downloadAndInstallUpdate(selectedUpdate, setState);
   }
 
   useEffect(() => {
-    void checkForUpdates({ silent: false, autoInstall: true });
+    const promise = startAutomaticDesktopUpdate(setState);
+    if (!promise) return;
+    void promise;
   }, []);
 
   const className = compact

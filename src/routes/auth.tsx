@@ -77,15 +77,22 @@ function AuthPage() {
   }
 
   async function signInWithGoogle() {
-    const configuredRedirect = import.meta.env.VITE_AUTH_REDIRECT_URL as string | undefined;
-    const redirectTo = configuredRedirect || (typeof window !== "undefined"
-      ? `${window.location.origin}/auth`
-      : undefined);
+    setBusy(true);
+    const redirectTo = getAuthRedirectUrl();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo },
+      options: {
+        redirectTo,
+        queryParams: {
+          access_type: "offline",
+          prompt: "select_account",
+        },
+      },
     });
-    if (error) toast.error(formatAuthError(error.message));
+    if (error) {
+      setBusy(false);
+      toast.error(formatAuthError(error.message));
+    }
   }
 
 
@@ -151,7 +158,7 @@ function AuthPage() {
             </Tabs>
 
             <div className="mt-8 grid grid-cols-1 gap-3">
-              <Button variant="outline" className="h-11 rounded bg-white font-bold text-zinc-800 hover:bg-zinc-100" onClick={signInWithGoogle}>
+              <Button variant="outline" className="h-11 rounded bg-white font-bold text-zinc-800 hover:bg-zinc-100" onClick={signInWithGoogle} disabled={busy}>
                 Continuar com Google
               </Button>
             </div>
@@ -206,5 +213,16 @@ function formatAuthError(message: string) {
     return "O login com Google ainda nao foi configurado no Supabase. Ative o provedor Google no painel do Supabase ou use email e senha por enquanto.";
   }
 
+  if (message.toLowerCase().includes("redirect")) {
+    return "O redirect do Google ainda nao foi liberado no Supabase. Adicione a URL de retorno do app nas configuracoes de Auth.";
+  }
+
   return message;
+}
+
+function getAuthRedirectUrl() {
+  const configuredRedirect = import.meta.env.VITE_AUTH_REDIRECT_URL as string | undefined;
+  if (configuredRedirect) return configuredRedirect;
+  if (typeof window === "undefined") return undefined;
+  return `${window.location.origin}/auth`;
 }

@@ -12,6 +12,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { I18nProvider } from "@/lib/i18n";
 import { initTheme } from "@/components/ThemeToggle";
+import { DesktopAutoUpdater } from "@/components/DesktopUpdater";
 import "../styles.css";
 
 function isTauriDesktop() {
@@ -166,6 +167,7 @@ function RootComponent() {
       <I18nProvider>
         <Outlet />
         <Toaster richColors position="top-right" />
+        <DesktopAutoUpdater />
       </I18nProvider>
     </QueryClientProvider>
   );

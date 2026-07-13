@@ -1,6 +1,6 @@
 [package]
 name = "d20-project"
-version = "0.2.19"
+version = "0.2.20"
 description = "D20 Project desktop app"
 authors = ["MatthOlive"]
 edition = "2021"
