@@ -98,3 +98,33 @@
 .pokedex-stripe {
   background: linear-gradient(180deg, var(--pokedex) 0%, var(--pokedex-dark) 100%);
 }
+
+.pokemon-species-select-viewport {
+  max-height: min(44vh, 22rem) !important;
+  overflow-y: scroll !important;
+  padding-right: 0.35rem;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--primary) 70%, var(--muted)) transparent;
+}
+
+.pokemon-species-select-viewport::-webkit-scrollbar {
+  width: 0.65rem;
+}
+
+.pokemon-species-select-viewport::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.pokemon-species-select-viewport::-webkit-scrollbar-thumb {
+  min-height: 2.5rem;
+  border: 0.18rem solid transparent;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--primary) 70%, var(--muted));
+  background-clip: content-box;
+}
+
+.pokemon-species-select-viewport::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+  background-clip: content-box;
+}

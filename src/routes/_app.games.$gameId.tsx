@@ -1547,7 +1547,10 @@ function FilesPanel({
               </div>
               <Select value={newPkmSpecies} onValueChange={setNewPkmSpecies}>
                 <SelectTrigger><SelectValue placeholder="Pick a species" /></SelectTrigger>
-                <SelectContent>
+                <SelectContent
+                  showScrollButtons={false}
+                  viewportClassName="pokemon-species-select-viewport"
+                >
                   {speciesList?.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                 </SelectContent>
               </Select>
