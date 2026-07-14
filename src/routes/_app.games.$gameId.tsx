@@ -391,7 +391,6 @@ function GameRoom() {
       </div>
     );
   }
-
   return (
     <div className="relative h-screen w-full px-3 py-3">
       <h1 className="sr-only">{game.name ? `${game.name} — D20 Project game room` : "D20 Project game room"}</h1>
@@ -589,6 +588,7 @@ function FilesPanel({
   const qc = useQueryClient();
   const [pkmDialogOpen, setPkmDialogOpen] = useState(false);
   const [newPkmSpecies, setNewPkmSpecies] = useState<string>("");
+  const [speciesPickerOpen, setSpeciesPickerOpen] = useState(false);
   const [newPkmOvergrown, setNewPkmOvergrown] = useState(false);
   const [t20DialogOpen, setT20DialogOpen] = useState(false);
   const [newT20Name, setNewT20Name] = useState("");
@@ -891,6 +891,7 @@ function FilesPanel({
       qc.invalidateQueries({ queryKey: ["characters", gameId] });
       setPkmDialogOpen(false);
       setNewPkmSpecies("");
+      setSpeciesPickerOpen(false);
       setNewPkmOvergrown(false);
       setRandomOpen(false);
       onOpen({ kind: "pokemon", id: p.id, title: "Pokémon" });
@@ -1476,6 +1477,8 @@ function FilesPanel({
     );
   }
 
+  const selectedSpeciesName = speciesList?.find((s) => s.id === newPkmSpecies)?.name ?? "";
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -1533,7 +1536,13 @@ function FilesPanel({
               <MinimalSheetButton gameId={gameId} userId={userId} onCreated={(id: string, name: string) => { qc.invalidateQueries({ queryKey: ["characters", gameId] }); onOpen({ kind: "trainer", id, title: name }); }} />
             </>
           )}
-          {system !== "t20" && <Dialog open={pkmDialogOpen} onOpenChange={setPkmDialogOpen}>
+          {system !== "t20" && <Dialog
+            open={pkmDialogOpen}
+            onOpenChange={(open) => {
+              setPkmDialogOpen(open);
+              if (!open) setSpeciesPickerOpen(false);
+            }}
+          >
             <DialogTrigger asChild>
               <Button size="sm"><Sparkles className="mr-1 h-3.5 w-3.5" /> Pokémon</Button>
             </DialogTrigger>
@@ -1545,15 +1554,51 @@ function FilesPanel({
                   <Dices className="mr-1 h-3.5 w-3.5" /> Aleatório
                 </Button>
               </div>
-              <Select value={newPkmSpecies} onValueChange={setNewPkmSpecies}>
-                <SelectTrigger><SelectValue placeholder="Pick a species" /></SelectTrigger>
-                <SelectContent
-                  showScrollButtons={false}
-                  viewportClassName="pokemon-species-select-viewport"
+              <div className="relative">
+                <button
+                  type="button"
+                  aria-expanded={speciesPickerOpen}
+                  aria-controls="pokemon-species-picker"
+                  className="flex h-12 w-full items-center justify-between rounded-xl border border-input bg-background px-4 text-left text-sm font-semibold text-foreground shadow-sm transition hover:border-primary/60 focus:outline-none focus:ring-1 focus:ring-ring"
+                  onClick={() => setSpeciesPickerOpen((open) => !open)}
                 >
-                  {speciesList?.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+                  <span className={selectedSpeciesName ? "" : "text-muted-foreground"}>
+                    {selectedSpeciesName || "Pick a species"}
+                  </span>
+                  <ChevronDown className={`h-4 w-4 opacity-60 transition-transform ${speciesPickerOpen ? "rotate-180" : ""}`} />
+                </button>
+                {speciesPickerOpen && (
+                  <div
+                    id="pokemon-species-picker"
+                    role="listbox"
+                    className="pokemon-species-picker-list mt-2 rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg"
+                  >
+                    {(speciesList ?? []).map((s) => {
+                      const selected = s.id === newPkmSpecies;
+                      return (
+                        <button
+                          key={s.id}
+                          type="button"
+                          role="option"
+                          aria-selected={selected}
+                          className={`flex min-h-10 w-full items-center rounded-lg px-3 text-left text-sm font-semibold transition ${
+                            selected ? "bg-primary text-primary-foreground" : "hover:bg-accent hover:text-accent-foreground"
+                          }`}
+                          onClick={() => {
+                            setNewPkmSpecies(s.id);
+                            setSpeciesPickerOpen(false);
+                          }}
+                        >
+                          {s.name}
+                        </button>
+                      );
+                    })}
+                    {!speciesList?.length && (
+                      <p className="px-3 py-4 text-center text-xs text-muted-foreground">Carregando especies...</p>
+                    )}
+                  </div>
+                )}
+              </div>
               {randomOpen && (() => {
                 const list = speciesList ?? [];
                 const parentOf = new Map<string, string>();
