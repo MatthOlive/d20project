@@ -15,50 +15,57 @@ function isTauriDesktop() {
 }
 
 let autoUpdatePromise: Promise<void> | null = null;
+let lastUpdateState: UpdateState | null = null;
+let latestUpdateResource: unknown = null;
+const updateStateListeners = new Set<(state: UpdateState) => void>();
 
-async function downloadAndInstallUpdate(
-  update: unknown,
-  onState?: (state: UpdateState) => void,
-) {
+function publishUpdateState(state: UpdateState) {
+  lastUpdateState = state;
+  updateStateListeners.forEach((listener) => listener(state));
+}
+
+async function downloadAndInstallUpdate(update: unknown) {
   if (!update || typeof update !== "object") return;
   const selectedUpdate = update as {
     downloadAndInstall: (onEvent?: (event: { event: string; data?: { contentLength?: number; chunkLength?: number } }) => void) => Promise<void>;
   };
   let downloaded = 0;
   let total: number | null = null;
-  onState?.({ status: "downloading", progress: null });
+  publishUpdateState({ status: "downloading", progress: null });
   await selectedUpdate.downloadAndInstall((event) => {
     if (event.event === "Started") {
       total = event.data?.contentLength ?? null;
-      onState?.({ status: "downloading", progress: null });
+      downloaded = 0;
+      publishUpdateState({ status: "downloading", progress: null });
     } else if (event.event === "Progress") {
       downloaded += event.data?.chunkLength ?? 0;
-      onState?.({ status: "downloading", progress: total ? Math.round((downloaded / total) * 100) : null });
+      publishUpdateState({ status: "downloading", progress: total ? Math.min(100, Math.round((downloaded / total) * 100)) : null });
     } else if (event.event === "Finished") {
-      onState?.({ status: "ready" });
+      publishUpdateState({ status: "ready" });
     }
   });
   const { relaunch } = await import("@tauri-apps/plugin-process");
   await relaunch();
 }
 
-function startAutomaticDesktopUpdate(onState?: (state: UpdateState) => void) {
+function startAutomaticDesktopUpdate() {
   if (!isTauriDesktop()) return null;
   if (autoUpdatePromise) return autoUpdatePromise;
 
   autoUpdatePromise = (async () => {
     try {
-      onState?.({ status: "checking" });
+      publishUpdateState({ status: "checking" });
       const { check } = await import("@tauri-apps/plugin-updater");
       const update = await check();
       if (!update) {
-        onState?.({ status: "none" });
+        publishUpdateState({ status: "none" });
         return;
       }
-      onState?.({ status: "available", version: update.version });
-      await downloadAndInstallUpdate(update, onState);
+      latestUpdateResource = update;
+      publishUpdateState({ status: "available", version: update.version });
+      await downloadAndInstallUpdate(update);
     } catch (error) {
-      onState?.({ status: "error", message: error instanceof Error ? error.message : "Nao foi possivel verificar atualizacoes." });
+      publishUpdateState({ status: "error", message: error instanceof Error ? error.message : "Nao foi possivel verificar atualizacoes." });
     }
   })();
 
@@ -82,36 +89,44 @@ export function DesktopUpdater({ compact = false }: { compact?: boolean }) {
   async function checkForUpdates({ silent = false, autoInstall = false }: { silent?: boolean; autoInstall?: boolean } = {}) {
     if (!desktop) return;
     try {
-      if (!silent) setState({ status: "checking" });
+      if (!silent) publishUpdateState({ status: "checking" });
       const { check } = await import("@tauri-apps/plugin-updater");
       const update = await check();
       if (!update) {
-        if (!silent) setState({ status: "none" });
+        if (!silent) publishUpdateState({ status: "none" });
         return;
       }
+      latestUpdateResource = update;
       setUpdateResource(update);
-      setState({ status: "available", version: update.version });
+      publishUpdateState({ status: "available", version: update.version });
       if (autoInstall) {
         await installUpdate(update);
       }
     } catch (error) {
-      setState({ status: "error", message: error instanceof Error ? error.message : "Nao foi possivel verificar atualizacoes." });
+      publishUpdateState({ status: "error", message: error instanceof Error ? error.message : "Nao foi possivel verificar atualizacoes." });
     }
   }
 
   async function installUpdate(updateOverride?: unknown) {
-    const selectedUpdate = updateOverride ?? updateResource;
-    await downloadAndInstallUpdate(selectedUpdate, setState);
+    const selectedUpdate = updateOverride ?? updateResource ?? latestUpdateResource;
+    await downloadAndInstallUpdate(selectedUpdate);
   }
 
   useEffect(() => {
-    const promise = startAutomaticDesktopUpdate(setState);
-    if (!promise) return;
-    void promise;
+    const listener = (nextState: UpdateState) => setState(nextState);
+    updateStateListeners.add(listener);
+    if (lastUpdateState) setState(lastUpdateState);
+
+    const promise = startAutomaticDesktopUpdate();
+    if (promise) void promise;
+
+    return () => {
+      updateStateListeners.delete(listener);
+    };
   }, []);
 
   const className = compact
-    ? "text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-400"
+    ? "inline-flex min-w-[11rem] flex-col text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-400"
     : "rounded-md border border-border bg-card p-3 text-sm text-muted-foreground";
 
   return (
@@ -132,14 +147,36 @@ export function DesktopUpdater({ compact = false }: { compact?: boolean }) {
         </div>
       )}
       {state.status === "downloading" && (
-        <span>Baixando atualizacao{state.progress === null ? "..." : ` ${state.progress}%`}</span>
+        <UpdateDownloadStatus progress={state.progress} compact={compact} />
       )}
-      {state.status === "ready" && <span>Reiniciando...</span>}
+      {state.status === "ready" && <span>Instalando e reiniciando...</span>}
       {state.status === "error" && (
         <button type="button" title={state.message} onClick={() => void checkForUpdates({ autoInstall: true })} className="hover:text-red-600">
           {`${appVersion} - atualizador indisponivel`}
         </button>
       )}
+    </div>
+  );
+}
+
+function UpdateDownloadStatus({ progress, compact }: { progress: number | null; compact: boolean }) {
+  const percent = typeof progress === "number" ? Math.max(0, Math.min(100, progress)) : null;
+  const trackClass = compact ? "bg-white/25" : "bg-primary/15";
+  const barClass = compact ? "bg-white" : "bg-primary";
+
+  return (
+    <div className="w-full space-y-1.5">
+      <span>Baixando atualizacao{percent === null ? "..." : ` ${percent}%`}</span>
+      <div className={`h-1.5 w-full overflow-hidden rounded-full ${trackClass}`}>
+        {percent === null ? (
+          <div className={`desktop-update-progress-indeterminate h-full rounded-full ${barClass}`} />
+        ) : (
+          <div
+            className={`h-full rounded-full transition-[width] duration-200 ${barClass}`}
+            style={{ width: `${percent}%` }}
+          />
+        )}
+      </div>
     </div>
   );
 }

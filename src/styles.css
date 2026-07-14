@@ -128,3 +128,20 @@
   background: var(--primary);
   background-clip: content-box;
 }
+
+@keyframes desktop-update-progress-slide {
+  0% {
+    transform: translateX(-120%);
+  }
+  50% {
+    transform: translateX(65%);
+  }
+  100% {
+    transform: translateX(240%);
+  }
+}
+
+.desktop-update-progress-indeterminate {
+  width: 45%;
+  animation: desktop-update-progress-slide 1.15s ease-in-out infinite;
+}
