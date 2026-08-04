@@ -146,3 +146,21 @@
   width: 45%;
   animation: desktop-update-progress-slide 1.15s ease-in-out infinite;
 }
+
+@keyframes map-ping-wave {
+  0% {
+    opacity: 0.95;
+    transform: scale(0.18);
+  }
+  72% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.55);
+  }
+}
+
+.map-ping-wave {
+  animation: map-ping-wave 1.25s ease-out forwards;
+}

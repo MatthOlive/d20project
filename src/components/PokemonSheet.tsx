@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -37,7 +37,7 @@ import { MoveCard } from "@/components/MoveCard";
 import { HpAndStatusBlock, AttackRollButton, GenericRollButton, painPenaltyFor } from "@/components/SheetRolls";
 import { SheetPermissionsDialog } from "@/components/SheetPermissionsDialog";
 import { TRAININGS_PER_RANK, RETRAIN_CAP } from "@/lib/contest";
-import { getEvolutionRules, evaluateEvolution, type EvolutionGate } from "@/lib/evolutions";
+import { getEvolutionRules, evaluateEvolution, displayEvolutionTargetName, type EvolutionGate } from "@/lib/evolutions";
 import { MoveRollDialog, Z_MOVE_NAMES, zMovePower, cap } from "@/components/MoveRollDialog";
 import { useGameSpriteStyle } from "@/hooks/use-game-sprite-style";
 
@@ -194,7 +194,14 @@ export function PokemonSheet({
     },
     [pokemonId],
   );
-  const { patch } = useDebouncedPatch<Pokemon>(queryKey, commit);
+  const { patch } = useDebouncedPatch<Pokemon>(queryKey, commit, 250);
+  const [nicknameDraft, setNicknameDraft] = useState("");
+  const nicknameFocusedRef = useRef(false);
+
+  useEffect(() => {
+    if (nicknameFocusedRef.current) return;
+    setNicknameDraft(pokemon?.nickname ?? "");
+  }, [pokemon?.id, pokemon?.nickname]);
 
   useEffect(() => {
     if (pokemon && species && Object.keys(pokemon.current_attrs).length === 0) {
@@ -487,9 +494,18 @@ export function PokemonSheet({
             <div className="flex items-start gap-2">
               <Input
                 disabled={!canEdit}
-                value={pokemon.nickname ?? ""}
+                value={nicknameDraft}
                 placeholder={species.name}
-                onChange={(e) => patch({ nickname: e.target.value })}
+                onFocus={() => { nicknameFocusedRef.current = true; }}
+                onBlur={() => {
+                  nicknameFocusedRef.current = false;
+                  patch({ nickname: nicknameDraft.trim() || null });
+                }}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setNicknameDraft(next);
+                  patch({ nickname: next.trim() ? next : null });
+                }}
                 className="h-9 text-base font-bold"
               />
               <SheetPermissionsDialog kind="pokemon" entityId={pokemonId} gameId={_gameId} isNarrator={isNarrator} />
@@ -1448,8 +1464,26 @@ function EvolveButton({
   const [toggle, setToggle] = useState(false);
   const isMegaForm = !!baseSpeciesId;
   const isMegaName = (n: string) => /\bmega\b/i.test(n);
-  const normalEvos = useMemo(() => evolutions.filter((e) => !isMegaName(e)), [evolutions]);
+  const rawNormalEvos = useMemo(() => evolutions.filter((e) => !isMegaName(e)), [evolutions]);
   const megaEvos = useMemo(() => evolutions.filter((e) => isMegaName(e)), [evolutions]);
+
+  // Regional forms may be stored as "Ponyta (Galarian Form)" while older
+  // evolution rules use compact names such as "ponyta galar".
+  const baseRules = useMemo(() => getEvolutionRules(speciesName), [speciesName]);
+  const allRules = useMemo(
+    () => baseRules.map((rule) => ({
+      ...rule,
+      to: displayEvolutionTargetName(rule.to, rawNormalEvos),
+    })),
+    [baseRules, rawNormalEvos],
+  );
+  const normalEvos = useMemo(() => {
+    const combined = [
+      ...rawNormalEvos,
+      ...allRules.map((rule) => rule.to).filter((target) => !isMegaName(target)),
+    ];
+    return Array.from(new Set(combined.filter(Boolean)));
+  }, [rawNormalEvos, allRules]);
   const hasNormal = normalEvos.length > 0;
   const hasMega = megaEvos.length > 0;
   const mode: "revert" | "mega" | "evolve" = isMegaForm ? "revert" : hasNormal ? "evolve" : "mega";
@@ -1470,8 +1504,6 @@ function EvolveButton({
     return list;
   }, [trainerBag, heldItem]);
 
-  // Build evolution gates from the spreadsheet data.
-  const allRules = useMemo(() => getEvolutionRules(speciesName), [speciesName]);
   const attrCtx = useMemo(() => {
     const out: Record<string, { current: number; max: number }> = {};
     for (const k of Object.keys(currentAttrs)) {

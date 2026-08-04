@@ -61,6 +61,8 @@ type Token = {
   explored_mask?: unknown;
 };
 
+type MapPing = { id: string; x: number; y: number };
+
 
 type DrawKind = "freehand" | "rect" | "circle" | "line" | "text";
 
@@ -188,6 +190,8 @@ export function MapBoard({
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const panOrigin = useRef<{ mx: number; my: number; ox: number; oy: number } | null>(null);
+  const [mapPings, setMapPings] = useState<MapPing[]>([]);
+  const pingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   // Map tool state
   const [mode, setMode] = useState<Mode>("select");
@@ -244,6 +248,31 @@ export function MapBoard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePageId, isNarrator, playerEffectivePage]);
   const pageId = viewingPageId;
+
+  const addMapPing = useCallback((x: number, y: number) => {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    setMapPings((items) => [...items, { id, x, y }].slice(-8));
+    window.setTimeout(() => {
+      setMapPings((items) => items.filter((item) => item.id !== id));
+    }, 1300);
+  }, []);
+
+  useEffect(() => {
+    if (!pageId) return;
+    const channel = supabase
+      .channel(`map-pings:${gameId}:${pageId}`)
+      .on("broadcast", { event: "ping" }, ({ payload }) => {
+        const ping = payload as { x?: number; y?: number; sender?: string } | null;
+        if (!ping || ping.sender === userId) return;
+        if (typeof ping.x === "number" && typeof ping.y === "number") addMapPing(ping.x, ping.y);
+      })
+      .subscribe();
+    pingChannelRef.current = channel;
+    return () => {
+      if (pingChannelRef.current === channel) pingChannelRef.current = null;
+      void supabase.removeChannel(channel);
+    };
+  }, [gameId, pageId, userId, addMapPing]);
 
   // Ruler state (local only)
   const [ruler, setRuler] = useState<{ ax: number; ay: number; bx: number; by: number } | null>(null);
@@ -882,6 +911,32 @@ export function MapBoard({
     setZoom((z) => Math.max(0.3, Math.min(4, z * (1 + delta))));
   }
   function onContextMenu(e: React.MouseEvent) { e.preventDefault(); }
+  function scheduleLongClickPing(e: React.MouseEvent) {
+    const sx = e.clientX;
+    const sy = e.clientY;
+    const timer = window.setTimeout(() => {
+      const p = pointToRelRaw(sx, sy);
+      addMapPing(p.x, p.y);
+      void pingChannelRef.current?.send({
+        type: "broadcast",
+        event: "ping",
+        payload: { x: p.x, y: p.y, sender: userId },
+      });
+      cleanup();
+    }, 520);
+    function cleanup() {
+      window.clearTimeout(timer);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", cleanup);
+      window.removeEventListener("mouseleave", cleanup);
+    }
+    function onMove(ev: MouseEvent) {
+      if (Math.hypot(ev.clientX - sx, ev.clientY - sy) > 8) cleanup();
+    }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", cleanup);
+    window.addEventListener("mouseleave", cleanup);
+  }
   function onMouseDown(e: React.MouseEvent) {
     // Right click pans
     if (e.button === 2) {
@@ -893,6 +948,11 @@ export function MapBoard({
     // Ignore clicks on tokens / action bar / toolbar
     const target = e.target as HTMLElement | null;
     if (target?.closest("[data-map-token], [data-token-action-bar], [data-map-toolbar]")) return;
+
+    if (mode === "select") {
+      scheduleLongClickPing(e);
+      return;
+    }
 
     if (mode === "ruler") {
       const p = pointToRelRaw(e.clientX, e.clientY);
@@ -1291,6 +1351,17 @@ export function MapBoard({
             : {}),
         }}
       >
+      {mapPings.map((ping) => (
+        <div
+          key={ping.id}
+          className="pointer-events-none absolute z-[35] -translate-x-1/2 -translate-y-1/2"
+          style={{ left: `${ping.x * 100}%`, top: `${ping.y * 100}%` }}
+        >
+          <span className="map-ping-wave absolute -left-12 -top-12 h-24 w-24 rounded-full border-2 border-primary bg-primary/10 shadow-[0_0_30px_rgba(239,68,68,0.45)]" />
+          <span className="absolute -left-1.5 -top-1.5 h-3 w-3 rounded-full bg-primary shadow-[0_0_18px_rgba(239,68,68,0.9)]" />
+        </div>
+      ))}
+
       {/* Multi-image background layer */}
       {showBackgrounds && mapBgs.map((bg) => {
         const isSel = selectedBgId === bg.id;

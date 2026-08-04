@@ -2719,18 +2719,77 @@ export const EVOLUTION_RULES: EvolutionRule[] = [
   },
 ];
 
+const EVOLUTION_REGION_WORDS: Record<string, string> = {
+  alolan: "alola",
+  alola: "alola",
+  galarian: "galar",
+  galar: "galar",
+  hisuian: "hisui",
+  hisui: "hisui",
+  paldean: "paldea",
+  paldea: "paldea",
+};
+
+export function canonicalEvolutionName(name: string | null | undefined): string {
+  if (!name) return "";
+  let text = name.trim().toLowerCase();
+  const regions: string[] = [];
+  text = text.replace(/\(([^)]*)\)/g, (_match, content: string) => {
+    const found = content
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .map((part) => EVOLUTION_REGION_WORDS[part])
+      .filter((part): part is string => !!part);
+    regions.push(...found);
+    return " ";
+  });
+  text = text.replace(/\b(alolan|alola|galarian|galar|hisuian|hisui|paldean|paldea)\b/g, (part) => {
+    const region = EVOLUTION_REGION_WORDS[part];
+    if (region) regions.push(region);
+    return " ";
+  });
+  const base = text
+    .replace(/\bform\b/g, " ")
+    .replace(/mr\./g, "mr")
+    .replace(/farfetch['\u2019]d/g, "farfetchd")
+    .replace(/sirfetch['\u2019]d/g, "sirfetchd")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+  const uniqueRegions = Array.from(new Set(regions));
+  return [base, ...uniqueRegions].filter(Boolean).join(" ");
+}
+
+export function displayEvolutionTargetName(target: string, candidates: string[] = []): string {
+  const targetKey = canonicalEvolutionName(target);
+  const exact = candidates.find((candidate) => canonicalEvolutionName(candidate) === targetKey);
+  if (exact) return exact;
+  const parts = targetKey.split(" ");
+  const region = parts.find((part) => ["alola", "galar", "hisui", "paldea"].includes(part));
+  if (!region) return target;
+  const base = parts.filter((part) => part !== region).join(" ");
+  const prettyBase = base
+    .split(" ")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+  const regionLabel = { alola: "Alolan", galar: "Galarian", hisui: "Hisuian", paldea: "Paldean" }[region];
+  return `${prettyBase} (${regionLabel} Form)`;
+}
+
 const RULE_INDEX: Record<string, EvolutionRule[]> = (() => {
   const idx: Record<string, EvolutionRule[]> = {};
   for (const r of EVOLUTION_RULES) {
-    const key = r.from.trim().toLowerCase();
-    (idx[key] ||= []).push(r);
+    for (const key of new Set([r.from.trim().toLowerCase(), canonicalEvolutionName(r.from)])) {
+      if (!key) continue;
+      (idx[key] ||= []).push(r);
+    }
   }
   return idx;
 })();
 
 export function getEvolutionRules(speciesName: string | null | undefined): EvolutionRule[] {
   if (!speciesName) return [];
-  return RULE_INDEX[speciesName.trim().toLowerCase()] ?? [];
+  return RULE_INDEX[speciesName.trim().toLowerCase()] ?? RULE_INDEX[canonicalEvolutionName(speciesName)] ?? [];
 }
 
 export const TIME_THRESHOLDS = { fast: 5, medium: 15, slow: 45 } as const;
