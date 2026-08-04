@@ -18,7 +18,7 @@ import { ImageSourceDialog } from "@/components/ImageSourceDialog";
 import { PokemonSheet } from "@/components/PokemonSheet";
 import { Shop } from "@/components/Shop";
 import { CHARACTER_POINTER_DROP_EVENT, DRAG_MIME, type DragCharacterPayload } from "@/components/MapBoard";
-import { User, Boxes, Plus, ShoppingCart, FileText, ArrowUpFromLine, Flag, Trash2 } from "lucide-react";
+import { User, Boxes, Plus, ShoppingCart, FileText, ArrowUpFromLine, Flag, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { preferredPokemonSprite } from "@/lib/pokerole";
@@ -28,12 +28,12 @@ export const TRAINER_SHEET_POINTER_DROP_EVENT = "d20-trainer-sheet-pointer-drop"
 
 type SlotPokemon = {
   id: string;
+  owner_id: string;
   nickname: string | null;
   team_slot: number | null;
   image_url: string | null;
   species_id: string;
   marked: boolean;
-  is_shiny?: boolean | null;
 };
 
 type Tab =
@@ -44,6 +44,15 @@ type Tab =
   | { kind: "shop" };
 
 const SLOTS = [1, 2, 3, 4, 5, 6] as const;
+
+async function assignPokemonToTrainerRpc(pokemonId: string, trainerId: string, teamSlot: number | null) {
+  const { error } = await (supabase.rpc("assign_pokemon_to_trainer" as never, {
+    p_pokemon_id: pokemonId,
+    p_trainer_id: trainerId,
+    p_team_slot: teamSlot,
+  } as never) as unknown as Promise<{ error: { message: string } | null }>);
+  if (error) throw new Error(error.message);
+}
 
 export function SheetTabs(props: {
   trainerId: string;
@@ -60,9 +69,8 @@ export function SheetTabs(props: {
   const [active, setActive] = useState<Tab>({ kind: "trainer" });
   const rootRef = useRef<HTMLDivElement | null>(null);
   const teamPointerDragRef = useRef<{
-    id: string;
-    label: string;
-    fromSlot: number;
+    payload: DragCharacterPayload;
+    fromSlot?: number;
     pointerId: number;
     startX: number;
     startY: number;
@@ -83,6 +91,11 @@ export function SheetTabs(props: {
       return data as { is_minimal: boolean; name: string; image_url: string | null; description: string | null; owner_id: string; allowed_editors: string[] | null };
     },
   });
+  const canEditRoster = !!trainerMeta && (
+    isNarrator
+    || trainerMeta.owner_id === userId
+    || (trainerMeta.allowed_editors ?? []).includes(userId)
+  );
 
   // Pokemon owned by this trainer (team + PC)
   const { data: roster = [] } = useQuery({
@@ -90,7 +103,7 @@ export function SheetTabs(props: {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pokemon")
-        .select("id, nickname, team_slot, image_url, species_id, marked, is_shiny")
+        .select("id, owner_id, nickname, team_slot, image_url, species_id, marked")
         .eq("owner_trainer_id", trainerId);
       if (error) throw error;
       return (data ?? []) as SlotPokemon[];
@@ -122,14 +135,91 @@ export function SheetTabs(props: {
   }));
   const pcPokemon = roster.filter((p) => p.team_slot === null);
 
+  useEffect(() => {
+    let characterRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+    const refreshCharacters = () => {
+      if (characterRefreshTimer) clearTimeout(characterRefreshTimer);
+      characterRefreshTimer = setTimeout(() => {
+        void qc.invalidateQueries({ queryKey: ["characters", gameId] });
+      }, 100);
+    };
+    const channel = supabase
+      .channel(`trainer-roster:${gameId}:${trainerId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "pokemon", filter: `game_id=eq.${gameId}` },
+        (payload) => {
+          const next = payload.new as Partial<SlotPokemon> & { id?: string; owner_trainer_id?: string | null };
+          const previous = payload.old as Partial<SlotPokemon> & { id?: string; owner_trainer_id?: string | null };
+          const pokemonId = next.id ?? previous.id;
+          if (!pokemonId) return;
+
+          qc.setQueryData<SlotPokemon[]>(["trainer-roster", trainerId], (current = []) => {
+            const existing = current.find((entry) => entry.id === pokemonId);
+            const belongsToTrainer = payload.eventType !== "DELETE" && next.owner_trainer_id === trainerId;
+            if (!belongsToTrainer) return current.filter((entry) => entry.id !== pokemonId);
+            if (!next.owner_id || !next.species_id) return current;
+
+            const updated: SlotPokemon = {
+              id: pokemonId,
+              owner_id: next.owner_id,
+              nickname: "nickname" in next ? next.nickname ?? null : existing?.nickname ?? null,
+              team_slot: "team_slot" in next ? next.team_slot ?? null : existing?.team_slot ?? null,
+              image_url: "image_url" in next ? next.image_url ?? null : existing?.image_url ?? null,
+              species_id: next.species_id,
+              marked: "marked" in next ? next.marked ?? false : existing?.marked ?? false,
+            };
+            return existing
+              ? current.map((entry) => entry.id === pokemonId ? updated : entry)
+              : [...current, updated];
+          });
+          refreshCharacters();
+        },
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          void qc.invalidateQueries({ queryKey: ["trainer-roster", trainerId] });
+          refreshCharacters();
+        }
+      });
+
+    return () => {
+      if (characterRefreshTimer) clearTimeout(characterRefreshTimer);
+      void supabase.removeChannel(channel);
+    };
+  }, [gameId, trainerId, qc]);
+
+  useEffect(() => {
+    if (active.kind === "slot") {
+      const pokemon = roster.find((entry) => entry.team_slot === active.slot) ?? null;
+      if ((pokemon?.id ?? null) !== active.pokemonId) {
+        setActive({ kind: "slot", slot: active.slot, pokemonId: pokemon?.id ?? null });
+      }
+      return;
+    }
+    if (active.kind === "pcPokemon" && !roster.some((entry) => entry.id === active.pokemonId && entry.team_slot === null)) {
+      setActive({ kind: "pc" });
+    }
+  }, [active, roster]);
+
   function spriteFor(p: SlotPokemon | null): string | null {
     if (!p) return null;
     const species = spriteMap[p.species_id];
-    return p.image_url || preferredPokemonSprite(species?.name, species?.sprite_url, !!p.is_shiny, spriteStyle) || null;
+    return p.image_url || preferredPokemonSprite(species?.name, species?.sprite_url, false, spriteStyle) || null;
   }
   function nameFor(p: SlotPokemon | null): string {
     if (!p) return "";
     return p.nickname || spriteMap[p.species_id]?.name || "PokÃ©mon";
+  }
+
+  function payloadForPokemon(p: SlotPokemon): DragCharacterPayload {
+    return {
+      kind: "pokemon",
+      id: p.id,
+      label: nameFor(p),
+      imageUrl: spriteFor(p),
+      ownerId: p.owner_id,
+    };
   }
 
   function invalidateRoster() {
@@ -147,17 +237,7 @@ export function SheetTabs(props: {
   }
 
   async function assignPokemonToTrainer(pokemonId: string, teamSlot: number | null) {
-    const { error } = await (supabase.rpc("assign_pokemon_to_trainer" as never, {
-      p_pokemon_id: pokemonId,
-      p_trainer_id: trainerId,
-      p_team_slot: teamSlot,
-    } as never) as unknown as Promise<{ error: { message: string } | null }>);
-    if (!error) return;
-
-    const fallback = await supabase.from("pokemon")
-      .update({ owner_trainer_id: trainerId, team_slot: teamSlot })
-      .eq("id", pokemonId);
-    if (fallback.error) throw new Error(`${error.message}. ${fallback.error.message}`);
+    await assignPokemonToTrainerRpc(pokemonId, trainerId, teamSlot);
   }
 
   async function movePokemonToTrainer(
@@ -166,24 +246,16 @@ export function SheetTabs(props: {
     target: { kind: "pc" } | { kind: "slot"; slot: number } | { kind: "auto" },
     sourceSlot?: number,
   ) {
+    if (!canEditRoster) {
+      toast.error("VocÃª nÃ£o tem permissÃ£o para organizar este time.");
+      return;
+    }
     if (target.kind === "slot" && sourceSlot === target.slot) return;
 
     const teamSlot =
       target.kind === "pc" ? null :
       target.kind === "slot" ? target.slot :
       nextFreeTeamSlot(pokemonId);
-
-    if (target.kind === "slot") {
-      const occupied = roster.find((r) => r.id !== pokemonId && r.team_slot === target.slot);
-      if (occupied) {
-        if (sourceSlot != null && sourceSlot !== target.slot) {
-          await assignPokemonToTrainer(pokemonId, null);
-          await assignPokemonToTrainer(occupied.id, sourceSlot);
-        } else {
-          await assignPokemonToTrainer(occupied.id, null);
-        }
-      }
-    }
 
     await assignPokemonToTrainer(pokemonId, teamSlot);
     await registerInPokedex(pokemonId);
@@ -249,7 +321,7 @@ export function SheetTabs(props: {
     dex[pkm.species_id] = {
       name: pkm.species?.name ?? pkm.nickname ?? "PokÃ©mon",
       captured: true,
-      sprite_url: pkm.species?.sprite_url ?? null,
+      sprite_url: preferredPokemonSprite(pkm.species?.name, pkm.species?.sprite_url, false, spriteStyle) ?? null,
     };
     await supabase.from("trainers").update({ pokedex: dex }).eq("id", trainerId);
     qc.invalidateQueries({ queryKey: ["trainer", trainerId] });
@@ -263,6 +335,10 @@ export function SheetTabs(props: {
     if (!slotRaw && !characterRaw) return;
     e.preventDefault();
     e.stopPropagation();
+    if (!canEditRoster) {
+      toast.error("VocÃª nÃ£o tem permissÃ£o para organizar este time.");
+      return;
+    }
 
     try {
       if (slotRaw) {
@@ -283,705 +359,14 @@ export function SheetTabs(props: {
     }
   }
 
-  function beginTeamPointerDrag(e: React.PointerEvent, pokemon: SlotPokemon, fromSlot: number) {
+  function beginTeamPointerDrag(e: React.PointerEvent, pokemon: SlotPokemon, fromSlot?: number) {
+    if (!canEditRoster) return;
     if (e.button !== 0) return;
     teamPointerDragRef.current = {
-      id: pokemon.id,
-      label: nameFor(pokemon),
+      payload: payloadForPokemon(pokemon),
       fromSlot,
       pointerId: e.pointerId,
       startX: e.clientX,
       startY: e.clientY,
-      active: false,
-    };
-  }
-
-  useEffect(() => {
-    function handlePointerDrop(e: Event) {
-      const detail = (e as CustomEvent).detail as { payload?: DragCharacterPayload; clientX?: number; clientY?: number } | undefined;
-      if (!detail?.payload || typeof detail.clientX !== "number" || typeof detail.clientY !== "number") return;
-      const target = targetFromPoint(detail.clientX, detail.clientY);
-      if (!target) return;
-      e.preventDefault();
-      e.stopPropagation();
-      if (detail.payload.kind !== "pokemon") {
-        toast.error("Apenas Pokemon podem entrar no time/PC.");
-        return;
-      }
-      void (async () => {
-        try {
-          await movePayloadToTarget(detail.payload!, target);
-        } catch (error) {
-          toast.error(error instanceof Error ? error.message : "Nao foi possivel mover este Pokemon.");
-        }
-      })();
-    }
-
-    const root = rootRef.current;
-    root?.addEventListener(TRAINER_SHEET_POINTER_DROP_EVENT, handlePointerDrop);
-    window.addEventListener(CHARACTER_POINTER_DROP_EVENT, handlePointerDrop, { capture: true });
-    return () => {
-      root?.removeEventListener(TRAINER_SHEET_POINTER_DROP_EVENT, handlePointerDrop);
-      window.removeEventListener(CHARACTER_POINTER_DROP_EVENT, handlePointerDrop, { capture: true });
-    };
-  }, [active, roster, trainerId]);
-
-  useEffect(() => {
-    function move(e: PointerEvent) {
-      const drag = teamPointerDragRef.current;
-      if (!drag || drag.pointerId !== e.pointerId) return;
-      const distance = Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY);
-      if (!drag.active && distance > 6) drag.active = true;
-      if (!drag.active) return;
-      e.preventDefault();
-      setTeamDragPreview({ label: drag.label, x: e.clientX, y: e.clientY });
-    }
-
-    function up(e: PointerEvent) {
-      const drag = teamPointerDragRef.current;
-      if (!drag || drag.pointerId !== e.pointerId) return;
-      teamPointerDragRef.current = null;
-      setTeamDragPreview(null);
-      if (!drag.active) return;
-      e.preventDefault();
-      suppressTeamClickRef.current = true;
-      const target = targetFromPoint(e.clientX, e.clientY);
-      if (!target) return;
-      void movePayloadToTarget({ id: drag.id, label: drag.label, fromSlot: drag.fromSlot }, target);
-    }
-
-    function cancel(e: PointerEvent) {
-      const drag = teamPointerDragRef.current;
-      if (!drag || drag.pointerId !== e.pointerId) return;
-      teamPointerDragRef.current = null;
-      setTeamDragPreview(null);
-    }
-
-    window.addEventListener("pointermove", move, { passive: false });
-    window.addEventListener("pointerup", up, { passive: false });
-    window.addEventListener("pointercancel", cancel);
-    return () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-      window.removeEventListener("pointercancel", cancel);
-    };
-  }, [active, roster, trainerId]);
-
-  if (trainerMeta?.is_minimal) {
-    const canEdit = isNarrator || trainerMeta.owner_id === userId || (trainerMeta.allowed_editors ?? []).includes(userId);
-    return <MinimalSheetView trainerId={trainerId} meta={trainerMeta} canEdit={canEdit} onDeleted={props.onDeleted} />;
-  }
-
-  return (
-    <div
-      ref={rootRef}
-      className="flex h-full min-h-0 w-full"
-      data-trainer-sheet-drop-target="true"
-      onDragOver={handleSheetDragOver}
-      onDrop={handleSheetDrop}
-    >
-      {/* Vertical tab rail */}
-      <div className="flex w-14 shrink-0 flex-col gap-1 border-r border-border bg-muted/40 p-1.5">
-        <TabButton
-          active={active.kind === "trainer"}
-          onClick={() => setActive({ kind: "trainer" })}
-          tone="primary"
-          title="Trainer"
-        >
-          <User className="h-4 w-4" />
-        </TabButton>
-        {team.map(({ slot, pokemon }) => {
-          const isActive = active.kind === "slot" && active.slot === slot;
-          const sprite = spriteFor(pokemon);
-          return (
-            <TabButton
-              key={slot}
-              active={isActive}
-              onClick={() => {
-                if (suppressTeamClickRef.current) {
-                  suppressTeamClickRef.current = false;
-                  return;
-                }
-                setActive({ kind: "slot", slot, pokemonId: pokemon?.id ?? null });
-              }}
-              title={pokemon ? `${nameFor(pokemon)} â€” arraste para o PC para guardar, ou para outro slot para trocar` : `Slot ${slot}`}
-              tone={pokemon ? "team" : "empty"}
-              slotTarget={slot}
-              onPointerDown={pokemon ? (e) => beginTeamPointerDrag(e, pokemon, slot) : undefined}
-              draggable={false}
-              onDragOver={(e) => {
-                if (e.dataTransfer.types.includes(SLOT_DRAG_MIME) || e.dataTransfer.types.includes(DRAG_MIME)) {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  e.dataTransfer.dropEffect = "move";
-                }
-              }}
-              onDrop={async (e) => {
-                const raw = e.dataTransfer.getData(SLOT_DRAG_MIME);
-                const characterRaw = e.dataTransfer.getData(DRAG_MIME);
-                if (!raw && !characterRaw) return;
-                e.preventDefault();
-                e.stopPropagation();
-                try {
-                  if (characterRaw) {
-                    await movePayloadToTarget(JSON.parse(characterRaw) as DragCharacterPayload, { kind: "slot", slot });
-                    return;
-                  }
-                  const p = JSON.parse(raw) as { id: string; label: string; fromSlot?: number };
-                  if (p.fromSlot == null) {
-                    await movePayloadToTarget(p, { kind: "slot", slot });
-                    return;
-                  }
-                  if (p.fromSlot === slot) return;
-                  const target = roster.find((r) => r.team_slot === slot);
-                  // Temporarily park source in null to dodge unique-slot constraint
-                  const upd1 = await supabase.from("pokemon").update({ team_slot: null }).eq("id", p.id);
-                  if (upd1.error) { toast.error(upd1.error.message); return; }
-                  if (target) {
-                    const upd2 = await supabase.from("pokemon").update({ team_slot: p.fromSlot }).eq("id", target.id);
-                    if (upd2.error) { toast.error(upd2.error.message); return; }
-                  }
-                  const upd3 = await supabase.from("pokemon").update({ team_slot: slot }).eq("id", p.id);
-                  if (upd3.error) { toast.error(upd3.error.message); return; }
-                  toast.success(`Slot ${p.fromSlot} â‡„ ${slot}`);
-                  invalidateRoster();
-                  setActive({ kind: "slot", slot, pokemonId: p.id });
-                } catch { /* ignore */ }
-              }}
-            >
-              {sprite
-                ? (
-                  <img
-                    src={sprite}
-                    alt={nameFor(pokemon)}
-                    draggable={false}
-                    className="h-7 w-7 select-none object-contain"
-                    style={{ WebkitUserDrag: "none" } as CSSProperties}
-                  />
-                )
-                : <span className="text-[10px] font-bold text-muted-foreground">{slot}</span>}
-            </TabButton>
-          );
-        })}
-        <TabButton
-          active={active.kind === "pc" || active.kind === "pcPokemon"}
-          onClick={() => setActive({ kind: "pc" })}
-          tone="pc"
-          dropTarget
-          title="PC (Box) â€” arraste um PokÃ©mon dos Files ou do seu time aqui para guardar"
-          onDragOver={(e) => {
-            if (e.dataTransfer.types.includes(DRAG_MIME) || e.dataTransfer.types.includes(SLOT_DRAG_MIME)) {
-              e.preventDefault();
-              e.stopPropagation();
-              e.dataTransfer.dropEffect = "move";
-            }
-          }}
-          onDrop={async (e) => {
-            // From team slot â†’ PC
-            const slotRaw = e.dataTransfer.getData(SLOT_DRAG_MIME);
-            if (slotRaw) {
-              e.preventDefault();
-              e.stopPropagation();
-              try {
-                const p = JSON.parse(slotRaw) as { id: string; label: string };
-                await assignPokemonToTrainer(p.id, null);
-                toast.success(`${p.label} movido para o PC`);
-                invalidateRoster();
-                setActive({ kind: "pc" });
-              } catch (error) {
-                toast.error(error instanceof Error ? error.message : "Nao foi possivel mover para o PC.");
-              }
-              return;
-            }
-            // From map/files â†’ PC
-            const raw = e.dataTransfer.getData(DRAG_MIME);
-            if (!raw) return;
-            e.preventDefault();
-            e.stopPropagation();
-            try {
-              const p = JSON.parse(raw) as DragCharacterPayload;
-              if (p.kind !== "pokemon") { toast.error("Apenas PokÃ©mon podem ir para o PC."); return; }
-              await assignPokemonToTrainer(p.id, null);
-              await registerInPokedex(p.id);
-              toast.success(`${p.label} guardado no PC`);
-              invalidateRoster();
-              setActive({ kind: "pc" });
-            } catch (error) {
-              toast.error(error instanceof Error ? error.message : "Nao foi possivel guardar no PC.");
-            }
-          }}
-        >
-          <Boxes className="h-4 w-4" />
-        </TabButton>
-        <TabButton
-          active={active.kind === "shop"}
-          onClick={() => setActive({ kind: "shop" })}
-          tone="primary"
-          title="PokÃ©mart"
-        >
-          <ShoppingCart className="h-4 w-4" />
-        </TabButton>
-      </div>
-
-      {/* Active panel */}
-      <div className="min-w-0 flex-1 overflow-y-auto">
-        {active.kind === "trainer" && (
-          <TrainerSheet
-            trainerId={trainerId}
-            userId={userId}
-            isNarrator={isNarrator}
-            onRoll={props.onRoll}
-            onDeleted={props.onDeleted}
-          />
-        )}
-        {active.kind === "slot" && (
-          active.pokemonId
-            ? <PokemonSheet
-                pokemonId={active.pokemonId}
-                gameId={gameId}
-                userId={userId}
-                isNarrator={isNarrator}
-                onRoll={props.onRoll}
-                onChat={props.onChat}
-                onDeleted={invalidateRoster}
-              />
-            : <EmptySlot
-                slot={active.slot}
-                gameId={gameId}
-                trainerId={trainerId}
-                userId={userId}
-                canEdit={isNarrator || true}
-                spriteMap={spriteMap}
-                onAssigned={(pid) => {
-                  invalidateRoster();
-                  setActive({ kind: "slot", slot: active.slot, pokemonId: pid });
-                }}
-              />
-        )}
-        {active.kind === "pc" && (
-          <PcGrid
-            pokemon={pcPokemon}
-            sprite={(p) => spriteFor(p)}
-            name={(p) => nameFor(p)}
-            onOpen={(pid) => setActive({ kind: "pcPokemon", pokemonId: pid })}
-            onAddToTeam={async (pid) => {
-              const usedSlots = new Set(roster.filter((r) => r.team_slot != null).map((r) => r.team_slot!));
-              const nextSlot = SLOTS.find((s) => !usedSlots.has(s));
-              if (!nextSlot) { toast.error("Equipe cheia (6 PokÃ©mon)."); return; }
-              try {
-                await assignPokemonToTrainer(pid, nextSlot);
-              } catch (error) {
-                toast.error(error instanceof Error ? error.message : "Nao foi possivel adicionar ao time.");
-                return;
-              }
-              toast.success(`Adicionado ao slot ${nextSlot}`);
-              invalidateRoster();
-              setActive({ kind: "slot", slot: nextSlot, pokemonId: pid });
-            }}
-            onRelease={async (pid) => {
-              const { error } = await supabase.from("pokemon").delete().eq("id", pid);
-              if (error) { toast.error(error.message); return; }
-              toast.success("PokÃ©mon liberado");
-              invalidateRoster();
-            }}
-            onToggleMark={async (pid, marked) => {
-              const { error } = await supabase.from("pokemon").update({ marked: !marked }).eq("id", pid);
-              if (error) { toast.error(error.message); return; }
-              invalidateRoster();
-            }}
-          />
-        )}
-        {active.kind === "pcPokemon" && (
-          <div className="flex flex-col">
-            <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-3 py-2">
-              <Button size="sm" variant="ghost" onClick={() => setActive({ kind: "pc" })}>â† PC</Button>
-            </div>
-            <PokemonSheet
-              pokemonId={active.pokemonId}
-              gameId={gameId}
-              userId={userId}
-              isNarrator={isNarrator}
-              onRoll={props.onRoll}
-              onChat={props.onChat}
-              onDeleted={invalidateRoster}
-            />
-          </div>
-        )}
-        {active.kind === "shop" && (
-          <Shop trainerId={trainerId} />
-        )}
-      </div>
-      {teamDragPreview && (
-        <div
-          className="pointer-events-none fixed z-[9999] max-w-48 rounded-md border border-primary bg-popover px-3 py-2 text-sm font-semibold text-popover-foreground shadow-xl"
-          style={{ left: teamDragPreview.x + 12, top: teamDragPreview.y + 12 }}
-        >
-          {teamDragPreview.label}
-        </div>
-      )}
-    </div>
-  );
-}
-
-const SLOT_DRAG_MIME = "application/x-pokerole-slot-move+json";
-
-function TabButton({
-  active, onClick, children, title, tone, onDragOver, onDrop, draggable, onDragStart, onPointerDown, dropTarget, slotTarget,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-  title: string;
-  tone: "primary" | "team" | "empty" | "pc";
-  onDragOver?: React.DragEventHandler<HTMLButtonElement>;
-  onDrop?: React.DragEventHandler<HTMLButtonElement>;
-  draggable?: boolean;
-  onDragStart?: React.DragEventHandler<HTMLButtonElement>;
-  onPointerDown?: React.PointerEventHandler<HTMLButtonElement>;
-  dropTarget?: boolean;
-  slotTarget?: number;
-}) {
-  return (
-    <button
-      type="button"
-      title={title}
-      onClick={onClick}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      draggable={draggable}
-      onDragStart={(e) => {
-        if (onDragStart) {
-          onDragStart(e);
-          return;
-        }
-        e.preventDefault();
-      }}
-      onPointerDown={onPointerDown}
-      data-pokemon-pc-drop-target={dropTarget ? "true" : undefined}
-      data-pokemon-slot-drop-target={slotTarget}
-      style={onPointerDown ? ({ touchAction: "none", WebkitUserDrag: "none", userSelect: "none" } as CSSProperties) : undefined}
-      className={cn(
-        "flex h-11 w-full items-center justify-center rounded-md border transition",
-        active
-          ? "border-primary bg-primary/15 ring-1 ring-primary"
-          : "border-border bg-card hover:bg-accent",
-        tone === "primary" && !active && "border-l-2 border-l-primary/60",
-        tone === "pc" && !active && "border-l-2 border-l-success/60",
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
-function EmptySlot({
-  slot, gameId, trainerId, spriteMap, onAssigned,
-}: {
-  slot: number;
-  gameId: string;
-  trainerId: string;
-  userId: string;
-  canEdit: boolean;
-  spriteMap: Record<string, { sprite_url: string | null; name: string }>;
-  onAssigned: (pokemonId: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const spriteStyle = useGameSpriteStyle(gameId);
-
-  // Pokemon in this game that aren't already in *this* trainer's team
-  const { data: candidates = [] } = useQuery({
-    queryKey: ["assignable-pokemon", gameId, trainerId, open],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("pokemon")
-        .select("id, nickname, image_url, species_id, owner_trainer_id, team_slot, is_shiny")
-        .eq("game_id", gameId)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      // Exclude pokemon currently in this trainer's active team slot
-      return (data ?? []).filter((p) =>
-        !(p.owner_trainer_id === trainerId && p.team_slot !== null)
-      );
-    },
-    enabled: open,
-  });
-
-  // Fetch names/sprites for every candidate species (spriteMap only covers this trainer's roster)
-  const candidateSpeciesIds = useMemo(
-    () => Array.from(new Set(candidates.map((p) => p.species_id).filter(Boolean))),
-    [candidates],
-  );
-  const { data: candidateSpeciesMap = {} } = useQuery({
-    queryKey: ["candidate-species", candidateSpeciesIds.join(",")],
-    enabled: open && candidateSpeciesIds.length > 0,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("species")
-        .select("id, sprite_url, name")
-        .in("id", candidateSpeciesIds);
-      if (error) throw error;
-      const m: Record<string, { sprite_url: string | null; name: string }> = {};
-      (data ?? []).forEach((s) => { m[s.id] = { sprite_url: s.sprite_url, name: s.name }; });
-      return m;
-    },
-  });
-  const speciesLookup = useMemo(
-    () => ({ ...spriteMap, ...candidateSpeciesMap }),
-    [spriteMap, candidateSpeciesMap],
-  );
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return candidates.filter((p) => {
-      if (!q) return true;
-      const nm = p.nickname?.toLowerCase() ?? "";
-      const sp = speciesLookup[p.species_id]?.name?.toLowerCase() ?? "";
-      return nm.includes(q) || sp.includes(q);
-    });
-  }, [candidates, search, speciesLookup]);
-
-  async function assign(pokemonId: string) {
-    // Clear any previous slot for this pokemon, then assign new slot+owner
-    const { error } = await supabase
-      .from("pokemon")
-      .update({ owner_trainer_id: trainerId, team_slot: slot })
-      .eq("id", pokemonId);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Added to team");
-    setOpen(false);
-    onAssigned(pokemonId);
-  }
-
-  return (
-    <div className="flex h-full items-center justify-center p-8">
-      <div className="w-full max-w-sm rounded-lg border border-dashed border-border bg-card p-6 text-center">
-        <p className="mb-1 text-sm font-bold">Slot {slot} vazio</p>
-        <p className="mb-4 text-xs text-muted-foreground">
-          Atribua um PokÃ©mon dos arquivos do jogo a este slot.
-        </p>
-        <Button size="sm" onClick={() => setOpen(true)}>
-          <Plus className="mr-1 h-3.5 w-3.5" /> Adicionar de Files
-        </Button>
-      </div>
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[80vh] max-w-lg overflow-hidden">
-          <DialogHeader><DialogTitle>Adicionar PokÃ©mon ao Slot {slot}</DialogTitle></DialogHeader>
-          <Input placeholder="Buscarâ€¦" value={search} onChange={(e) => setSearch(e.target.value)} />
-          <div className="max-h-[55vh] space-y-1 overflow-y-auto">
-            {filtered.map((p) => {
-              const sp = speciesLookup[p.species_id];
-              const sprite = p.image_url || preferredPokemonSprite(sp?.name, sp?.sprite_url, !!p.is_shiny, spriteStyle);
-              const nm = p.nickname || sp?.name || "PokÃ©mon";
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => assign(p.id)}
-                  className="flex w-full items-center gap-2 rounded-md border border-border bg-card px-2 py-1.5 text-left hover:bg-accent"
-                >
-                  {sprite
-                    ? <img src={sprite} alt={nm} className="h-8 w-8 object-contain" />
-                    : <div className="h-8 w-8 rounded bg-muted" />}
-                  <span className="flex-1 text-sm">{nm}</span>
-                  {p.owner_trainer_id === trainerId && p.team_slot === null && (
-                    <span className="text-[10px] text-muted-foreground">(no PC)</span>
-                  )}
-                  {p.owner_trainer_id && p.owner_trainer_id !== trainerId && (
-                    <span className="text-[10px] text-muted-foreground">(de outro treinador)</span>
-                  )}
-                </button>
-              );
-            })}
-            {filtered.length === 0 && (
-              <p className="p-4 text-center text-xs text-muted-foreground">Nenhum PokÃ©mon disponÃ­vel.</p>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-function PcGrid({
-  pokemon, sprite, name, onOpen, onAddToTeam, onRelease, onToggleMark,
-}: {
-  pokemon: SlotPokemon[];
-  sprite: (p: SlotPokemon) => string | null;
-  name: (p: SlotPokemon) => string;
-  onOpen: (pokemonId: string) => void;
-  onAddToTeam: (pokemonId: string) => void | Promise<void>;
-  onRelease: (pokemonId: string) => void | Promise<void>;
-  onToggleMark: (pokemonId: string, marked: boolean) => void | Promise<void>;
-}) {
-  const [releaseTarget, setReleaseTarget] = useState<SlotPokemon | null>(null);
-  return (
-    <div className="space-y-3 p-4" data-pokemon-pc-drop-target="true">
-      <div className="flex items-center gap-2">
-        <Boxes className="h-4 w-4 text-success" />
-        <h3 className="text-sm font-bold">PC Â· Caixa de PokÃ©mon</h3>
-        <span className="ml-auto text-xs text-muted-foreground">{pokemon.length} guardado(s)</span>
-      </div>
-      {pokemon.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border bg-card p-6 text-center text-xs text-muted-foreground">
-          Sem PokÃ©mon no PC. PokÃ©mon capturados que nÃ£o estÃ£o na equipe aparecerÃ£o aqui.
-        </p>
-      ) : (
-        <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
-          {pokemon.map((p) => {
-            const s = sprite(p);
-            return (
-              <DropdownMenu key={p.id}>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    title={name(p)}
-                    className={cn(
-                      "relative flex aspect-square flex-col items-center justify-center gap-1 rounded-md border bg-card p-1 hover:border-primary hover:bg-accent",
-                      p.marked ? "border-amber-500 ring-1 ring-amber-500/60" : "border-border",
-                    )}
-                  >
-                    {p.marked && (
-                      <Flag className="absolute right-0.5 top-0.5 h-3 w-3 fill-amber-500 text-amber-500" />
-                    )}
-                    {s
-                      ? <img src={s} alt={name(p)} className="h-12 w-12 object-contain" />
-                      : <div className="h-12 w-12 rounded bg-muted" />}
-                    <span className="line-clamp-1 text-[10px] font-medium">{name(p)}</span>
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-48">
-                  <DropdownMenuItem onClick={() => onAddToTeam(p.id)}>
-                    <ArrowUpFromLine className="mr-2 h-4 w-4" /> Adicionar ao time
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onOpen(p.id)}>
-                    <FileText className="mr-2 h-4 w-4" /> Ficha
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onToggleMark(p.id, p.marked)}>
-                    <Flag className="mr-2 h-4 w-4" /> {p.marked ? "Desmarcar" : "Marcar"}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="text-destructive focus:text-destructive"
-                    onClick={() => setReleaseTarget(p)}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" /> Liberar
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            );
-          })}
-        </div>
-      )}
-
-      <AlertDialog open={!!releaseTarget} onOpenChange={(o) => { if (!o) setReleaseTarget(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Liberar {releaseTarget ? name(releaseTarget) : "PokÃ©mon"}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta aÃ§Ã£o Ã© permanente e nÃ£o pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={async () => {
-                if (releaseTarget) await onRelease(releaseTarget.id);
-                setReleaseTarget(null);
-              }}
-            >
-              Liberar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
-}
-
-function MinimalSheetView({
-  trainerId, meta, canEdit, onDeleted,
-}: {
-  trainerId: string;
-  meta: { name: string; image_url: string | null; description: string | null };
-  canEdit: boolean;
-  onDeleted?: () => void;
-}) {
-  const qc = useQueryClient();
-  const [name, setName] = useState(meta.name);
-  const [desc, setDesc] = useState(meta.description ?? "");
-  const [confirmDel, setConfirmDel] = useState(false);
-  async function patch(fields: Record<string, unknown>) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase.from("trainers") as any).update(fields).eq("id", trainerId);
-    if (error) { toast.error(error.message); return; }
-    qc.invalidateQueries({ queryKey: ["trainer-meta", trainerId] });
-    qc.invalidateQueries({ queryKey: ["characters"] });
-  }
-  return (
-    <div className="space-y-3 p-4">
-      <div className="flex items-start gap-3">
-        {meta.image_url ? (
-          <img src={meta.image_url} alt={meta.name} className="h-40 w-40 rounded-xl border border-border object-cover" />
-        ) : (
-          <div className="flex h-40 w-40 items-center justify-center rounded-xl border border-dashed border-border bg-muted text-xs text-muted-foreground">Sem imagem</div>
-        )}
-        <div className="flex flex-1 flex-col gap-2">
-          <Input value={name} disabled={!canEdit} onChange={(e) => setName(e.target.value)} onBlur={() => name !== meta.name && patch({ name })} className="text-lg font-bold" />
-          {canEdit && (
-            <MinimalImagePicker currentUrl={meta.image_url} onPick={(url) => patch({ image_url: url })} />
-          )}
-        </div>
-      </div>
-      <div>
-        <label className="text-xs font-bold">DescriÃ§Ã£o</label>
-        <textarea
-          value={desc}
-          disabled={!canEdit}
-          onChange={(e) => setDesc(e.target.value)}
-          onBlur={() => desc !== (meta.description ?? "") && patch({ description: desc })}
-          rows={12}
-          className="mt-1 w-full rounded-md border border-border bg-background p-2 text-sm"
-          placeholder="Notas livres, descriÃ§Ã£o, anotaÃ§Ãµesâ€¦"
-        />
-      </div>
-      {canEdit && (
-        <div className="flex justify-end">
-          <AlertDialog open={confirmDel} onOpenChange={setConfirmDel}>
-            <Button size="sm" variant="destructive" onClick={() => setConfirmDel(true)}>
-              <Trash2 className="mr-1 h-3.5 w-3.5" /> Apagar ficha
-            </Button>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Apagar esta ficha?</AlertDialogTitle>
-                <AlertDialogDescription>Esta aÃ§Ã£o nÃ£o pode ser desfeita.</AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={async () => {
-                  await supabase.from("trainers").delete().eq("id", trainerId);
-                  toast.success("Ficha apagada");
-                  onDeleted?.();
-                }}>Apagar</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function MinimalImagePicker({ currentUrl, onPick }: { currentUrl: string | null; onPick: (url: string | null) => void }) {
-  // Lazy import to avoid circular issues in stricter bundlers; keep simple inline.
-  
-  return (
-    <div className="flex gap-1.5">
-      <ImageSourceDialog title="Imagem da ficha" onPick={(u: string) => onPick(u)} />
-      {currentUrl && (
-        <Button size="sm" variant="outline" onClick={() => onPick(null)}>Remover imagem</Button>
-      )}
-    </div>
-  );
-}
+      active: falseç¿v¶‰žËkºwµç}±•…¸¤¤¤°4(€€€m…¹‘¥‘…Ñ•Ít°4(€€¤ì4(€½¹ÍÐì‘…Ñ„è…¹‘¥‘…Ñ•MÁ•¥•Í5…À€ôíôô€ôÕÍ•EÕ•Éä¡ì4(€€€ÅÕ•Éå-•äèl‰…¹‘¥‘…Ñ”µÍÁ•¥•Ìˆ°…¹‘¥‘…Ñ•MÁ•¥•Í%‘Ì¹©½¥¸ ˆ°ˆ¥t°4(€€€•¹…‰±•è½Á•¸€˜˜…¹‘¥‘…Ñ•MÁ•¥•Í%‘Ì¹±•¹Ñ €ø€À°4(€€€ÅÕ•Éå¸è…Íå¹Œ€ ¤€ôøì4(€€€€€½¹ÍÐì‘…Ñ„°•ÉÉ½Èô€ô…Ý…¥ÐÍÕÁ…‰…Í”4(€€€€€€€€¹™É½´ ‰ÍÁ•¥•Ìˆ¤4(€€€€€€€€¹Í•±•Ð ‰¥°ÍÁÉ¥Ñ•}ÕÉ°°¹…µ”ˆ¤4(€€€€€€€€¹¥¸ ‰¥ˆ°…¹‘¥‘…Ñ•MÁ•¥•Í%‘Ì¤ì4(€€€€€¥˜€¡•ÉÉ½È¤Ñ¡É½Ü•ÉÉ½Èì4(€€€€€½¹ÍÐ´èI•½ÉñÍÑÉ¥¹œ°ìÍÁÉ¥Ñ•}ÕÉ°èÍÑÉ¥¹œð¹Õ±°ì¹…µ”èÍÑÉ¥¹œôø€ôíôì4(€€€€€€¡‘…Ñ„€üümt¤¹™½É…  ¡Ì¤€ôøìµmÌ¹¥‘t€ôìÍÁÉ¥Ñ•}ÕÉ°èÌ¹ÍÁÉ¥Ñ•}ÕÉ°°¹…µ”èÌ¹¹…µ”ôìô¤ì4(€€€€€É•ÑÕÉ¸´ì4(€€€ô°4(€ô¤ì4(€½¹ÍÐÍÁ•¥•Í1½½­ÕÀ€ôÕÍ•5•µ¼ 4(€€€€ ¤€ôø€¡ì€¸¸¹ÍÁÉ¥Ñ•5…À°€¸¸¹…¹‘¥‘…Ñ•MÁ•¥•Í5…Àô¤°4(€€€mÍÁÉ¥Ñ•5…À°…¹‘¥‘…Ñ•MÁ•¥•Í5…Át°4(€€¤ì4(4(€½¹ÍÐ™¥±Ñ•É•€ôÕÍ•5•µ¼  ¤€ôøì4(€€€½¹ÍÐÄ€ôÍ•…É ¹ÑÉ¥´ ¤¹Ñ½1½Ý•É…Í” ¤ì4(€€€É•ÑÕÉ¸…¹‘¥‘…Ñ•Ì¹™¥±Ñ•È ¡À¤€ôøì4(€€€€€¥˜€ …Ä¤É•ÑÕÉ¸ÑÉÕ”ì4(€€€€€½¹ÍÐ¹´€ôÀ¹¹¥­¹…µ”ü¹Ñ½1½Ý•É…Í” ¤€üü€ˆˆì4(€€€€€½¹ÍÐÍÀ€ôÍÁ•¥•Í1½½­ÕÁmÀ¹ÍÁ•¥•Í}¥‘tü¹¹…µ”ü¹Ñ½1½Ý•É…Í” ¤€üü€ˆˆì4(€€€€€É•ÑÕÉ¸¹´¹¥¹±Õ‘•Ì¡Ä¤ñðÍÀ¹¥¹±Õ‘•Ì¡Ä¤ì4(€€€ô¤ì4(€ô°m…¹‘¥‘…Ñ•Ì°Í•…É °ÍÁ•¥•Í1½½­ÕÁt¤ì4(4(€…Íå¹Œ™Õ¹Ñ¥½¸…ÍÍ¥¸¡Á½­•µ½¹%èÍÑÉ¥¹œ¤ì(€€€¥˜€ ……¹‘¥Ð¤É•ÑÕÉ¸ì(€€€ÑÉäì(€€€€€…Ý…¥Ð…ÍÍ¥¹A½­•µ½¹Q½QÉ…¥¹•ÉIÁŒ¡Á½­•µ½¹%°ÑÉ…¥¹•É%°Í±½Ð¤ì(€€€ô…Ñ €¡•ÉÉ½È¤ì(€€€€€Ñ½…ÍÐ¹•ÉÉ½È¡•ÉÉ½È¥¹ÍÑ…¹•½˜ÉÉ½È€ü•ÉÉ½È¹µ•ÍÍ…”€è€‰9…¼™½¤Á½ÍÍ¥Ù•°…‘¥¥½¹…È…¼Ñ¥µ”¸ˆ¤ì(€€€€€É•ÑÕÉ¸ì(€€€ô(€€€Ñ½…ÍÐ¹ÍÕ•ÍÌ ‰‘‘•Ñ¼Ñ•…´ˆ¤ì(€€€Í•Ñ=Á•¸¡™…±Í”¤ì4(€€€½¹ÍÍ¥¹•¡Á½­•µ½¹%¤ì4(€ô4(4(€É•ÑÕÉ¸€ 4(€€€€ñ‘¥Ø±…ÍÍ9…µ”ô‰™±•à µ™Õ±°¥Ñ•µÌµ•¹Ñ•È©ÕÍÑ¥™äµ•¹Ñ•ÈÀ´àˆø4(€€€€€€ñ‘¥Ø±…ÍÍ9…µ”ô‰Üµ™Õ±°µ…àµÜµÍ´É½Õ¹‘•µ±œ‰½É‘•È‰½É‘•Èµ‘…Í¡•‰½É‘•Èµ‰½É‘•È‰œµ…ÉÀ´ØÑ•áÐµ•¹Ñ•Èˆø4(€€€€€€€€ñÀ±…ÍÍ9…µ”ô‰µˆ´ÄÑ•áÐµÍ´™½¹Ðµ‰½±ˆùM±½ÐíÍ±½ÑôÙ…é¥¼ð½Àø4(€€€€€€€€ñÀ±…ÍÍ9…µ”ô‰µˆ´ÐÑ•áÐµáÌÑ•áÐµµÕÑ•µ™½É•É½Õ¹ˆø4(€€€€€€€€€ÑÉ¥‰Õ„Õ´A½¯¥µ½¸‘½Ì…ÉÅÕ¥Ù½Ì‘¼©½¼„•ÍÑ”Í±½Ð¸4(€€€€€€€€ð½Àø4(€€€€€€€í…¹‘¥Ð€ü€ (€€€€€€€€€€ñ	ÕÑÑ½¸Í¥é”ô‰Í´ˆ½¹±¥¬õì ¤€ôøÍ•Ñ=Á•¸¡ÑÉÕ”¥ôø(€€€€€€€€€€€€ñA±ÕÌ±…ÍÍ9…µ”ô‰µÈ´Ä ´Ì¸ÔÜ´Ì¸Ôˆ€¼ø‘¥¥½¹…È‘”¥±•Ì(€€€€€€€€€€ð½	ÕÑÑ½¸ø(€€€€€€€€¤€è€ (€€€€€€€€€€ñÀ±…ÍÍ9…µ”ô‰Ñ•áÐµáÌÑ•áÐµµÕÑ•µ™½É•É½Õ¹ˆùM½µ•¹Ñ”•‘¥Ñ½É•Ì‘•ÍÑ„™¥¡„Á½‘•´…±Ñ•É…È¼Ñ¥µ”¸ð½Àø(€€€€€€€€¥ô(€€€€€€ð½‘¥Øø4(4(€€€€€€ñ¥…±½œ½Á•¸õí½Á•¹ô½¹=Á•¹¡…¹”õíÍ•Ñ=Á•¹ôø4(€€€€€€€€ñ¥…±½½¹Ñ•¹Ð±…ÍÍ9…µ”ô‰µ…àµ µlàÁÙ¡tµ…àµÜµ±œ½Ù•É™±½Üµ¡¥‘‘•¸ˆø4(€€€€€€€€€€ñ¥…±½!•…‘•Èøñ¥…±½Q¥Ñ±”ù‘¥¥½¹…ÈA½¯¥µ½¸…¼M±½ÐíÍ±½Ñôð½¥…±½Q¥Ñ±”øð½¥…±½!•…‘•Èø4(€€€€€€€€€€ñ%¹ÁÕÐÁ±…•¡½±‘•Èô‰	ÕÍ…ËŠ˜ˆÙ…±Õ”õíÍ•…É¡ô½¹¡…¹”õì¡”¤€ôøÍ•ÑM•…É ¡”¹Ñ…É•Ð¹Ù…±Õ”¥ô€¼ø4(€€€€€€€€€€ñ‘¥Ø±…ÍÍ9…µ”ô‰µ…àµ µlÔÕÙ¡tÍÁ…”µä´Ä½Ù•É™±½Üµäµ…ÕÑ¼ˆø4(€€€€€€€€€€€í™¥±Ñ•É•¹µ…À ¡À¤€ôøì4(€€€€€€€€€€€€€½¹ÍÐÍÀ€ôÍÁ•¥•Í1½½­ÕÁmÀ¹ÍÁ•¥•Í}¥‘tì4(€€€€€€€€€€€€€½¹ÍÐÍÁÉ¥Ñ”€ôÀ¹¥µ…•}ÕÉ°ñðÁÉ•™•ÉÉ•‘A½­•µ½¹MÁÉ¥Ñ”¡ÍÀü¹¹…µ”°ÍÀü¹ÍÁÉ¥Ñ•}ÕÉ°°™…±Í”°ÍÁÉ¥Ñ•MÑå±”¤ì(€€€€€€€€€€€€€½¹ÍÐ¹´€ôÀ¹¹¥­¹…µ”ñðÍÀü¹¹…µ”ñð€‰A½¯¥µ½¸ˆì4(€€€€€€€€€€€€€É•ÑÕÉ¸€ 4(€€€€€€€€€€€€€€€€ñ‰ÕÑÑ½¸4(€€€€€€€€€€€€€€€€€­•äõíÀ¹¥‘ô4(€€€€€€€€€€€€€€€€€ÑåÁ”ô‰‰ÕÑÑ½¸ˆ4(€€€€€€€€€€€€€€€€€½¹±¥¬õì ¤€ôø…ÍÍ¥¸¡À¹¥¥ô4(€€€€€€€€€€€€€€€€€±…ÍÍ9…µ”ô‰™±•àÜµ™Õ±°¥Ñ•µÌµ•¹Ñ•È…À´ÈÉ½Õ¹‘•µµ‰½É‘•È‰½É‘•Èµ‰½É‘•È‰œµ…ÉÁà´ÈÁä´Ä¸ÔÑ•áÐµ±•™Ð¡½Ù•Èé‰œµ…•¹Ðˆ4(€€€€€€€€€€€€€€€€ø4(€€€€€€€€€€€€€€€€€íÍÁÉ¥Ñ”4(€€€€€€€€€€€€€€€€€€€€ü€ñ¥µœÍÉŒõíÍÁÉ¥Ñ•ô…±Ðõí¹µô±…ÍÍ9…µ”ô‰ ´àÜ´à½‰©•Ðµ½¹Ñ…¥¸ˆ€¼ø4(€€€€€€€€€€€€€€€€€€€€è€ñ‘¥Ø±…ÍÍ9…µ”ô‰ ´àÜ´àÉ½Õ¹‘•‰œµµÕÑ•ˆ€¼ùô4(€€€€€€€€€€€€€€€€€€ñÍÁ…¸±…ÍÍ9…µ”ô‰™±•à´ÄÑ•áÐµÍ´ˆùí¹µôð½ÍÁ…¸ø4(€€€€€€€€€€€€€€€€€íÀ¹½Ý¹•É}ÑÉ…¥¹•É}¥€ôôôÑÉ…¥¹•É%€˜˜À¹Ñ•…µ}Í±½Ð€ôôô¹Õ±°€˜˜€ 4(€€€€€€€€€€€€€€€€€€€€ñÍÁ…¸±…ÍÍ9…µ”ô‰Ñ•áÐµlÄÁÁátÑ•áÐµµÕÑ•µ™½É•É½Õ¹ˆø¡¹¼A¤ð½ÍÁ…¸ø4(€€€€€€€€€€€€€€€€€€¥ô4(€€€€€€€€€€€€€€€€€íÀ¹½Ý¹•É}ÑÉ…¥¹•É}¥€˜˜À¹½Ý¹•É}ÑÉ…¥¹•É}¥€„ôôÑÉ…¥¹•É%€˜˜€ 4(€€€€€€€€€€€€€€€€€€€€ñÍÁ…¸±…ÍÍ9…µ”ô‰Ñ•áÐµlÄÁÁátÑ•áÐµµÕÑ•µ™½É•É½Õ¹ˆø¡‘”½ÕÑÉ¼ÑÉ•¥¹…‘½È¤ð½ÍÁ…¸ø4(€€€€€€€€€€€€€€€€€€¥ô4(€€€€€€€€€€€€€€€€ð½‰ÕÑÑ½¸ø4(€€€€€€€€€€€€€€¤ì4(€€€€€€€€€€€ô¥ô4(€€€€€€€€€€€í™¥±Ñ•É•¹±•¹Ñ €ôôô€À€˜˜€ 4(€€€€€€€€€€€€€€ñÀ±…ÍÍ9…µ”ô‰À´ÐÑ•áÐµ•¹Ñ•ÈÑ•áÐµáÌÑ•áÐµµÕÑ•µ™½É•É½Õ¹ˆù9•¹¡Õ´A½¯¥µ½¸‘¥ÍÁ½»µÙ•°¸ð½Àø4(€€€€€€€€€€€€¥ô4(€€€€€€€€€€ð½‘¥Øø4(€€€€€€€€ð½¥…±½½¹Ñ•¹Ðø4(€€€€€€ð½¥…±½œø4(€€€€ð½‘¥Øø4(€€¤ì4)ô4(4)™Õ¹Ñ¥½¸AÉ¥¡ì(€Á½­•µ½¸°…¹‘¥Ð°ÍÁÉ¥Ñ”°¹…µ”°½¹=Á•¸°½¹A½¥¹Ñ•ÉÉ…MÑ…ÉÐ°½¹É…MÑ…ÉÐ°½¹±¥­…ÁÑÕÉ”°½¹‘‘Q½Q•…´°½¹I•±•…Í”°½¹Q½±•5…É¬°)ôèì(€Á½­•µ½¸èM±½ÑA½­•µ½¹mtì(€…¹‘¥Ðè‰½½±•…¸ì(€ÍÁÉ¥Ñ”è€¡ÀèM±½ÑA½­•µ½¸¤€ôøÍÑÉ¥¹œð¹Õ±°ì(€¹…µ”è€¡ÀèM±½ÑA½­•µ½¸¤€ôøÍÑÉ¥¹œì(€½¹=Á•¸è€¡Á½­•µ½¹%èÍÑÉ¥¹œ¤€ôøÙ½¥ì(€½¹A½¥¹Ñ•ÉÉ…MÑ…ÉÐè€¡”èI•…Ð¹A½¥¹Ñ•ÉÙ•¹Ð°Á½­•µ½¸èM±½ÑA½­•µ½¸¤€ôøÙ½¥ì(€½¹É…MÑ…ÉÐè€¡”èI•…Ð¹É…Ù•¹Ð°Á½­•µ½¸èM±½ÑA½­•µ½¸¤€ôøÙ½¥ì(€½¹±¥­…ÁÑÕÉ”è€¡”èI•…Ð¹5½ÕÍ•Ù•¹Ð¤€ôøÙ½¥ì(€½¹‘‘Q½Q•…´è€¡Á½­•µ½¹%èÍÑÉ¥¹œ¤€ôøÙ½¥ðAÉ½µ¥Í”ñÙ½¥øì(€½¹I•±•…Í”è€¡Á½­•µ½¹%èÍÑÉ¥¹œ¤€ôøÙ½¥ðAÉ½µ¥Í”ñÙ½¥øì(€½¹Q½±•5…É¬è€¡Á½­•µ½¹%èÍÑÉ¥¹œ°µ…É­•è‰½½±•…¸¤€ôøÙ½¥ðAÉ½µ¥Í”ñÙ½¥øì)ô¤ì(€½¹ÍÐmÉ•±•…Í•Q…É•Ð°Í•ÑI•±•…Í•Q…É•Ñt€ôÕÍ•MÑ…Ñ”ñM±½ÑA½­•µ½¸ð¹Õ±°ø¡¹Õ±°¤ì(€½¹ÍÐmÍ•…É °Í•ÑM•…É¡t€ôÕÍ•MÑ…Ñ” ˆˆ¤ì(€½¹ÍÐmµ…É­•‘=¹±ä°Í•Ñ5…É­•‘=¹±åt€ôÕÍ•MÑ…Ñ”¡™…±Í”¤ì(€½¹ÍÐÙ¥Í¥‰±•A½­•µ½¸€ôÕÍ•5•µ¼  ¤€ôøì(€€€½¹ÍÐÅÕ•Éä€ôÍ•…É ¹ÑÉ¥´ ¤¹Ñ½1½…±•1½Ý•É…Í” ‰ÁÐµ	Hˆ¤ì(€€€É•ÑÕÉ¸Á½­•µ½¸(€€€€€€¹™¥±Ñ•È ¡•¹ÑÉä¤€ôø€…µ…É­•‘=¹±äñð•¹ÑÉä¹µ…É­•¤(€€€€€€¹™¥±Ñ•È ¡•¹ÑÉä¤€ôø€…ÅÕ•Éäñð¹…µ”¡•¹ÑÉä¤¹Ñ½1½…±•1½Ý•É…Í” ‰ÁÐµ	Hˆ¤¹¥¹±Õ‘•Ì¡ÅÕ•Éä¤¤(€€€€€€¹Í½ÉÐ ¡±•™Ð°É¥¡Ð¤€ôøì(€€€€€€€¥˜€¡±•™Ð¹µ…É­•€„ôôÉ¥¡Ð¹µ…É­•¤É•ÑÕÉ¸±•™Ð¹µ…É­•€ü€´Ä€è€Äì(€€€€€€€É•ÑÕÉ¸¹…µ”¡±•™Ð¤¹±½…±•½µÁ…É”¡¹…µ”¡É¥¡Ð¤°€‰ÁÐµ	Hˆ¤ì(€€€€€ô¤ì(€ô°mÁ½­•µ½¸°µ…É­•‘=¹±ä°Í•…É °¹…µ•t¤ì((€É•ÑÕÉ¸€ (€€€€ñ‘¥Ø±…ÍÍ9…µ”ô‰ÍÁ…”µä´ÌÀ´Ðˆ‘…Ñ„µÁ½­•µ½¸µÁŒµ‘É½ÀµÑ…É•Ðõí…¹‘¥Ð€ü€‰ÑÉÕ”ˆ€èÕ¹‘•™¥¹•‘ôø(€€€€€€ñ‘¥Ø±…ÍÍ9…µ”ô‰™±•à¥Ñ•µÌµ•¹Ñ•È…À´Èˆø4(€€€€€€€€ñ	½á•Ì±…ÍÍ9…µ”ô‰ ´ÐÜ´ÐÑ•áÐµÍÕ•ÍÌˆ€¼ø4(€€€€€€€€ñ Ì±…ÍÍ9…µ”ô‰Ñ•áÐµÍ´™½¹Ðµ‰½±ˆùAƒ
+Ü…¥á„‘”A½¯¥µ½¸ð½ Ìø4(€€€€€€€€ñÍÁ…¸±…ÍÍ9…µ”ô‰µ°µ…ÕÑ¼Ñ•áÐµáÌÑ•áÐµµÕÑ•µ™½É•É½Õ¹ˆùíÁ½­•µ½¸¹±•¹Ñ¡ôÕ…É‘…‘¼¡Ì¤ð½ÍÁ…¸ø(€€€€€€ð½‘¥Øø(€€€€€íÁ½­•µ½¸¹±•¹Ñ €ø€À€˜˜€ (€€€€€€€€ñ‘¥Ø±…ÍÍ9…µ”ô‰™±•à¥Ñ•µÌµ•¹Ñ•È…À´Èˆø(€€€€€€€€€€ñ‘¥Ø±…ÍÍ9…µ”ô‰É•±…Ñ¥Ù”µ¥¸µÜ´À™±•à´Äˆø(€€€€€€€€€€€€ñM•…É ±…ÍÍ9…µ”ô‰Á½¥¹Ñ•Èµ•Ù•¹ÑÌµ¹½¹”…‰Í½±ÕÑ”±•™Ð´È¸ÔÑ½À´Ä¼È ´ÐÜ´Ð€µÑÉ…¹Í±…Ñ”µä´Ä¼ÈÑ•áÐµµÕÑ•µ™½É•É½Õ¹ˆ€¼ø(€€€€€€€€€€€€ñ%¹ÁÕÐ(€€€€€€€€€€€€€Ù…±Õ”õíÍ•…É¡ô(€€€€€€€€€€€€€½¹¡…¹”õì¡•Ù•¹Ð¤€ôøÍ•ÑM•…É ¡•Ù•¹Ð¹Ñ…É•Ð¹Ù…±Õ”¥ô(€€€€€€€€€€€€€Á±…•¡½±‘•Èô‰	ÕÍ…È¹¼AŠ˜ˆ(€€€€€€€€€€€€€±…ÍÍ9…µ”ô‰ ´äÁ°´àˆ(€€€€€€€€€€€€¼ø(€€€€€€€€€€ð½‘¥Øø(€€€€€€€€€€ñ	ÕÑÑ½¸(€€€€€€€€€€€ÑåÁ”ô‰‰ÕÑÑ½¸ˆ(€€€€€€€€€€€Í¥é”ô‰¥½¸ˆ(€€€€€€€€€€€Ù…É¥…¹Ðõíµ…É­•‘=¹±ä€ü€‰‘•™…Õ±Ðˆ€è€‰½ÕÑ±¥¹”‰ô(€€€€€€€€€€€±…ÍÍ9…µ”ô‰ ´äÜ´äÍ¡É¥¹¬´Àˆ(€€€€€€€€€€€Ñ¥Ñ±”õíµ…É­•‘=¹±ä€ü€‰5½ÍÑÉ…ÈÑ½‘½Ìˆ€è€‰5½ÍÑÉ…È…Á•¹…Ìµ…É…‘½Ì‰ô(€€€€€€€€€€€½¹±¥¬õì ¤€ôøÍ•Ñ5…É­•‘=¹±ä ¡Ù…±Õ”¤€ôø€…Ù…±Õ”¥ô(€€€€€€€€€€ø(€€€€€€€€€€€€ñ±…œ±…ÍÍ9…µ”õí¸ ‰ ´ÐÜ´Ðˆ°µ…É­•‘=¹±ä€˜˜€‰™¥±°µÕÉÉ•¹Ðˆ¥ô€¼ø(€€€€€€€€€€ð½	ÕÑÑ½¸ø(€€€€€€€€ð½‘¥Øø(€€€€€€¥ô(€€€€€íÁ½­•µ½¸¹±•¹Ñ €ôôô€À€ü€ 4(€€€€€€€€ñÀ±…ÍÍ9…µ”ô‰É½Õ¹‘•µ±œ‰½É‘•È‰½É‘•Èµ‘…Í¡•‰½É‘•Èµ‰½É‘•È‰œµ…ÉÀ´ØÑ•áÐµ•¹Ñ•ÈÑ•áÐµáÌÑ•áÐµµÕÑ•µ™½É•É½Õ¹ˆø4(€€€€€€€€€M•´A½¯¥µ½¸¹¼A¸A½¯¥µ½¸…ÁÑÕÉ…‘½ÌÅÕ”»¼•ÍÓ¼¹„•ÅÕ¥Á”…Á…É••Ë¼…ÅÕ¤¸4(€€€€€€€€ð½Àø4(€€€€€€¤€è€ 4(€€€€€€€€ñ‘¥Ø±…ÍÍ9…µ”ô‰É¥É¥µ½±Ì´Ð…À´ÈÍ´éÉ¥µ½±Ì´Øˆø4(€€€€€€€€€íÙ¥Í¥‰±•A½­•µ½¸¹µ…À ¡À¤€ôøì(€€€€€€€€€€€½¹ÍÐÌ€ôÍÁÉ¥Ñ”¡À¤ì4(€€€€€€€€€€€É•ÑÕÉ¸€ 4(€€€€€€€€€€€€€€ñÉ½Á‘½Ý¹5•¹Ô­•äõíÀ¹¥‘ôø4(€€€€€€€€€€€€€€€€ñÉ½Á‘½Ý¹5•¹ÕQÉ¥•È…Í¡¥±ø4(€€€€€€€€€€€€€€€€€€ñ‰ÕÑÑ½¸(€€€€€€€€€€€€€€€€€€€ÑåÁ”ô‰‰ÕÑÑ½¸ˆ(€€€€€€€€€€€€€€€€€€€Ñ¥Ñ±”õí¹…µ”¡À¥ô(€€€€€€€€€€€€€€€€€€€‘É……‰±”õí…¹‘¥Ñô(€€€€€€€€€€€€€€€€€€€½¹A½¥¹Ñ•É½Ý¸õí…¹‘¥Ð€ü€¡”¤€ôø½¹A½¥¹Ñ•ÉÉ…MÑ…ÉÐ¡”°À¤€èÕ¹‘•™¥¹•‘ô(€€€€€€€€€€€€€€€€€€€½¹É…MÑ…ÉÐõí…¹‘¥Ð€ü€¡”¤€ôø½¹É…MÑ…ÉÐ¡”°À¤€èÕ¹‘•™¥¹•‘ô(€€€€€€€€€€€€€€€€€€€½¹±¥­…ÁÑÕÉ”õí½¹±¥­…ÁÑÕÉ•ô(€€€€€€€€€€€€€€€€€€€ÍÑå±”õíìÑ½Õ¡Ñ¥½¸è€‰¹½¹”ˆ°]•‰­¥ÑUÍ•ÉÉ…œè€‰¹½¹”ˆ°ÕÍ•ÉM•±•Ðè€‰¹½¹”ˆô…ÌMMAÉ½Á•ÉÑ¥•Íô(€€€€€€€€€€€€€€€€€€€±…ÍÍ9…µ”õí¸ (€€€€€€€€€€€€€€€€€€€€€€‰É•±…Ñ¥Ù”™±•à…ÍÁ•ÐµÍÅÕ…É”™±•àµ½°¥Ñ•µÌµ•¹Ñ•È©ÕÍÑ¥™äµ•¹Ñ•È…À´ÄÉ½Õ¹‘•µµ‰½É‘•È‰œµ…ÉÀ´Ä¡½Ù•Èé‰½É‘•ÈµÁÉ¥µ…Éä¡½Ù•Èé‰œµ…•¹Ðˆ°4(€€€€€€€€€€€€€€€€€€€€€À¹µ…É­•€ü€‰‰½É‘•Èµ…µ‰•È´ÔÀÀÉ¥¹œ´ÄÉ¥¹œµ…µ‰•È´ÔÀÀ¼ØÀˆ€è€‰‰½É‘•Èµ‰½É‘•Èˆ°4(€€€€€€€€€€€€€€€€€€€€¥ô4(€€€€€€€€€€€€€€€€€€ø4(€€€€€€€€€€€€€€€€€€€íÀ¹µ…É­•€˜˜€ 4(€€€€€€€€€€€€€€€€€€€€€€ñ±…œ±…ÍÍ9…µ”ô‰…‰Í½±ÕÑ”É¥¡Ð´À¸ÔÑ½À´À¸Ô ´ÌÜ´Ì™¥±°µ…µ‰•È´ÔÀÀÑ•áÐµ…µ‰•È´ÔÀÀˆ€¼ø4(€€€€€€€€€€€€€€€€€€€€¥ô4(€€€€€€€€€€€€€€€€€€€íÌ4(€€€€€€€€€€€€€€€€€€€€€€ü€ñ¥µœÍÉŒõíÍô…±Ðõí¹…µ”¡À¥ô±…ÍÍ9…µ”ô‰ ´ÄÈÜ´ÄÈ½‰©•Ðµ½¹Ñ…¥¸ˆ€¼ø4(€€€€€€€€€€€€€€€€€€€€€€è€ñ‘¥Ø±…ÍÍ9…µ”ô‰ ´ÄÈÜ´ÄÈÉ½Õ¹‘•‰œµµÕÑ•ˆ€¼ùô4(€€€€€€€€€€€€€€€€€€€€ñÍÁ…¸±…ÍÍ9…µ”ô‰±¥¹”µ±…µÀ´ÄÑ•áÐµlÄÁÁát™½¹Ðµµ•‘¥Õ´ˆùí¹…µ”¡À¥ôð½ÍÁ…¸ø4(€€€€€€€€€€€€€€€€€€ð½‰ÕÑÑ½¸ø4(€€€€€€€€€€€€€€€€ð½É½Á‘½Ý¹5•¹ÕQÉ¥•Èø(€€€€€€€€€€€€€€€€ñÉ½Á‘½Ý¹5•¹Õ½¹Ñ•¹Ð…±¥¸ô‰ÍÑ…ÉÐˆ±…ÍÍ9…µ”ô‰Ü´Ðàˆø(€€€€€€€€€€€€€€€€€€ñÉ½Á‘½Ý¹5•¹Õ%Ñ•´½¹±¥¬õì ¤€ôø½¹=Á•¸¡À¹¥¥ôø(€€€€€€€€€€€€€€€€€€€€ñ¥±•Q•áÐ±…ÍÍ9…µ”ô‰µÈ´È ´ÐÜ´Ðˆ€¼ø¥¡„(€€€€€€€€€€€€€€€€€€ð½É½Á‘½Ý¹5•¹Õ%Ñ•´ø(€€€€€€€€€€€€€€€€€í…¹‘¥Ð€˜˜€ (€€€€€€€€€€€€€€€€€€€€ðø(€€€€€€€€€€€€€€€€€€€€€€ñÉ½Á‘½Ý¹5•¹Õ%Ñ•´½¹±¥¬õì ¤€ôø½¹‘‘Q½Q•…´¡À¹¥¥ôø(€€€€€€€€€€€€€€€€€€€€€€€€ñÉÉ½ÝUÁÉ½µ1¥¹”±…ÍÍ9…µ”ô‰µÈ´È ´ÐÜ´Ðˆ€¼ø‘¥¥½¹…È…¼Ñ¥µ”(€€€€€€€€€€€€€€€€€€€€€€ð½É½Á‘½Ý¹5•¹Õ%Ñ•´ø(€€€€€€€€€€€€€€€€€€€€€€ñÉ½Á‘½Ý¹5•¹Õ%Ñ•´½¹±¥¬õì ¤€ôø½¹Q½±•5…É¬¡À¹¥°À¹µ…É­•¥ôø(€€€€€€€€€€€€€€€€€€€€€€€€ñ±…œ±…ÍÍ9…µ”ô‰µÈ´È ´ÐÜ´Ðˆ€¼øíÀ¹µ…É­•€ü€‰•Íµ…É…Èˆ€è€‰5…É…È‰ô(€€€€€€€€€€€€€€€€€€€€€€ð½É½Á‘½Ý¹5•¹Õ%Ñ•´ø(€€€€€€€€€€€€€€€€€€€€€€ñÉ½Á‘½Ý¹5•¹ÕM•Á…É…Ñ½È€¼ø(€€€€€€€€€€€€€€€€€€€€€€ñÉ½Á‘½Ý¹5•¹Õ%Ñ•´(€€€€€€€€€€€€€€€€€€€€€€€±…ÍÍ9…µ”ô‰Ñ•áÐµ‘•ÍÑÉÕÑ¥Ù”™½ÕÌéÑ•áÐµ‘•ÍÑÉÕÑ¥Ù”ˆ(€€€€€€€€€€€€€€€€€€€€€€€½¹±¥¬õì ¤€ôøÍ•ÑI•±•…Í•Q…É•Ð¡À¥ô(€€€€€€€€€€€€€€€€€€€€€€ø(€€€€€€€€€€€€€€€€€€€€€€€€ñQÉ…Í È±…ÍÍ9…µ”ô‰µÈ´È ´ÐÜ´Ðˆ€¼ø1¥‰•É…È(€€€€€€€€€€€€€€€€€€€€€€ð½É½Á‘½Ý¹5•¹Õ%Ñ•´ø(€€€€€€€€€€€€€€€€€€€€ð¼ø(€€€€€€€€€€€€€€€€€€¥ô(€€€€€€€€€€€€€€€€ð½É½Á‘½Ý¹5•¹Õ½¹Ñ•¹Ðø(€€€€€€€€€€€€€€ð½É½Á‘½Ý¹5•¹Ôø4(€€€€€€€€€€€€¤ì4(€€€€€€€€€ô¥ô(€€€€€€€€€íÙ¥Í¥‰±•A½­•µ½¸¹±•¹Ñ €ôôô€À€˜˜€ (€€€€€€€€€€€€ñÀ±…ÍÍ9…µ”ô‰½°µÍÁ…¸µ™Õ±°É½Õ¹‘•µµ‰½É‘•È‰½É‘•Èµ‘…Í¡•‰½É‘•Èµ‰½É‘•ÈÀ´ÐÑ•áÐµ•¹Ñ•ÈÑ•áÐµáÌÑ•áÐµµÕÑ•µ™½É•É½Õ¹ˆø(€€€€€€€€€€€€€9•¹¡Õ´A½¯¥µ½¸½ÉÉ•ÍÁ½¹‘”„•ÍÑ”™¥±ÑÉ¼¸(€€€€€€€€€€€€ð½Àø(€€€€€€€€€€¥ô(€€€€€€€€ð½‘¥Øø(€€€€€€¥ô4(4(€€€€€€ñ±•ÉÑ¥…±½œ½Á•¸õì„…É•±•…Í•Q…É•Ñô½¹=Á•¹¡…¹”õì¡¼¤€ôøì¥˜€ …¼¤Í•ÑI•±•…Í•Q…É•Ð¡¹Õ±°¤ìõôø4(€€€€€€€€ñ±•ÉÑ¥…±½½¹Ñ•¹Ðø4(€€€€€€€€€€ñ±•ÉÑ¥…±½!•…‘•Èø4(€€€€€€€€€€€€ñ±•ÉÑ¥…±½Q¥Ñ±”ù1¥‰•É…ÈíÉ•±•…Í•Q…É•Ð€ü¹…µ”¡É•±•…Í•Q…É•Ð¤€è€‰A½¯¥µ½¸‰ôüð½±•ÉÑ¥…±½Q¥Ñ±”ø4(€€€€€€€€€€€€ñ±•ÉÑ¥…±½•ÍÉ¥ÁÑ¥½¸ø4(€€€€€€€€€€€€€ÍÑ„‡Ÿ¼ƒ¤Á•Éµ…¹•¹Ñ””»¼Á½‘”Í•È‘•Í™•¥Ñ„¸4(€€€€€€€€€€€€ð½±•ÉÑ¥…±½•ÍÉ¥ÁÑ¥½¸ø4(€€€€€€€€€€ð½±•ÉÑ¥…±½!•…‘•Èø4(€€€€€€€€€€ñ±•ÉÑ¥…±½½½Ñ•Èø4(€€€€€€€€€€€€ñ±•ÉÑ¥…±½…¹•°ù…¹•±…Èð½±•ÉÑ¥…±½…¹•°ø4(€€€€€€€€€€€€ñ±•ÉÑ¥…±½Ñ¥½¸4(€€€€€€€€€€€€€½¹±¥¬õí…Íå¹Œ€ ¤€ôøì4(€€€€€€€€€€€€€€€¥˜€¡É•±•…Í•Q…É•Ð¤…Ý…¥Ð½¹I•±•…Í”¡É•±•…Í•Q…É•Ð¹¥¤ì4(€€€€€€€€€€€€€€€Í•ÑI•±•…Í•Q…É•Ð¡¹Õ±°¤ì4(€€€€€€€€€€€€€õô4(€€€€€€€€€€€€ø4(€€€€€€€€€€€€€1¥‰•É…È4(€€€€€€€€€€€€ð½±•ÉÑ¥…±½Ñ¥½¸ø4(€€€€€€€€€€ð½±•ÉÑ¥…±½½½Ñ•Èø4(€€€€€€€€ð½±•ÉÑ¥…±½½¹Ñ•¹Ðø4(€€€€€€ð½±•ÉÑ¥…±½œø4(€€€€ð½‘¥Øø4(€€¤ì4)ô4(4)™Õ¹Ñ¥½¸5¥¹¥µ…±M¡••ÑY¥•Ü¡ì4(€ÑÉ…¥¹•É%°µ•Ñ„°…¹‘¥Ð°½¹•±•Ñ•°4)ôèì4(€ÑÉ…¥¹•É%èÍÑÉ¥¹œì4(€µ•Ñ„èì¹…µ”èÍÑÉ¥¹œì¥µ…•}ÕÉ°èÍÑÉ¥¹œð¹Õ±°ì‘•ÍÉ¥ÁÑ¥½¸èÍÑÉ¥¹œð¹Õ±°ôì4(€…¹‘¥Ðè‰½½±•…¸ì4(€½¹•±•Ñ•üè€ ¤€ôøÙ½¥ì4)ô¤ì4(€½¹ÍÐÅŒ€ôÕÍ•EÕ•Éå±¥•¹Ð ¤ì4(€½¹ÍÐm¹…µ”°Í•Ñ9…µ•t€ôÕÍ•MÑ…Ñ”¡µ•Ñ„¹¹…µ”¤ì4(€½¹ÍÐm‘•ÍŒ°Í•Ñ•Ít€ôÕÍ•MÑ…Ñ”¡µ•Ñ„¹‘•ÍÉ¥ÁÑ¥½¸€üü€ˆˆ¤ì4(€½¹ÍÐm½¹™¥Éµ•°°Í•Ñ½¹™¥Éµ•±t€ôÕÍ•MÑ…Ñ”¡™…±Í”¤ì4(€…Íå¹Œ™Õ¹Ñ¥½¸Á…Ñ ¡™¥•±‘ÌèI•½ÉñÍÑÉ¥¹œ°Õ¹­¹½Ý¸ø¤ì4(€€€€¼¼•Í±¥¹Ðµ‘¥Í…‰±”µ¹•áÐµ±¥¹”ÑåÁ•ÍÉ¥ÁÐµ•Í±¥¹Ð½¹¼µ•áÁ±¥¥Ðµ…¹ä4(€€€½¹ÍÐì•ÉÉ½Èô€ô…Ý…¥Ð€¡ÍÕÁ…‰…Í”¹™É½´ ‰ÑÉ…¥¹•ÉÌˆ¤…Ì…¹ä¤¹ÕÁ‘…Ñ”¡™¥•±‘Ì¤¹•Ä ‰¥ˆ°ÑÉ…¥¹•É%¤ì4(€€€¥˜€¡•ÉÉ½È¤ìÑ½…ÍÐ¹•ÉÉ½È¡•ÉÉ½È¹µ•ÍÍ…”¤ìÉ•ÑÕÉ¸ìô4(€€€ÅŒ¹¥¹Ù…±¥‘…Ñ•EÕ•É¥•Ì¡ìÅÕ•Éå-•äèl‰ÑÉ…¥¹•Èµµ•Ñ„ˆ°ÑÉ…¥¹•É%‘tô¤ì4(€€€ÅŒ¹¥¹Ù…±¥‘…Ñ•EÕ•É¥•Ì¡ìÅÕ•Éå-•äèl‰¡…É…Ñ•ÉÌ‰tô¤ì4(€ô4(€É•ÑÕÉ¸€ 4(€€€€ñ‘¥Ø±…ÍÍ9…µ”ô‰ÍÁ…”µä´ÌÀ´Ðˆø4(€€€€€€ñ‘¥Ø±…ÍÍ9…µ”ô‰™±•à¥Ñ•µÌµÍÑ…ÉÐ…À´Ìˆø4(€€€€€€€íµ•Ñ„¹¥µ…•}ÕÉ°€ü€ 4(€€€€€€€€€€ñ¥µœÍÉŒõíµ•Ñ„¹¥µ…•}ÕÉ±ô…±Ðõíµ•Ñ„¹¹…µ•ô±…ÍÍ9…µ”ô‰ ´ÐÀÜ´ÐÀÉ½Õ¹‘•µá°‰½É‘•È‰½É‘•Èµ‰½É‘•È½‰©•Ðµ½Ù•Èˆ€¼ø4(€€€€€€€€¤€è€ 4(€€€€€€€€€€ñ‘¥Ø±…ÍÍ9…µ”ô‰™±•à ´ÐÀÜ´ÐÀ¥Ñ•µÌµ•¹Ñ•È©ÕÍÑ¥™äµ•¹Ñ•ÈÉ½Õ¹‘•µá°‰½É‘•È‰½É‘•Èµ‘…Í¡•‰½É‘•Èµ‰½É‘•È‰œµµÕÑ•Ñ•áÐµáÌÑ•áÐµµÕÑ•µ™½É•É½Õ¹ˆùM•´¥µ…•´ð½‘¥Øø4(€€€€€€€€¥ô4(€€€€€€€€ñ‘¥Ø±…ÍÍ9…µ”ô‰™±•à™±•à´Ä™±•àµ½°…À´Èˆø4(€€€€€€€€€€ñ%¹ÁÕÐÙ…±Õ”õí¹…µ•ô‘¥Í…‰±•õì……¹‘¥Ñô½¹¡…¹”õì¡”¤€ôøÍ•Ñ9…µ”¡”¹Ñ…É•Ð¹Ù…±Õ”¥ô½¹	±ÕÈõì ¤€ôø¹…µ”€„ôôµ•Ñ„¹¹…µ”€˜˜Á…Ñ ¡ì¹…µ”ô¥ô±…ÍÍ9…µ”ô‰Ñ•áÐµ±œ™½¹Ðµ‰½±ˆ€¼ø4(€€€€€€€€€í…¹‘¥Ð€˜˜€ 4(€€€€€€€€€€€€ñ5¥¹¥µ…±%µ…•A¥­•ÈÕÉÉ•¹ÑUÉ°õíµ•Ñ„¹¥µ…•}ÕÉ±ô½¹A¥¬õì¡ÕÉ°¤€ôøÁ…Ñ ¡ì¥µ…•}ÕÉ°èÕÉ°ô¥ô€¼ø4(€€€€€€€€€€¥ô4(€€€€€€€€ð½‘¥Øø4(€€€€€€ð½‘¥Øø4(€€€€€€ñ‘¥Øø4(€€€€€€€€ñ±…‰•°±…ÍÍ9…µ”ô‰Ñ•áÐµáÌ™½¹Ðµ‰½±ˆù•ÍÉ§Ÿ¼ð½±…‰•°ø4(€€€€€€€€ñÑ•áÑ…É•„4(€€€€€€€€€Ù…±Õ”õí‘•Íô4(€€€€€€€€€‘¥Í…‰±•õì……¹‘¥Ñô4(€€€€€€€€€½¹¡…¹”õì¡”¤€ôøÍ•Ñ•ÍŒ¡”¹Ñ…É•Ð¹Ù…±Õ”¥ô4(€€€€€€€€€½¹	±ÕÈõì ¤€ôø‘•ÍŒ€„ôô€¡µ•Ñ„¹‘•ÍÉ¥ÁÑ¥½¸€üü€ˆˆ¤€˜˜Á…Ñ ¡ì‘•ÍÉ¥ÁÑ¥½¸è‘•ÍŒô¥ô4(€€€€€€€€€É½ÝÌõìÄÉô4(€€€€€€€€€±…ÍÍ9…µ”ô‰µÐ´ÄÜµ™Õ±°É½Õ¹‘•µµ‰½É‘•È‰½É‘•Èµ‰½É‘•È‰œµ‰…­É½Õ¹À´ÈÑ•áÐµÍ´ˆ4(€€€€€€€€€Á±…•¡½±‘•Èô‰9½Ñ…Ì±¥ÙÉ•Ì°‘•ÍÉ§Ÿ¼°…¹½Ñ‡ŸÕ•ÏŠ˜ˆ4(€€€€€€€€¼ø4(€€€€€€ð½‘¥Øø4(€€€€€í…¹‘¥Ð€˜˜€ 4(€€€€€€€€ñ‘¥Ø±…ÍÍ9…µ”ô‰™±•à©ÕÍÑ¥™äµ•¹ˆø4(€€€€€€€€€€ñ±•ÉÑ¥…±½œ½Á•¸õí½¹™¥Éµ•±ô½¹=Á•¹¡…¹”õíÍ•Ñ½¹™¥Éµ•±ôø4(€€€€€€€€€€€€ñ	ÕÑÑ½¸Í¥é”ô‰Í´ˆÙ…É¥…¹Ðô‰‘•ÍÑÉÕÑ¥Ù”ˆ½¹±¥¬õì ¤€ôøÍ•Ñ½¹™¥Éµ•°¡ÑÉÕ”¥ôø4(€€€€€€€€€€€€€€ñQÉ…Í È±…ÍÍ9…µ”ô‰µÈ´Ä ´Ì¸ÔÜ´Ì¸Ôˆ€¼øÁ……È™¥¡„4(€€€€€€€€€€€€ð½	ÕÑÑ½¸ø4(€€€€€€€€€€€€ñ±•ÉÑ¥…±½½¹Ñ•¹Ðø4(€€€€€€€€€€€€€€ñ±•ÉÑ¥…±½!•…‘•Èø4(€€€€€€€€€€€€€€€€ñ±•ÉÑ¥…±½Q¥Ñ±”ùÁ……È•ÍÑ„™¥¡„üð½±•ÉÑ¥…±½Q¥Ñ±”ø4(€€€€€€€€€€€€€€€€ñ±•ÉÑ¥…±½•ÍÉ¥ÁÑ¥½¸ùÍÑ„‡Ÿ¼»¼Á½‘”Í•È‘•Í™•¥Ñ„¸ð½±•ÉÑ¥…±½•ÍÉ¥ÁÑ¥½¸ø4(€€€€€€€€€€€€€€ð½±•ÉÑ¥…±½!•…‘•Èø4(€€€€€€€€€€€€€€ñ±•ÉÑ¥…±½½½Ñ•Èø4(€€€€€€€€€€€€€€€€ñ±•ÉÑ¥…±½…¹•°ù…¹•±…Èð½±•ÉÑ¥…±½…¹•°ø4(€€€€€€€€€€€€€€€€ñ±•ÉÑ¥…±½Ñ¥½¸½¹±¥¬õí…Íå¹Œ€ ¤€ôøì4(€€€€€€€€€€€€€€€€€…Ý…¥ÐÍÕÁ…‰…Í”¹™É½´ ‰ÑÉ…¥¹•ÉÌˆ¤¹‘•±•Ñ” ¤¹•Ä ‰¥ˆ°ÑÉ…¥¹•É%¤ì4(€€€€€€€€€€€€€€€€€Ñ½…ÍÐ¹ÍÕ•ÍÌ ‰¥¡„…Á……‘„ˆ¤ì4(€€€€€€€€€€€€€€€€€½¹•±•Ñ•ü¸ ¤ì4(€€€€€€€€€€€€€€€õôùÁ……Èð½±•ÉÑ¥…±½Ñ¥½¸ø4(€€€€€€€€€€€€€€ð½±•ÉÑ¥…±½½½Ñ•Èø4(€€€€€€€€€€€€ð½±•ÉÑ¥…±½½¹Ñ•¹Ðø4(€€€€€€€€€€ð½±•ÉÑ¥…±½œø4(€€€€€€€€ð½‘¥Øø4(€€€€€€¥ô4(€€€€ð½‘¥Øø4(€€¤ì4)ô4(4)™Õ¹Ñ¥½¸5¥¹¥µ…±%µ…•A¥­•È¡ìÕÉÉ•¹ÑUÉ°°½¹A¥¬ôèìÕÉÉ•¹ÑUÉ°èÍÑÉ¥¹œð¹Õ±°ì½¹A¥¬è€¡ÕÉ°èÍÑÉ¥¹œð¹Õ±°¤€ôøÙ½¥ô¤ì4(€€¼¼1…éä¥µÁ½ÉÐÑ¼…Ù½¥¥ÉÕ±…È¥ÍÍÕ•Ì¥¸ÍÑÉ¥Ñ•È‰Õ¹‘±•ÉÌì­••ÀÍ¥µÁ±”¥¹±¥¹”¸4(€€4(€É•ÑÕÉ¸€ 4(€€€€ñ‘¥Ø±…ÍÍ9…µ”ô‰™±•à…À´Ä¸Ôˆø4(€€€€€€ñ%µ…•M½ÕÉ•¥…±½œÑ¥Ñ±”ô‰%µ…•´‘„™¥¡„ˆ½¹A¥¬õì¡ÔèÍÑÉ¥¹œ¤€ôø½¹A¥¬¡Ô¥ô€¼ø4(€€€€€íÕÉÉ•¹ÑUÉ°€˜˜€ 4(€€€€€€€€ñ	ÕÑÑ½¸Í¥é”ô‰Í´ˆÙ…É¥…¹Ðô‰½ÕÑ±¥¹”ˆ½¹±¥¬õì ¤€ôø½¹A¥¬¡¹Õ±°¥ôùI•µ½Ù•È¥µ…•´ð½	ÕÑÑ½¸ø4(€€€€€€¥ô4(€€€€ð½‘¥Øø4(€€¤ì4)ô4

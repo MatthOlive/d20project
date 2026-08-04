@@ -24,6 +24,9 @@ export type MoveRollTarget = {
   finalDamage: number;
   dice?: number[];
   successes?: number;
+  basePool?: number;
+  pool?: number;
+  effectivenessMode?: "dice" | "successes";
 };
 
 export type MoveRollMessage = {
@@ -37,6 +40,7 @@ export type MoveRollMessage = {
     dice: number[];
     successes: number;
     penalty: number;
+    isHit?: boolean;
     crit?: { margin: number; actions: number; required: number; critRequired: number; isCrit: boolean };
   };
   damage: {
@@ -149,6 +153,8 @@ export function MoveRollResultCard({ message }: { message: MoveRollMessage }) {
   const chanceSuccesses = chance.reduce((sum, item) => sum + item.successes, 0);
   const hasDamageBubble = !!message.damage && !message.damage.isStatus && !hasTargets;
   const tcol = TYPE_COLORS[message.card.type as keyof typeof TYPE_COLORS] ?? { bg: "#888", fg: "#fff" };
+  const requiredSuccesses = crit?.required ?? 1;
+  const isHit = message.accuracy.isHit ?? message.accuracy.successes >= requiredSuccesses;
 
   return (
     <div
@@ -207,6 +213,16 @@ export function MoveRollResultCard({ message }: { message: MoveRollMessage }) {
             </p>
           </div>
         </div>
+        <p
+          className={cn(
+            "mt-2 rounded-md px-2 py-1 text-center text-sm font-black uppercase",
+            isHit
+              ? "bg-success/15 text-success"
+              : "bg-destructive/15 text-destructive",
+          )}
+        >
+          {isHit ? "Acerto" : "Erro"}
+        </p>
         {crit?.isCrit && (
           <p className="mt-2 rounded-md bg-amber-400/15 px-2 py-1 text-center text-sm font-black uppercase text-amber-500">
             Critical Hit +1 dado
@@ -236,14 +252,7 @@ export function MoveRollResultCard({ message }: { message: MoveRollMessage }) {
                 <span className="text-center text-[10px] font-semibold uppercase leading-tight text-muted-foreground">
                   {target.immune ? "Immune" : target.effLabel}
                 </span>
-                <span
-                  className={cn(
-                    "rounded px-1.5 py-1 text-center font-mono text-sm font-black tabular-nums",
-                    target.immune ? "bg-muted text-muted-foreground" : "bg-destructive/15 text-destructive",
-                  )}
-                >
-                  {target.finalDamage}
-                </span>
+                <TargetDamageResult target={target} />
               </div>
             ))}
           </div>
@@ -272,6 +281,14 @@ export function MoveRollResultCard({ message }: { message: MoveRollMessage }) {
         </section>
       ) : null}
 
+      {!isHit && (
+        <section className="border-b border-border px-4 py-3">
+          <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-center text-xs font-bold text-destructive">
+            O golpe errou. Dano e efeitos secundários não foram rolados.
+          </p>
+        </section>
+      )}
+
       <section className="px-4 py-3">
         <SectionPill accent={tcol.bg}>Effect</SectionPill>
         <div className={cn("mt-3 gap-3", chance.length > 0 ? "grid grid-cols-[104px_1fr]" : "block")}>
@@ -299,6 +316,81 @@ export function MoveRollResultCard({ message }: { message: MoveRollMessage }) {
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+function TargetDamageResult({ target }: { target: MoveRollTarget }) {
+  const dice = target.dice ?? [];
+  const pool = target.pool ?? dice.length;
+  const basePool = target.basePool;
+  const rawSuccesses = target.successes ?? dice.filter((die) => die >= 4).length;
+  const modeLabel = target.effectivenessMode === "successes" ? "sucessos" : "dados";
+
+  return (
+    <HoverCard openDelay={80} closeDelay={80}>
+      <HoverCardTrigger asChild>
+        <span
+          className={cn(
+            "cursor-help rounded px-1.5 py-1 text-center font-mono text-sm font-black tabular-nums",
+            target.immune ? "bg-muted text-muted-foreground" : "bg-destructive/15 text-destructive",
+          )}
+        >
+          {target.finalDamage}
+        </span>
+      </HoverCardTrigger>
+      <HoverCardContent side="top" align="end" className="w-72 space-y-2 p-3 text-xs">
+        <div className="flex items-center justify-between border-b pb-2">
+          <span className="font-bold">Cálculo de dano</span>
+          <span className="text-lg font-black tabular-nums">{target.finalDamage}</span>
+        </div>
+        {target.immune ? (
+          <p className="font-semibold text-muted-foreground">O alvo é imune a este tipo de golpe.</p>
+        ) : (
+          <>
+            {typeof basePool === "number" && (
+              <p>
+                Pool base: <b>{basePool}d6</b> − {target.defStat === "spdef" ? "Sp.Def" : "Def"} {target.def}
+                {target.effectivenessMode === "dice" && target.effDelta !== 0
+                  ? ` ${target.effDelta > 0 ? "+" : "−"} ${Math.abs(target.effDelta)} dado(s)`
+                  : ""}
+                {` = ${pool}d6`}
+              </p>
+            )}
+            <DiceList dice={dice} />
+            <p>
+              Sucessos nos dados: <b>{rawSuccesses}</b>
+              {target.effectivenessMode === "successes" && target.effDelta !== 0
+                ? ` ${target.effDelta > 0 ? "+" : "−"} ${Math.abs(target.effDelta)} ${modeLabel}`
+                : ""}
+            </p>
+            <p className="text-muted-foreground">Efetividade: {target.effLabel}</p>
+          </>
+        )}
+      </HoverCardContent>
+    </HoverCard>
+  );
+}
+
+function DiceList({ dice }: { dice: number[] }) {
+  if (dice.length === 0) return <p className="italic text-muted-foreground">Nenhum dado rolado.</p>;
+  return (
+    <div className="flex flex-wrap gap-1">
+      {dice.map((die, index) => (
+        <span
+          key={index}
+          className={cn(
+            "inline-flex h-6 min-w-6 items-center justify-center rounded border px-1 font-bold",
+            die >= 4
+              ? "border-success bg-success text-success-foreground"
+              : die === 1
+                ? "border-destructive/40 bg-destructive/10 text-destructive"
+                : "border-border bg-muted text-foreground",
+          )}
+        >
+          {die}
+        </span>
+      ))}
     </div>
   );
 }

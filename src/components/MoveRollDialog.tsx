@@ -18,6 +18,11 @@ import {
 import { useGameSpdefUsesInsight } from "@/hooks/use-game-spdef-uses-insight";
 import { useGameEffectivenessFlat } from "@/hooks/use-game-effectiveness-flat";
 import type { MoveRollMessage, MoveRollTarget } from "@/components/MoveCard";
+import {
+  resolveMoveAccuracy,
+  shouldRollMoveDamage,
+  shouldRollMoveSecondaryEffects,
+} from "@/lib/move-resolution";
 
 export type MoveData = {
   id: string;
@@ -369,6 +374,7 @@ export function MoveRollDialog({
   const [critMarginText, setCritMarginText] = useState("0");
   const [actionsText, setActionsText] = useState("0");
   const [selectedTokenIds, setSelectedTokenIds] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const spdefUsesInsight = useGameSpdefUsesInsight(gameId);
   const effectivenessFlat = useGameEffectivenessFlat(gameId);
   const { tokens, infoMap } = useTargetsForGame(gameId, open && !isStatus);
@@ -387,11 +393,13 @@ export function MoveRollDialog({
   const defLabel = isSpecial ? "Target Sp.Def" : "Target Def";
   const extraDmgBonus = extras.extra.reduce((acc, e, i) => acc + (extraOn[i] ? e.count : 0), 0);
   const hasTargets = selectedTokenIds.length > 0;
+  const selectedTargetsReady = selectedTokenIds.every((tokenId) => infoMap.has(tokenId));
   const baseDmgPool = Math.max(0, dmgPool + dmgBonus + extraDmgBonus - (hasTargets ? 0 : targetDef));
   const finalAccPoolBeforePain = Math.max(0, accPool + accBonus);
   const finalAccPool = Math.max(0, finalAccPoolBeforePain - painPenalty);
-  const requiredSuccesses = actions + 1;
-  const critRequired = requiredSuccesses + Math.max(0, 3 - Math.max(0, critMargin));
+  const thresholds = resolveMoveAccuracy(0, actions, critMargin);
+  const requiredSuccesses = thresholds.requiredSuccesses;
+  const critRequired = thresholds.criticalSuccesses;
 
   function defValueFor(t: TargetInfo): number {
     if (isSpecial) return spdefUsesInsight ? t.ins : t.vit;
@@ -399,13 +407,20 @@ export function MoveRollDialog({
   }
 
   async function confirm() {
+    if (isSubmitting) return;
+    if (hasTargets && !selectedTargetsReady) {
+      toast.error("Aguarde os dados dos alvos carregarem.");
+      return;
+    }
+    setIsSubmitting(true);
     const accResult = rollD6(finalAccPool);
     const accSuccesses = accResult.successes;
-    const isHit = accSuccesses >= requiredSuccesses;
-    const isCrit = isHit && accSuccesses >= critRequired;
+    const accuracyOutcome = resolveMoveAccuracy(accSuccesses, actions, critMargin);
+    const isHit = accuracyOutcome.isHit;
+    const isCrit = accuracyOutcome.isCritical;
 
     let dmg: MoveRollMessage["damage"] = null;
-    if (!isStatus && baseDmgPool > 0) {
+    if (shouldRollMoveDamage(isHit, !!isStatus, baseDmgPool)) {
       const dmgPoolAfterPain = Math.max(0, baseDmgPool - painPenalty + (isCrit ? 1 : 0));
 
       let aggDice: number[] = [];
@@ -436,6 +451,9 @@ export function MoveRollDialog({
             finalDamage,
             dice: rolled.dice,
             successes: rolled.successes,
+            basePool: dmgPoolAfterPain,
+            pool: tgtPool,
+            effectivenessMode: effectivenessFlat ? "successes" : "dice",
           });
         }
       } else {
@@ -455,7 +473,7 @@ export function MoveRollDialog({
         targets,
       };
     }
-    const chance = extras.chance.map((c) => {
+    const chance = (shouldRollMoveSecondaryEffects(isHit) ? extras.chance : []).map((c) => {
       const r = rollD6(c.count);
       return {
         label: c.label,
@@ -483,6 +501,7 @@ export function MoveRollDialog({
         dice: accResult.dice,
         successes: accSuccesses,
         penalty: painPenalty,
+        isHit,
         crit: { margin: critMargin, actions, required: requiredSuccesses, critRequired, isCrit },
       },
       damage: dmg,
@@ -495,7 +514,11 @@ export function MoveRollDialog({
       body: `${pokemonName} used ${move.name}`,
       roll_data: payload as unknown as never,
     });
-    if (error) toast.error(error.message);
+    if (error) {
+      toast.error(`Não foi possível enviar a rolagem: ${error.message}`);
+      setIsSubmitting(false);
+      return;
+    }
     setOpen(false);
     setAccBonusText("0");
     setDmgBonusText("0");
@@ -504,6 +527,7 @@ export function MoveRollDialog({
     setActionsText("0");
     setSelectedTokenIds([]);
     setExtraOn(extras.extra.map(() => false));
+    setIsSubmitting(false);
   }
 
   return (
@@ -628,6 +652,9 @@ export function MoveRollDialog({
                     );
                   })}
                 </div>
+                {hasTargets && !selectedTargetsReady && (
+                  <p className="mt-1 text-[10px] font-semibold text-muted-foreground">Carregando dados dos alvos…</p>
+                )}
               </div>
 
               {!hasTargets && (
@@ -681,8 +708,12 @@ export function MoveRollDialog({
               </ul>
             </div>
           )}
-          <Button onClick={confirm} className="w-full">
-            <Dices className="mr-1.5 h-4 w-4" /> Rolar & Enviar Card
+          <Button
+            onClick={confirm}
+            className="w-full"
+            disabled={isSubmitting || (hasTargets && !selectedTargetsReady)}
+          >
+            <Dices className="mr-1.5 h-4 w-4" /> {isSubmitting ? "Enviando…" : "Rolar & Enviar Card"}
           </Button>
         </div>
       </DialogContent>

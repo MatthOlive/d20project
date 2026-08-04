@@ -376,7 +376,12 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
     );
   }
   if (msg.kind === "move" && msg.roll_data && (msg.roll_data as MoveRollMessage).v === "move-1") {
-    const m = msg.roll_data as MoveRollMessage;
+    const m = msg.roll_data as MoveRollMessage & {
+      damage?: Omit<NonNullable<MoveRollMessage["damage"]>, "targets"> & {
+        targets: NonNullable<NonNullable<MoveRollMessage["damage"]>["targets"]>;
+      };
+      chance: NonNullable<MoveRollMessage["chance"]>;
+    };
     const crit = m.accuracy.crit;
     return (
       <div className="space-y-1">

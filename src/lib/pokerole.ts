@@ -181,18 +181,20 @@ const REGIONAL_FORM_ALIASES: Record<string, string> = {
 function normalizePokemonSlugText(value: string): string {
   return value
     .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/mr\./g, "mr")
-    .replace(/farfetch['']d/g, "farfetchd")
-    .replace(/sirfetch['']d/g, "sirfetchd")
-    .replace(/nidoran\s*female/g, "nidoran-f")
-    .replace(/nidoran\s*male/g, "nidoran-m")
+    .replace(/farfetch['’]d/g, "farfetchd")
+    .replace(/sirfetch['’]d/g, "sirfetchd")
+    .replace(/nidoran\s*[♀]/g, "nidoran-f")
+    .replace(/nidoran\s*[♂]/g, "nidoran-m")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
 
 export function pokemonFormSlug(speciesName: string | null | undefined): string | null {
   if (!speciesName) return null;
-  const name = speciesName.trim();
+  let name = speciesName.trim();
   if (!name) return null;
   const regionMatch = name.match(/\((Alolan|Galarian|Hisuian|Paldean)\s+Form\)/i);
   if (regionMatch) {
