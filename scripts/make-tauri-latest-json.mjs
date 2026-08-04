@@ -24,8 +24,10 @@ if (!existsSync(signaturePath)) {
 }
 
 const signature = readFileSync(signaturePath, "utf8").trim();
-const encodedInstaller = installer.replaceAll(" ", "%20");
-const url = `https://github.com/${repo}/releases/download/${tag}/${encodedInstaller}`;
+// GitHub release assets normalize spaces in uploaded filenames to dots.
+// Point the updater at the public asset name GitHub actually serves.
+const publishedInstaller = installer.replaceAll(" ", ".");
+const url = `https://github.com/${repo}/releases/download/${tag}/${publishedInstaller}`;
 
 const latest = {
   version,
