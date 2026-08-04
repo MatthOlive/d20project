@@ -165,6 +165,86 @@ export function shinyize(url: string | null | undefined): string | null {
   return url.replace("/sprites/pokemon/", "/sprites/pokemon/shiny/");
 }
 
+export type PokemonSpriteStyle = "pixel" | "3d";
+
+const REGIONAL_FORM_ALIASES: Record<string, string> = {
+  alolan: "alola",
+  alola: "alola",
+  galarian: "galar",
+  galar: "galar",
+  hisuian: "hisui",
+  hisui: "hisui",
+  paldean: "paldea",
+  paldea: "paldea",
+};
+
+function normalizePokemonSlugText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/mr\./g, "mr")
+    .replace(/farfetch['']d/g, "farfetchd")
+    .replace(/sirfetch['']d/g, "sirfetchd")
+    .replace(/nidoran\s*female/g, "nidoran-f")
+    .replace(/nidoran\s*male/g, "nidoran-m")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+export function pokemonFormSlug(speciesName: string | null | undefined): string | null {
+  if (!speciesName) return null;
+  const name = speciesName.trim();
+  if (!name) return null;
+  const regionMatch = name.match(/\((Alolan|Galarian|Hisuian|Paldean)\s+Form\)/i);
+  if (regionMatch) {
+    const region = REGIONAL_FORM_ALIASES[regionMatch[1].toLowerCase()];
+    const base = normalizePokemonSlugText(name.replace(regionMatch[0], ""));
+    return base && region ? `${base}-${region}` : null;
+  }
+  const trailingRegion = name.match(/\b(Alolan|Alola|Galarian|Galar|Hisuian|Hisui|Paldean|Paldea)\b/i);
+  if (trailingRegion) {
+    const region = REGIONAL_FORM_ALIASES[trailingRegion[1].toLowerCase()];
+    const base = normalizePokemonSlugText(name.replace(trailingRegion[0], "").replace(/\bform\b/gi, ""));
+    return base && region ? `${base}-${region}` : null;
+  }
+  return null;
+}
+
+export function pokemonSpriteSlug(speciesName: string | null | undefined): string | null {
+  if (!speciesName) return null;
+  const formSlug = pokemonFormSlug(speciesName);
+  if (formSlug) return formSlug;
+  const normalized = normalizePokemonSlugText(
+    speciesName
+      .replace(/\(([^)]*)\)/g, " $1 ")
+      .replace(/\bform\b/gi, " "),
+  );
+  return normalized || null;
+}
+
+export function formSpriteUrl(
+  speciesName: string | null | undefined,
+  shiny = false,
+  style: PokemonSpriteStyle = "pixel",
+): string | null {
+  const slug = style === "3d" ? pokemonSpriteSlug(speciesName) : pokemonFormSlug(speciesName);
+  if (!slug) return null;
+  const folder = style === "3d" ? (shiny ? "ani-shiny" : "ani") : (shiny ? "gen5-shiny" : "gen5");
+  const ext = style === "3d" ? "gif" : "png";
+  return `https://play.pokemonshowdown.com/sprites/${folder}/${slug}.${ext}`;
+}
+
+export function preferredPokemonSprite(
+  speciesName: string | null | undefined,
+  spriteUrl: string | null | undefined,
+  shiny = false,
+  style: PokemonSpriteStyle = "pixel",
+): string | null {
+  const formSprite = formSpriteUrl(speciesName, shiny, style);
+  if (formSprite) return formSprite;
+  if (shiny) return shinyize(spriteUrl) ?? spriteUrl ?? null;
+  return spriteUrl ?? null;
+}
+
 
 /* ============================================================
  * Defensive type effectiveness (Gen 6+ chart)

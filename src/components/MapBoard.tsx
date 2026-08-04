@@ -1624,6 +1624,7 @@ export function MapBoard({
                 fallbackImage={t.image_url ?? null}
                 label={t.label}
                 variant={isHandout ? "handout" : "token"}
+                gameId={gameId}
               />
               {!isHandout && <TokenStatusBadges kind={t.character_kind} id={t.character_id} />}
               {t.tint_color && (

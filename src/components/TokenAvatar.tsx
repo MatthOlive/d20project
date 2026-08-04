@@ -1,14 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { preferredPokemonSprite } from "@/lib/pokerole";
+import { useGameSpriteStyle } from "@/hooks/use-game-sprite-style";
 
 /**
  * Reads the live character image + status conditions for a token. Subscribes
  * are wired centrally in MapBoard's realtime channel, which invalidates
  * `token-pokemon`/`token-trainer` queries on any change to the source row.
  */
-function useCharacter(kind: "trainer" | "pokemon" | "t20", id: string) {
+function useCharacter(kind: "trainer" | "pokemon" | "t20", id: string, gameId?: string) {
+  const spriteStyle = useGameSpriteStyle(gameId);
   return useQuery({
-    queryKey: [kind === "trainer" ? "token-trainer-status" : kind === "pokemon" ? "token-pokemon-status" : "token-t20-status", id],
+    queryKey: [kind === "trainer" ? "token-trainer-status" : kind === "pokemon" ? "token-pokemon-status" : "token-t20-status", id, spriteStyle],
     queryFn: async () => {
       if (kind === "t20") {
         const { data, error } = await (supabase.from("t20_characters" as never) as any)
@@ -35,17 +38,18 @@ function useCharacter(kind: "trainer" | "pokemon" | "t20", id: string) {
       }
       const { data, error } = await supabase
         .from("pokemon")
-        .select("image_url,status,species:species_id(sprite_url)")
+        .select("image_url,status,is_shiny,species:species_id(name,sprite_url)")
         .eq("id", id)
         .maybeSingle();
       if (error) throw error;
       const row = data as {
         image_url?: string | null;
         status?: string[] | null;
-        species?: { sprite_url?: string | null } | null;
+        is_shiny?: boolean | null;
+        species?: { name?: string | null; sprite_url?: string | null } | null;
       } | null;
       return {
-        image_url: row?.image_url ?? row?.species?.sprite_url ?? null,
+        image_url: row?.image_url ?? preferredPokemonSprite(row?.species?.name, row?.species?.sprite_url, !!row?.is_shiny, spriteStyle),
         status: (row?.status ?? []) as string[],
       };
     },
@@ -66,15 +70,16 @@ const STATUS_ICONS: Record<string, { emoji: string; color: string; title: string
 };
 
 export function TokenAvatar({
-  kind, id, fallbackImage, label, variant = "token",
+  kind, id, fallbackImage, label, variant = "token", gameId,
 }: {
   kind: "trainer" | "pokemon" | "t20";
   id: string;
   fallbackImage: string | null;
   label: string;
   variant?: "token" | "handout";
+  gameId?: string;
 }) {
-  const { data } = useCharacter(kind, id);
+  const { data } = useCharacter(kind, id, gameId);
   const img = data?.image_url ?? fallbackImage;
   return img ? (
     <img src={img} alt={label} className={`h-full w-full object-cover ${variant === "handout" ? "rounded-none" : "rounded-full"}`} draggable={false} />

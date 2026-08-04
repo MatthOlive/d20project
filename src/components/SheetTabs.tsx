@@ -21,6 +21,8 @@ import { CHARACTER_POINTER_DROP_EVENT, DRAG_MIME, type DragCharacterPayload } fr
 import { User, Boxes, Plus, ShoppingCart, FileText, ArrowUpFromLine, Flag, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { preferredPokemonSprite } from "@/lib/pokerole";
+import { useGameSpriteStyle } from "@/hooks/use-game-sprite-style";
 
 export const TRAINER_SHEET_POINTER_DROP_EVENT = "d20-trainer-sheet-pointer-drop";
 
@@ -31,6 +33,7 @@ type SlotPokemon = {
   image_url: string | null;
   species_id: string;
   marked: boolean;
+  is_shiny?: boolean | null;
 };
 
 type Tab =
@@ -53,6 +56,7 @@ export function SheetTabs(props: {
 }) {
   const { trainerId, gameId, userId, isNarrator } = props;
   const qc = useQueryClient();
+  const spriteStyle = useGameSpriteStyle(gameId);
   const [active, setActive] = useState<Tab>({ kind: "trainer" });
   const rootRef = useRef<HTMLDivElement | null>(null);
   const teamPointerDragRef = useRef<{
@@ -86,7 +90,7 @@ export function SheetTabs(props: {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pokemon")
-        .select("id, nickname, team_slot, image_url, species_id, marked")
+        .select("id, nickname, team_slot, image_url, species_id, marked, is_shiny")
         .eq("owner_trainer_id", trainerId);
       if (error) throw error;
       return (data ?? []) as SlotPokemon[];
@@ -120,7 +124,8 @@ export function SheetTabs(props: {
 
   function spriteFor(p: SlotPokemon | null): string | null {
     if (!p) return null;
-    return p.image_url || spriteMap[p.species_id]?.sprite_url || null;
+    const species = spriteMap[p.species_id];
+    return p.image_url || preferredPokemonSprite(species?.name, species?.sprite_url, !!p.is_shiny, spriteStyle) || null;
   }
   function nameFor(p: SlotPokemon | null): string {
     if (!p) return "";
@@ -682,6 +687,7 @@ function EmptySlot({
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const spriteStyle = useGameSpriteStyle(gameId);
 
   // Pokemon in this game that aren't already in *this* trainer's team
   const { data: candidates = [] } = useQuery({
@@ -689,7 +695,7 @@ function EmptySlot({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pokemon")
-        .select("id, nickname, image_url, species_id, owner_trainer_id, team_slot")
+        .select("id, nickname, image_url, species_id, owner_trainer_id, team_slot, is_shiny")
         .eq("game_id", gameId)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -766,7 +772,7 @@ function EmptySlot({
           <div className="max-h-[55vh] space-y-1 overflow-y-auto">
             {filtered.map((p) => {
               const sp = speciesLookup[p.species_id];
-              const sprite = p.image_url || sp?.sprite_url;
+              const sprite = p.image_url || preferredPokemonSprite(sp?.name, sp?.sprite_url, !!p.is_shiny, spriteStyle);
               const nm = p.nickname || sp?.name || "Pokémon";
               return (
                 <button

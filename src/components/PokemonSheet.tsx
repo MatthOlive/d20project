@@ -21,6 +21,7 @@ import {
   rankAtLeast,
   resolveSkillValue,
   shinyize,
+  preferredPokemonSprite,
   computeDefensiveEffectiveness,
 } from "@/lib/pokerole";
 import { ImageSourceDialog } from "@/components/ImageSourceDialog";
@@ -38,6 +39,7 @@ import { SheetPermissionsDialog } from "@/components/SheetPermissionsDialog";
 import { TRAININGS_PER_RANK, RETRAIN_CAP } from "@/lib/contest";
 import { getEvolutionRules, evaluateEvolution, type EvolutionGate } from "@/lib/evolutions";
 import { MoveRollDialog, Z_MOVE_NAMES, zMovePower, cap } from "@/components/MoveRollDialog";
+import { useGameSpriteStyle } from "@/hooks/use-game-sprite-style";
 
 type EvolutionMethod = { kind: "time" | "other" | "item"; speed?: "fast" | "medium" | "slow"; text?: string };
 
@@ -129,6 +131,7 @@ export function PokemonSheet({
   onDeleted?: () => void;
 }) {
   const qc = useQueryClient();
+  const spriteStyle = useGameSpriteStyle(_gameId);
   const [zMode, setZMode] = useState(false);
   const [gMaxMode, setGMaxMode] = useState(false);
   const [dynaMode, setDynaMode] = useState<null | "dynamax" | "gigantamax">(null);
@@ -237,7 +240,7 @@ export function PokemonSheet({
   if (!species) return <div className="p-4 text-sm text-muted-foreground">Loading species…</div>;
 
   if (!canEdit) {
-    const viewImage = pokemon.image_url ?? species.sprite_url;
+    const viewImage = pokemon.image_url ?? preferredPokemonSprite(species.name, species.sprite_url, pokemon.is_shiny, spriteStyle);
     const viewName = pokemon.nickname || species.name;
     return (
       <div className="space-y-4 p-4">
@@ -344,7 +347,7 @@ export function PokemonSheet({
     }
   }
 
-  const displayImage = pokemon.image_url ?? species.sprite_url;
+  const displayImage = pokemon.image_url ?? preferredPokemonSprite(species.name, species.sprite_url, pokemon.is_shiny, spriteStyle);
   const name = pokemon.nickname || species.name;
   const vit = pokemon.current_attrs.vitality ?? 1;
   const ins = pokemon.current_attrs.insight ?? 1;
@@ -431,6 +434,7 @@ export function PokemonSheet({
             <PokemonImage
               pokemon={pokemon}
               species={species}
+              spriteStyle={spriteStyle}
               canEdit={canEdit}
               onChange={(url) => patch({ image_url: url })}
             />
@@ -633,7 +637,7 @@ export function PokemonSheet({
               {canEdit && (
                 <EvolveButton
                   pokemonId={pokemonId}
-                  fromSprite={species.sprite_url}
+                  fromSprite={preferredPokemonSprite(species.name, species.sprite_url, pokemon.is_shiny, spriteStyle)}
                   fromSpeciesId={species.id}
                   speciesName={species.name}
                   evolutions={species.evolutions}
@@ -1221,20 +1225,23 @@ function SkillGroup({
 function PokemonImage({
   pokemon,
   species,
+  spriteStyle,
   canEdit,
   onChange,
 }: {
   pokemon: Pokemon;
   species: Species;
+  spriteStyle: import("@/lib/pokerole").PokemonSpriteStyle;
   canEdit: boolean;
   onChange: (url: string | null) => void;
 }) {
-  const baseSprite = pokemon.image_url ?? species.sprite_url;
+  const speciesImage = preferredPokemonSprite(species.name, species.sprite_url, pokemon.is_shiny, spriteStyle);
+  const baseSprite = pokemon.image_url ?? speciesImage;
   const displayImage = pokemon.image_url
     ? baseSprite
     : pokemon.is_shiny
-      ? (shinyize(species.sprite_url) ?? species.sprite_url)
-      : species.sprite_url;
+      ? (shinyize(speciesImage) ?? speciesImage)
+      : speciesImage;
 
   return (
     <div className="flex flex-col items-start gap-2">

@@ -10,10 +10,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Swords, Zap, Sparkles, Dices, X, Heart, Activity } from "lucide-react";
 import { GenericRollButton, painPenaltyFor, STATUS_CONDITIONS } from "@/components/SheetRolls";
-import { POKEMON_ATTRS, ATTRS, SOCIAL_ATTRS, TRAINER_SKILLS, SKILLS, RANK_BONUS } from "@/lib/pokerole";
+import { POKEMON_ATTRS, ATTRS, SOCIAL_ATTRS, TRAINER_SKILLS, SKILLS, RANK_BONUS, preferredPokemonSprite } from "@/lib/pokerole";
 import { MoveCard } from "@/components/MoveCard";
 import { MoveRollDialog, computeMoveStats, type MoveData } from "@/components/MoveRollDialog";
 import { T20_QUICK_ROLLS } from "@/lib/tormenta20";
+import { useGameSpriteStyle } from "@/hooks/use-game-sprite-style";
 
 type Props = {
   kind: "trainer" | "pokemon" | "t20";
@@ -125,12 +126,13 @@ function TrainerBar({ id, label, onRoll, onClose, onOpenSheet, extra }: Props) {
 }
 
 function PokemonBar({ id, label, gameId, userId, onRoll, onClose, onOpenSheet, extra }: Props) {
+  const spriteStyle = useGameSpriteStyle(gameId);
   const { data: p } = useQuery({
-    queryKey: ["token-pokemon", id],
+    queryKey: ["token-pokemon", id, spriteStyle],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pokemon")
-        .select("current_attrs, social_attrs, social_attr_points, social_attr_bonus, attr_bonus, skills, rank, image_url, hp, current_hp, status, species:species_id(abilities, base_attrs, sprite_url, types)")
+        .select("current_attrs, social_attrs, social_attr_points, social_attr_bonus, attr_bonus, skills, rank, image_url, hp, current_hp, status, is_shiny, species:species_id(abilities, base_attrs, name, sprite_url, types)")
         .eq("id", id)
         .single();
       if (error) throw error;
@@ -144,7 +146,8 @@ function PokemonBar({ id, label, gameId, userId, onRoll, onClose, onOpenSheet, e
         image_url: string | null;
         hp: number;
         current_hp: number | null;
-        species: { abilities: string[]; base_attrs: Record<string, number>; sprite_url: string | null; types: string[] };
+        is_shiny?: boolean | null;
+        species: { abilities: string[]; base_attrs: Record<string, number>; name?: string | null; sprite_url: string | null; types: string[] };
       };
     },
   });
@@ -171,7 +174,7 @@ function PokemonBar({ id, label, gameId, userId, onRoll, onClose, onOpenSheet, e
   const clash = p.skills?.Clash ?? 0;
   const curHp = p.current_hp ?? p.hp ?? 0;
   const pen = painPenaltyFor(curHp, p.hp ?? 0);
-  const displayImage = p.image_url ?? p.species?.sprite_url ?? null;
+  const displayImage = p.image_url ?? preferredPokemonSprite(p.species?.name, p.species?.sprite_url, !!p.is_shiny, spriteStyle);
 
   const attrList = [
     ...POKEMON_ATTRS.map((a) => ({ name: cap(a), value: attrOf(a) })),

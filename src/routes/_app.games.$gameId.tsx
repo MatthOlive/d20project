@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllPaged } from "@/lib/supabase-paged";
@@ -20,6 +20,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ImageSourceDialog } from "@/components/ImageSourceDialog";
 import { ChatPanel } from "@/components/ChatPanel";
 import { useGameSpdefUsesInsight } from "@/hooks/use-game-spdef-uses-insight";
+import { saveGameSpriteStyle, useGameSpriteStyle } from "@/hooks/use-game-sprite-style";
 
 import { FloatingWindow } from "@/components/FloatingWindow";
 import { OnlinePresence } from "@/components/OnlinePresence";
@@ -34,7 +35,7 @@ import { MusicPlayer } from "@/components/MusicPlayer";
 import { DeckPanel } from "@/components/DeckPanel";
 import { toast } from "sonner";
 import { ArrowLeft, Copy, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Swords, ChevronDown, ChevronUp, ChevronRight, Dices, MessageSquare } from "lucide-react";
-import { rollD6, rollShiny, POKEMON_ATTRS, SOCIAL_ATTRS, POKEMON_TYPES, RANKS, RANK_LABELS, TYPE_COLORS, type PokemonType, type Rank } from "@/lib/pokerole";
+import { rollD6, rollShiny, preferredPokemonSprite, POKEMON_ATTRS, SOCIAL_ATTRS, POKEMON_TYPES, RANKS, RANK_LABELS, TYPE_COLORS, type PokemonSpriteStyle, type PokemonType, type Rank } from "@/lib/pokerole";
 import { T20_CLASSES, T20_MECHANICS, T20_MECHANICS_CATEGORY_ORDER, T20_RACES, defaultT20Attributes, defaultT20Skills, rollD20 } from "@/lib/tormenta20";
 import { rollPokemonAutofill } from "@/lib/pokemon-autofill";
 import { REACTION_DECK } from "@/lib/contest";
@@ -586,9 +587,11 @@ function FilesPanel({
 }) {
 
   const qc = useQueryClient();
+  const spriteStyle = useGameSpriteStyle(gameId);
   const [pkmDialogOpen, setPkmDialogOpen] = useState(false);
   const [newPkmSpecies, setNewPkmSpecies] = useState<string>("");
   const [speciesPickerOpen, setSpeciesPickerOpen] = useState(false);
+  const [speciesSearch, setSpeciesSearch] = useState("");
   const [newPkmOvergrown, setNewPkmOvergrown] = useState(false);
   const [t20DialogOpen, setT20DialogOpen] = useState(false);
   const [newT20Name, setNewT20Name] = useState("");
@@ -780,11 +783,11 @@ function FilesPanel({
     queryKey: ["characters", gameId],
     queryFn: async () => {
       const [pkm, tr] = await Promise.all([
-        supabase.from("pokemon").select("id,nickname,owner_id,image_url,folder,species:species_id(name,sprite_url)").eq("game_id", gameId),
+        supabase.from("pokemon").select("id,nickname,owner_id,image_url,folder,is_shiny,species:species_id(name,sprite_url)").eq("game_id", gameId),
         supabase.from("trainers").select("id,name,owner_id,image_url,folder").eq("game_id", gameId),
       ]);
       return {
-        pokemon: (pkm.data ?? []) as { id: string; nickname: string | null; owner_id: string; image_url: string | null; folder: string | null; species: { name: string; sprite_url: string | null } }[],
+        pokemon: (pkm.data ?? []) as { id: string; nickname: string | null; owner_id: string; image_url: string | null; folder: string | null; is_shiny?: boolean | null; species: { name: string; sprite_url: string | null } }[],
         trainers: (tr.data ?? []) as { id: string; name: string; owner_id: string; image_url: string | null; folder: string | null }[],
       };
     },
@@ -943,7 +946,7 @@ function FilesPanel({
       })),
       ...(characters?.pokemon ?? []).map<CharRow>((p) => ({
         kind: "pokemon", id: p.id, label: p.nickname ?? p.species.name, owner_id: p.owner_id,
-        image_url: p.image_url, folder: p.folder, sprite_url: p.species.sprite_url,
+        image_url: p.image_url, folder: p.folder, sprite_url: preferredPokemonSprite(p.species.name, p.species.sprite_url, !!p.is_shiny, spriteStyle),
       })),
     ];
 
@@ -1477,6 +1480,12 @@ function FilesPanel({
     );
   }
 
+  const filteredSpeciesList = useMemo(() => {
+    const list = speciesList ?? [];
+    const query = speciesSearch.trim().toLowerCase();
+    if (!query) return list;
+    return list.filter((s) => s.name.toLowerCase().includes(query));
+  }, [speciesList, speciesSearch]);
   const selectedSpeciesName = speciesList?.find((s) => s.id === newPkmSpecies)?.name ?? "";
 
   return (
@@ -1540,7 +1549,10 @@ function FilesPanel({
             open={pkmDialogOpen}
             onOpenChange={(open) => {
               setPkmDialogOpen(open);
-              if (!open) setSpeciesPickerOpen(false);
+              if (!open) {
+                setSpeciesPickerOpen(false);
+                setSpeciesSearch("");
+              }
             }}
           >
             <DialogTrigger asChild>
@@ -1573,7 +1585,22 @@ function FilesPanel({
                     role="listbox"
                     className="pokemon-species-picker-list mt-2 rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg"
                   >
-                    {(speciesList ?? []).map((s) => {
+                    <div className="sticky top-0 z-10 bg-popover p-1 pb-2">
+                      <Input
+                        autoFocus
+                        value={speciesSearch}
+                        onChange={(e) => setSpeciesSearch(e.target.value)}
+                        placeholder="Digite para procurar..."
+                        className="h-9 rounded-lg text-sm"
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape") {
+                            setSpeciesPickerOpen(false);
+                            setSpeciesSearch("");
+                          }
+                        }}
+                      />
+                    </div>
+                    {filteredSpeciesList.map((s) => {
                       const selected = s.id === newPkmSpecies;
                       return (
                         <button
@@ -1587,6 +1614,7 @@ function FilesPanel({
                           onClick={() => {
                             setNewPkmSpecies(s.id);
                             setSpeciesPickerOpen(false);
+                            setSpeciesSearch("");
                           }}
                         >
                           {s.name}
@@ -1595,6 +1623,9 @@ function FilesPanel({
                     })}
                     {!speciesList?.length && (
                       <p className="px-3 py-4 text-center text-xs text-muted-foreground">Carregando especies...</p>
+                    )}
+                    {!!speciesList?.length && filteredSpeciesList.length === 0 && (
+                      <p className="px-3 py-4 text-center text-xs text-muted-foreground">Nenhum Pokemon encontrado.</p>
                     )}
                   </div>
                 )}
@@ -2568,9 +2599,11 @@ function AbilitiesCompendium() {
 function GameSettingsButton({ gameId }: { gameId: string }) {
   const qc = useQueryClient();
   const savedSpdefIns = useGameSpdefUsesInsight(gameId);
+  const savedSpriteStyle = useGameSpriteStyle(gameId);
   const [open, setOpen] = useState(false);
   const [shiny, setShiny] = useState<number>(10);
   const [over, setOver] = useState<number>(0);
+  const [spriteStyle, setSpriteStyle] = useState<PokemonSpriteStyle>("pixel");
   const [spdefIns, setSpdefIns] = useState<boolean>(false);
   const [effFlat, setEffFlat] = useState<boolean>(true);
   const [gridEnabled, setGridEnabled] = useState(true);
@@ -2609,6 +2642,7 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
       } | null;
       setShiny(row?.shiny_chance ?? 10);
       setOver(row?.overgrown_chance ?? 0);
+      setSpriteStyle(savedSpriteStyle);
       setSpdefIns(Boolean(row?.spdef_uses_insight));
       setEffFlat(row?.effectiveness_flat === undefined || row?.effectiveness_flat === null ? true : Boolean(row.effectiveness_flat));
       setGridEnabled(row?.grid_enabled ?? true);
@@ -2623,7 +2657,7 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
       for (const c of REACTION_DECK) w[c.id] = row?.contest_weights?.[c.id] ?? c.defaultWeight;
       setWeights(w);
     })();
-  }, [open, gameId, savedSpdefIns]);
+  }, [open, gameId, savedSpdefIns, savedSpriteStyle]);
 
   const weightTotal = REACTION_DECK.reduce((s, c) => s + (weights[c.id] ?? 0), 0);
 
@@ -2646,9 +2680,18 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
       .eq("id", gameId);
     if (error) { toast.error(error.message); return; }
     toast.success("Configurações salvas");
+    try {
+      await saveGameSpriteStyle(gameId, spriteStyle);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao salvar estilo de sprite");
+      return;
+    }
+    qc.setQueryData(["game-sprite-style", gameId], spriteStyle);
     qc.setQueryData(["game-spdef-uses-insight", gameId], spdefIns);
     qc.setQueryData(["game-effectiveness-flat", gameId], effFlat);
     qc.invalidateQueries({ queryKey: ["game", gameId] });
+    qc.invalidateQueries({ queryKey: ["game-sprite-style", gameId] });
+    qc.invalidateQueries({ queryKey: ["characters", gameId] });
     qc.invalidateQueries({ queryKey: ["game-spdef-uses-insight", gameId] });
     qc.invalidateQueries({ queryKey: ["game-effectiveness-flat", gameId] });
     setOpen(false);
@@ -2673,6 +2716,21 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
               <Input type="number" min={0} max={100} value={over} onChange={(e) => setOver(Number(e.target.value))} />
               <p className="mt-1 text-[11px] text-muted-foreground">0 = só manual (checkbox na criação).</p>
             </div>
+          </div>
+          <div className="rounded-md border border-border bg-card p-3">
+            <Label className="text-xs">Sprites dos Pokemon</Label>
+            <Select value={spriteStyle} onValueChange={(value) => setSpriteStyle(value as PokemonSpriteStyle)}>
+              <SelectTrigger className="mt-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pixel">Pixel</SelectItem>
+                <SelectItem value="3d">3D / animado</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Pixel e o padrao. Afeta fichas, Files e tokens no mapa.
+            </p>
           </div>
           <div
             className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-card p-3"
