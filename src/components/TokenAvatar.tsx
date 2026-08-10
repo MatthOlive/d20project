@@ -1,17 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { preferredPokemonSprite } from "@/lib/pokerole";
 import { useGameSpriteStyle } from "@/hooks/use-game-sprite-style";
+import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 
 /**
  * Reads the live character image + status conditions for a token. Subscribes
  * are wired centrally in MapBoard's realtime channel, which invalidates
  * `token-pokemon`/`token-trainer` queries on any change to the source row.
  */
-function useCharacter(kind: "trainer" | "pokemon" | "t20", id: string, gameId?: string) {
-  const spriteStyle = useGameSpriteStyle(gameId);
+function useCharacter(kind: "trainer" | "pokemon" | "t20", id: string) {
   return useQuery({
-    queryKey: [kind === "trainer" ? "token-trainer-status" : kind === "pokemon" ? "token-pokemon-status" : "token-t20-status", id, spriteStyle],
+    queryKey: [kind === "trainer" ? "token-trainer-status" : kind === "pokemon" ? "token-pokemon-status" : "token-t20-status", id],
     queryFn: async () => {
       if (kind === "t20") {
         const { data, error } = await (supabase.from("t20_characters" as never) as any)
@@ -22,6 +21,9 @@ function useCharacter(kind: "trainer" | "pokemon" | "t20", id: string, gameId?: 
         return {
           image_url: (data as { image_url?: string | null } | null)?.image_url ?? null,
           status: [] as string[],
+          species_name: null,
+          species_sprite_url: null,
+          is_shiny: false,
         };
       }
       if (kind === "trainer") {
@@ -34,6 +36,9 @@ function useCharacter(kind: "trainer" | "pokemon" | "t20", id: string, gameId?: 
         return {
           image_url: (data as { image_url?: string | null } | null)?.image_url ?? null,
           status: ((data as { status_conditions?: string[] } | null)?.status_conditions ?? []) as string[],
+          species_name: null,
+          species_sprite_url: null,
+          is_shiny: false,
         };
       }
       const { data, error } = await supabase
@@ -49,8 +54,11 @@ function useCharacter(kind: "trainer" | "pokemon" | "t20", id: string, gameId?: 
         species?: { name?: string | null; sprite_url?: string | null } | null;
       } | null;
       return {
-        image_url: row?.image_url ?? preferredPokemonSprite(row?.species?.name, row?.species?.sprite_url, !!row?.is_shiny, spriteStyle),
+        image_url: row?.image_url ?? null,
         status: (row?.status ?? []) as string[],
+        species_name: row?.species?.name ?? null,
+        species_sprite_url: row?.species?.sprite_url ?? null,
+        is_shiny: !!row?.is_shiny,
       };
     },
     staleTime: 0,
@@ -79,7 +87,23 @@ export function TokenAvatar({
   variant?: "token" | "handout";
   gameId?: string;
 }) {
-  const { data } = useCharacter(kind, id, gameId);
+  const { data } = useCharacter(kind, id);
+  const spriteStyle = useGameSpriteStyle(gameId);
+  if (kind === "pokemon") {
+    return (
+      <PokemonSpriteImage
+        speciesName={data?.species_name ?? label}
+        spriteUrl={data?.species_sprite_url ?? fallbackImage}
+        customUrl={data?.image_url}
+        shiny={data?.is_shiny}
+        spriteStyle={spriteStyle}
+        alt={label}
+        className={`h-full w-full object-cover ${variant === "handout" ? "rounded-none" : "rounded-full"}`}
+        draggable={false}
+        emptyFallback={<span className="text-xs font-bold">{label.slice(0, 2).toUpperCase()}</span>}
+      />
+    );
+  }
   const img = data?.image_url ?? fallbackImage;
   return img ? (
     <img src={img} alt={label} className={`h-full w-full object-cover ${variant === "handout" ? "rounded-none" : "rounded-full"}`} draggable={false} />

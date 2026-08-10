@@ -390,4 +390,1989 @@ export function MapBoard({
       ]);
       const set = new Set<string>();
       for (const r of (pkm.data ?? []) as { id: string; allowed_editors: string[] | null }[]) {
-        if ((r.allowed_editors ?? []).includÛöÒÚ$z{-®éÜj×Ò&fÆW‚fÆW‚Ö6öÂvÓãR&÷&FW"Ö"&÷&FW"Ö&÷&FW""ÓãR#à¢·vU7v—F6†W%6Æ÷GĞ¢·FööÆ&%6Æ÷GĞ¢ÂöF—cà¢—Ğ¢ÆF—b6Æ74æÖSÒ&fÆW‚fÆW‚×w&vÓ#à¢ÅFööÄ'Fâ7F—fS×¶ÖöFRÓÓÒ'6VÆV7B'Òöä6Æ–6³×²‚’Óâ6WDÖöFR‚'6VÆV7B"—ÒF—FÆSÒ%6VÆV6–öæ"†6Æ—VRR'&7FRFö¶Vç2’#ãÄÖ÷W6Uö–çFW#"6Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óãÂõFööÄ'Fãà¢ÅFööÄ'Fâ7F—fS×¶ÖöFRÓÓÒ''VÆW"'Òöä6Æ–6³×²‚’Óâ6WDÖöFR‚''VÆW""—ÒF—FÆSÒ%,:–wV†ÖVF—"F—7L:&æ6–’#ãÅ'VÆW"6Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óãÂõFööÄ'Fãà¢ÅFööÄ'Fâ7F—fS×¶ÖöFRÓÓÒ&G&r'Òöä6Æ–6³×²‚’Óâ6WDÖöFR‚&G&r"—ÒF—FÆSÒ$FW6Væ†"#ãÅVæ6–Â6Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óãÂõFööÄ'Fãà¢¶—4æ'&F÷"bb€¢Ãà¢ÅFööÄ'Fâ7F—fS×¶ÖöFRÓÓÒ&för'Òöä6Æ–6³×²‚’Óâ6WDÖöFR‚&för"—ÒF—FÆSÒ$föröbv"†ÖçVÂ’#ãÄ6Æ÷VDför6Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óãÂõFööÄ'Fãà¢ÅFööÄ'Fâ7F—fS×¶ÖöFRÓÓÒ'vÆÇ2'Òöä6Æ–6³×²‚’Óâ6WDÖöFR‚'vÆÇ2"—ÒF—FÆSÒ%&VFW2†&Æ÷VV–Òf—<:6ò’#ãÄ&÷‚6Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óãÂõFööÄ'Fãà¢ÅFööÄ'Fâ7F—fS×¶ÖöFRÓÓÒ&&6¶w&÷VæB'Òöä6Æ–6³×²‚’Óâ6WDÖöFR‚&&6¶w&÷VæB"—ÒF—FÆSÒ$&6¶w&÷VæG2†Ö÷fW"÷&VF–ÖVç6–öæ"÷&÷F6–öæ"–ÖvVç2’#ãÄ–ÖvT–6öâ6Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óãÂõFööÄ'Fãà¢Âóà¢—Ğ¢ÂöF—cà¢¶ÖöFRÓÓÒ&G&r"bb€¢Ãà¢ÆF—b6Æ74æÖSÒ&fÆW‚fÆW‚×w&vÓ&÷&FW"×B&÷&FW"Ö&÷&FW"BÓ#à¢ÅFööÄ'Fâ7F—fS×¶G&uFööÂÓÓÒ&g&VV†æB'Òöä6Æ–6³×²‚’Óâ6WDG&uFööÂ‚&g&VV†æB"—ÒF—FÆSÒ$6æWFÆ—g&R#ãÅVæ6–Â6Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óãÂõFööÄ'Fãà¢ÅFööÄ'Fâ7F—fS×¶G&uFööÂÓÓÒ'&V7B'Òöä6Æ–6³×²‚’Óâ6WDG&uFööÂ‚'&V7B"—ÒF—FÆSÒ%&WL:&æwVÆò#ãÅ7V&R6Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óãÂõFööÄ'Fãà¢ÅFööÄ'Fâ7F—fS×¶G&uFööÂÓÓÒ&6—&6ÆR'Òöä6Æ–6³×²‚’Óâ6WDG&uFööÂ‚&6—&6ÆR"—ÒF—FÆSÒ$<:×&7VÆò#ãÄ6—&6ÆT–6öâ6Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óãÂõFööÄ'Fãà¢ÅFööÄ'Fâ7F—fS×¶G&uFööÂÓÓÒ&Æ–æR'Òöä6Æ–6³×²‚’Óâ6WDG&uFööÂ‚&Æ–æR"—ÒF—FÆSÒ$Æ–æ†#ãÄÖ–çW26Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óãÂõFööÄ'Fãà¢ÅFööÄ'Fâ7F—fS×¶G&uFööÂÓÓÒ'FW‡B'Òöä6Æ–6³×²‚’Óâ6WDG&uFööÂ‚'FW‡B"—ÒF—FÆSÒ%FW‡Fò#ãÅG—T–6öâ6Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óãÂõFööÄ'Fãà¢ÂöF—cà¢ÆF—b6Æ74æÖSÒ&fÆW‚—FV×2Ö6VçFW"vÓ&÷&FW"×B&÷&FW"Ö&÷&FW"BÓ#à¢Æ–çWBG—SÒ&6öÆ÷""fÇVS×¶G&t6öÆ÷'Òöä6†ævS×²†R’Óâ6WDG&t6öÆ÷"†RçF&vWBçfÇVR—Ò6Æ74æÖSÒ&‚ÓbrÓr7W'6÷"×ö–çFW"&÷VæFVB&÷&FW"&÷&FW"Ö&÷&FW"&r×G&ç7&VçB"F—FÆSÒ$6÷""óà¢Æ–çW@¢G—SÒ'&ævR"Ö–ã×³ÒÖƒ×³'ÒfÇVS×¶G&uv–GF‡Ğ¢öä6†ævS×²†R’Óâ6WDG&uv–GF‚„çVÖ&W"†RçF&vWBçfÇVR’—Ğ¢6Æ74æÖSÒ&‚ÓbrÓb"F—FÆS×¶W7W77W&¢G¶G&uv–GF‡ÖĞ¢óà¢ÂöF—cà¢¶—4æ'&F÷"bb€¢ÆF—b6Æ74æÖSÒ&fÆW‚fÆW‚×w&vÓ&÷&FW"×B&÷&FW"Ö&÷&FW"BÓ#à¢ÅFööÄ'Fâ7F—fS×¶G&tÆ–W"ÓÓÒ&G&v–ær'Òöä6Æ–6³×²‚’Óâ6WDG&tÆ–W"‚&G&v–ær"—ÒF—FÆSÒ$FW6Væ†"æ6ÖFf—<:×fVÂ#åf—<:×fVÃÂõFööÄ'Fãà¢ÅFööÄ'Fâ7F—fS×¶G&tÆ–W"ÓÓÒ&vÒ'Òöä6Æ–6³×²‚’Óâ6WDG&tÆ–W"‚&vÒ"—ÒF—FÆSÒ$FW6Væ†"<;2&òæ'&F÷"#ätÓÂõFööÄ'Fãà¢ÂöF—cà¢—Ğ¢Âóà¢—Ğ¢¶ÖöFRÓÓÒ&för"bb—4æ'&F÷"bb€¢ÆF—b6Æ74æÖSÒ&fÆW‚fÆW‚Ö6öÂvÓ&÷&FW"×B&÷&FW"Ö&÷&FW"BÓ#à¢ÆF—b6Æ74æÖSÒ&fÆW‚fÆW‚×w&vÓ#à¢ÅFööÄ'Fâ7F—fS×¶föuFööÂÓÓÒ'&WfVÂ'Òöä6Æ–6³×²‚’Óâ6WDföuFööÂ‚'&WfVÂ"—ÒF—FÆSÒ%–æ6VÃ¢&WfVÆ":&V#å&WfVÆ#ÂõFööÄ'Fãà¢ÅFööÄ'Fâ7F—fS×¶föuFööÂÓÓÒ&†–FR'Òöä6Æ–6³×²‚’Óâ6WDföuFööÂ‚&†–FR"—ÒF—FÆSÒ%–æ6VÃ¢ö7VÇF":&V#äö7VÇF#ÂõFööÄ'Fãà¢ÂöF—cà¢ÆF—b6Æ74æÖSÒ&fÆW‚fÆW‚×w&vÓ#à¢ÅFööÄ'Fâöä6Æ–6³×¶öå&WfVÄÆÇÒF—FÆSÒ%&WfVÆ"Ö–çFV—&ò#åGVFóÂõFööÄ'Fãà¢ÅFööÄ'Fâöä6Æ–6³×¶öä6ÆV$föwÒF—FÆSÒ$v"FöFför#ãÅG&6ƒ"6Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óãÂõFööÄ'Fãà¢ÂöF—cà¢ÂöF—cà¢—Ğ¢¶ÖöFRÓÓÒ'vÆÇ2"bb—4æ'&F÷"bb€¢ÆF—b6Æ74æÖSÒ&fÆW‚fÆW‚Ö6öÂvÓ&÷&FW"×B&÷&FW"Ö&÷&FW"BÓ#à¢ÆF—b6Æ74æÖSÒ'‚ÓFW‡BÕ³…ÒföçBÖ&öÆBWW&66RG&6¶–ær×v–FW"FW‡BÖ×WFVBÖf÷&Vw&÷VæB#å&VFW2bfösÂöF—cà¢ÆF—b6Æ74æÖSÒ&w&–Bw&–BÖ6öÇ2Ó2vÓ#à¢ÅFööÄ'Fâ7F—fS×·vÆÅFööÂÓÓÒ'6VÆV7B'Òöä6Æ–6³×²‚’Óâ6WEvÆÅFööÂ‚'6VÆV7B"—ÒF—FÆSÒ%6VÆV6–öæ"&VFR#ãÄÖ÷W6Uö–çFW#"6Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óãÂõFööÄ'Fãà¢ÅFööÄ'Fâ7F—fS×·vÆÅFööÂÓÓÒ'6–ævÆR'Òöä6Æ–6³×²‚’Óâ6WEvÆÅFööÂ‚'6–ævÆR"—ÒF—FÆSÒ%&VFRVæ–6¢"6Æ—VW2#å&VFSÂõFööÄ'Fãà¢ÅFööÄ'Fâ7F—fS×·vÆÅFööÂÓÓÒ'öÇ’'Òöä6Æ–6³×²‚’Óâ6WEvÆÅFööÂ‚'öÇ’"—ÒF—FÆSÒ$Æ–æ†6öçF–çVâVçFW"fV6†ÂW626æ6VÆ#åöÇ“ÂõFööÄ'Fãà¢ÅFööÄ'Fâ7F—fS×·vÆÅFööÂÓÓÒ'f—6–öâ'Òöä6Æ–6³×²‚’Óâ6WEvÆÅFööÂ‚'f—6–öâ"—ÒF—FÆSÒ$&Æ÷VV–f—6òÂÖ2æòÇW¢#åf—6óÂõFööÄ'Fãà¢ÅFööÄ'Fâ7F—fS×·vÆÅFööÂÓÓÒ&Fö÷"'Òöä6Æ–6³×²‚’Óâ6WEvÆÅFööÂ‚&Fö÷""—ÒF—FÆSÒ%÷'F'&RöfV6†ò6Æ–6"#ãÄFö÷$6Æ÷6VB6Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óãÂõFööÄ'Fãà¢ÅFööÄ'Fâ7F—fS×·vÆÅFööÂÓÓÒ'v–æF÷r'Òöä6Æ–6³×²‚’Óâ6WEvÆÅFööÂ‚'v–æF÷r"—ÒF—FÆSÒ$¦æVÆ&Æ÷VV–f—6òÂæòÇW¢#ãÄFö÷$÷Vâ6Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óãÂõFööÄ'Fãà¢ÂöF—cà¢·6VÆV7FVEvÆÂbb€¢ÆF—b6Æ74æÖSÒ'76R×’Ó&÷VæFVB&÷&FW"&÷&FW"Ö&÷&FW"&rÖ&6¶w&÷VæBósÓãR#à¢ÆF—b6Æ74æÖSÒ&fÆW‚—FV×2Ö6VçFW"§W7F–g’Ö&WGvVVâFW‡BÕ³…ÒföçBÖ&öÆBWW&66RFW‡BÖ×WFVBÖf÷&Vw&÷VæB#à¢Ç7ãç·6VÆV7FVEvÆÂæ¶–æBóò'vÆÂ'ÓÂ÷7ãà¢Æ'WGFöâG—SÒ&'WGFöâ"6Æ74æÖSÒ'&÷VæFVBÓ†÷fW#¦&rÖ66VçB"öä6Æ–6³×²‚’ÓâöäFVÆWFUvÆÂ‡6VÆV7FVEvÆÂæ–B—ÒF—FÆSÒ$W†6ÇV—"&VFR#à¢ÅG&6ƒ"6Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óà¢Âö'WGFöãà¢ÂöF—cà¢ÆÆ&VÂ6Æ74æÖSÒ&fÆW‚—FV×2Ö6VçFW"vÓFW‡BÕ³…Ò#à¢Æ–çW@¢G—SÒ&6†V6¶&÷‚ ¢6†V6¶VC×·6VÆV7FVEvÆÂæ&Æö6·5÷6–v‡BÓÒfÇ6WĞ¢öä6†ævS×²†R’ÓâöåWFFUvÆÂ‡6VÆV7FVEvÆÂæ–BÂ²&Æö6·5÷6–v‡C¢RçF&vWBæ6†V6¶VBÒ—Ğ¢óà¢&Æ÷VV–f—6ğ¢ÂöÆ&VÃà¢ÆÆ&VÂ6Æ74æÖSÒ&fÆW‚—FV×2Ö6VçFW"vÓFW‡BÕ³…Ò#à¢Æ–çW@¢G—SÒ&6†V6¶&÷‚ ¢6†V6¶VC×·6VÆV7FVEvÆÂæ&Æö6·5öÆ–v‡BÓÒfÇ6WĞ¢öä6†ævS×²†R’ÓâöåWFFUvÆÂ‡6VÆV7FVEvÆÂæ–BÂ²&Æö6·5öÆ–v‡C¢RçF&vWBæ6†V6¶VBÒ—Ğ¢óà¢&Æ÷VV–ÇW ¢ÂöÆ&VÃà¢²‡6VÆV7FVEvÆÂæ¶–æBÓÓÒ&Fö÷""ÇÂ6VÆV7FVEvÆÂæ¶–æBÓÓÒ'v–æF÷r"’bb€¢ÆF—b6Æ74æÖSÒ&fÆW‚fÆW‚×w&vÓ#à¢ÅFööÄ'Fà¢7F—fS×²6VÆV7FVEvÆÂæ—5ö÷VçĞ¢öä6Æ–6³×²‚’ÓâöåWFFUvÆÂ‡6VÆV7FVEvÆÂæ–BÂ²—5ö÷Vã¢6VÆV7FVEvÆÂæ—5ö÷VâÒ—Ğ¢F—FÆS×·6VÆV7FVEvÆÂæ—5ö÷Vâò$fV6†""¢$'&—"'Ğ¢à¢·6VÆV7FVEvÆÂæ—5ö÷VâòÄFö÷$÷Vâ6Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óâ¢ÄFö÷$6Æ÷6VB6Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óçĞ¢ÂõFööÄ'Fãà¢ÅFööÄ'Fà¢7F—fS×²6VÆV7FVEvÆÂæÆö6¶VGĞ¢öä6Æ–6³×²‚’ÓâöåWFFUvÆÂ‡6VÆV7FVEvÆÂæ–BÂ²Æö6¶VC¢6VÆV7FVEvÆÂæÆö6¶VBÒ—Ğ¢F—FÆS×·6VÆV7FVEvÆÂæÆö6¶VBò$FW7G&æ6""¢%G&æ6"'Ğ¢à¢·6VÆV7FVEvÆÂæÆö6¶VBòÄÆö6²6Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óâ¢ÅVæÆö6²6Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óçĞ¢ÂõFööÄ'Fãà¢ÂöF—cà¢—Ğ¢ÂöF—cà¢—Ğ¢ÅFööÄ'Fâöä6Æ–6³×¶öä6ÆV%vÆÇ7ÒF—FÆSÒ$v"FöF22&VFW2#ãÅG&6ƒ"6Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óãÂõFööÄ'Fãà¢ÂöF—cà¢—Ğ¢¶ÖöFRÓÓÒ&&6¶w&÷VæB"bb—4æ'&F÷"bb€¢ÆF—b6Æ74æÖSÒ&fÆW‚fÆW‚Ö6öÂvÓ&÷&FW"×B&÷&FW"Ö&÷&FW"BÓ#à¢Ç6Æ74æÖSÒ'‚ÓFW‡BÕ³…ÒFW‡BÖ×WFVBÖf÷&Vw&÷VæB#ä6Æ—VRçVÖ–ÖvVÒ&Ö÷fW"÷&VF–ÖVç6–öæ"÷&÷F6–öæ#Â÷à¢Ä&uW&ÄFBöäFC×¶öäFD&6¶w&÷VæGÒóà¢·6VÆV7FVD&t–Bbb€¢ÆF—b6Æ74æÖSÒ&fÆW‚fÆW‚×w&vÓ#à¢¶öä'&–æt&tg&öçBbbÅFööÄ'Fâöä6Æ–6³×¶öä'&–æt&tg&öçGÒF—FÆSÒ%G&¦W"&g&VçFR#ãÄ'&÷uW6Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óãÂõFööÄ'FãçĞ¢¶öå6VæD&t&6²bbÅFööÄ'Fâöä6Æ–6³×¶öå6VæD&t&6·ÒF—FÆSÒ$Vçf–"&G,:2#ãÄ'&÷tF÷vâ6Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óãÂõFööÄ'FãçĞ¢¶öäFVÆWFU6VÆV7FVD&rbbÅFööÄ'Fâöä6Æ–6³×¶öäFVÆWFU6VÆV7FVD&wÒF—FÆSÒ$W†6ÇV—"&6¶w&÷VæB6VÆV6–öæFò#ãÅG&6ƒ"6Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óãÂõFööÄ'FãçĞ¢ÂöF—cà¢—Ğ¢ÂöF—cà¢—Ğ¢¶—4æ'&F÷"bb€¢ÆF—b6Æ74æÖSÒ&fÆW‚fÆW‚×w&vÓ&÷&FW"×B&÷&FW"Ö&÷&FW"BÓ#à¢ÅFööÄ'Fâ7F—fS×·f—6–&–Æ—G’æfötVæ&ÆVGÒöä6Æ–6³×²‚’ÓâöåFövvÆTför‚f—6–&–Æ—G’æfötVæ&ÆVB—ÒF—FÆS×·f—6–&–Æ—G’æfötVæ&ÆVBò$FW6F—f"föröbv""¢$F—f"föröbv"'Óà¢Ä6Æ÷VDför6Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óà¢ÂõFööÄ'Fãà¢ÅFööÄ'Fâ7F—fS×·f—6–&–Æ—G’æG–æÖ–4Æ–v‡F–æwÒöä6Æ–6³×²‚’ÓâöåFövvÆTÆ–v‡F–ær‚f—6–&–Æ—G’æG–æÖ–4Æ–v‡F–ær—ÒF—FÆS×·f—6–&–Æ—G’æG–æÖ–4Æ–v‡F–ærò$FW6F—f"f—<:6òF–ì:&Ö–6"¢$F—f"f—<:6òF–ì:&Ö–6'Óà¢ÄÆ–v‡F'VÆ"6Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óà¢ÂõFööÄ'Fãà¢²‡f—6–&–Æ—G’æfötVæ&ÆVBÇÂf—6–&–Æ—G’æG–æÖ–4Æ–v‡F–ær’bb€¢ÅFööÄ'Fâ7F—fS×²f—4Væ&ÆVGÒöä6Æ–6³×²‚’Óâ6WEf—4Væ&ÆVB‚f—4Væ&ÆVB—ÒF—FÆS×·f—4Væ&ÆVBò$W66öæFW"förÆö6ÆÖVçFR†æ'&F÷"’"¢$Ö÷7G&"för'Óà¢·f—4Væ&ÆVBòÄW–R6Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óâ¢ÄW–Töfb6Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óçĞ¢ÂõFööÄ'Fãà¢—Ğ¢ÂöF—cà¢—Ğ¢ÆF—b6Æ74æÖSÒ&fÆW‚fÆW‚×w&vÓ&÷&FW"×B&÷&FW"Ö&÷&FW"BÓ#à¢¶—4æ'&F÷"bb€¢Ãà¢ÅFööÄ'Fâ7F—fS×²6†÷ttÔÆ–W'Òöä6Æ–6³×²‚’Óâ6WE6†÷ttÔÆ–W"‚6†÷ttÔÆ–W"—ÒF—FÆS×·6†÷ttÔÆ–W"ò$W66öæFW"6ÖFtÒ"¢$Ö÷7G&"6ÖFtÒ'Óà¢tÒ·6†÷ttÔÆ–W"òÄW–Töfb6Æ74æÖSÒ&‚Ó2rÓ2"óâ¢ÄW–R6Æ74æÖSÒ&‚Ó2rÓ2"óçĞ¢ÂõFööÄ'Fãà¢ÅFööÄ'Fâ7F—fS×²6†÷t&6¶w&÷VæG7Òöä6Æ–6³×²‚’Óâ6WE6†÷t&6¶w&÷VæG2‚6†÷t&6¶w&÷VæG2—ÒF—FÆS×·6†÷t&6¶w&÷VæG2ò$W66öæFW"&6¶w&÷VæG2"¢$Ö÷7G&"&6¶w&÷VæG2'Óà¢&r·6†÷t&6¶w&÷VæG2òÄW–Töfb6Æ74æÖSÒ&‚Ó2rÓ2"óâ¢ÄW–R6Æ74æÖSÒ&‚Ó2rÓ2"óçĞ¢ÂõFööÄ'Fãà¢ÅFööÄ'Fâ7F—fS×²6†÷uFö¶Vç7Òöä6Æ–6³×²‚’Óâ6WE6†÷uFö¶Vç2‚6†÷uFö¶Vç2—ÒF—FÆS×·6†÷uFö¶Vç2ò$W66öæFW"Fö¶Vç2"¢$Ö÷7G&"Fö¶Vç2'Óà¢F²·6†÷uFö¶Vç2òÄW–Töfb6Æ74æÖSÒ&‚Ó2rÓ2"óâ¢ÄW–R6Æ74æÖSÒ&‚Ó2rÓ2"óçĞ¢ÂõFööÄ'Fãà¢Âóà¢—Ğ¢ÅFööÄ'Fâöä6Æ–6³×¶öä6ÆV$Ö–æWÒF—FÆSÒ$v"ÖWW2FW6Væ†÷2#ãÄW&6W"6Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óãÂõFööÄ'Fãà¢ÂöF—cà¢Âóà¢—Ğ¢ÂöF—cà¢“°§Ğ ¦gVæ7F–öâÖöFUF—FÆR†Ó¢ÖöFR’°¢7v—F6‚†Ò’°¢66R'6VÆV7B#¢&WGW&â%6VÆV6–öæ"#°¢66R''VÆW"#¢&WGW&â%,:–wV#°¢66R&G&r#¢&WGW&â$FW6Væ†"#°¢66R&för#¢&WGW&â$föröbv"#°¢66R'vÆÇ2#¢&WGW&â%&VFW2#°¢66R&&6¶w&÷VæB#¢&WGW&â$&6¶w&÷VæG2#°¢Ğ§Ğ ¦gVæ7F–öâFööÄ'Fâ‡²7F—fRÂöä6Æ–6²ÂF—FÆRÂ6†–ÆG&VâÓ¢²7F—fSó¢&ööÆVã²öä6Æ–6³¢‚’Óâfö–C²F—FÆS¢7G&–æs²6†–ÆG&Vã¢&V7Bå&V7DæöFRÒ’°¢&WGW&â€¢Æ'WGFöà¢G—SÒ&'WGFöâ ¢öä6Æ–6³×¶öä6Æ–6·Ğ¢F—FÆS×·F—FÆWĞ¢6Æ74æÖS×¶–æÆ–æRÖfÆW‚‚ÓrÖ–â×rÕ³#‡…Ò—FV×2Ö6VçFW"§W7F–g’Ö6VçFW"vÓ&÷VæFVB‚ÓãRFW‡BÕ³…ÒföçB×6VÖ–&öÆBG&ç6—F–öâG¶7F—fRò&&r×&–Ö'’FW‡B×&–Ö'’Öf÷&Vw&÷VæB"¢&&rÖ&6¶w&÷VæB†÷fW#¦&rÖ66VçB'ÖĞ¢à¢¶6†–ÆG&VçĞ¢Âö'WGFöãà¢“°§Ğ ¦gVæ7F–öâ&uW&ÄFB‡²öäFBÓ¢²öäFC¢‡W&Ã¢7G&–ærÂ÷F–öç3ó¢&6¶w&÷VæDFD÷F–öç2’Óâfö–BÂ&öÖ—6SÇfö–CâÒ’°¢6öç7B·W&ÂÂ6WEW&ÅÒÒW6U7FFR‚""“°¢6öç7B¶6öÇ2Â6WD6öÇ5ÒÒW6U7FFRƒ“°¢6öç7B·&÷w2Â6WE&÷w5ÒÒW6U7FFRƒ“°¢6öç7Bf–ÆT–çWE&VbÒW6U&VcÄ…DÔÄ–çWDVÆVÖVçCâ†çVÆÂ“°¢6öç7BF–ÆT÷F–öç2Ò²6öÇ2Â&÷w2Ó°¢7–æ2gVæ7F–öâ7V&Ö—EW&Â‚’°¢6öç7BRÒW&ÂçG&–Ò‚“°¢–b‚R’&WGW&ã°¢v—BöäFB‡RÂF–ÆT÷F–öç2“°¢6WEW&Â‚""“°¢Ğ¢gVæ7F–öâ†æFÆTf–ÆR†f–ÆS¢f–ÆR’°¢–b‚f–ÆRçG—Rç7F'G5v—F‚‚&–ÖvRò"’’²Fö7BæW'&÷"‚%6VÆV6–öæRVÖ–ÖvVÒ"“²&WGW&ã²Ğ¢–b†f–ÆRç6—¦RâUóó’²Fö7BæW'&÷"‚$–ÖvVÒ×V—Fòw&æFRƒãTÔ"’"“²&WGW&ã²Ğ¢6öç7B&VFW"ÒæWrf–ÆU&VFW"‚“°¢&VFW"æöæÆöBÒ‚’Óâ²fö–BöäFB…7G&–ær‡&VFW"ç&W7VÇB’ÂF–ÆT÷F–öç2“²Ó°¢&VFW"ç&VD4FFU$Â†f–ÆR“°¢Ğ¢&WGW&â€¢ÆF—b6Æ74æÖSÒ&fÆW‚fÆW‚Ö6öÂvÓ#à¢ÆF—b6Æ74æÖSÒ&fÆW‚vÓ#à¢Æ–çW@¢G—SÒ'FW‡B ¢fÇVS×·W&ÇĞ¢öä6†ævS×²†R’Óâ6WEW&Â†RçF&vWBçfÇVR—Ğ¢Æ6V†öÆFW#Ò%U$ÂF–ÖvVÒ ¢6Æ74æÖSÒ&‚ÓrfÆW‚Ó&÷VæFVB&÷&FW"&÷&FW"Ö–çWB&rÖ&6¶w&÷VæB‚Ó"FW‡BÕ³…Ò ¢óà¢Æ'WGFöà¢G—SÒ&'WGFöâ ¢öä6Æ–6³×²‚’Óâfö–B7V&Ö—EW&Â‚—Ğ¢6Æ74æÖSÒ&–æÆ–æRÖfÆW‚‚Ór—FV×2Ö6VçFW"§W7F–g’Ö6VçFW"&÷VæFVB&r×&–Ö'’‚Ó"FW‡BÕ³…ÒföçB×6VÖ–&öÆBFW‡B×&–Ö'’Öf÷&Vw&÷VæB†÷fW#¦÷6—G’Ó“ ¢F—FÆSÒ$F–6–öæ" ¢à¢ÅÇW26Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óà¢Âö'WGFöãà¢ÂöF—cà¢ÆF—b6Æ74æÖSÒ&w&–Bw&–BÖ6öÇ2Ó"vÓ#à¢ÆÆ&VÂ6Æ74æÖSÒ&fÆW‚—FV×2Ö6VçFW"vÓFW‡BÕ³…ÒFW‡BÖ×WFVBÖf÷&Vw&÷VæB#à¢6öÇVæ0¢Æ–çW@¢G—SÒ&çVÖ&W" ¢Ö–ã×³Ğ¢Öƒ×³'Ğ¢fÇVS×¶6öÇ7Ğ¢öä6†ævS×²†R’Óâ6WD6öÇ2„ÖF‚æÖ‚ƒÂÖF‚æÖ–âƒ"ÂçVÖ&W"†RçF&vWBçfÇVR’ÇÂ’’—Ğ¢6Æ74æÖSÒ&‚ÓrrÖgVÆÂ&÷VæFVB&÷&FW"&÷&FW"Ö–çWB&rÖ&6¶w&÷VæB‚Ó"FW‡BÕ³…ÒFW‡BÖf÷&Vw&÷VæB ¢óà¢ÂöÆ&VÃà¢ÆÆ&VÂ6Æ74æÖSÒ&fÆW‚—FV×2Ö6VçFW"vÓFW‡BÕ³…ÒFW‡BÖ×WFVBÖf÷&Vw&÷VæB#à¢Æ–æ†0¢Æ–çW@¢G—SÒ&çVÖ&W" ¢Ö–ã×³Ğ¢Öƒ×³'Ğ¢fÇVS×·&÷w7Ğ¢öä6†ævS×²†R’Óâ6WE&÷w2„ÖF‚æÖ‚ƒÂÖF‚æÖ–âƒ"ÂçVÖ&W"†RçF&vWBçfÇVR’ÇÂ’’—Ğ¢6Æ74æÖSÒ&‚ÓrrÖgVÆÂ&÷VæFVB&÷&FW"&÷&FW"Ö–çWB&rÖ&6¶w&÷VæB‚Ó"FW‡BÕ³…ÒFW‡BÖf÷&Vw&÷VæB ¢óà¢ÂöÆ&VÃà¢ÂöF—cà¢Æ–çW@¢&Vc×¶f–ÆT–çWE&VgĞ¢G—SÒ&f–ÆR ¢66WCÒ&–ÖvRò¢ ¢6Æ74æÖSÒ&†–FFVâ ¢öä6†ævS×²†R’Óâ²6öç7BbÒRçF&vWBæf–ÆW3òå³Ó²–b†b’†æFÆTf–ÆR†b“²Ræ7W'&VçEF&vWBçfÇVRÒ"#²×Ğ¢óà¢Æ'WGFöà¢G—SÒ&'WGFöâ ¢öä6Æ–6³×²‚’Óâf–ÆT–çWE&Vbæ7W'&VçCòæ6Æ–6²‚—Ğ¢6Æ74æÖSÒ&–æÆ–æRÖfÆW‚‚Ór—FV×2Ö6VçFW"§W7F–g’Ö6VçFW"vÓ&÷VæFVB&÷&FW"&÷&FW"Ö&÷&FW"&rÖ&6¶w&÷VæB‚Ó"FW‡BÕ³…ÒföçB×6VÖ–&öÆB†÷fW#¦&rÖ66VçB ¢à¢Ä–ÖvT–6öâ6Æ74æÖSÒ&‚Ó2ãRrÓ2ãR"óâVçf–"'V—fğ¢Âö'WGFöãà¢ÂöF—cà¢“°§Ğ
+        if ((r.allowed_editors ?? []).includes(userId)) set.add(r.id);
+      }
+      for (const r of (trs.data ?? []) as { id: string; allowed_editors: string[] | null }[]) {
+        if ((r.allowed_editors ?? []).includes(userId)) set.add(r.id);
+      }
+      return set;
+    },
+  });
+  const canActAsOwner = useCallback(
+    (t: Token) => t.owner_id === userId || (editableCharIds?.has(t.character_id) ?? false),
+    [userId, editableCharIds],
+  );
+
+  useEffect(() => {
+    if (!pageId) return;
+    const ch = supabase
+      .channel(`tokens:${gameId}:${pageId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tokens", filter: `page_id=eq.${pageId}` },
+        (payload) => {
+          const eventType = payload.eventType;
+          if (eventType === "DELETE") {
+            const oldId = (payload.old as Partial<Token> | null)?.id;
+            if (!oldId) return;
+            qc.setQueryData<Token[]>(["tokens", gameId, pageId], (old) =>
+              (old ?? []).filter((token) => token.id !== oldId),
+            );
+            return;
+          }
+
+          const incoming = payload.new as Token | null;
+          if (!incoming) {
+            void qc.invalidateQueries({ queryKey: ["tokens", gameId, pageId] });
+            return;
+          }
+
+          qc.setQueryData<Token[]>(["tokens", gameId, pageId], (old) => {
+            const next = (old ?? []).filter((token) => token.id !== incoming.id);
+            return [...next, incoming];
+          });
+        },
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          void qc.invalidateQueries({ queryKey: ["tokens", gameId, pageId] });
+        }
+      });
+    return () => { supabase.removeChannel(ch); };
+  }, [gameId, pageId, qc]);
+
+  // Real-time updates from pokemon / trainers so token images, stats,
+  // status conditions and attribute bonuses propagate live to every player.
+  useEffect(() => {
+    const pendingPokemonIds = new Set<string>();
+    const pendingTrainerIds = new Set<string>();
+    let flushTimer: number | null = null;
+
+    const flushCharacterUpdates = () => {
+      flushTimer = null;
+      for (const id of pendingPokemonIds) {
+        void qc.invalidateQueries({ queryKey: ["token-pokemon", id] });
+        void qc.invalidateQueries({ queryKey: ["token-pokemon-stats", id] });
+        void qc.invalidateQueries({ queryKey: ["token-pokemon-status", id] });
+        void qc.invalidateQueries({ queryKey: ["pokemon", id] });
+      }
+      for (const id of pendingTrainerIds) {
+        void qc.invalidateQueries({ queryKey: ["token-trainer", id] });
+        void qc.invalidateQueries({ queryKey: ["token-trainer-stats", id] });
+        void qc.invalidateQueries({ queryKey: ["token-trainer-status", id] });
+        void qc.invalidateQueries({ queryKey: ["trainer", id] });
+      }
+      pendingPokemonIds.clear();
+      pendingTrainerIds.clear();
+    };
+
+    const scheduleCharacterUpdate = (kind: "pokemon" | "trainer", id?: string) => {
+      if (!id) return;
+      (kind === "pokemon" ? pendingPokemonIds : pendingTrainerIds).add(id);
+      if (flushTimer === null) flushTimer = window.setTimeout(flushCharacterUpdates, 120);
+    };
+
+    let wasSubscribed = false;
+    const ch = supabase
+      .channel(`token-chars:${gameId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "pokemon", filter: `game_id=eq.${gameId}` },
+        (payload) => {
+          const id = (payload.new as { id?: string } | null)?.id
+            ?? (payload.old as { id?: string } | null)?.id;
+          scheduleCharacterUpdate("pokemon", id);
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "trainers", filter: `game_id=eq.${gameId}` },
+        (payload) => {
+          const id = (payload.new as { id?: string } | null)?.id
+            ?? (payload.old as { id?: string } | null)?.id;
+          scheduleCharacterUpdate("trainer", id);
+        },
+      )
+      .subscribe((status) => {
+        if (status !== "SUBSCRIBED") return;
+        if (wasSubscribed) {
+          void qc.invalidateQueries({ queryKey: ["token-pokemon"] });
+          void qc.invalidateQueries({ queryKey: ["token-pokemon-stats"] });
+          void qc.invalidateQueries({ queryKey: ["token-pokemon-status"] });
+          void qc.invalidateQueries({ queryKey: ["token-trainer"] });
+          void qc.invalidateQueries({ queryKey: ["token-trainer-stats"] });
+          void qc.invalidateQueries({ queryKey: ["token-trainer-status"] });
+        }
+        wasSubscribed = true;
+      });
+    return () => {
+      if (flushTimer !== null) window.clearTimeout(flushTimer);
+      void supabase.removeChannel(ch);
+    };
+  }, [gameId, qc]);
+
+  // Drawings query + realtime
+  const { data: drawings = [] } = useQuery({
+    queryKey: ["map_drawings", gameId, pageId],
+    enabled: !!pageId,
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("map_drawings" as never).select("*").eq("game_id", gameId).eq("page_id", pageId!) as unknown as Promise<{ data: Drawing[] | null; error: { message: string } | null }>);
+      if (error) throw new Error(error.message);
+      return (data ?? []) as Drawing[];
+    },
+  });
+  useEffect(() => {
+    if (!pageId) return;
+    const ch = supabase
+      .channel(`drawings:${gameId}:${pageId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "map_drawings", filter: `page_id=eq.${pageId}` },
+        () => qc.invalidateQueries({ queryKey: ["map_drawings", gameId, pageId] }),
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [gameId, pageId, qc]);
+
+  const visibleDrawings = useMemo(
+    () => drawings.filter((d) => d.layer !== "gm" || (isNarrator && showGMLayer)),
+    [drawings, isNarrator, showGMLayer],
+  );
+
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Map Backgrounds (multi-image layer) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const [selectedBgId, setSelectedBgId] = useState<string | null>(null);
+  const bgDragRef = useRef<
+    | { id: string; kind: "move"; sx: number; sy: number; ox: number; oy: number }
+    | { id: string; kind: "resize"; sx: number; sy: number; ow: number; oh: number }
+    | { id: string; kind: "rotate"; cx: number; cy: number; startAngle: number; baseRotation: number }
+    | null
+  >(null);
+  const [bgLocal, setBgLocal] = useState<Record<string, Partial<MapBg>>>({});
+  const bgLocalRef = useRef(bgLocal);
+  useEffect(() => { bgLocalRef.current = bgLocal; }, [bgLocal]);
+
+  const { data: mapBgsRaw = [] } = useQuery({
+    queryKey: ["map_backgrounds", gameId, pageId],
+    enabled: !!pageId,
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("map_backgrounds" as never).select("*").eq("game_id", gameId).eq("page_id", pageId!).order("z_index", { ascending: true }) as unknown as Promise<{ data: MapBg[] | null; error: { message: string } | null }>);
+      if (error) throw new Error(error.message);
+      return (data ?? []) as MapBg[];
+    },
+  });
+  useEffect(() => {
+    if (!pageId) return;
+    const ch = supabase
+      .channel(`map_backgrounds:${gameId}:${pageId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "map_backgrounds", filter: `page_id=eq.${pageId}` },
+        () => qc.invalidateQueries({ queryKey: ["map_backgrounds", gameId, pageId] }),
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [gameId, pageId, qc]);
+
+  const mapBgs = useMemo<MapBg[]>(
+    () => mapBgsRaw.map((b) => ({ ...b, ...(bgLocal[b.id] ?? {}) })),
+    [mapBgsRaw, bgLocal],
+  );
+
+  async function addBackground(url: string, options: BackgroundAddOptions = {}) {
+    if (!isNarrator) { toast.error("Apenas o narrador pode adicionar imagens ao cenÃ¡rio."); return; }
+    if (!pageId) { toast.error("Nenhuma pÃ¡gina ativa."); return; }
+    if (!url) { toast.error("Informe uma imagem."); return; }
+    const maxZ = mapBgsRaw.reduce((m, b) => Math.max(m, b.z_index), 0);
+    const cols = Math.max(1, Math.min(12, Math.floor(options.cols ?? 1)));
+    const rows = Math.max(1, Math.min(12, Math.floor(options.rows ?? 1)));
+    const group = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const totalWidth = 0.6;
+    const totalHeight = 0.6;
+    const startX = 0.2;
+    const startY = 0.2;
+    const records = Array.from({ length: rows * cols }, (_, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      return {
+        game_id: gameId,
+        page_id: pageId,
+        image_url: url,
+        x: startX + (col * totalWidth) / cols,
+        y: startY + (row * totalHeight) / rows,
+        width: totalWidth / cols,
+        height: totalHeight / rows,
+        rotation: 0,
+        z_index: maxZ + 1 + i,
+        created_by: userId,
+        crop_x: col / cols,
+        crop_y: row / rows,
+        crop_w: 1 / cols,
+        crop_h: 1 / rows,
+        tile_group: rows * cols > 1 ? group : null,
+        tile_col: rows * cols > 1 ? col : null,
+        tile_row: rows * cols > 1 ? row : null,
+      };
+    });
+    const { error } = await (supabase.from("map_backgrounds" as never).insert(records as never) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+  async function deleteBackground(id: string) {
+    const { error } = await (supabase.from("map_backgrounds" as never).delete().eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+    if (selectedBgId === id) setSelectedBgId(null);
+  }
+  async function persistBg(id: string, patch: Partial<MapBg>) {
+    const { error } = await (supabase.from("map_backgrounds" as never).update(patch as never).eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+    setBgLocal((s) => { const n = { ...s }; delete n[id]; return n; });
+  }
+  async function reorderBg(id: string, dir: "front" | "back") {
+    const bg = mapBgsRaw.find((b) => b.id === id);
+    if (!bg) return;
+    const maxZ = mapBgsRaw.reduce((m, b) => Math.max(m, b.z_index), 0);
+    const minZ = mapBgsRaw.reduce((m, b) => Math.min(m, b.z_index), 0);
+    await persistBg(id, { z_index: dir === "front" ? maxZ + 1 : minZ - 1 });
+  }
+
+
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Fog of War + Walls (Phase 2) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const [fogTool, setFogTool] = useState<"reveal" | "hide">("reveal");
+  const [fogRect, setFogRect] = useState<{ ax: number; ay: number; bx: number; by: number } | null>(null);
+  const [wallTool, setWallTool] = useState<WallTool>("single");
+  const [wallStart, setWallStart] = useState<{ x: number; y: number } | null>(null);
+  const [wallPolyFirst, setWallPolyFirst] = useState<{ x: number; y: number } | null>(null);
+  const [wallCursor, setWallCursor] = useState<{ x: number; y: number } | null>(null);
+  const [selectedWallId, setSelectedWallId] = useState<string | null>(null);
+  const [visEnabled, setVisEnabled] = useState(true);
+  // fogActive declared after pageMeta below.
+
+  useEffect(() => {
+    if (mode !== "walls") return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setWallStart(null);
+        setWallPolyFirst(null);
+        setWallCursor(null);
+        setSelectedWallId(null);
+      }
+      if (e.key === "Enter" && wallTool === "poly" && wallStart && wallPolyFirst) {
+        void insertWall(wallStart.x, wallStart.y, wallPolyFirst.x, wallPolyFirst.y);
+        setWallStart(null);
+        setWallPolyFirst(null);
+        setWallCursor(null);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [mode, wallTool, wallStart, wallPolyFirst]);
+
+  const { data: fogRegions = [] } = useQuery({
+    queryKey: ["fog_regions", gameId, pageId],
+    enabled: !!pageId,
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("fog_regions" as never).select("*").eq("game_id", gameId).eq("page_id", pageId!) as unknown as Promise<{ data: FogRegion[] | null; error: { message: string } | null }>);
+      if (error) throw new Error(error.message);
+      return (data ?? []) as FogRegion[];
+    },
+  });
+  const { data: walls = [] } = useQuery({
+    queryKey: ["walls", gameId, pageId],
+    enabled: !!pageId,
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("walls" as never).select("*").eq("game_id", gameId).eq("page_id", pageId!) as unknown as Promise<{ data: Wall[] | null; error: { message: string } | null }>);
+      if (error) throw new Error(error.message);
+      return (data ?? []) as Wall[];
+    },
+  });
+
+  // Darkness ambient level for the viewing page (0..1).
+  const { data: pageMeta } = useQuery({
+    queryKey: ["scenario-meta", pageId],
+    enabled: !!pageId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("scenarios").select("darkness_level").eq("id", pageId!).maybeSingle();
+      return (data as { darkness_level: number } | null) ?? { darkness_level: 0 };
+    },
+  });
+  const darknessLevel = Math.max(0, Math.min(1, pageMeta?.darkness_level ?? 0));
+  const fogActive = visibility.fogEnabled || visibility.dynamicLighting || darknessLevel > 0;
+  useEffect(() => {
+    if (!pageId) return;
+    const ch = supabase.channel(`scenario-meta:${pageId}`).on("postgres_changes",
+      { event: "UPDATE", schema: "public", table: "scenarios", filter: `id=eq.${pageId}` },
+      () => qc.invalidateQueries({ queryKey: ["scenario-meta", pageId] })).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [pageId, qc]);
+  useEffect(() => {
+    if (!pageId) return;
+    const ch1 = supabase.channel(`fog:${gameId}:${pageId}`).on("postgres_changes",
+      { event: "*", schema: "public", table: "fog_regions", filter: `page_id=eq.${pageId}` },
+      () => qc.invalidateQueries({ queryKey: ["fog_regions", gameId, pageId] })).subscribe();
+    const ch2 = supabase.channel(`walls:${gameId}:${pageId}`).on("postgres_changes",
+      { event: "*", schema: "public", table: "walls", filter: `page_id=eq.${pageId}` },
+      () => qc.invalidateQueries({ queryKey: ["walls", gameId, pageId] })).subscribe();
+    return () => { supabase.removeChannel(ch1); supabase.removeChannel(ch2); };
+  }, [gameId, pageId, qc]);
+
+  async function insertFogRegion(ax: number, ay: number, bx: number, by: number, revealed: boolean) {
+    if (!pageId) return;
+    const x = Math.min(ax, bx), y = Math.min(ay, by);
+    const w = Math.abs(bx - ax), h = Math.abs(by - ay);
+    if (w < 0.005 || h < 0.005) return;
+    const { error } = await (supabase.from("fog_regions" as never).insert({ game_id: gameId, page_id: pageId, x, y, w, h, revealed, author_id: userId } as never) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+  async function clearFog() {
+    if (!pageId) return;
+    if (!confirm("Apagar toda a fog desta pÃ¡gina?")) return;
+    const { error } = await (supabase.from("fog_regions" as never).delete().eq("page_id", pageId) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+  async function revealAll() {
+    if (!pageId) return;
+    const { error } = await (supabase.from("fog_regions" as never).insert({ game_id: gameId, page_id: pageId, x: 0, y: 0, w: 1, h: 1, revealed: true, author_id: userId } as never) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+  async function insertWall(
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    opts: { kind?: WallKind; blocks_sight?: boolean; blocks_light?: boolean } = {},
+  ) {
+    if (!pageId) return;
+    if (Math.hypot(x2 - x1, y2 - y1) < 0.01) return;
+    const basePayload = {
+      game_id: gameId,
+      page_id: pageId,
+      x1,
+      y1,
+      x2,
+      y2,
+      author_id: userId,
+    };
+    const fullPayload = {
+      ...basePayload,
+      kind: opts.kind ?? "wall",
+      blocks_sight: opts.blocks_sight ?? true,
+      blocks_light: opts.blocks_light ?? true,
+      is_open: false,
+      locked: false,
+    };
+    const { error } = await (supabase.from("walls" as never).insert(fullPayload as never) as unknown as Promise<{ error: { message: string } | null }>);
+    if (isSchemaCacheColumnError(error, WALL_SCHEMA_COLUMNS)) {
+      const retry = await (supabase.from("walls" as never).insert(basePayload as never) as unknown as Promise<{ error: { message: string } | null }>);
+      if (retry.error) toast.error(retry.error.message);
+      else toast.warning("Parede salva como basica. Aplique a migracao no Supabase para ativar portas, janelas e bloqueios avancados.");
+      return;
+    }
+    if (error) toast.error(error.message);
+  }
+  async function updateWall(id: string, patch: Partial<Wall>) {
+    const { error } = await (supabase.from("walls" as never).update(patch as never).eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
+    if (isSchemaCacheColumnError(error, WALL_SCHEMA_COLUMNS)) {
+      const fallback = Object.fromEntries(Object.entries(patch).filter(([key]) => !WALL_SCHEMA_COLUMNS.includes(key)));
+      if (Object.keys(fallback).length === 0) {
+        toast.warning("Esse ajuste precisa da migracao de paredes aplicada no Supabase.");
+        return;
+      }
+      const retry = await (supabase.from("walls" as never).update(fallback as never).eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
+      if (retry.error) toast.error(retry.error.message);
+      return;
+    }
+    if (error) toast.error(error.message);
+  }
+  async function toggleDoor(w: Wall) {
+    if (!isNarrator || w.locked || ((w.kind ?? "wall") === "wall")) return;
+    await updateWall(w.id, { is_open: !w.is_open });
+  }
+  async function deleteWall(id: string) {
+    const { error } = await (supabase.from("walls" as never).delete().eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+  async function clearWalls() {
+    if (!pageId) return;
+    if (!confirm("Apagar todas as paredes desta pÃ¡gina?")) return;
+    const { error } = await (supabase.from("walls" as never).delete().eq("page_id", pageId) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+  async function toggleGameFlag(field: "fog_enabled" | "dynamic_lighting", value: boolean) {
+    const { error } = await (supabase.from("games").update({ [field]: value } as never).eq("id", gameId) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+    else qc.invalidateQueries({ queryKey: ["game", gameId] });
+  }
+  async function setTokenVision(t: Token) {
+    const cur = t.vision_radius ?? 0;
+    const raw = window.prompt(`Raio de visÃ£o de "${t.label}" (em cÃ©lulas, 0 = sem visÃ£o):`, String(cur));
+    if (raw === null) return;
+    const n = Math.max(0, Math.min(60, Number(raw) || 0));
+    const { error } = await (supabase.from("tokens").update({ vision_radius: n } as never).eq("id", t.id) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+
+  // Raycasting helper â€” returns visibility polygon in pixel coords.
+  function castPolygon(
+    ox: number, oy: number, radius: number,
+    wallsPx: { ax: number; ay: number; bx: number; by: number }[],
+    cone?: { angle: number; direction: number },
+  ): [number, number][] {
+    const fullCircle = !cone || cone.angle >= Math.PI * 2 - 0.001;
+    const N = fullCircle ? 96 : Math.max(12, Math.ceil(96 * (cone.angle / (Math.PI * 2))));
+    const pts: [number, number][] = [];
+    if (!fullCircle) pts.push([ox, oy]);
+    for (let i = 0; i < N; i++) {
+      const ang = fullCircle
+        ? (i / N) * Math.PI * 2
+        : cone.direction - cone.angle / 2 + (i / Math.max(1, N - 1)) * cone.angle;
+      const dx = Math.cos(ang), dy = Math.sin(ang);
+      let bestT = radius;
+      for (const w of wallsPx) {
+        const sx = w.ax - ox, sy = w.ay - oy;
+        const rx = w.bx - w.ax, ry = w.by - w.ay;
+        const denom = dx * ry - dy * rx;
+        if (Math.abs(denom) < 1e-6) continue;
+        const tt = (sx * ry - sy * rx) / denom;
+        const uu = (sx * dy - sy * dx) / denom;
+        if (tt >= 0 && tt < bestT && uu >= 0 && uu <= 1) bestT = tt;
+      }
+      pts.push([ox + dx * bestT, oy + dy * bestT]);
+    }
+    return pts;
+  }
+  function ptsToPath(pts: [number, number][], W: number, H: number): string {
+    return pts.map(([px, py], i) => `${i === 0 ? "M" : "L"}${(px / W) * 1000},${(py / H) * 1000}`).join(" ") + " Z";
+  }
+
+  // Visibility polygons (vision) â€” used as fog mask reveals.
+  const visibilityPolygons = useMemo(() => {
+    if (!visibility.dynamicLighting && darknessLevel === 0) return [] as string[];
+    const rect = (innerRef.current ?? boardRef.current)?.getBoundingClientRect();
+    if (!rect) return [];
+    const sources = isNarrator
+      ? tokens.filter((t) => (t.vision_radius ?? 0) > 0)
+      : tokens.filter((t) => canActAsOwner(t) && (t.vision_radius ?? 0) > 0);
+    if (sources.length === 0) return [];
+    const W = rect.width, H = rect.height;
+    const wallsPx = walls.filter((w) => !w.is_open && w.blocks_sight !== false).map((w) => ({ ax: w.x1 * W, ay: w.y1 * H, bx: w.x2 * W, by: w.y2 * H }));
+    return sources.map((t) => ptsToPath(castPolygon(t.x * W, t.y * H, (t.vision_radius ?? 0) * gridSettings.size, wallsPx), W, H));
+  }, [tokens, walls, visibility.dynamicLighting, darknessLevel, isNarrator, userId, gridSettings.size]);
+
+  // Light polygons â€” colored tint, blocks_light only.
+  const lightPolygons = useMemo(() => {
+    if (!visibility.dynamicLighting && darknessLevel === 0) return [] as { path: string; color: string; cx: number; cy: number; r: number; bright: number }[];
+    const rect = (innerRef.current ?? boardRef.current)?.getBoundingClientRect();
+    if (!rect) return [];
+    const lights = tokens.filter((t) => t.light_enabled && ((t.light_radius_bright ?? 0) + (t.light_radius_dim ?? 0)) > 0);
+    if (lights.length === 0) return [];
+    const W = rect.width, H = rect.height;
+    const wallsPx = walls.filter((w) => !w.is_open && w.blocks_light !== false).map((w) => ({ ax: w.x1 * W, ay: w.y1 * H, bx: w.x2 * W, by: w.y2 * H }));
+    return lights.map((t) => {
+      const bright = (t.light_radius_bright ?? 0) * gridSettings.size;
+      const dim = (t.light_radius_dim ?? 0) * gridSettings.size;
+      const total = bright + dim;
+      const ox = t.x * W, oy = t.y * H;
+      const coneAngle = ((t.light_angle ?? 360) * Math.PI) / 180;
+      const pts = castPolygon(ox, oy, total, wallsPx, {
+        angle: coneAngle,
+        direction: t.light_direction ?? 0,
+      });
+      return {
+        path: ptsToPath(pts, W, H),
+        color: t.light_color ?? "#ffd27a",
+        cx: (ox / W) * 1000,
+        cy: (oy / H) * 1000,
+        r: (total / W) * 1000,
+        bright: total > 0 ? bright / total : 1,
+      };
+    });
+  }, [tokens, walls, visibility.dynamicLighting, darknessLevel, gridSettings.size]);
+  
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  const [exploredPaths, setExploredPaths] = useState<string[]>([]);
+  const exploredStorageKey = useMemo(() => `fog-memory:${gameId}:${pageId ?? "none"}:${userId}`, [gameId, pageId, userId]);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(exploredStorageKey);
+      const parsed = raw ? JSON.parse(raw) : [];
+      setExploredPaths(Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string").slice(-160) : []);
+    } catch {
+      setExploredPaths([]);
+    }
+  }, [exploredStorageKey]);
+
+  useEffect(() => {
+    if (isNarrator || visibilityPolygons.length === 0) return;
+    setExploredPaths((prev) => {
+      const unique = Array.from(new Set([...prev, ...visibilityPolygons].filter(Boolean))).slice(-160);
+      try { window.localStorage.setItem(exploredStorageKey, JSON.stringify(unique)); } catch {}
+      return unique;
+    });
+  }, [isNarrator, visibilityPolygons, exploredStorageKey]);
+
+  useEffect(() => {
+    if (isNarrator || exploredPaths.length === 0) return;
+    const ownerToken = tokens.find((t) => canActAsOwner(t) && (t.vision_radius ?? 0) > 0);
+    if (!ownerToken) return;
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        const { error } = await (supabase.from("tokens" as never).update({ explored_mask: exploredPaths.slice(-160) } as never).eq("id", ownerToken.id) as unknown as Promise<{ error: { message: string } | null }>);
+        if (error && !isSchemaCacheColumnError(error, ["explored_mask"])) toast.error(error.message);
+      })();
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  }, [isNarrator, exploredPaths, tokens]);
+
+  const savedExploredPaths = useMemo(() => {
+    const paths = tokens.flatMap((t) => {
+      if (!canActAsOwner(t) || !Array.isArray(t.explored_mask)) return [];
+      return t.explored_mask.filter((v): v is string => typeof v === "string");
+    });
+    return Array.from(new Set([...paths, ...exploredPaths])).slice(-200);
+  }, [tokens, exploredPaths, userId]);
+
+  function snap(v: number, dim: number) {
+    if (!gridSettings.enabled) return v;
+    const mode = gridSettings.snapMode ?? (gridSettings.snap ? "line" : "free");
+    if (mode === "free" || !gridSettings.snap) return v;
+    const px = v * dim;
+    const size = gridSettings.size;
+    let cellPx: number;
+    if (mode === "center") {
+      cellPx = Math.floor(px / size) * size + size / 2;
+    } else {
+      // "line": snap to nearest gridline intersection
+      cellPx = Math.round(px / size) * size;
+    }
+    return cellPx / dim;
+  }
+
+  function pointToRelRaw(clientX: number, clientY: number) {
+    const target = innerRef.current ?? boardRef.current!;
+    const rect = target.getBoundingClientRect();
+    return {
+      x: (clientX - rect.left) / rect.width,
+      y: (clientY - rect.top) / rect.height,
+      rectW: rect.width, rectH: rect.height,
+    };
+  }
+  function pointToRel(clientX: number, clientY: number) {
+    const target = innerRef.current ?? boardRef.current!;
+    const rect = target.getBoundingClientRect();
+    return {
+      x: snap((clientX - rect.left) / rect.width, rect.width),
+      y: snap((clientY - rect.top) / rect.height, rect.height),
+    };
+  }
+
+  function onWheel(e: React.WheelEvent) {
+    e.preventDefault();
+    const delta = -e.deltaY * 0.0015;
+    setZoom((z) => Math.max(0.3, Math.min(4, z * (1 + delta))));
+  }
+  function onContextMenu(e: React.MouseEvent) { e.preventDefault(); }
+  function scheduleLongClickPing(e: React.MouseEvent) {
+    const sx = e.clientX;
+    const sy = e.clientY;
+    const timer = window.setTimeout(() => {
+      const p = pointToRelRaw(sx, sy);
+      addMapPing(p.x, p.y);
+      void pingChannelRef.current?.send({
+        type: "broadcast",
+        event: "ping",
+        payload: { x: p.x, y: p.y, sender: userId },
+      });
+      cleanup();
+    }, 520);
+    function cleanup() {
+      window.clearTimeout(timer);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", cleanup);
+      window.removeEventListener("mouseleave", cleanup);
+    }
+    function onMove(ev: MouseEvent) {
+      if (Math.hypot(ev.clientX - sx, ev.clientY - sy) > 8) cleanup();
+    }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", cleanup);
+    window.addEventListener("mouseleave", cleanup);
+  }
+  function onMouseDown(e: React.MouseEvent) {
+    // Right click pans
+    if (e.button === 2) {
+      e.preventDefault();
+      panOrigin.current = { mx: e.clientX, my: e.clientY, ox: pan.x, oy: pan.y };
+      return;
+    }
+    if (e.button !== 0) return;
+    // Ignore clicks on tokens / action bar / toolbar
+    const target = e.target as HTMLElement | null;
+    if (target?.closest("[data-map-token], [data-token-action-bar], [data-map-toolbar]")) return;
+
+    if (mode === "select") {
+      scheduleLongClickPing(e);
+      return;
+    }
+
+    if (mode === "ruler") {
+      const p = pointToRelRaw(e.clientX, e.clientY);
+      setRuler({ ax: p.x, ay: p.y, bx: p.x, by: p.y });
+      return;
+    }
+    if (mode === "draw") {
+      const p = pointToRelRaw(e.clientX, e.clientY);
+      const base: Drawing = {
+        id: "tmp",
+        game_id: gameId,
+        layer: drawLayer,
+        kind: drawTool,
+        geometry: {},
+        stroke: drawColor,
+        fill: null,
+        stroke_width: drawWidth,
+        text_content: null,
+        author_id: userId,
+        created_at: new Date().toISOString(),
+      };
+      if (drawTool === "freehand") base.geometry = { points: [[p.x, p.y]] };
+      else if (drawTool === "rect") base.geometry = { x: p.x, y: p.y, w: 0, h: 0 };
+      else if (drawTool === "circle") base.geometry = { cx: p.x, cy: p.y, r: 0 };
+      else if (drawTool === "line") base.geometry = { x1: p.x, y1: p.y, x2: p.x, y2: p.y };
+      else if (drawTool === "text") {
+        const text = window.prompt("Texto:");
+        if (!text) return;
+        base.geometry = { x: p.x, y: p.y, fontSize: 16 };
+        base.text_content = text;
+        void persistDrawing(base);
+        return;
+      }
+      setDrawingShape(base);
+    }
+    if (mode === "fog" && isNarrator) {
+      const p = pointToRelRaw(e.clientX, e.clientY);
+      setFogRect({ ax: p.x, ay: p.y, bx: p.x, by: p.y });
+      return;
+    }
+    if (mode === "walls" && isNarrator) {
+      const p = pointToRelRaw(e.clientX, e.clientY);
+      if (wallTool === "select") return;
+      const wallOpts =
+        wallTool === "vision"
+          ? { kind: "wall" as WallKind, blocks_sight: true, blocks_light: false }
+          : wallTool === "door"
+            ? { kind: "door" as WallKind, blocks_sight: true, blocks_light: true }
+            : wallTool === "window"
+              ? { kind: "window" as WallKind, blocks_sight: true, blocks_light: false }
+              : { kind: "wall" as WallKind, blocks_sight: true, blocks_light: true };
+      if (!wallStart) {
+        setWallStart({ x: p.x, y: p.y });
+        if (wallTool === "poly") setWallPolyFirst({ x: p.x, y: p.y });
+        setWallCursor({ x: p.x, y: p.y });
+      } else {
+        void insertWall(wallStart.x, wallStart.y, p.x, p.y, wallOpts);
+        if (wallTool === "poly") {
+          setWallStart({ x: p.x, y: p.y });
+          setWallCursor({ x: p.x, y: p.y });
+        } else {
+          setWallStart(null);
+          setWallPolyFirst(null);
+          setWallCursor(null);
+        }
+      }
+      return;
+    }
+  }
+  function onMouseMoveBoard(e: React.MouseEvent) {
+    if (mode === "ruler" && ruler) {
+      const p = pointToRelRaw(e.clientX, e.clientY);
+      setRuler({ ...ruler, bx: p.x, by: p.y });
+      return;
+    }
+    if (mode === "fog" && fogRect) {
+      const p = pointToRelRaw(e.clientX, e.clientY);
+      setFogRect({ ...fogRect, bx: p.x, by: p.y });
+      return;
+    }
+    if (mode === "walls" && wallStart) {
+      const p = pointToRelRaw(e.clientX, e.clientY);
+      setWallCursor({ x: p.x, y: p.y });
+      return;
+    }
+    if (mode === "draw" && drawingShape) {
+      const p = pointToRelRaw(e.clientX, e.clientY);
+      setDrawingShape((cur) => {
+        if (!cur) return cur;
+        if (cur.kind === "freehand") {
+          const points = [...(cur.geometry.points ?? []), [p.x, p.y] as [number, number]];
+          return { ...cur, geometry: { points } };
+        }
+        if (cur.kind === "rect") {
+          const x0 = cur.geometry.x!, y0 = cur.geometry.y!;
+          return { ...cur, geometry: { x: Math.min(x0, p.x), y: Math.min(y0, p.y), w: Math.abs(p.x - x0), h: Math.abs(p.y - y0) } };
+        }
+        if (cur.kind === "circle") {
+          const cx = cur.geometry.cx!, cy = cur.geometry.cy!;
+          const r = Math.hypot(p.x - cx, p.y - cy);
+          return { ...cur, geometry: { cx, cy, r } };
+        }
+        if (cur.kind === "line") {
+          return { ...cur, geometry: { x1: cur.geometry.x1!, y1: cur.geometry.y1!, x2: p.x, y2: p.y } };
+        }
+        return cur;
+      });
+    }
+  }
+  async function onMouseUpBoard() {
+    if (mode === "ruler") {
+      return;
+    }
+    if (mode === "fog" && fogRect) {
+      await insertFogRegion(fogRect.ax, fogRect.ay, fogRect.bx, fogRect.by, fogTool === "reveal");
+      setFogRect(null);
+      return;
+    }
+    if (mode === "draw" && drawingShape) {
+      const d = drawingShape;
+      setDrawingShape(null);
+      if (d.kind === "rect" && ((d.geometry.w ?? 0) < 0.005 || (d.geometry.h ?? 0) < 0.005)) return;
+      if (d.kind === "circle" && (d.geometry.r ?? 0) < 0.005) return;
+      if (d.kind === "line") {
+        const dx = (d.geometry.x2! - d.geometry.x1!), dy = (d.geometry.y2! - d.geometry.y1!);
+        if (Math.hypot(dx, dy) < 0.005) return;
+      }
+      if (d.kind === "freehand" && (d.geometry.points?.length ?? 0) < 2) return;
+      await persistDrawing(d);
+    }
+  }
+  async function persistDrawing(d: Drawing) {
+    if (!pageId) return;
+    const payload = {
+      game_id: d.game_id,
+      page_id: pageId,
+      layer: d.layer,
+      kind: d.kind,
+      geometry: d.geometry,
+      stroke: d.stroke,
+      fill: d.fill,
+      stroke_width: d.stroke_width,
+      text_content: d.text_content,
+      author_id: d.author_id,
+    };
+    const { error } = await (supabase.from("map_drawings" as never).insert(payload as never) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+  async function deleteDrawing(id: string) {
+    const { error } = await (supabase.from("map_drawings" as never).delete().eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+  async function clearMyDrawings() {
+    if (!pageId) return;
+    if (!confirm("Apagar todos os seus desenhos nesta pÃ¡gina?")) return;
+    const q = supabase.from("map_drawings" as never).delete().eq("page_id", pageId).eq("author_id", userId);
+    const { error } = await (q as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+
+  async function placeCharacterToken(p: DragCharacterPayload, x: number, y: number) {
+    if (!pageId) { toast.error("Nenhuma pÃ¡gina ativa"); return; }
+    const optimisticId = `optimistic-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const optimisticToken: Token = {
+      id: optimisticId,
+      game_id: gameId,
+      page_id: pageId,
+      character_kind: p.kind,
+      character_id: p.id,
+      label: p.label,
+      image_url: p.imageUrl ?? null,
+      owner_id: p.ownerId || userId,
+      x,
+      y,
+      size: gridSettings.size,
+      layer: "tokens",
+    };
+    qc.setQueryData<Token[]>(["tokens", gameId, pageId], (old) => [...(old ?? []), optimisticToken]);
+    const removeOptimistic = () => {
+      qc.setQueryData<Token[]>(["tokens", gameId, pageId], (old) => (old ?? []).filter((t) => t.id !== optimisticId));
+    };
+
+    const { data: createdTokenId, error } = await (supabase.rpc("create_token_from_character" as never, {
+      p_game_id: gameId,
+      p_page_id: pageId,
+      p_character_kind: p.kind,
+      p_character_id: p.id,
+      p_label: p.label,
+      p_image_url: p.imageUrl ?? null,
+      p_x: x,
+      p_y: y,
+    } as never) as unknown as Promise<{ data: string | null; error: { message: string } | null }>);
+    if (!error) {
+      if (createdTokenId) {
+        qc.setQueryData<Token[]>(["tokens", gameId, pageId], (old) => {
+          const current = old ?? [];
+          const serverToken = current.find((token) => token.id === createdTokenId);
+          const withoutPending = current.filter((token) => token.id !== optimisticId && token.id !== createdTokenId);
+          return [...withoutPending, serverToken ?? { ...optimisticToken, id: createdTokenId }];
+        });
+      }
+      window.setTimeout(() => {
+        void qc.invalidateQueries({ queryKey: ["tokens", gameId, pageId] });
+      }, 1500);
+      return;
+    }
+    if (error) {
+      const fallback = await supabase.from("tokens").insert({
+        game_id: gameId,
+        page_id: pageId,
+        character_kind: p.kind,
+        character_id: p.id,
+        label: p.label,
+        image_url: p.imageUrl ?? null,
+        owner_id: p.ownerId || userId,
+        size: gridSettings.size,
+        layer: "tokens",
+        x, y,
+      }).select("*").single();
+      if (fallback.error) {
+        removeOptimistic();
+        toast.error("NÃ£o foi possÃ­vel criar o token", {
+          description: `${error.message}. ${fallback.error.message}`,
+          action: {
+            label: "Tentar novamente",
+            onClick: () => { void placeCharacterToken(p, x, y); },
+          },
+        });
+        return;
+      }
+      const confirmedToken = fallback.data as Token;
+      qc.setQueryData<Token[]>(["tokens", gameId, pageId], (old) => {
+        const current = old ?? [];
+        const withoutConfirmed = current.filter((token) => token.id !== optimisticId && token.id !== confirmedToken.id);
+        return [...withoutConfirmed, confirmedToken];
+      });
+    }
+  }
+
+  useEffect(() => {
+    function onPointerDrop(e: Event) {
+      const detail = (e as CustomEvent).detail as { payload?: DragCharacterPayload; clientX?: number; clientY?: number } | undefined;
+      if (e.defaultPrevented) return;
+      if (!detail?.payload || typeof detail.clientX !== "number" || typeof detail.clientY !== "number") return;
+      const handledBySheet = document
+        .elementsFromPoint(detail.clientX, detail.clientY)
+        .some((el) => el instanceof HTMLElement && (
+          !!el.closest('[data-trainer-sheet-drop-target="true"]') ||
+          !!el.closest('[data-pokemon-pc-drop-target="true"]')
+        ));
+      if (handledBySheet) return;
+      const rect = (innerRef.current ?? boardRef.current)?.getBoundingClientRect();
+      if (!rect) return;
+      const inside =
+        detail.clientX >= rect.left &&
+        detail.clientX <= rect.right &&
+        detail.clientY >= rect.top &&
+        detail.clientY <= rect.bottom;
+      if (!inside) return;
+      const { x, y } = pointToRel(detail.clientX, detail.clientY);
+      void placeCharacterToken(detail.payload, x, y);
+    }
+    window.addEventListener(CHARACTER_POINTER_DROP_EVENT, onPointerDrop);
+    return () => window.removeEventListener(CHARACTER_POINTER_DROP_EVENT, onPointerDrop);
+  }, [gameId, pageId, gridSettings.enabled, gridSettings.snap, gridSettings.snapMode, gridSettings.size]);
+
+  async function onDrop(e: React.DragEvent) {
+    e.preventDefault();
+    if (!pageId) { toast.error("Nenhuma pÃ¡gina ativa"); return; }
+    const imageFile = Array.from(e.dataTransfer.files ?? []).find((file) => file.type.startsWith("image/"));
+    if (imageFile) {
+      if (!isNarrator || mode !== "background") {
+        toast.error("Para soltar uma imagem no mapa, use o modo Backgrounds como narrador.");
+        return;
+      }
+      if (imageFile.size > 5_000_000) { toast.error("Imagem muito grande (>5MB)"); return; }
+      const reader = new FileReader();
+      reader.onload = () => { void addBackground(String(reader.result)); };
+      reader.readAsDataURL(imageFile);
+      return;
+    }
+    const uri = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain");
+    if (uri && /^https?:\/\//i.test(uri.trim()) && mode === "background") {
+      await addBackground(uri.trim());
+      return;
+    }
+    const raw = e.dataTransfer.getData(DRAG_MIME);
+    const { x, y } = pointToRel(e.clientX, e.clientY);
+    if (raw) {
+      const p = JSON.parse(raw) as DragCharacterPayload;
+      await placeCharacterToken(p, x, y);
+      return;
+    }
+    if (dragId) {
+      const t = tokens.find((tk) => tk.id === dragId);
+      if (!t) return;
+      qc.setQueryData<Token[]>(["tokens", gameId, pageId], (old) =>
+        (old ?? []).map((tk) => (tk.id === dragId ? { ...tk, x, y } : tk)));
+      const { error } = await supabase.from("tokens").update({ x, y }).eq("id", dragId);
+      if (error) toast.error(error.message);
+      setDragId(null);
+    }
+  }
+
+  async function removeToken(id: string) {
+    const { error } = await supabase.from("tokens").delete().eq("id", id);
+    if (error) toast.error(error.message);
+  }
+
+  function onTokenPointerDown(e: React.PointerEvent, t: Token, canMove: boolean) {
+    if (!canMove || mode !== "select") return;
+    if (e.button !== undefined && e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedTokenId(t.id);
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let didDrag = false;
+    const move = (ev: PointerEvent) => {
+      if (!didDrag && Math.hypot(ev.clientX - startX, ev.clientY - startY) < 4) return;
+      if (!didDrag) {
+        didDrag = true;
+        setDragId(t.id);
+      }
+      const { x, y } = pointToRel(ev.clientX, ev.clientY);
+      qc.setQueryData<Token[]>(["tokens", gameId, pageId], (old) =>
+        (old ?? []).map((tk) => (tk.id === t.id ? { ...tk, x, y } : tk)),
+      );
+    };
+    const up = async (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      setDragId(null);
+      if (!didDrag) return;
+      const { x, y } = pointToRel(ev.clientX, ev.clientY);
+      const { error } = await supabase.from("tokens").update({ x, y }).eq("id", t.id);
+      if (error) toast.error(error.message);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  }
+
+  async function toggleTokenLayer(id: string, current: "tokens" | "gm") {
+    const next = current === "gm" ? "tokens" : "gm";
+    const { error } = await (supabase.from("tokens").update({ layer: next } as never).eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
+    if (error) toast.error(error.message);
+  }
+
+  // Ruler computed distance
+  const rulerInfo = useMemo(() => {
+    if (!ruler) return null;
+    const rect = (innerRef.current ?? boardRef.current)?.getBoundingClientRect();
+    if (!rect) return null;
+    const dx = (ruler.bx - ruler.ax) * rect.width;
+    const dy = (ruler.by - ruler.ay) * rect.height;
+    const distPx = Math.hypot(dx, dy);
+    const cells = distPx / Math.max(1, gridSettings.size);
+    const meters = cells * gridSettings.unitMeters;
+    return { distPx, cells, meters };
+  }, [ruler, gridSettings.size, gridSettings.unitMeters]);
+  const selectedWall = walls.find((w) => w.id === selectedWallId) ?? null;
+  const viewportGridSize = Math.max(4, gridSettings.size * zoom);
+  const viewportGridOffsetX = ((pan.x % viewportGridSize) + viewportGridSize) % viewportGridSize;
+  const viewportGridOffsetY = ((pan.y % viewportGridSize) + viewportGridSize) % viewportGridSize;
+
+  return (
+    <>
+    <div className="flex h-full w-full items-center justify-center">
+    <div
+      ref={boardRef}
+      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
+      onDrop={onDrop}
+      onWheel={onWheel}
+      onContextMenu={onContextMenu}
+      onMouseDown={onMouseDown}
+      onMouseMove={onMouseMoveBoard}
+      onMouseUp={onMouseUpBoard}
+      className="relative h-full w-full overflow-hidden rounded-xl border border-border bg-muted"
+      style={{
+        cursor: mode === "ruler" || mode === "draw" || mode === "fog" || mode === "walls" ? "crosshair" : undefined,
+      }}
+    >
+      {topLeftSlot && <div className="absolute right-3 top-3 z-30 flex items-center gap-2">{topLeftSlot}</div>}
+
+      {gridSettings.enabled && (
+        <div
+          className="pointer-events-none absolute inset-0 z-[1]"
+          style={{
+            opacity: Math.max(0, Math.min(1, gridSettings.opacity / 100)),
+            backgroundImage:
+              `repeating-linear-gradient(to right, transparent 0, transparent ${Math.max(0, viewportGridSize - 1)}px, ${gridSettings.color} ${Math.max(0, viewportGridSize - 1)}px, ${gridSettings.color} ${viewportGridSize}px), repeating-linear-gradient(to bottom, transparent 0, transparent ${Math.max(0, viewportGridSize - 1)}px, ${gridSettings.color} ${Math.max(0, viewportGridSize - 1)}px, ${gridSettings.color} ${viewportGridSize}px)`,
+            backgroundPosition: `${viewportGridOffsetX}px ${viewportGridOffsetY}px`,
+          }}
+        />
+      )}
+
+      <MapToolbar
+        mode={mode} setMode={setMode}
+        drawTool={drawTool} setDrawTool={setDrawTool}
+        drawColor={drawColor} setDrawColor={setDrawColor}
+        drawWidth={drawWidth} setDrawWidth={setDrawWidth}
+        drawLayer={drawLayer} setDrawLayer={setDrawLayer}
+        isNarrator={isNarrator}
+        showGMLayer={showGMLayer} setShowGMLayer={setShowGMLayer}
+        showBackgrounds={showBackgrounds} setShowBackgrounds={setShowBackgrounds}
+        showTokens={showTokens} setShowTokens={setShowTokens}
+        onClearMine={clearMyDrawings}
+        isMobile={isMobile}
+        visibility={visibility}
+        fogTool={fogTool} setFogTool={setFogTool}
+        wallTool={wallTool} setWallTool={setWallTool}
+        selectedWall={selectedWall}
+        onUpdateWall={updateWall}
+        onDeleteWall={deleteWall}
+        onClearFog={clearFog}
+        onRevealAll={revealAll}
+        onClearWalls={clearWalls}
+        onToggleFog={(v) => toggleGameFlag("fog_enabled", v)}
+        onToggleLighting={(v) => toggleGameFlag("dynamic_lighting", v)}
+        visEnabled={visEnabled} setVisEnabled={setVisEnabled}
+        onAddBackground={addBackground}
+        onDeleteSelectedBg={selectedBgId ? () => void deleteBackground(selectedBgId) : undefined}
+        onSendBgBack={selectedBgId ? () => void reorderBg(selectedBgId, "back") : undefined}
+        onBringBgFront={selectedBgId ? () => void reorderBg(selectedBgId, "front") : undefined}
+        selectedBgId={selectedBgId}
+        pageSwitcherSlot={(
+          <PageSwitcher
+            gameId={gameId}
+            viewingPageId={viewingPageId}
+            activePageId={activePageId}
+            isNarrator={isNarrator}
+            onView={(id) => setViewingPageId(id)}
+            embedded
+          />
+        )}
+        toolbarSlot={toolbarSlot}
+      />
+
+      <div
+        ref={innerRef}
+        className="absolute inset-0 origin-center"
+        style={{
+          transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+          ...(backgroundUrl
+            ? { backgroundImage: `url(${backgroundUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
+            : {}),
+        }}
+      >
+      {mapPings.map((ping) => (
+        <div
+          key={ping.id}
+          className="pointer-events-none absolute z-[35] -translate-x-1/2 -translate-y-1/2"
+          style={{ left: `${ping.x * 100}%`, top: `${ping.y * 100}%` }}
+        >
+          <span className="map-ping-wave absolute -left-12 -top-12 h-24 w-24 rounded-full border-2 border-primary bg-primary/10 shadow-[0_0_30px_rgba(239,68,68,0.45)]" />
+          <span className="absolute -left-1.5 -top-1.5 h-3 w-3 rounded-full bg-primary shadow-[0_0_18px_rgba(239,68,68,0.9)]" />
+        </div>
+      ))}
+
+      {/* Multi-image background layer */}
+      {showBackgrounds && mapBgs.map((bg) => {
+        const isSel = selectedBgId === bg.id;
+        const editable = isNarrator && mode === "background";
+        const cropX = bg.crop_x ?? 0;
+        const cropY = bg.crop_y ?? 0;
+        const cropW = bg.crop_w ?? 1;
+        const cropH = bg.crop_h ?? 1;
+        return (
+          <div
+            key={bg.id}
+            className={`absolute ${editable ? "cursor-move" : "pointer-events-none"} ${isSel ? "outline-2 outline-amber-400 outline-dashed" : ""}`}
+            style={{
+              left: `${bg.x * 100}%`,
+              top: `${bg.y * 100}%`,
+              width: `${bg.width * 100}%`,
+              height: `${bg.height * 100}%`,
+              transform: `rotate(${bg.rotation}deg)`,
+              transformOrigin: "center center",
+              zIndex: 0,
+            }}
+            onMouseDown={(e) => {
+              if (!editable) return;
+              e.stopPropagation();
+              setSelectedBgId(bg.id);
+              bgDragRef.current = { id: bg.id, kind: "move", sx: e.clientX, sy: e.clientY, ox: bg.x, oy: bg.y };
+            }}
+          >
+            <div className="pointer-events-none relative h-full w-full overflow-hidden">
+              <img
+                src={bg.image_url}
+                alt=""
+                draggable={false}
+                className="absolute select-none"
+                style={{
+                  left: `${-(cropX / cropW) * 100}%`,
+                  top: `${-(cropY / cropH) * 100}%`,
+                  width: `${100 / cropW}%`,
+                  height: `${100 / cropH}%`,
+                  objectFit: "fill",
+                }}
+              />
+            </div>
+            {editable && isSel && (
+              <>
+                {/* resize handle (bottom-right) */}
+                <div
+                  className="absolute -bottom-2 -right-2 h-4 w-4 cursor-se-resize rounded-sm border-2 border-amber-400 bg-background shadow"
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    bgDragRef.current = { id: bg.id, kind: "resize", sx: e.clientX, sy: e.clientY, ow: bg.width, oh: bg.height };
+                  }}
+                />
+                {/* rotate handle (top) */}
+                <div
+                  className="absolute -top-8 left-1/2 -translate-x-1/2 cursor-grab rounded-full border-2 border-amber-400 bg-background p-1 shadow"
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    const target = (e.currentTarget as HTMLElement).parentElement!.getBoundingClientRect();
+                    const cx = target.left + target.width / 2;
+                    const cy = target.top + target.height / 2;
+                    const startAngle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI;
+                    bgDragRef.current = { id: bg.id, kind: "rotate", cx, cy, startAngle, baseRotation: bg.rotation };
+                  }}
+                >
+                  <RotateCw className="h-3 w-3" />
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })}
+
+      {/* Drawings SVG layer */}
+      <svg
+        className="pointer-events-none absolute inset-0 h-full w-full"
+        viewBox="0 0 1000 1000"
+        preserveAspectRatio="none"
+      >
+        {visibleDrawings.map((d) => renderDrawing(d, false, isNarrator, userId, deleteDrawing))}
+        {drawingShape && renderDrawing(drawingShape, true, isNarrator, userId, deleteDrawing)}
+      </svg>
+
+      {/* Walls layer â€” visible to narrator only */}
+      {isNarrator && (walls.length > 0 || (wallStart && wallCursor)) && (
+        <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1000 1000" preserveAspectRatio="none">
+          {walls.map((w) => {
+            const kind = w.kind ?? "wall";
+            const selected = selectedWallId === w.id;
+            const mx = ((w.x1 + w.x2) / 2) * 1000;
+            const my = ((w.y1 + w.y2) / 2) * 1000;
+            const color = kind === "door" ? "#f59e0b" : kind === "window" ? "#38bdf8" : w.blocks_light === false ? "#a78bfa" : "#ef4444";
+            return (
+            <g key={w.id}>
+              <line
+                x1={w.x1 * 1000} y1={w.y1 * 1000} x2={w.x2 * 1000} y2={w.y2 * 1000}
+                stroke={color} strokeWidth={selected ? 5 : 3} strokeDasharray={w.is_open ? "2 8" : kind === "wall" ? "4 3" : "8 4"} strokeLinecap="round"
+                vectorEffect="non-scaling-stroke" opacity={w.is_open ? 0.45 : 0.9}
+              />
+              {mode === "walls" && (
+                <g
+                  style={{ cursor: "pointer", pointerEvents: "auto" }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedWallId(w.id);
+                    if (kind !== "wall" && wallTool !== "select") void toggleDoor(w);
+                  }}
+                >
+                  <circle cx={mx} cy={my} r={kind === "wall" ? 8 : 12} fill={selected ? "#fbbf24" : color} />
+                  {kind === "wall" ? (
+                    <text x={mx} y={my + 4} fontSize={11} textAnchor="middle" fill="white" fontWeight="bold">{selected ? "âœ“" : "â€¢"}</text>
+                  ) : (
+                    <foreignObject x={mx - 8} y={my - 8} width={16} height={16}>
+                      <div className="flex h-4 w-4 items-center justify-center text-white">
+                        {w.is_open ? <DoorOpen className="h-3.5 w-3.5" /> : <DoorClosed className="h-3.5 w-3.5" />}
+                      </div>
+                    </foreignObject>
+                  )}
+                </g>
+              )}
+            </g>
+            );
+          })}
+          {wallStart && wallCursor && (
+            <line
+              x1={wallStart.x * 1000} y1={wallStart.y * 1000}
+              x2={wallCursor.x * 1000} y2={wallCursor.y * 1000}
+              stroke="#fbbf24" strokeWidth={2} vectorEffect="non-scaling-stroke"
+            />
+          )}
+        </svg>
+      )}
+
+      {/* Fog of War + Dynamic Lighting */}
+      {fogActive && visEnabled && (
+        <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1000 1000" preserveAspectRatio="none">
+          <defs>
+            <mask id={`fog-mask-${gameId}`}>
+              {/* Start fully covered */}
+              <rect x="0" y="0" width="1000" height="1000" fill="white" />
+              {/* Subtract revealed regions (manual fog) */}
+              {visibility.fogEnabled && fogRegions.filter((r) => r.revealed).map((r) => (
+                <rect key={r.id} x={r.x * 1000} y={r.y * 1000} width={r.w * 1000} height={r.h * 1000} fill="black" />
+              ))}
+              {/* Subtract vision polygons */}
+              {visibilityPolygons.map((d, i) => (
+                <path key={`vis-${i}`} d={d} fill="black" />
+              ))}
+              {/* Subtract light polygons (light reveals what is lit) */}
+              {lightPolygons.map((l, i) => (
+                <path key={`lit-${i}`} d={l.path} fill="black" />
+              ))}
+              {savedExploredPaths.map((d, i) => (
+                <path key={`memory-${i}`} d={d} fill="black" />
+              ))}
+              {/* Re-cover hidden regions on top */}
+              {visibility.fogEnabled && fogRegions.filter((r) => !r.revealed).map((r) => (
+                <rect key={r.id} x={r.x * 1000} y={r.y * 1000} width={r.w * 1000} height={r.h * 1000} fill="white" />
+              ))}
+            </mask>
+            <mask id={`fog-memory-mask-${gameId}`}>
+              <rect x="0" y="0" width="1000" height="1000" fill="black" />
+              {savedExploredPaths.map((d, i) => (
+                <path key={`memory-soft-${i}`} d={d} fill="white" />
+              ))}
+            </mask>
+          </defs>
+          {savedExploredPaths.length > 0 && !isNarrator && (
+            <rect
+              x="0" y="0" width="1000" height="1000"
+              fill="#000000"
+              opacity={0.28}
+              mask={`url(#fog-memory-mask-${gameId})`}
+            />
+          )}
+          {(() => {
+            const playerDark = visibility.fogEnabled ? 1 : Math.max(darknessLevel, visibility.dynamicLighting ? 0.85 : 0);
+            const op = isNarrator ? Math.min(0.5, playerDark) : playerDark;
+            return (
+              <rect
+                x="0" y="0" width="1000" height="1000"
+                fill="#000000"
+                opacity={op}
+                mask={`url(#fog-mask-${gameId})`}
+              />
+            );
+          })()}
+          {/* Colored light tint inside light polygons */}
+          {lightPolygons.length > 0 && (
+            <g style={{ mixBlendMode: "screen" }}>
+              <defs>
+                {lightPolygons.map((l, i) => (
+                  <radialGradient key={`lg-${i}`} id={`light-grad-${gameId}-${i}`} cx={l.cx} cy={l.cy} r={l.r} gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor={l.color} stopOpacity={0.55} />
+                    <stop offset={`${Math.round(l.bright * 100)}%`} stopColor={l.color} stopOpacity={0.4} />
+                    <stop offset="100%" stopColor={l.color} stopOpacity={0} />
+                  </radialGradient>
+                ))}
+              </defs>
+              {lightPolygons.map((l, i) => (
+                <path key={`lf-${i}`} d={l.path} fill={`url(#light-grad-${gameId}-${i})`} />
+              ))}
+            </g>
+          )}
+          {/* Live fog rectangle preview */}
+          {isNarrator && mode === "fog" && fogRect && (() => {
+            const x = Math.min(fogRect.ax, fogRect.bx) * 1000;
+            const y = Math.min(fogRect.ay, fogRect.by) * 1000;
+            const w = Math.abs(fogRect.bx - fogRect.ax) * 1000;
+            const h = Math.abs(fogRect.by - fogRect.ay) * 1000;
+            return (
+              <rect x={x} y={y} width={w} height={h}
+                fill={fogTool === "reveal" ? "rgba(34,197,94,0.25)" : "rgba(239,68,68,0.25)"}
+                stroke={fogTool === "reveal" ? "#22c55e" : "#ef4444"} strokeWidth={2}
+                strokeDasharray="4 3" vectorEffect="non-scaling-stroke"
+              />
+            );
+          })()}
+        </svg>
+      )}
+
+      {/* Ruler overlay */}
+      {ruler && rulerInfo && (
+        <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1000 1000" preserveAspectRatio="none">
+          <line
+            x1={ruler.ax * 1000} y1={ruler.ay * 1000}
+            x2={ruler.bx * 1000} y2={ruler.by * 1000}
+            stroke="#fbbf24" strokeWidth={2} strokeDasharray="6 4"
+            vectorEffect="non-scaling-stroke"
+          />
+          <circle cx={ruler.ax * 1000} cy={ruler.ay * 1000} r={5} fill="#fbbf24" vectorEffect="non-scaling-stroke" />
+          <circle cx={ruler.bx * 1000} cy={ruler.by * 1000} r={5} fill="#fbbf24" vectorEffect="non-scaling-stroke" />
+        </svg>
+      )}
+      {ruler && rulerInfo && (
+        <div
+          className="pointer-events-none absolute z-20 rounded bg-black/80 px-2 py-1 text-[11px] font-bold text-amber-300 shadow"
+          style={{
+            left: `${((ruler.ax + ruler.bx) / 2) * 100}%`,
+            top: `${((ruler.ay + ruler.by) / 2) * 100}%`,
+            transform: "translate(-50%, -50%)",
+          }}
+        >
+          {rulerInfo.cells.toFixed(1)} cÃ©lulas Â· {rulerInfo.meters.toFixed(1)} {gridSettings.unitLabel}
+        </div>
+      )}
+
+      {(!isNarrator || showTokens) && tokens.map((t) => {
+        const canMove = isNarrator || canActAsOwner(t);
+        const isSelected = selectedTokenId === t.id;
+        const isHover = hoverTokenId === t.id;
+        const showStats = isSelected || isHover;
+        const onGmLayer = (t.layer ?? "tokens") === "gm";
+        const isHandout = t.style === "handout";
+        return (
+          <div
+            key={t.id}
+              data-map-token
+            onPointerDown={(e) => onTokenPointerDown(e, t, canMove)}
+            onMouseEnter={() => setHoverTokenId(t.id)}
+            onMouseLeave={() => setHoverTokenId((cur) => (cur === t.id ? null : cur))}
+            onClick={(e) => {
+              if (mode !== "select") return;
+              e.stopPropagation();
+              setSelectedTokenId(t.id);
+            }}
+            className="group absolute -translate-x-1/2 -translate-y-1/2 select-none"
+            style={{
+              left: `${t.x * 100}%`,
+              top: `${t.y * 100}%`,
+              width: localSize[t.id] ?? t.size,
+              height: localSize[t.id] ?? t.size,
+              cursor: mode !== "select" ? "inherit" : canMove ? "grab" : "pointer",
+              zIndex: isSelected || isHover ? 20 : 1,
+              opacity: onGmLayer ? 0.7 : 1,
+              touchAction: canMove && mode === "select" ? "none" : undefined,
+              transition: dragId === t.id || resizeTokenId === t.id ? "none" : "left 200ms ease, top 200ms ease, width 120ms ease, height 120ms ease",
+            }}
+            title={t.label}
+          >
+            {/* Auras (rendered behind the avatar, sized in grid cells) */}
+            {!isHandout && [
+              { r: t.aura1_radius ?? 0, c: t.aura1_color ?? "#22c55e" },
+              { r: t.aura2_radius ?? 0, c: t.aura2_color ?? "#3b82f6" },
+            ].map((a, i) => a.r > 0 ? (
+              <div
+                key={`aura-${i}`}
+                className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+                style={{
+                  width: a.r * gridSettings.size * 2,
+                  height: a.r * gridSettings.size * 2,
+                  backgroundColor: a.c,
+                  opacity: 0.18,
+                  border: `2px solid ${a.c}`,
+                  zIndex: -1,
+                }}
+              />
+            ) : null)}
+            {!isHandout && showStats && (
+              <div className="pointer-events-none absolute left-1/2 -top-2 -translate-x-1/2 -translate-y-full">
+                <TokenStatsBar
+                  kind={t.character_kind}
+                  id={t.character_id}
+                  gameId={gameId}
+                  editable={canMove}
+                  expanded={isSelected}
+                />
+              </div>
+            )}
+            {/* Custom bar (always visible above token when configured) */}
+            {(t.bar_label && t.bar_max && t.bar_max > 0) && (
+              <div className="pointer-events-none absolute left-1/2 -top-3 -translate-x-1/2 -translate-y-full flex flex-col items-center gap-0.5">
+                <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted/70 ring-1 ring-background/80">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.max(0, Math.min(100, ((t.bar_value ?? 0) / t.bar_max) * 100))}%`,
+                      backgroundColor: t.bar_color ?? "#f59e0b",
+                    }}
+                  />
+                </div>
+                <span className="rounded bg-background/80 px-1 text-[8px] font-bold uppercase tracking-wider text-foreground/80">
+                  {t.bar_label}
+                </span>
+              </div>
+            )}
+            <div className={`relative flex h-full w-full items-center justify-center ${isHandout ? "" : `rounded-full border-2 ${isSelected ? "border-amber-400 ring-2 ring-amber-400/50" : onGmLayer ? "border-purple-500 ring-2 ring-purple-500/40 border-dashed" : "border-primary ring-2 ring-background"} bg-card shadow-md`}`}>
+              <TokenAvatar
+                kind={t.character_kind}
+                id={t.character_id}
+                fallbackImage={t.image_url ?? null}
+                label={t.label}
+                variant={isHandout ? "handout" : "token"}
+                gameId={gameId}
+              />
+              {!isHandout && <TokenStatusBadges kind={t.character_kind} id={t.character_id} />}
+              {t.tint_color && (
+                <div
+                  className="pointer-events-none absolute inset-0 rounded-full"
+                  style={{ backgroundColor: t.tint_color, opacity: 0.45, mixBlendMode: "multiply" }}
+                />
+              )}
+              {onGmLayer && isNarrator && (
+                <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded bg-purple-600 px-1.5 py-0.5 text-[8px] font-bold uppercase text-white shadow">GM</span>
+              )}
+              {canMove && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); removeToken(t.id); }}
+                  className="absolute -right-1 -top-1 hidden h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow group-hover:flex"
+                  aria-label="Remove token"
+                ><X className="h-3 w-3" /></button>
+              )}
+              {canMove && isSelected && (
+                <div
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setResizeTokenId(t.id);
+                    resizeOrigin.current = { mx: e.clientX, my: e.clientY, size: localSize[t.id] ?? t.size };
+                  }}
+                  className="absolute -bottom-1 -right-1 h-4 w-4 cursor-se-resize rounded-sm border-2 border-amber-400 bg-background shadow"
+                  title="Drag to resize"
+                />
+              )}
+            </div>
+            <div className="pointer-events-none absolute left-1/2 top-full mt-0.5 -translate-x-1/2 whitespace-nowrap rounded bg-background/90 px-1.5 py-0.5 text-[10px] font-semibold shadow">
+              {t.label}
+            </div>
+            {isSelected && onRoll && mode === "select" && (
+              <div
+                data-token-action-bar
+                className="absolute left-1/2 top-full mt-6 -translate-x-1/2"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <TokenActionBar
+                  kind={t.character_kind}
+                  id={t.character_id}
+                  label={t.label}
+                  gameId={gameId}
+                  userId={userId}
+                  onRoll={onRoll}
+                  onClose={() => setSelectedTokenId(null)}
+                  onOpenSheet={() => onOpenSheet?.(t.character_kind, t.character_id, t.label)}
+                  extra={isNarrator ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => toggleTokenLayer(t.id, (t.layer ?? "tokens") as "tokens" | "gm")}
+                        className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-background px-2 text-[11px] font-semibold hover:bg-accent"
+                        title="Mover entre camada visÃ­vel e GM"
+                      >
+                        {onGmLayer ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                        {onGmLayer ? "Tornar visÃ­vel" : "Mover para GM"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLightToken({
+                          id: t.id, label: t.label,
+                          light_enabled: !!t.light_enabled,
+                          light_radius_bright: t.light_radius_bright ?? 0,
+                          light_radius_dim: t.light_radius_dim ?? 0,
+                          light_color: t.light_color ?? "#ffd27a",
+                          light_angle: t.light_angle ?? 360,
+                          light_direction: t.light_direction ?? 0,
+                          vision_radius: t.vision_radius ?? 0,
+                        })}
+                        className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-background px-2 text-[11px] font-semibold hover:bg-accent"
+                        title="VisÃ£o e luz emitida"
+                      >
+                        <Lightbulb className="h-3 w-3" />
+                        VisÃ£o/Luz
+                        {(t.vision_radius ?? 0) > 0 && <span className="opacity-60">Â·{t.vision_radius}</span>}
+                        {t.light_enabled && <span className="opacity-60">Â·â˜¼</span>}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAppearanceToken({
+                          id: t.id, label: t.label,
+                          aura1_radius: t.aura1_radius, aura1_color: t.aura1_color,
+                          aura2_radius: t.aura2_radius, aura2_color: t.aura2_color,
+                          tint_color: t.tint_color,
+                          bar_label: t.bar_label, bar_value: t.bar_value, bar_max: t.bar_max,
+                          bar_color: t.bar_color,
+                        })}
+                        className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-background px-2 text-[11px] font-semibold hover:bg-accent"
+                        title="Auras, tinting e barra customizada"
+                      >
+                        <Palette className="h-3 w-3" />
+                        AparÃªncia
+                      </button>
+                    </>
+                  ) : undefined}
+                />
+              </div>
+            )}
+          </div>
+        );
+      })}
+      </div>
+    </div>
+    </div>
+    <TokenAppearanceDialog
+      token={appearanceToken}
+      open={!!appearanceToken}
+      onOpenChange={(v) => { if (!v) setAppearanceToken(null); }}
+    />
+    <TokenLightDialog
+      init={lightToken}
+      open={!!lightToken}
+      onOpenChange={(v) => { if (!v) setLightToken(null); }}
+    />
+    </>
+  );
+}
+
+function renderDrawing(
+  d: Drawing,
+  isPreview: boolean,
+  isNarrator: boolean,
+  userId: string,
+  onDelete: (id: string) => void,
+) {
+  const sw = d.stroke_width;
+  const stroke = d.stroke;
+  const fill = d.fill ?? "none";
+  const onGm = d.layer === "gm";
+  const opacity = onGm ? 0.7 : 1;
+  const dash = onGm ? "8 4" : undefined;
+  const canDelete = !isPreview && (isNarrator || d.author_id === userId);
+  const wrap = (children: React.ReactNode, cx: number, cy: number) => (
+    <g key={d.id} opacity={opacity}>
+      {children}
+      {canDelete && (
+        <g
+          style={{ cursor: "pointer", pointerEvents: "auto" }}
+          onClick={() => onDelete(d.id)}
+        >
+          <circle cx={cx} cy={cy} r={10} fill="hsl(0 84% 60%)" />
+          <text x={cx} y={cy + 4} fontSize={12} textAnchor="middle" fill="white" fontWeight="bold">Ã—</text>
+        </g>
+      )}
+    </g>
+  );
+
+  if (d.kind === "freehand") {
+    const pts = d.geometry.points ?? [];
+    if (pts.length === 0) return null;
+    const path = pts.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x * 1000} ${y * 1000}`).join(" ");
+    const last = pts[pts.length - 1];
+    return wrap(
+      <path d={path} stroke={stroke} strokeWidth={sw} fill="none" strokeLinecap="round" strokeLinejoin="round" strokeDasharray={dash} vectorEffect="non-scaling-stroke" />,
+      last[0] * 1000, last[1] * 1000,
+    );
+  }
+  if (d.kind === "rect") {
+    const x = (d.geometry.x ?? 0) * 1000;
+    const y = (d.geometry.y ?? 0) * 1000;
+    const w = (d.geometry.w ?? 0) * 1000;
+    const h = (d.geometry.h ?? 0) * 1000;
+    return wrap(
+      <rect x={x} y={y} width={w} height={h} stroke={stroke} strokeWidth={sw} fill={fill} strokeDasharray={dash} vectorEffect="non-scaling-stroke" />,
+      x + w, y,
+    );
+  }
+  if (d.kind === "circle") {
+    const cx = (d.geometry.cx ?? 0) * 1000;
+    const cy = (d.geometry.cy ?? 0) * 1000;
+    const r = (d.geometry.r ?? 0) * 1000;
+    return wrap(
+      <circle cx={cx} cy={cy} r={r} stroke={stroke} strokeWidth={sw} fill={fill} strokeDasharray={dash} vectorEffect="non-scaling-stroke" />,
+      cx + r, cy,
+    );
+  }
+  if (d.kind === "line") {
+    const x1 = (d.geometry.x1 ?? 0) * 1000;
+    const y1 = (d.geometry.y1 ?? 0) * 1000;
+    const x2 = (d.geometry.x2 ?? 0) * 1000;
+    const y2 = (d.geometry.y2 ?? 0) * 1000;
+    return wrap(
+      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={stroke} strokeWidth={sw} strokeLinecap="round" strokeDasharray={dash} vectorEffect="non-scaling-stroke" />,
+      x2, y2,
+    );
+  }
+  if (d.kind === "text") {
+    const x = (d.geometry.x ?? 0) * 1000;
+    const y = (d.geometry.y ?? 0) * 1000;
+    const fs = d.geometry.fontSize ?? 16;
+    return wrap(
+      <text x={x} y={y} fontSize={fs * 2} fill={stroke} fontWeight="bold" strokeDasharray={dash}>{d.text_content}</text>,
+      x + 40, y - 12,
+    );
+  }
+  return null;
+}
+
+function MapToolbar({
+  mode, setMode,
+  drawTool, setDrawTool,
+  drawColor, setDrawColor,
+  drawWidth, setDrawWidth,
+  drawLayer, setDrawLayer,
+  isNarrator,
+  showGMLayer, setShowGMLayer,
+  showBackgrounds, setShowBackgrounds,
+  showTokens, setShowTokens,
+  onClearMine,
+  isMobile,
+  visibility,
+  fogTool, setFogTool,
+  wallTool, setWallTool,
+  selectedWall,
+  onUpdateWall,
+  onDeleteWall,
+  onClearFog, onRevealAll, onClearWalls,
+  onToggleFog, onToggleLighting,
+  visEnabled, setVisEnabled,
+  onAddBackground,
+  onDeleteSelectedBg, onSendBgBack, onBringBgFront, selectedBgId,
+  pageSwitcherSlot,
+  toolbarSlot,
+}: {
+  mode: Mode; setMode: (m: Mode) => void;
+  drawTool: DrawKind; setDrawTool: (k: DrawKind) => void;
+  drawColor: string; setDrawColor: (c: string) => void;
+  drawWidth: number; setDrawWidth: (n: number) => void;
+  drawLayer: "drawing" | "gm"; setDrawLayer: (l: "drawing" | "gm") => void;
+  isNarrator: boolean;
+  showGMLayer: boolean; setShowGMLayer: (b: boolean) => void;
+  showBackgrounds: boolean; setShowBackgrounds: (b: boolean) => void;
+  showTokens: boolean; setShowTokens: (b: boolean) => void;
+  onClearMine: () => void;
+  isMobile?: boolean;
+  visibility: Visibility;
+  fogTool: "reveal" | "hide"; setFogTool: (t: "reveal" | "hide") => void;
+  wallTool: WallTool; setWallTool: (t: WallTool) => void;
+  selectedWall: Wall | null;
+  onUpdateWall: (id: string, patch: Partial<Wall>) => void | Promise<void>;
+  onDeleteWall: (id: string) => void | Promise<void>;
+  onClearFog: () => void;
+  onRevealAll: () => void;
+  onClearWalls: () => void;
+  onToggleFog: (v: boolean) => void;
+  onToggleLighting: (v: boolean) => void;
+  visEnabled: boolean; setVisEnabled: (b: boolean) => void;
+  onAddBackground: (url: string, options?: BackgroundAddOptions) => void | Promise<void>;
+  onDeleteSelectedBg?: () => void;
+  onSendBgBack?: () => void;
+  onBringBgFront?: () => void;
+  selectedBgId: string | null;
+  pageSwitcherSlot?: React.ReactNode;
+  toolbarSlot?: React.ReactNode;
+}) {
+  const [collapsed, setCollapsed] = useState(false);
+
+  const modeIcon = (m: Mode) => {
+    switch (m) {
+      case "select": return <MousePointer2 className="h-3.5 w-3.5" />;
+      case "ruler": return <Ruler className="h-3.5 w-3.5" />;
+      case "draw": return <Pencil className="h-3.5 w-3.5" />;
+      case "fog": return <CloudFog className="h-3.5 w-3.5" />;
+      case "walls": return <Box className="h-3.5 w-3.5" />;
+      case "background": return <ImageIcon className="h-3.5 w-3.5" />;
+    }
+  };
+
+  return (
+    <div
+      data-map-toolbar
+      className={`pointer-events-auto absolute left-3 top-3 z-30 flex max-w-[calc(100vw-1.5rem)] flex-col gap-1.5 rounded-lg border border-border bg-card/95 p-1.5 shadow-lg backdrop-blur transition-all ${collapsed ? "w-10 items-center" : "w-72"}`}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      {/* Header / toggle */}
+      <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"} gap-1 border-b border-border pb-1`}>
+        {!collapsed && <span className="px-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Ferramentas</span>}
+        <button
+          type="button"
+          onClick={() => setCollapsed((c) => !c)}
+          title={collapsed ? "Expandir ferramentas" : "Recolher ferramentas"}
+          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded hover:bg-accent"
+        >
+          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+        </button>
+      </div>
+
+      {collapsed ? (
+        <div className="flex flex-col items-center gap-1">
+          {(["select", "ruler", "draw", ...(isNarrator ? ["fog", "walls", "background"] : [])] as Mode[]).map((m) => (
+            <ToolBtn key={m} active={mode === m} onClick={() => setMode(m)} title={modeTitle(m)}>
+              {modeIcon(m)}
+            </ToolBtn>
+          ))}
+        </div>
+      ) : (
+        <>
+          {(pageSwitcherSlot || toolbarSlot) && (
+            <div className="flex flex-col gap-1.5 border-b border-border pb-1.5">
+              {pageSwitcherSlot}
+              {toolbarSlot}
+            </div>
+          )}
+          <div className="flex flex-wrap gap-1">
+            <ToolBtn active={mode === "select"} onClick={() => setMode("select")} title="Selecionar (clique e arraste tokens)"><MousePointer2 className="h-3.5 w-3.5" /></ToolBtn>
+            <ToolBtn active={mode === "ruler"} onClick={() => setMode("ruler")} title="RÃ©gua (medir distÃ¢ncia)"><Ruler className="h-3.5 w-3.5" /></ToolBtn>
+            <ToolBtn active={mode === "draw"} onClick={() => setMode("draw")} title="Desenhar"><Pencil className="h-3.5 w-3.5" /></ToolBtn>
+            {isNarrator && (
+              <>
+                <ToolBtn active={mode === "fog"} onClick={() => setMode("fog")} title="Fog of War (manual)"><CloudFog className="h-3.5 w-3.5" /></ToolBtn>
+                <ToolBtn active={mode === "walls"} onClick={() => setMode("walls")} title="Paredes (bloqueiam visÃ£o)"><Box className="h-3.5 w-3.5" /></ToolBtn>
+                <ToolBtn active={mode === "background"} onClick={() => setMode("background")} title="Backgrounds (mover/redimensionar/rotacionar imagens)"><ImageIcon className="h-3.5 w-3.5" /></ToolBtn>
+              </>
+            )}
+          </div>
+          {mode === "draw" && (
+            <>
+              <div className="flex flex-wrap gap-1 border-t border-border pt-1">
+                <ToolBtn active={drawTool === "freehand"} onClick={() => setDrawTool("freehand")} title="Caneta livre"><Pencil className="h-3.5 w-3.5" /></ToolBtn>
+                <ToolBtn active={drawTool === "rect"} onClick={() => setDrawTool("rect")} title="RetÃ¢ngulo"><Square className="h-3.5 w-3.5" /></ToolBtn>
+                <ToolBtn active={drawTool === "circle"} onClick={() => setDrawTool("circle")} title="CÃ­rculo"><CircleIcon className="h-3.5 w-3.5" /></ToolBtn>
+                <ToolBtn active={drawTool === "line"} onClick={() => setDrawTool("line")} title="Linha"><Minus className="h-3.5 w-3.5" /></ToolBtn>
+                <ToolBtn active={drawTool === "text"} onClick={() => setDrawTool("text")} title="Texto"><TypeIcon className="h-3.5 w-3.5" /></ToolBtn>
+              </div>
+              <div className="flex items-center gap-1 border-t border-border pt-1">
+                <input type="color" value={drawColor} onChange={(e) => setDrawColor(e.target.value)} className="h-6 w-7 cursor-pointer rounded border border-border bg-transparent" title="Cor" />
+                <input
+                  type="range" min={1} max={12} value={drawWidth}
+                  onChange={(e) => setDrawWidth(Number(e.target.value))}
+                  className="h-6 w-16" title={`Espessura: ${drawWidth}`}
+                />
+              </div>
+              {isNarrator && (
+                <div className="flex flex-wrap gap-1 border-t border-border pt-1">
+                  <ToolBtn active={drawLayer === "drawing"} onClick={() => setDrawLayer("drawing")} title="Desenhar na camada visÃ­vel">VisÃ­vel</ToolBtn>
+                  <ToolBtn active={drawLayer === "gm"} onClick={() => setDrawLayer("gm")} title="Desenhar sÃ³ para o narrador">GM</ToolBtn>
+                </div>
+              )}
+            </>
+          )}
+          {mode === "fog" && isNarrator && (
+            <div className="flex flex-col gap-1 border-t border-border pt-1">
+              <div className="flex flex-wrap gap-1">
+                <ToolBtn active={fogTool === "reveal"} onClick={() => setFogTool("reveal")} title="Pincel: revelar Ã¡rea">Revelar</ToolBtn>
+                <ToolBtn active={fogTool === "hide"} onClick={() => setFogTool("hide")} title="Pincel: ocultar Ã¡rea">Ocultar</ToolBtn>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                <ToolBtn onClick={onRevealAll} title="Revelar mapa inteiro">Tudo</ToolBtn>
+                <ToolBtn onClick={onClearFog} title="Apagar toda a fog"><Trash2 className="h-3.5 w-3.5" /></ToolBtn>
+              </div>
+            </div>
+          )}
+          {mode === "walls" && isNarrator && (
+            <div className="flex flex-col gap-1 border-t border-border pt-1">
+              <div className="px-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Paredes & Fog</div>
+              <div className="grid grid-cols-3 gap-1">
+                <ToolBtn active={wallTool === "select"} onClick={() => setWallTool("select")} title="Selecionar parede"><MousePointer2 className="h-3.5 w-3.5" /></ToolBtn>
+                <ToolBtn active={wallTool === "single"} onClick={() => setWallTool("single")} title="Parede unica: 2 cliques">Parede</ToolBtn>
+                <ToolBtn active={wallTool === "poly"} onClick={() => setWallTool("poly")} title="Linha continua. Enter fecha, Esc cancela">Poly</ToolBtn>
+                <ToolBtn active={wallTool === "vision"} onClick={() => setWallTool("vision")} title="Bloqueia visao, mas nao luz">Visao</ToolBtn>
+                <ToolBtn active={wallTool === "door"} onClick={() => setWallTool("door")} title="Porta abre/fecha ao clicar"><DoorClosed className="h-3.5 w-3.5" /></ToolBtn>
+                <ToolBtn active={wallTool === "window"} onClick={() => setWallTool("window")} title="Janela bloqueia visao, nao luz"><DoorOpen className="h-3.5 w-3.5" /></ToolBtn>
+              </div>
+              {selectedWall && (
+                <div className="space-y-1 rounded border border-border bg-background/70 p-1.5">
+                  <div className="flex items-center justify-between text-[10px] font-bold uppercase text-muted-foreground">
+                    <span>{selectedWall.kind ?? "wall"}</span>
+                    <button type="button" className="rounded p-1 hover:bg-accent" onClick={() => onDeleteWall(selectedWall.id)} title="Excluir parede">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <label className="flex items-center gap-1 text-[11px]">
+                    <input
+                      type="checkbox"
+                      checked={selectedWall.blocks_sight !== false}
+                      onChange={(e) => onUpdateWall(selectedWall.id, { blocks_sight: e.target.checked })}
+                    />
+                    Bloqueia visao
+                  </label>
+                  <label className="flex items-center gap-1 text-[11px]">
+                    <input
+                      type="checkbox"
+                      checked={selectedWall.blocks_light !== false}
+                      onChange={(e) => onUpdateWall(selectedWall.id, { blocks_light: e.target.checked })}
+                    />
+                    Bloqueia luz
+                  </label>
+                  {(selectedWall.kind === "door" || selectedWall.kind === "window") && (
+                    <div className="flex flex-wrap gap-1">
+                      <ToolBtn
+                        active={!!selectedWall.is_open}
+                        onClick={() => onUpdateWall(selectedWall.id, { is_open: !selectedWall.is_open })}
+                        title={selectedWall.is_open ? "Fechar" : "Abrir"}
+                      >
+                        {selectedWall.is_open ? <DoorOpen className="h-3.5 w-3.5" /> : <DoorClosed className="h-3.5 w-3.5" />}
+                      </ToolBtn>
+                      <ToolBtn
+                        active={!!selectedWall.locked}
+                        onClick={() => onUpdateWall(selectedWall.id, { locked: !selectedWall.locked })}
+                        title={selectedWall.locked ? "Destrancar" : "Trancar"}
+                      >
+                        {selectedWall.locked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+                      </ToolBtn>
+                    </div>
+                  )}
+                </div>
+              )}
+              <ToolBtn onClick={onClearWalls} title="Apagar todas as paredes"><Trash2 className="h-3.5 w-3.5" /></ToolBtn>
+            </div>
+          )}
+          {mode === "background" && isNarrator && (
+            <div className="flex flex-col gap-1 border-t border-border pt-1">
+              <p className="px-1 text-[10px] text-muted-foreground">Clique numa imagem para mover/redimensionar/rotacionar</p>
+              <BgUrlAdd onAdd={onAddBackground} />
+              {selectedBgId && (
+                <div className="flex flex-wrap gap-1">
+                  {onBringBgFront && <ToolBtn onClick={onBringBgFront} title="Trazer para frente"><ArrowUp className="h-3.5 w-3.5" /></ToolBtn>}
+                  {onSendBgBack && <ToolBtn onClick={onSendBgBack} title="Enviar para trÃ¡s"><ArrowDown className="h-3.5 w-3.5" /></ToolBtn>}
+                  {onDeleteSelectedBg && <ToolBtn onClick={onDeleteSelectedBg} title="Excluir background selecionado"><Trash2 className="h-3.5 w-3.5" /></ToolBtn>}
+                </div>
+              )}
+            </div>
+          )}
+          {isNarrator && (
+            <div className="flex flex-wrap gap-1 border-t border-border pt-1">
+              <ToolBtn active={visibility.fogEnabled} onClick={() => onToggleFog(!visibility.fogEnabled)} title={visibility.fogEnabled ? "Desativar Fog of War" : "Ativar Fog of War"}>
+                <CloudFog className="h-3.5 w-3.5" />
+              </ToolBtn>
+              <ToolBtn active={visibility.dynamicLighting} onClick={() => onToggleLighting(!visibility.dynamicLighting)} title={visibility.dynamicLighting ? "Desativar visÃ£o dinÃ¢mica" : "Ativar visÃ£o dinÃ¢mica"}>
+                <Lightbulb className="h-3.5 w-3.5" />
+              </ToolBtn>
+              {(visibility.fogEnabled || visibility.dynamicLighting) && (
+                <ToolBtn active={!visEnabled} onClick={() => setVisEnabled(!visEnabled)} title={visEnabled ? "Esconder fog localmente (narrador)" : "Mostrar fog"}>
+                  {visEnabled ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                </ToolBtn>
+              )}
+            </div>
+          )}
+          <div className="flex flex-wrap gap-1 border-t border-border pt-1">
+            {isNarrator && (
+              <>
+                <ToolBtn active={!showGMLayer} onClick={() => setShowGMLayer(!showGMLayer)} title={showGMLayer ? "Esconder camada GM" : "Mostrar camada GM"}>
+                  GM {showGMLayer ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                </ToolBtn>
+                <ToolBtn active={!showBackgrounds} onClick={() => setShowBackgrounds(!showBackgrounds)} title={showBackgrounds ? "Esconder backgrounds" : "Mostrar backgrounds"}>
+                  Bg {showBackgrounds ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                </ToolBtn>
+                <ToolBtn active={!showTokens} onClick={() => setShowTokens(!showTokens)} title={showTokens ? "Esconder tokens" : "Mostrar tokens"}>
+                  Tk {showTokens ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                </ToolBtn>
+              </>
+            )}
+            <ToolBtn onClick={onClearMine} title="Apagar meus desenhos"><Eraser className="h-3.5 w-3.5" /></ToolBtn>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function modeTitle(m: Mode) {
+  switch (m) {
+    case "select": return "Selecionar";
+    case "ruler": return "RÃ©gua";
+    case "draw": return "Desenhar";
+    case "fog": return "Fog of War";
+    case "walls": return "Paredes";
+    case "background": return "Backgrounds";
+  }
+}
+
+function ToolBtn({ active, onClick, title, children }: { active?: boolean; onClick: () => void; title: string; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className={`inline-flex h-7 min-w-[28px] items-center justify-center gap-1 rounded px-1.5 text-[11px] font-semibold transition ${active ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function BgUrlAdd({ onAdd }: { onAdd: (url: string, options?: BackgroundAddOptions) => void | Promise<void> }) {
+  const [url, setUrl] = useState("");
+  const [cols, setCols] = useState(1);
+  const [rows, setRows] = useState(1);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const tileOptions = { cols, rows };
+  async function submitUrl() {
+    const u = url.trim();
+    if (!u) return;
+    await onAdd(u, tileOptions);
+    setUrl("");
+  }
+  function handleFile(file: File) {
+    if (!file.type.startsWith("image/")) { toast.error("Selecione uma imagem"); return; }
+    if (file.size > 5_000_000) { toast.error("Imagem muito grande (>5MB)"); return; }
+    const reader = new FileReader();
+    reader.onload = () => { void onAdd(String(reader.result), tileOptions); };
+    reader.readAsDataURL(file);
+  }
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex gap-1">
+        <input
+          type="text"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="URL da imagem"
+          className="h-7 flex-1 rounded border border-input bg-background px-2 text-[11px]"
+        />
+        <button
+          type="button"
+          onClick={() => void submitUrl()}
+          className="inline-flex h-7 items-center justify-center rounded bg-primary px-2 text-[11px] font-semibold text-primary-foreground hover:opacity-90"
+          title="Adicionar"
+        >
+          <Plus className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <div className="grid grid-cols-2 gap-1">
+        <label className="flex items-center gap-1 text-[10px] text-muted-foreground">
+          Colunas
+          <input
+            type="number"
+            min={1}
+            max={12}
+            value={cols}
+            onChange={(e) => setCols(Math.max(1, Math.min(12, Number(e.target.value) || 1)))}
+            className="h-7 w-full rounded border border-input bg-background px-2 text-[11px] text-foreground"
+          />
+        </label>
+        <label className="flex items-center gap-1 text-[10px] text-muted-foreground">
+          Linhas
+          <input
+            type="number"
+            min={1}
+            max={12}
+            value={rows}
+            onChange={(e) => setRows(Math.max(1, Math.min(12, Number(e.target.value) || 1)))}
+            className="h-7 w-full rounded border border-input bg-background px-2 text-[11px] text-foreground"
+          />
+        </label>
+      </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.currentTarget.value = ""; }}
+      />
+      <button
+        type="button"
+        onClick={() => fileInputRef.current?.click()}
+        className="inline-flex h-7 items-center justify-center gap-1 rounded border border-border bg-background px-2 text-[11px] font-semibold hover:bg-accent"
+      >
+        <ImageIcon className="h-3.5 w-3.5" /> Enviar arquivo
+      </button>
+    </div>
+  );
+}

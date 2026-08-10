@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { POKEMON_ATTRS, SOCIAL_ATTRS, RANKS, type Rank } from "@/lib/pokerole";
+import { applyPaldeaHisuiSpeciesBalance } from "@/lib/paldea-hisui-balance";
 
 const SKILL_NAMES = [
   "Brawl","Channel","Clash","Evasion","Alert","Athletic","Nature","Stealth","Allure","Etiquette","Intimidate","Perform",
@@ -26,12 +27,19 @@ export async function rollPokemonAutofill(
 ): Promise<AutofillResult> {
   const [spRes, natRes, mvRes] = await Promise.all([
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (supabase.from("species") as any).select("base_attrs,attr_limits,base_hp,abilities").eq("id", speciesId).single(),
+    (supabase.from("species") as any).select("name,base_attrs,attr_limits,base_hp,abilities,suggested_rank").eq("id", speciesId).single(),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase.from("natures") as any).select("name,confidence"),
     supabase.from("species_moves").select("min_rank,move_id").eq("species_id", speciesId),
   ]);
-  const sp = (spRes.data ?? {}) as { base_attrs: Record<string, number>; attr_limits: Record<string, number>; base_hp: number; abilities: string[] };
+  const sp = applyPaldeaHisuiSpeciesBalance((spRes.data ?? {}) as {
+    name: string;
+    base_attrs: Record<string, number>;
+    attr_limits: Record<string, number>;
+    base_hp: number;
+    abilities: string[];
+    suggested_rank: Rank | null;
+  });
   const natures = (natRes.data ?? []) as { name: string; confidence: number }[];
   const learnable = (mvRes.data ?? []) as { min_rank: Rank; move_id: string }[];
 

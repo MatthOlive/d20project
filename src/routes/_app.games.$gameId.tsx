@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ImageSourceDialog } from "@/components/ImageSourceDialog";
+import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { ChatPanel } from "@/components/ChatPanel";
 import { useGameSpdefUsesInsight } from "@/hooks/use-game-spdef-uses-insight";
 import { saveGameSpriteStyle, useGameSpriteStyle } from "@/hooks/use-game-sprite-style";
@@ -35,9 +36,11 @@ import { MusicPlayer } from "@/components/MusicPlayer";
 import { DeckPanel } from "@/components/DeckPanel";
 import { toast } from "sonner";
 import { ArrowLeft, Copy, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Swords, ChevronDown, ChevronUp, ChevronRight, Dices, MessageSquare } from "lucide-react";
-import { rollD6, rollShiny, preferredPokemonSprite, POKEMON_ATTRS, SOCIAL_ATTRS, POKEMON_TYPES, RANKS, RANK_LABELS, TYPE_COLORS, type PokemonSpriteStyle, type PokemonType, type Rank } from "@/lib/pokerole";
-import { T20_CLASSES, T20_MECHANICS, T20_MECHANICS_CATEGORY_ORDER, T20_RACES, defaultT20Attributes, defaultT20Skills, rollD20 } from "@/lib/tormenta20";
+import { rollD6, rollShiny, preferredPokemonSprite, POKEMON_ATTRS, SOCIAL_ATTRS, POKEMON_TYPES, RANKS, RANK_LABELS, TYPE_COLORS, type PokemonType, type Rank } from "@/lib/pokerole";
+import type { PokemonSpriteStyle } from "@/lib/pokerole";
+import { T20_MECHANICS, T20_MECHANICS_CATEGORY_ORDER, defaultT20Attributes, defaultT20Skills, rollD20 } from "@/lib/tormenta20";
 import { rollPokemonAutofill } from "@/lib/pokemon-autofill";
+import { applyPaldeaHisuiSpeciesBalance } from "@/lib/paldea-hisui-balance";
 import { REACTION_DECK } from "@/lib/contest";
 
 const BIOME_LABELS: Record<string, string> = {
@@ -61,6 +64,57 @@ type OpenWindow =
   | { kind: "pokemon"; id: string; title: string }
   | { kind: "trainer"; id: string; title: string }
   | { kind: "t20"; id: string; title: string };
+
+type InlineDiceRequest = { label: string; expression: string };
+
+type InlineDiceRoll = {
+  label: string;
+  expression: string;
+  groups: { notation: string; count: number; faces: number; dice: number[]; total: number }[];
+  flatModifier: number;
+  total: number;
+};
+
+function rollInlineDice(requests: InlineDiceRequest[] | undefined): InlineDiceRoll[] {
+  return (requests ?? [])
+    .map((request) => {
+      const { groups, flatModifier } = parseInlineDiceExpression(request.expression);
+      return {
+        label: request.label,
+        expression: request.expression,
+        groups,
+        flatModifier,
+        total: groups.reduce((sum, group) => sum + group.total, 0) + flatModifier,
+      };
+    })
+    .filter((roll) => roll.groups.length > 0 || roll.flatModifier !== 0);
+}
+
+function parseInlineDiceExpression(expression: string) {
+  const groups: InlineDiceRoll["groups"] = [];
+  const regex = /(^|[^a-z0-9])(\d*)d(\d+)/gi;
+  let match: RegExpExecArray | null;
+  let withoutDice = expression;
+  while ((match = regex.exec(expression)) !== null) {
+    const count = Math.max(1, Math.min(100, Number(match[2] || 1)));
+    const faces = Math.max(2, Math.min(1000, Number(match[3] || 0)));
+    if (!Number.isFinite(count) || !Number.isFinite(faces)) continue;
+    withoutDice = withoutDice.replace(match[0], match[1] || "");
+    const dice = Array.from({ length: count }, () => Math.floor(Math.random() * faces) + 1);
+    groups.push({
+      notation: `${count === 1 ? "" : count}d${faces}`,
+      count,
+      faces,
+      dice,
+      total: dice.reduce((sum, die) => sum + die, 0),
+    });
+  }
+  const flatModifier = (withoutDice.match(/[+-]?\s*\d+/g) ?? [])
+    .map((part) => Number(part.replace(/\s+/g, "")))
+    .filter(Number.isFinite)
+    .reduce((sum, value) => sum + value, 0);
+  return { groups, flatModifier };
+}
 
 function GameRoom() {
   const { gameId } = Route.useParams();
@@ -129,16 +183,17 @@ function GameRoom() {
     label: string,
     n: number,
     penalty = 0,
-    meta?: { characterKind: "trainer" | "pokemon" | "t20"; characterId: string; imageUrl?: string | null },
+    meta?: { characterKind: "trainer" | "pokemon" | "t20"; characterId: string; imageUrl?: string | null; diceExpressions?: InlineDiceRequest[] },
   ) {
     if (!user) return;
     if (meta?.characterKind === "t20" || game?.system === "t20") {
       const modifier = n - (penalty || 0);
       const result = rollD20(modifier);
       const finalLabel = modifier === 0 ? label : `${label} (${modifier >= 0 ? "+" : ""}${modifier})`;
+      const extraDice = rollInlineDice(meta?.diceExpressions);
       await supabase.from("chat_messages").insert({
         game_id: gameId, user_id: user.id, kind: "roll",
-        body: finalLabel, roll_data: { ...result, label: finalLabel },
+        body: finalLabel, roll_data: { ...result, label: finalLabel, extraDice },
       });
       if (meta && /iniciativa|initiative/i.test(label)) {
         const name = label.split("-")[0]?.trim() || label;
@@ -512,7 +567,7 @@ function InviteButton({ url }: { url: string }) {
 
 type CharRow =
   | { kind: "trainer"; id: string; label: string; owner_id: string; image_url: string | null; folder: string | null; sprite_url?: string | null }
-  | { kind: "pokemon"; id: string; label: string; owner_id: string; image_url: string | null; folder: string | null; sprite_url: string | null }
+  | { kind: "pokemon"; id: string; label: string; owner_id: string; image_url: string | null; folder: string | null; sprite_url: string | null; species_name: string; species_sprite_url: string | null; is_shiny: boolean }
   | { kind: "t20"; id: string; label: string; owner_id: string; image_url: string | null; folder: string | null; sprite_url?: string | null };
 
 const FOLDER_MIME = "application/x-pokerole-sheet";
@@ -593,10 +648,6 @@ function FilesPanel({
   const [speciesPickerOpen, setSpeciesPickerOpen] = useState(false);
   const [speciesSearch, setSpeciesSearch] = useState("");
   const [newPkmOvergrown, setNewPkmOvergrown] = useState(false);
-  const [t20DialogOpen, setT20DialogOpen] = useState(false);
-  const [newT20Name, setNewT20Name] = useState("");
-  const [newT20Race, setNewT20Race] = useState("");
-  const [newT20Class, setNewT20Class] = useState("");
   const [randomOpen, setRandomOpen] = useState(false);
   const [fStarter, setFStarter] = useState(false);
   const [fFirst, setFFirst] = useState(false);
@@ -904,14 +955,13 @@ function FilesPanel({
 
   const createT20Character = useMutation({
     mutationFn: async () => {
-      const name = newT20Name.trim() || "Novo personagem";
       const { data, error } = await (supabase.from("t20_characters" as never) as any)
         .insert({
           game_id: gameId,
           owner_id: userId,
-          name,
-          race: newT20Race || null,
-          class_name: newT20Class || null,
+          name: "Novo personagem",
+          race: null,
+          class_name: null,
           attributes: defaultT20Attributes(),
           skills: defaultT20Skills(),
         })
@@ -923,10 +973,6 @@ function FilesPanel({
     onSuccess: (c) => {
       qc.invalidateQueries({ queryKey: ["t20-characters", gameId] });
       qc.invalidateQueries({ queryKey: ["characters", gameId] });
-      setT20DialogOpen(false);
-      setNewT20Name("");
-      setNewT20Race("");
-      setNewT20Class("");
       onOpen({ kind: "t20", id: c.id, title: c.name });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -947,6 +993,7 @@ function FilesPanel({
       ...(characters?.pokemon ?? []).map<CharRow>((p) => ({
         kind: "pokemon", id: p.id, label: p.nickname ?? p.species.name, owner_id: p.owner_id,
         image_url: p.image_url, folder: p.folder, sprite_url: preferredPokemonSprite(p.species.name, p.species.sprite_url, !!p.is_shiny, spriteStyle),
+        species_name: p.species.name, species_sprite_url: p.species.sprite_url, is_shiny: !!p.is_shiny,
       })),
     ];
 
@@ -1275,8 +1322,18 @@ function FilesPanel({
             }
           }}
         >
-          {r.kind === "pokemon" && r.sprite_url
-            ? <img src={r.sprite_url} alt="" draggable={false} className="h-6 w-6 shrink-0" style={{ WebkitUserDrag: "none" } as CSSProperties} />
+          {r.kind === "pokemon"
+            ? <PokemonSpriteImage
+                speciesName={r.species_name}
+                spriteUrl={r.species_sprite_url}
+                customUrl={r.image_url}
+                shiny={r.is_shiny}
+                spriteStyle={spriteStyle}
+                alt=""
+                draggable={false}
+                className="h-6 w-6 shrink-0 object-contain"
+                style={{ WebkitUserDrag: "none" } as CSSProperties}
+              />
             : <User className="h-3.5 w-3.5 shrink-0" />}
           <span className="truncate">{r.label}</span>
         </div>
@@ -1494,49 +1551,9 @@ function FilesPanel({
         <h3 className="text-sm font-bold">{system === "t20" ? "Personagens" : "Characters"}</h3>
         <div className="flex flex-wrap gap-1.5">
           {system === "t20" ? (
-            <Dialog open={t20DialogOpen} onOpenChange={setT20DialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <User className="mr-1 h-3.5 w-3.5" /> Personagem
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader><DialogTitle>Novo personagem T20</DialogTitle></DialogHeader>
-                <div className="space-y-3">
-                  <div>
-                    <Label className="text-xs">Nome</Label>
-                    <Input value={newT20Name} onChange={(e) => setNewT20Name(e.target.value)} placeholder="Nome do personagem" />
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <div>
-                      <Label className="text-xs">Raca</Label>
-                      <Select value={newT20Race || "none"} onValueChange={(v) => setNewT20Race(v === "none" ? "" : v)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">-</SelectItem>
-                          {T20_RACES.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs">Classe</Label>
-                      <Select value={newT20Class || "none"} onValueChange={(v) => setNewT20Class(v === "none" ? "" : v)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">-</SelectItem>
-                          {T20_CLASSES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button onClick={() => createT20Character.mutate()} disabled={createT20Character.isPending}>
-                    Criar
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <Button size="sm" onClick={() => createT20Character.mutate()} disabled={createT20Character.isPending}>
+              <User className="mr-1 h-3.5 w-3.5" /> Personagem
+            </Button>
           ) : (
             <>
               <Button size="sm" variant="outline" onClick={() => createTrainer.mutate()}>
@@ -2417,7 +2434,8 @@ function InitiativePanel({ gameId, isNarrator, open, onClose }: { gameId: string
 type SpeciesRow = {
   id: string; name: string; dex_number: number | null; sprite_url: string | null;
   types: PokemonType[]; base_hp: number; base_attrs: Record<string, number>;
-  abilities: string[]; hidden_ability: string | null; suggested_rank: string | null;
+  attr_limits: Record<string, number>;
+  abilities: string[]; hidden_ability: string | null; suggested_rank: Rank | null;
   evolutions: string[];
 };
 
@@ -2426,7 +2444,8 @@ function PokedexCompendium() {
   const { data: list = [] } = useQuery({
     queryKey: ["compendium-species"],
     queryFn: async () => {
-      return await fetchAllPaged<SpeciesRow>("species", "*", { orderBy: "dex_number", ascending: true });
+      const species = await fetchAllPaged<SpeciesRow>("species", "*", { orderBy: "dex_number", ascending: true });
+      return species.map((entry) => applyPaldeaHisuiSpeciesBalance(entry));
     },
   });
   const filtered = list.filter((s) => !q || s.name.toLowerCase().includes(q.toLowerCase()));
@@ -2437,7 +2456,13 @@ function PokedexCompendium() {
         {filtered.map((s) => (
           <details key={s.id} className="rounded-md border border-border bg-card">
             <summary className="flex cursor-pointer items-center gap-2 px-2 py-1.5">
-              {s.sprite_url ? <img src={s.sprite_url} alt="" className="h-8 w-8 object-contain" /> : <div className="h-8 w-8 rounded bg-muted" />}
+              <PokemonSpriteImage
+                speciesName={s.name}
+                spriteUrl={s.sprite_url}
+                alt=""
+                className="h-8 w-8 object-contain"
+                emptyFallback={<div className="h-8 w-8 rounded bg-muted" />}
+              />
               <span className="text-xs text-muted-foreground">#{String(s.dex_number ?? 0).padStart(3, "0")}</span>
               <span className="flex-1 text-sm font-semibold">{s.name}</span>
               <div className="flex gap-0.5">
@@ -2679,13 +2704,13 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
       } as never)
       .eq("id", gameId);
     if (error) { toast.error(error.message); return; }
-    toast.success("Configurações salvas");
     try {
       await saveGameSpriteStyle(gameId, spriteStyle);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha ao salvar estilo de sprite");
       return;
     }
+    toast.success("Configurações salvas");
     qc.setQueryData(["game-sprite-style", gameId], spriteStyle);
     qc.setQueryData(["game-spdef-uses-insight", gameId], spdefIns);
     qc.setQueryData(["game-effectiveness-flat", gameId], effFlat);

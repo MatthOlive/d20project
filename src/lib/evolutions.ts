@@ -1,4 +1,6 @@
 // Auto-generated from evoluÃ§Ã£o.xlsx â€” do not hand-edit.
+import { PALDEA_HISUI_EVOLUTION_RULES } from "./paldea-hisui-evolutions";
+
 export type EvolutionKind = "time" | "item" | "happiness_loyalty" | "trade" | "attribute" | "specific";
 export type EvolutionRule = {
   from: string;
@@ -879,5 +881,2039 @@ export const EVOLUTION_RULES: EvolutionRule[] = [
     to: "Hitmonlee",
     kinds: ["attribute"],
     attribute: "atk",
-ï¸¶‰Ëkºwµç@€€Ñ¼è€‰•¥‘Õ•å”ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰±¥ÑÑ•¸ˆ°4(€€€Ñ¼è€‰Q½ÉÉ……Ğˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰Ñ½ÉÉ……Ğˆ°4(€€€Ñ¼è€‰%¹¥¹•É½…Èˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰Á½ÁÁ±¥¼ˆ°4(€€€Ñ¼è€‰	É¥½¹¹”ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰‰É¥½¹¹”ˆ°4(€€€Ñ¼è€‰AÉ¥µ…É¥¹„ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰Á¥­¥Á•¬ˆ°4(€€€Ñ¼è€‰QÉÕµ‰•…¬ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰ÑÉÕµ‰•…¬ˆ°4(€€€Ñ¼è€‰Q½Õ…¹¹½¸ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰åÕ¹½½Ìˆ°4(€€€Ñ¼è€‰ÕµÍ¡½½Ìˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰ÉÕ‰‰¥¸ˆ°4(€€€Ñ¼è€‰¡…É©…‰Õœˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰™…ÍĞˆ°4(€ô°4(€ì4(€€€™É½´è€‰¡…É©…‰Õœˆ°4(€€€Ñ¼è€‰Y¥­…Ù½±Ğˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰É…‰É…İ±•Èˆ°4(€€€Ñ¼è€‰É…‰½µ¥¹…‰±”ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰ÕÑ¥•±™äˆ°4(€€€Ñ¼è€‰I¥‰½µ‰•”ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰É½­ÉÕ™˜ˆ°4(€€€Ñ¼è€‰±å…¹É½Œˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€€€ÍÁ•¥™¥Œè€‰‘…äˆ°4(€ô°4(€ì4(€€€™É½´è€‰É½­ÉÕ™˜ˆ°4(€€€Ñ¼è€‰±å…¹É½Œˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€€€ÍÁ•¥™¥Œè€‰‘…İ¸ˆ°4(€ô°4(€ì4(€€€™É½´è€‰É½­ÉÕ™˜ˆ°4(€€€Ñ¼è€‰±å…¹É½Œˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€€€ÍÁ•¥™¥Œè€‰¹¥¡Ğˆ°4(€ô°4(€ì4(€€€™É½´è€‰µ…É•…¹¥”ˆ°4(€€€Ñ¼è€‰Q½á…Á•àˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰µÕ‘‰É…äˆ°4(€€€Ñ¼è€‰5Õ‘Í‘…±”ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰‘•İÁ¥‘•Èˆ°4(€€€Ñ¼è€‰É…ÅÕ…¹¥ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰™½µ…¹Ñ¥Ìˆ°4(€€€Ñ¼è€‰1ÕÉ…¹Ñ¥Ìˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰µ½É•±Õ±°ˆ°4(€€€Ñ¼è€‰M¡¥¥¹½Ñ¥Œˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰Í…±…¹‘¥Ğˆ°4(€€€Ñ¼è€‰M…±…éé±”ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€€€ÍÁ•¥™¥Œè€‰•µ•„ˆ°4(€ô°4(€ì4(€€€™É½´è€‰ÍÑÕ™™Õ°ˆ°4(€€€Ñ¼è€‰	•İ•…Èˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰‰½Õ¹Íİ•Ğˆ°4(€€€Ñ¼è€‰MÑ••¹•”ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰ÍÑ••¹•”ˆ°4(€€€Ñ¼è€‰QÍ…É••¹„ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰İ¥µÁ½ˆ°4(€€€Ñ¼è€‰½±¥Í½Á½ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰Í±½Üˆ°4(€ô°4(€ì4(€€€™É½´è€‰Í…¹‘å…ÍĞˆ°4(€€€Ñ¼è€‰A…±½ÍÍ…¹ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰Í±½Üˆ°4(€ô°4(€ì4(€€€™É½´è€‰ÑåÁ”é¹Õ±°ˆ°4(€€€Ñ¼è€‰M¥±Ù…±±äˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰Í±½Üˆ°4(€ô°4(€ì4(€€€™É½´è€‰©…¹µ¼µ¼ˆ°4(€€€Ñ¼è€‰!…­…µ¼µ¼ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰Í±½Üˆ°4(€ô°4(€ì4(€€€™É½´è€‰¡…­…µ¼µ¼ˆ°4(€€€Ñ¼è€‰-½µµ¼µ¼ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰Í±½Üˆ°4(€ô°4(€ì4(€€€™É½´è€‰½Íµ½œˆ°4(€€€Ñ¼è€‰½Íµ½•´ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€ô°4(€ì4(€€€™É½´è€‰½Íµ½•´ˆ°4(€€€Ñ¼è€‰Í½±…±•¼ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€ô°4(€ì4(€€€™É½´è€‰½Íµ½•´ˆ°4(€€€Ñ¼è€‰±Õ¹…±„ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€ô°4(€ì4(€€€™É½´è€‰µ•±Ñ…¸ˆ°4(€€€Ñ¼è€‰5•±µ•Ñ…°ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€ô°4(€ì4(€€€™É½´è€‰Õˆµ…‘¡•Í¥Ù”ˆ°4(€€€Ñ¼è€‰U´MÑ¥¹•Èˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€ô°4(€ì4(€€€™É½´è€‰É½½­•äˆ°4(€€€Ñ¼è€‰Q¡İ…­•äˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰Ñ¡İ…­•äˆ°4(€€€Ñ¼è€‰I¥±±…‰½½´ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰Í½É‰Õ¹¹äˆ°4(€€€Ñ¼è€‰I…‰½½Ğˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰É…‰½½Ğˆ°4(€€€Ñ¼è€‰¥¹‘•É…”ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰Í½‰‰±”ˆ°4(€€€Ñ¼è€‰É¥éé¥±”ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰‘É¥éé¥±”ˆ°4(€€€Ñ¼è€‰%¹Ñ•±•½¸ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰Í­İ½Ù•Ğˆ°4(€€€Ñ¼è€‰É••‘•¹Ğˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰É½½­¥‘•”ˆ°4(€€€Ñ¼è€‰I½½­¥‘•”ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰½ÉÙ¥ÍÅÕ¥É”ˆ°4(€€€Ñ¼è€‰½ÉÙ¥­¹¥¡Ğˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰‰±¥Á‰Õœˆ°4(€€€Ñ¼è€‰½ÑÑ±•Èˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰™…ÍĞˆ°4(€ô°4(€ì4(€€€™É½´è€‰‘½ÑÑ±•Èˆ°4(€€€Ñ¼è€‰=É‰••Ñ±”ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰¹¥­¥Ğˆ°4(€€€Ñ¼è€‰Q¡¥•ÙÕ°ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰½ÍÍ¥™±•ÕÈˆ°4(€€€Ñ¼è€‰±‘•½ÍÌˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰İ½½±½¼ˆ°4(€€€Ñ¼è€‰Õ‰İ½½°ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰¡•İÑ±”ˆ°4(€€€Ñ¼è€‰É•‘¹…Üˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰å…µÁ•Èˆ°4(€€€Ñ¼è€‰	½±ÑÕ¹ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰É½±å½±äˆ°4(€€€Ñ¼è€‰…É­½°ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰…É­½°ˆ°4(€€€Ñ¼è€‰½…±½ÍÍ…°ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰…ÁÁ±¥¸ˆ°4(€€€Ñ¼è€‰™±…ÁÁ±”ˆ°4(€€€­¥¹‘Ìèl‰¥Ñ•´‰t°4(€€€¥Ñ•µÌèl‰Ñ…ÉĞ…ÁÁ±”‰t°4(€ô°4(€ì4(€€€™É½´è€‰…ÁÁ±¥¸ˆ°4(€€€Ñ¼è€‰…ÁÁ±•ÑÕ¸ˆ°4(€€€­¥¹‘Ìèl‰¥Ñ•´‰t°4(€€€¥Ñ•µÌèl‰Íİ••Ğ…ÁÁ±”‰t°4(€ô°4(€ì4(€€€™É½´è€‰Í¥±¥½‰É„ˆ°4(€€€Ñ¼è€‰M…¹‘…½¹‘„ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰Í±½Üˆ°4(€ô°4(€ì4(€€€™É½´è€‰…ÉÉ½­Õ‘„ˆ°4(€€€Ñ¼è€‰	…ÉÉ…Í­•İ‘„ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰Ñ½á•°ˆ°4(€€€Ñ¼è€‰Q½áÑÉ¥¥Ñäˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰Í±½Üˆ°4(€€€ÍÁ•¥™¥Œè€‰•áÑÉ½Ù•ÉĞ¹…ÑÕÉ”ˆ°4(€ô°4(€ì4(€€€™É½´è€‰Ñ½á•°ˆ°4(€€€Ñ¼è€‰Q½áÑÉ¥¥Ñäˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€€€ÍÁ•¥™¥Œè€‰¥¹ÑÉ½Ù•ÉĞ¹…ÑÕÉ”ˆ°4(€ô°4(€ì4(€€€™É½´è€‰Í¥éé±¥Á•‘”ˆ°4(€€€Ñ¼è€‰•¹Ñ¥Í­½É ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰Í±½Üˆ°4(€ô°4(€ì4(€€€™É½´è€‰±½‰‰½ÁÕÌˆ°4(€€€Ñ¼è€‰É…ÁÁ±½Ğˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰Í¥¹¥ÍÑ•„ˆ°4(€€€Ñ¼è€‰A½±Ñ•…•¥ÍĞˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”ˆ°€‰¥Ñ•´‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€€€¥Ñ•µÌèl‰É…­•Á½Ğ‰t°4(€ô°4(€ì4(€€€™É½´è€‰¡…Ñ•¹¹„ˆ°4(€€€Ñ¼è€‰!…ÑÑÉ•´ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰¡…ÑÑÉ•´ˆ°4(€€€Ñ¼è€‰!…ÑÑ•É•¹”ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰¥µÁ¥‘¥µÀˆ°4(€€€Ñ¼è€‰5½ÉÉ•´ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰µ½ÉÉ•´ˆ°4(€€€Ñ¼è€‰É¥µµÍ¹…É°ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰i¥é…½½¸…±…Èˆ°4(€€€Ñ¼è€‰1¥¹½½¹”…±…Èˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰±¥¹½½¹”…±…Èˆ°4(€€€Ñ¼è€‰=‰ÍÑ…½½¸ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰µ•½İÑ …±…Èˆ°(€€€Ñ¼è€‰A•ÉÉÍ•É­•Èˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰½ÉÍ½±„…±…Èˆ°4(€€€Ñ¼è€‰ÕÉÍ½±„ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰™…É™•Ñ …±…Èˆ°4(€€€Ñ¼è€‰M¥É™•Ñ£Šeˆ°4(€€€­¥¹‘Ìèl‰ÍÁ•¥™¥Œ‰t°4(€€€ÍÁ•¥™¥Œè€‰…•ÉÑ…È€ÌÉ¥Ñ¥½Ì•´€Ä‰…Ñ…±¡„ˆ°4(€ô°4(€ì4(€€€™É½´è€‰µÈ¸µ¥µ”…±…Èˆ°4(€€€Ñ¼è€‰5È¸I¥µ”ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰‘…ÉÕµ…­„…±…Èˆ°4(€€€Ñ¼è€‰…Éµ…¹¥Ñ…¸…±…Èˆ°4(€€€­¥¹‘Ìèl‰¥Ñ•´‰t°4(€€€¥Ñ•µÌèl‰¥”ÍÑ½¹”‰t°4(€ô°4(€ì4(€€€™É½´è€‰‘…ÉÕµ…­„…±…Èˆ°4(€€€Ñ¼è€‰…Éµ…¹¥Ñ…¸…±…Èé•¸µ½‘”ˆ°4(€€€­¥¹‘Ìèl‰¥Ñ•´‰t°4(€€€¥Ñ•µÌèl‰¥”ÍÑ½¹”‰t°4(€ô°4(€ì4(€€€™É½´è€‰å…µ…Í¬…±…Èˆ°4(€€€Ñ¼è€‰IÕ¹•É¥ÕÌˆ°4(€€€­¥¹‘Ìèl‰ÍÁ•¥™¥Œ‰t°4(€€€ÍÁ•¥™¥Œè€‰Á…ÍÍ…ÈÁ•ÉÑ¼‘”Á¥¹ÑÕÉ…Ì‘”ÉÕ¥¹…Ìˆ°4(€ô°4(€ì4(€€€™É½´è€‰µ¥±•Éäˆ°4(€€€Ñ¼è€‰±É•µ¥”ˆ°4(€€€­¥¹‘Ìèl‰ÍÁ•¥™¥Œ‰t°4(€€€ÍÁ•¥™¥Œè€‰É½‘…È•¹ÅÕ…¹Ñ¼Í•ÕÉ„Õµ„‰•ÉÉäˆ°4(€ô°4(€ì4(€€€™É½´è€‰Á½¹åÑ„…±…Èˆ°4(€€€Ñ¼è€‰I…Á¥‘…Í …±…Èˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰Í¹½´ˆ°4(€€€Ñ¼è€‰É½Íµ½Ñ ˆ°4(€€€­¥¹‘Ìèl‰¡…ÁÁ¥¹•ÍÍ}±½å…±Ñä‰t°4(€€€¡…ÁÁ¥¹•ÍÌè€Ô°4(€ô°4(€ì4(€€€™É½´è€‰Õ™…¹Ğˆ°4(€€€Ñ¼è€‰½ÁÁ•É…©… ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰µ•‘¥Õ´ˆ°4(€ô°4(€ì4(€€€™É½´è€‰‘É••Áäˆ°4(€€€Ñ¼è€‰É…­±½…¬ˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰Í±½Üˆ°4(€ô°4(€ì4(€€€™É½´è€‰‘É…­±½…¬ˆ°4(€€€Ñ¼è€‰É……ÁÕ±Ğˆ°4(€€€­¥¹‘Ìèl‰Ñ¥µ”‰t°4(€€€Ñ¥µ”è€‰Í±½Üˆ°4(€ô°)tì()½¹ÍĞY=1UQ%=9}I%=9}]=ILèI•½ÉñÍÑÉ¥¹œ°ÍÑÉ¥¹œø€ôì(€…±½±…¸è€‰…±½±„ˆ°(€…±½±„è€‰…±½±„ˆ°(€…±…É¥…¸è€‰…±…Èˆ°(€…±…Èè€‰…±…Èˆ°(€™…±…Èè€‰…±…Èˆ°(€¡¥ÍÕ¥…¸è€‰¡¥ÍÕ¤ˆ°(€¡¥ÍÕ¤è€‰¡¥ÍÕ¤ˆ°(€Á…±‘•…¸è€‰Á…±‘•„ˆ°(€Á…±‘•„è€‰Á…±‘•„ˆ°)ôì()•áÁ½ÉĞ™Õ¹Ñ¥½¸…¹½¹¥…±Ù½±ÕÑ¥½¹9…µ”¡¹…µ”èÍÑÉ¥¹œğ¹Õ±°ğÕ¹‘•™¥¹•¤èÍÑÉ¥¹œì(€¥˜€ …¹…µ”¤É•ÑÕÉ¸€ˆˆì(€±•ĞÑ•áĞ€ô¹…µ”(€€€€¹ÑÉ¥´ ¤(€€€€¹Ñ½1½İ•É…Í” ¤(€€€€¹É•Á±…” ½¹¥‘½É…¹qÌ«Šf ½œ°€‰¹¥‘½É…¸™•µ•„ˆ¤(€€€€¹É•Á±…” ½¹¥‘½É…¹qÌ«Šf½œ°€‰¹¥‘½É…¸µ…¡¼ˆ¤(€€€€¹¹½Éµ…±¥é” ‰9ˆ¤(€€€€¹É•Á±…” ½mqÔÀÌÀÀµqÔÀÌÙ™t½œ°€ˆˆ¤ì(€½¹ÍĞÉ•¥½¹ÌèÍÑÉ¥¹mt€ômtì(€Ñ•áĞ€ôÑ•áĞ¹É•Á±…” ½p ¡mx¥t¨¥p¤½œ°€¡}µ…Ñ °½¹Ñ•¹ĞèÍÑÉ¥¹œ¤€ôøì(€€€½¹ÍĞ™½Õ¹€ô½¹Ñ•¹Ğ(€€€€€€¹Ñ½1½İ•É…Í” ¤(€€€€€€¹ÍÁ±¥Ğ ½my„µèÀ´åt¬¼¤(€€€€€€¹µ…À ¡Á…ÉĞ¤€ôøY=1UQ%=9}I%=9}]=IMmÁ…ÉÑt¤(€€€€€€¹™¥±Ñ•È ¡Á…ÉĞ¤èÁ…ÉĞ¥ÌÍÑÉ¥¹œ€ôø€„…Á…ÉĞ¤ì(€€€É•¥½¹Ì¹ÁÕÍ  ¸¸¹™½Õ¹¤ì(€€€É•ÑÕÉ¸€ˆ€ˆì(€ô¤ì(€Ñ•áĞ€ôÑ•áĞ¹É•Á±…” ½qˆ¡…±½±…¹ñ…±½±…ñ…±…É¥…¹ñ…±…Éñ™…±…Éñ¡¥ÍÕ¥…¹ñ¡¥ÍÕ¥ñÁ…±‘•…¹ñÁ…±‘•„¥qˆ½œ°€¡Á…ÉĞ¤€ôøì(€€€½¹ÍĞÉ•¥½¸€ôY=1UQ%=9}I%=9}]=IMmÁ…ÉÑtì(€€€¥˜€¡É•¥½¸¤É•¥½¹Ì¹ÁÕÍ ¡É•¥½¸¤ì(€€€É•ÑÕÉ¸€ˆ€ˆì(€ô¤ì(€½¹ÍĞ‰…Í”€ôÑ•áĞ(€€€€¹É•Á±…” ½q‰™½Éµqˆ½œ°€ˆ€ˆ¤(€€€€¹É•Á±…” ½µÉp¸½œ°€‰µÈˆ¤(€€€€¹É•Á±…” ½™…É™•Ñ¡lŸŠeu½œ°€‰™…É™•Ñ¡ˆ¤(€€€€¹É•Á±…” ½Í¥É™•Ñ¡lŸŠeu½œ°€‰Í¥É™•Ñ¡ˆ¤(€€€€¹É•Á±…” ½q‰¹¥‘½É…¸™•µ…±•qˆ½œ°€‰¹¥‘½É…¸™•µ•„ˆ¤(€€€€¹É•Á±…” ½q‰¹¥‘½É…¸µ…±•qˆ½œ°€‰¹¥‘½É…¸µ…¡¼ˆ¤(€€€€¹É•Á±…” ½my„µèÀ´åt¬½œ°€ˆ€ˆ¤(€€€€¹ÑÉ¥´ ¤(€€€€¹É•Á±…” ½qÌ¬½œ°€ˆ€ˆ¤ì(€½¹ÍĞÕ¹¥ÅÕ•I•¥½¹Ì€ôÉÉ…ä¹™É½´¡¹•ÜM•Ğ¡É•¥½¹Ì¤¤ì(€É•ÑÕÉ¸m‰…Í”°€¸¸¹Õ¹¥ÅÕ•I•¥½¹Ít¹™¥±Ñ•È¡	½½±•…¸¤¹©½¥¸ ˆ€ˆ¤ì)ô()•áÁ½ÉĞ™Õ¹Ñ¥½¸‘¥ÍÁ±…åÙ½±ÕÑ¥½¹Q…É•Ñ9…µ”¡Ñ…É•ĞèÍÑÉ¥¹œ°…¹‘¥‘…Ñ•ÌèÍÑÉ¥¹mt€ômt¤èÍÑÉ¥¹œì(€½¹ÍĞÑ…É•Ñ-•ä€ô…¹½¹¥…±Ù½±ÕÑ¥½¹9…µ”¡Ñ…É•Ğ¤ì(€½¹ÍĞ•á…Ğ€ô…¹‘¥‘…Ñ•Ì¹™¥¹ ¡…¹‘¥‘…Ñ”¤€ôø…¹½¹¥…±Ù½±ÕÑ¥½¹9…µ”¡…¹‘¥‘…Ñ”¤€ôôôÑ…É•Ñ-•ä¤ì(€¥˜€¡•á…Ğ¤É•ÑÕÉ¸•á…Ğì(€½¹ÍĞÁ…ÉÑÌ€ôÑ…É•Ñ-•ä¹ÍÁ±¥Ğ ˆ€ˆ¤ì(€½¹ÍĞÉ•¥½¸€ôÁ…ÉÑÌ¹™¥¹ ¡Á…ÉĞ¤€ôøl‰…±½±„ˆ°€‰…±…Èˆ°€‰¡¥ÍÕ¤ˆ°€‰Á…±‘•„‰t¹¥¹±Õ‘•Ì¡Á…ÉĞ¤¤ì(€¥˜€ …É•¥½¸¤É•ÑÕÉ¸Ñ…É•Ğì(€½¹ÍĞ‰…Í”€ôÁ…ÉÑÌ¹™¥±Ñ•È ¡Á…ÉĞ¤€ôøÁ…ÉĞ€„ôôÉ•¥½¸¤¹©½¥¸ ˆ€ˆ¤ì(€½¹ÍĞÁÉ•ÑÑå	…Í”€ô‰…Í”(€€€€¹ÍÁ±¥Ğ ˆ€ˆ¤(€€€€¹µ…À ¡Á…ÉĞ¤€ôøÁ…ÉĞ¹¡…ÉĞ À¤¹Ñ½UÁÁ•É…Í” ¤€¬Á…ÉĞ¹Í±¥” Ä¤¤(€€€€¹©½¥¸ ˆ€ˆ¤ì(€½¹ÍĞÉ•¥½¹1…‰•°€ôì…±½±„è€‰±½±…¸ˆ°…±…Èè€‰…±…É¥…¸ˆ°¡¥ÍÕ¤è€‰!¥ÍÕ¥…¸ˆ°Á…±‘•„è€‰A…±‘•…¸ˆõmÉ•¥½¹tì(€É•ÑÕÉ¸€‘íÁÉ•ÑÑå	…Í•ô€ ‘íÉ•¥½¹1…‰•±ô½É´¥€ì)ô()•áÁ½ÉĞ™Õ¹Ñ¥½¸…¹½¹¥…±Ù½±ÕÑ¥½¹%Ñ•µ9…µ”¡¹…µ”èÍÑÉ¥¹œğ¹Õ±°ğÕ¹‘•™¥¹•¤èÍÑÉ¥¹œì(€É•ÑÕÉ¸€¡¹…µ”€üü€ˆˆ¤(€€€€¹ÑÉ¥´ ¤(€€€€¹Ñ½1½İ•É…Í” ¤(€€€€¹¹½Éµ…±¥é” ‰9ˆ¤(€€€€¹É•Á±…” ½mqÔÀÌÀÀµqÔÀÌÙ™t½œ°€ˆˆ¤(€€€€¹É•Á±…” ½lqÔÈÀÄáqÔÈÀÄåt½œ°€ˆˆ¤(€€€€¹É•Á±…” ½my„µèÀ´åt¬½œ°€ˆ€ˆ¤(€€€€¹ÑÉ¥´ ¤(€€€€¹É•Á±…” ½qÌ¬½œ°€ˆ€ˆ¤ì)ô()½¹ÍĞIU1}%9`èI•½ÉñÍÑÉ¥¹œ°Ù½±ÕÑ¥½¹IÕ±•mtø€ô€  ¤€ôøì(€½¹ÍĞ¥‘àèI•½ÉñÍÑÉ¥¹œ°Ù½±ÕÑ¥½¹IÕ±•mtø€ôíôì(€™½È€¡½¹ÍĞÈ½˜Y=1UQ%=9}IU1L¤ì(€€€™½È€¡½¹ÍĞ­•ä½˜¹•ÜM•Ğ¡mÈ¹™É½´¹ÑÉ¥´ ¤¹Ñ½1½İ•É…Í” ¤°…¹½¹¥…±Ù½±ÕÑ¥½¹9…µ”¡È¹™É½´¥t¤¤ì(€€€€€¥˜€ …­•ä¤½¹Ñ¥¹Õ”ì(€€€€€€¡¥‘ám­•åtñğômt¤¹ÁÕÍ ¡È¤ì(€€€ô(€ô(€É•ÑÕÉ¸¥‘àì)ô¤ ¤ì()•áÁ½ÉĞ™Õ¹Ñ¥½¸•ÑÙ½±ÕÑ¥½¹IÕ±•Ì¡ÍÁ•¥•Í9…µ”èÍÑÉ¥¹œğ¹Õ±°ğÕ¹‘•™¥¹•¤èÙ½±ÕÑ¥½¹IÕ±•mtì(€¥˜€ …ÍÁ•¥•Í9…µ”¤É•ÑÕÉ¸mtì(€É•ÑÕÉ¸IU1}%9amÍÁ•¥•Í9…µ”¹ÑÉ¥´ ¤¹Ñ½1½İ•É…Í” ¥t€üüIU1}%9am…¹½¹¥…±Ù½±ÕÑ¥½¹9…µ”¡ÍÁ•¥•Í9…µ”¥t€üümtì)ô(4)•áÁ½ÉĞ½¹ÍĞQ%5}Q!IM!=1L€ôì™…ÍĞè€Ô°µ•‘¥Õ´è€ÄÔ°Í±½Üè€ĞÔô…Ì½¹ÍĞì4(4)•áÁ½ÉĞÑåÁ”Ù½±ÕÑ¥½¹…Ñ”€ôì4(€ÉÕ±”èÙ½±ÕÑ¥½¹IÕ±”ì4(€É•…‘äè‰½½±•…¸ì4(€€¼¨¨!Õµ…¸µÉ•…‘…‰±”‘•ÍÉ¥ÁÑ¥½¸½˜Ñ¡”µ•Ñ¡½€¬ÕÉÉ•¹ĞÁÉ½É•ÍÌ¸€¨¼4(€‘•ÍÉ¥ÁÑ¥½¸èÍÑÉ¥¹œì4(€€¼¨¨]¡•¸ÑÉÕ”°‰ÕÑÑ½¸¥Ì…±İ…åÌÍ¡½İ¸É•…É‘±•ÍÌ½˜É•…‘å€€¡”¹œ¸ÑÉ…‘”°ÍÁ•¥™¥Œµ½¹±ä¤¸€¨¼4(€…±İ…åÍM¡½Üè‰½½±•…¸ì4)ôì4(4)•áÁ½ÉĞÑåÁ”Ù½±ÕÑ¥½¹½¹Ñ•áĞ€ôì4(€Ù¥Ñ½É¥•Ìè¹Õµ‰•Èì4(€¡…ÁÁ¥¹•ÍÌè¹Õµ‰•Èì4(€±½å…±Ñäè¹Õµ‰•Èì4(€€¼¨¨±½İ•É…Í•¥Ñ•´¹…µ•Ì…Ù…¥±…‰±”Ñ¼Ñ¡”ÑÉ…¥¹•È€¡‰…œ€¬¡•±¤¸€¨¼4(€¥¹Ù•¹Ñ½Éå%Ñ•µÌèÍÑÉ¥¹mtì4(€€¼¨¨µ…À½˜Á½­•µ½¸…ÑÑÉ¥‰ÕÑ”¹…µ”ƒŠHìÕÉÉ•¹Ğ°µ…àô¸UÍ•™½È…ÑÑÉ¥‰ÕÑ”µµ…à…Ñ¥¹œ¸€¨¼4(€…ÑÑÉÌèI•½ÉñÍÑÉ¥¹œ°ìÕÉÉ•¹Ğè¹Õµ‰•Èìµ…àè¹Õµ‰•Èôøì4)ôì4(4)½¹ÍĞQQI}1%LèI•½ÉñÍÑÉ¥¹œ°ÍÑÉ¥¹mtø€ôì4(€…Ñ¬èl‰ÍÑÉ•¹Ñ ‰t°4(€ÍÑÈèl‰ÍÑÉ•¹Ñ ‰t°4(€ÍÑÉ•¹Ñ èl‰ÍÑÉ•¹Ñ ‰t°4(€‘•àèl‰‘•áÑ•É¥Ñä‰t°4(€‘•áÑ•É¥Ñäèl‰‘•áÑ•É¥Ñä‰t°4(€Ù¥Ğèl‰Ù¥Ñ…±¥Ñä‰t°4(€Ù¥Ñ…±¥Ñäèl‰Ù¥Ñ…±¥Ñä‰t°4(€ÍÁ”èl‰ÍÁ•¥…°‰t°4(€ÍÁ•¥…°èl‰ÍÁ•¥…°‰t°4(€¥¹Ìèl‰¥¹Í¥¡Ğ‰t°4(€¥¹Í¥¡Ğèl‰¥¹Í¥¡Ğ‰t°4)ôì4(4)•áÁ½ÉĞ™Õ¹Ñ¥½¸•Ù…±Õ…Ñ•Ù½±ÕÑ¥½¸¡ÉÕ±”èÙ½±ÕÑ¥½¹IÕ±”°ÑàèÙ½±ÕÑ¥½¹½¹Ñ•áĞ¤èÙ½±ÕÑ¥½¹…Ñ”ì4(€½¹ÍĞÁ…ÉÑÌèÍÑÉ¥¹mt€ômtì4(€±•ĞÉ•…‘ä€ôÑÉÕ”ì4(€±•Ğ…±İ…åÍM¡½Ü€ô™…±Í”ì4(4(€½¹ÍĞ¡…Í-¥¹€ô€¡¬èÙ½±ÕÑ¥½¹-¥¹¤€ôøÉÕ±”¹­¥¹‘Ì¹¥¹±Õ‘•Ì¡¬¤ì4(4(€¥˜€¡¡…Í-¥¹ ‰Ñ¥µ”ˆ¤€˜˜ÉÕ±”¹Ñ¥µ”¤ì4(€€€½¹ÍĞ¹••€ôQ%5}Q!IM!=1MmÉÕ±”¹Ñ¥µ•tì4(€€€Á…ÉÑÌ¹ÁÕÍ ¡Q•µÁ¼€ ‘íÉÕ±”¹Ñ¥µ•ô¤ƒŠP€‘íÑà¹Ù¥Ñ½É¥•Íô¼‘í¹••‘ôÙ¥ÓÍÉ¥…Í€¤ì4(€€€¥˜€¡Ñà¹Ù¥Ñ½É¥•Ì€ğ¹••¤É•…‘ä€ô™…±Í”ì4(€ô4(€¥˜€¡¡…Í-¥¹ ‰¥Ñ•´ˆ¤€˜˜ÉÕ±”¹¥Ñ•µÌ€˜˜ÉÕ±”¹¥Ñ•µÌ¹±•¹Ñ €ø€À¤ì(€€€½¹ÍĞ¥¹Ù•¹Ñ½Éä€ô¹•ÜM•Ğ¡Ñà¹¥¹Ù•¹Ñ½Éå%Ñ•µÌ¹µ…À¡…¹½¹¥…±Ù½±ÕÑ¥½¹%Ñ•µ9…µ”¤¤ì(€€€½¹ÍĞ…Ù…¥±…‰±”€ôÉÕ±”¹¥Ñ•µÌ¹™¥±Ñ•È ¡¥Ğ¤€ôø¥¹Ù•¹Ñ½Éä¹¡…Ì¡…¹½¹¥…±Ù½±ÕÑ¥½¹%Ñ•µ9…µ”¡¥Ğ¤¤¤ì(€€€Á…ÉÑÌ¹ÁÕÍ ¡%Ñ•´ƒŠP€‘íÉÕ±”¹¥Ñ•µÌ¹©½¥¸ ˆ½Ô€ˆ¥ô€ ‘í…Ù…¥±…‰±”¹±•¹Ñ¡ô¼‘íÉÕ±”¹¥Ñ•µÌ¹±•¹Ñ¡ô¹¼¥¹Ù•¹Ó…É¥¼¥€¤ì4(€€€¥˜€¡…Ù…¥±…‰±”¹±•¹Ñ €ôôô€À¤É•…‘ä€ô™…±Í”ì4(€ô4(€¥˜€¡¡…Í-¥¹ ‰¡…ÁÁ¥¹•ÍÍ}±½å…±Ñäˆ¤¤ì4(€€€½¹ÍĞ¹••‘ €ôÉÕ±”¹¡…ÁÁ¥¹•ÍÌ€üü€Àì4(€€€½¹ÍĞ¹••‘0€ôÉÕ±”¹±½å…±Ñä€üü€Àì4(€€€¥˜€¡¹••‘ €ø€À€˜˜¹••‘0€ø€À¤ì4(€€€€€Á…ÉÑÌ¹ÁÕÍ ¡•±¥¥‘…‘”€‘íÑà¹¡…ÁÁ¥¹•ÍÍô¼‘í¹••‘!ô½Ô1•…±‘…‘”€‘íÑà¹±½å…±Ñåô¼‘í¹••‘1õ€¤ì4(€€€€€¥˜€¡Ñà¹¡…ÁÁ¥¹•ÍÌ€ğ¹••‘ €˜˜Ñà¹±½å…±Ñä€ğ¹••‘0¤É•…‘ä€ô™…±Í”ì4(€€€ô•±Í”¥˜€¡¹••‘ €ø€À¤ì4(€€€€€Á…ÉÑÌ¹ÁÕÍ ¡•±¥¥‘…‘”€‘íÑà¹¡…ÁÁ¥¹•ÍÍô¼‘í¹••‘!õ€¤ì4(€€€€€¥˜€¡Ñà¹¡…ÁÁ¥¹•ÍÌ€ğ¹••‘ ¤É•…‘ä€ô™…±Í”ì4(€€€ô•±Í”¥˜€¡¹••‘0€ø€À¤ì4(€€€€€Á…ÉÑÌ¹ÁÕÍ ¡1•…±‘…‘”€‘íÑà¹±½å…±Ñåô¼‘í¹••‘1õ€¤ì4(€€€€€¥˜€¡Ñà¹±½å…±Ñä€ğ¹••‘0¤É•…‘ä€ô™…±Í”ì4(€€€ô•±Í”ì4(€€€€€Á…ÉÑÌ¹ÁÕÍ ¡•±¥¥‘…‘”½Ô1•…±‘…‘”…±Ñ…Í€¤ì4(€€€ô4(€ô4(€¥˜€¡¡…Í-¥¹ ‰…ÑÑÉ¥‰ÕÑ”ˆ¤€˜˜ÉÕ±”¹…ÑÑÉ¥‰ÕÑ”¤ì4(€€€½¹ÍĞ…±¥…Í•Ì€ôQQI}1%MmÉÕ±”¹…ÑÑÉ¥‰ÕÑ”¹Ñ½1½İ•É…Í” ¥t€üümÉÕ±”¹…ÑÑÉ¥‰ÕÑ”¹Ñ½1½İ•É…Í” ¥tì4(€€€½¹ÍĞµ…Ñ €ô…±¥…Í•Ì¹µ…À ¡„¤€ôøÑà¹…ÑÑÉÍm…t¤¹™¥¹¡	½½±•…¸¤ì4(€€€¥˜€¡µ…Ñ ¤ì4(€€€€€Á…ÉÑÌ¹ÁÕÍ ¡€‘íÉÕ±”¹…ÑÑÉ¥‰ÕÑ”¹Ñ½UÁÁ•É…Í” ¥ôµ…á¥µ¥é…‘¼€ ‘íµ…Ñ ¹ÕÉÉ•¹Ñô¼‘íµ…Ñ ¹µ…áô¥€¤ì4(€€€€€¥˜€¡µ…Ñ ¹ÕÉÉ•¹Ğ€ğµ…Ñ ¹µ…à¤É•…‘ä€ô™…±Í”ì4(€€€ô•±Í”ì4(€€€€€Á…ÉÑÌ¹ÁÕÍ ¡€‘íÉÕ±”¹…ÑÑÉ¥‰ÕÑ”¹Ñ½UÁÁ•É…Í” ¥ôµ…á¥µ¥é…‘½€¤ì4(€€€€€É•…‘ä€ô™…±Í”ì4(€€€ô4(€ô4(€¥˜€¡¡…Í-¥¹ ‰ÑÉ…‘”ˆ¤¤ì4(€€€…±İ…åÍM¡½Ü€ôÑÉÕ”ì4(€€€Á…ÉÑÌ¹ÁÕÍ ¡ÉÕ±”¹¥Ñ•µÌ€˜˜ÉÕ±”¹¥Ñ•µÌ¹±•¹Ñ €ø€À€üQÉ½„Í•ÕÉ…¹‘¼€‘íÉÕ±”¹¥Ñ•µÌ¹©½¥¸ ˆ½Ô€ˆ¥õ€€èÙ½±Õ¤Á½ÈÑÉ½…€¤ì4(€ô4(€¥˜€¡¡…Í-¥¹ ‰ÍÁ•¥™¥Œˆ¤€˜˜ÉÕ±”¹ÍÁ•¥™¥Œ¤ì4(€€€€¼¼%˜ÍÁ•¥™¥Œ¥ÌÑ¡”=91d­¥¹°Ñ¡”‰ÕÑÑ½¸…±İ…åÌÍ¡½İÌ¸4(€€€¥˜€¡ÉÕ±”¹­¥¹‘Ì¹±•¹Ñ €ôôô€Ä¤…±İ…åÍM¡½Ü€ôÑÉÕ”ì4(€€€Á…ÉÑÌ¹ÁÕÍ ¡½¹‘§Ÿ¼è€‘íÉÕ±”¹ÍÁ•¥™¥õ€¤ì4(€ô4(4(€¥˜€¡Á…ÉÑÌ¹±•¹Ñ €ôôô€À¤ì4(€€€Á…ÉÑÌ¹ÁÕÍ  ‰M•´½¹‘§Ÿ¼É•¥ÍÑÉ…‘„ˆ¤ì4(€€€…±İ…åÍM¡½Ü€ôÑÉÕ”ì4(€ô4(4(€É•ÑÕÉ¸ì4(€€€ÉÕ±”°4(€€€É•…‘ä°4(€€€…±İ…åÍM¡½Ü°4(€€€‘•ÍÉ¥ÁÑ¥½¸èÁ…ÉÑÌ¹©½¥¸ ˆƒ
-Ü€ˆ¤°4(€ôì4)ô4
+  },
+  {
+    from: "Tyrogue",
+    to: "Hitmontop",
+    kinds: ["attribute"],
+    attribute: "dex",
+  },
+  {
+    from: "Smoochum",
+    to: "Jinx",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Elekid",
+    to: "Electrode",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Magby",
+    to: "Magma",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Larvitar",
+    to: "Pupitar",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "Pupitar",
+    to: "Tyranitar",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "Treecko",
+    to: "Grovyle",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Grovyle",
+    to: "Sceptile",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Torchic",
+    to: "Combusken",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Combusken",
+    to: "Blaziken",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Mudkip",
+    to: "Marshtomp",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Marshtomp",
+    to: "Swampert",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Poochyena",
+    to: "Mightyena",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Zigzagoon",
+    to: "Linoone",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Wurmple",
+    to: "Silcoon",
+    kinds: ["time"],
+    time: "fast",
+  },
+  {
+    from: "Wurmple",
+    to: "Cascoon",
+    kinds: ["time"],
+    time: "fast",
+  },
+  {
+    from: "Silcoon",
+    to: "Beautifly",
+    kinds: ["time"],
+    time: "fast",
+  },
+  {
+    from: "Cascoon",
+    to: "Dustox",
+    kinds: ["time"],
+    time: "fast",
+  },
+  {
+    from: "Lotad",
+    to: "Lombre",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Lombre",
+    to: "Ludicolo",
+    kinds: ["item"],
+    items: ["water stone"],
+  },
+  {
+    from: "Seedot",
+    to: "Nuzleaf",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Nuzleaf",
+    to: "Shiftry",
+    kinds: ["item"],
+    items: ["leaf stone"],
+  },
+  {
+    from: "Tailow",
+    to: "Swellow",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Wingull",
+    to: "Pelipper",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Ralts",
+    to: "Kirlia",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Kirlia",
+    to: "Gardevoir",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Kirlia",
+    to: "Gallade",
+    kinds: ["item", "specific"],
+    items: ["dawn stone"],
+    specific: "Macho",
+  },
+  {
+    from: "Surskit",
+    to: "Masquerain",
+    kinds: ["time"],
+    time: "fast",
+  },
+  {
+    from: "Shroomish",
+    to: "Breloom",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Slakoth",
+    to: "Vigoroth",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "Vigoroth",
+    to: "Slaking",
+    kinds: ["time"],
+    time: "fast",
+  },
+  {
+    from: "Nincada",
+    to: "Ninjask",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Nincada",
+    to: "Shedinja",
+    kinds: ["specific"],
+    specific: "espaÃ§o vazio no time quando nincada evolui para ninjask",
+  },
+  {
+    from: "Whismur",
+    to: "Loudred",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Loudred",
+    to: "Exploud",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Makuhita",
+    to: "Hariyama",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Azurill",
+    to: "Marill",
+    kinds: ["happiness_loyalty"],
+    time: "medium",
+    happiness: 4,
+  },
+  {
+    from: "Nosepass",
+    to: "Probopass",
+    kinds: ["specific"],
+    specific: "A trip to New Mauville.",
+  },
+  {
+    from: "Skitty",
+    to: "Delcatty",
+    kinds: ["item"],
+    items: ["moon stone"],
+  },
+  {
+    from: "Aron",
+    to: "Lairon",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Lairon",
+    to: "Aggron",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "Meditite",
+    to: "Medicham",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Electrike",
+    to: "Manectric",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Roselia",
+    to: "Roserade",
+    kinds: ["item"],
+    items: ["shine stone"],
+  },
+  {
+    from: "Gulpin",
+    to: "Swalot",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Carvanha",
+    to: "Sharpedo",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Wailmer",
+    to: "Wailord",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "Numel",
+    to: "Camerupt",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Spoink",
+    to: "Grumpig",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Trapinch",
+    to: "Vibrava",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Vibrava",
+    to: "Flygon",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "Cacnea",
+    to: "Cacturne",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Swablu",
+    to: "Altaria",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "Barboach",
+    to: "Wishcash",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Corphish",
+    to: "Crawdaunt",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Baltoy",
+    to: "Claydol",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Lileep",
+    to: "Cradily",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Anorith",
+    to: "Armaldo",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Feebas",
+    to: "Milotic",
+    kinds: ["attribute"],
+    time: "medium",
+    attribute: "beauty",
+  },
+  {
+    from: "Shuppet",
+    to: "Banette",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Duskull",
+    to: "Dusclops",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Dusclops",
+    to: "Dusknoir",
+    kinds: ["item", "trade"],
+    items: ["Reaper Cloth"],
+  },
+  {
+    from: "Wynaut",
+    to: "Wobbuffet",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Snorunt",
+    to: "Glalie",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Snorunt",
+    to: "Froslass",
+    kinds: ["item", "specific"],
+    items: ["dawn stone"],
+    specific: "Femea",
+  },
+  {
+    from: "Spheal",
+    to: "Sealeo",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Sealeo",
+    to: "Walrein",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Clamperl",
+    to: "Gorebyss",
+    kinds: ["item", "trade"],
+    items: ["Dragon Scale."],
+  },
+  {
+    from: "Clamperl",
+    to: "Huntail",
+    kinds: ["item", "trade"],
+    items: ["Dragon Fang."],
+  },
+  {
+    from: "Bagon",
+    to: "Shelgon",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "Shelgon",
+    to: "Salamence",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "Beldum",
+    to: "Metang",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Metang",
+    to: "Metagross",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "turtwig",
+    to: "grotle",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "grotle",
+    to: "Torterra",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "chinchar",
+    to: "Monferno",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "monferno",
+    to: "Infernape",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "piplup",
+    to: "Prinplup",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "prinplup",
+    to: "Empoleon",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "starly",
+    to: "Staravia",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "staravia",
+    to: "Staraptor",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "bidoof",
+    to: "Bibarel",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "kricketot",
+    to: "Kricketune",
+    kinds: ["time"],
+    time: "fast",
+  },
+  {
+    from: "shinx",
+    to: "Luxio",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "luxio",
+    to: "Luxray",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "budew",
+    to: "Roselia",
+    kinds: ["happiness_loyalty"],
+    happiness: 4,
+  },
+  {
+    from: "cranidos",
+    to: "Rampardos",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "shieldon",
+    to: "Bastiodon",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Burmy",
+    to: "Wormadam (grass)",
+    kinds: ["time"],
+    time: "fast",
+    specific: "Femea",
+  },
+  {
+    from: "Burmy",
+    to: "Wormadam (steel)",
+    kinds: ["time"],
+    time: "fast",
+    specific: "Femea",
+  },
+  {
+    from: "Burmy",
+    to: "Wormadam (ground)",
+    kinds: ["time"],
+    time: "fast",
+    specific: "Femea",
+  },
+  {
+    from: "Burmy",
+    to: "Mothim",
+    kinds: ["time"],
+    time: "fast",
+    specific: "Macho",
+  },
+  {
+    from: "combee",
+    to: "Vespiquen",
+    kinds: ["time"],
+    time: "slow",
+    specific: "Femea",
+  },
+  {
+    from: "buizel",
+    to: "Floatzel",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "cherubi",
+    to: "Cherrim",
+    kinds: ["time"],
+    time: "fast",
+  },
+  {
+    from: "shellos",
+    to: "Gastrodon",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "drifloon",
+    to: "Drifblim",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "buneary",
+    to: "Lopunny",
+    kinds: ["happiness_loyalty"],
+    happiness: 4,
+  },
+  {
+    from: "glameow",
+    to: "Purgugly",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "chingling",
+    to: "Chimecho",
+    kinds: ["happiness_loyalty"],
+    happiness: 4,
+  },
+  {
+    from: "stunk",
+    to: "Skuntank",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "bronzor",
+    to: "Bronzong",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "bonsly",
+    to: "Sudowoodo",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "mime jf",
+    to: "Mr. Mime",
+    kinds: ["specific"],
+    specific: "usar mimic",
+  },
+  {
+    from: "happiny",
+    to: "Chansey",
+    kinds: ["item"],
+    items: ["oval stone"],
+  },
+  {
+    from: "gible",
+    to: "Gabite",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "gabite",
+    to: "Garchomp",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "munchlax",
+    to: "Snorlax",
+    kinds: ["happiness_loyalty"],
+    happiness: 4,
+  },
+  {
+    from: "riolu",
+    to: "Lucario",
+    kinds: ["happiness_loyalty"],
+    loyalty: 5,
+  },
+  {
+    from: "hippopotas",
+    to: "Hippowdon",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "skorupi",
+    to: "Drapion",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "croagunk",
+    to: "Toxicroak",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "finneon",
+    to: "Lumineon",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "mantyke",
+    to: "Mantine",
+    kinds: ["specific"],
+    specific: "ser mordido por um remoraid",
+  },
+  {
+    from: "snover",
+    to: "Abomasnow",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Snivy",
+    to: "Servine",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Servine",
+    to: "Serperior",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "tepig",
+    to: "Pignite",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "pignite",
+    to: "Emboar",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "oshawott",
+    to: "Dewott",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "dewott",
+    to: "Samurott",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "patrat",
+    to: "Watchog",
+    kinds: ["time"],
+    time: "fast",
+  },
+  {
+    from: "lillipup",
+    to: "Herdier",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Herdier",
+    to: "Stoutland",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "purrloin",
+    to: "Liepard",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "pansage",
+    to: "Simisage",
+    kinds: ["item"],
+    items: ["leaf stone"],
+  },
+  {
+    from: "pansear",
+    to: "Simisear",
+    kinds: ["item"],
+    items: ["fire stone"],
+  },
+  {
+    from: "panpour",
+    to: "Simipour",
+    kinds: ["item"],
+    items: ["water stone"],
+  },
+  {
+    from: "munna",
+    to: "Musharna",
+    kinds: ["item"],
+    items: ["moon stone"],
+  },
+  {
+    from: "pidove",
+    to: "Tranquil",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "tranquil",
+    to: "Unfezant",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "blitzle",
+    to: "Zebstrika",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "roggenrola",
+    to: "Boldore",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "boldore",
+    to: "Gigalith",
+    kinds: ["trade"],
+  },
+  {
+    from: "woobat",
+    to: "Swoobat",
+    kinds: ["happiness_loyalty"],
+    happiness: 4,
+  },
+  {
+    from: "drillbur",
+    to: "Excadrill",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "timburr",
+    to: "Gurdurr",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "gurdurr",
+    to: "Conkeldurr",
+    kinds: ["trade"],
+  },
+  {
+    from: "tympole",
+    to: "Palpitoad",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "palpitoad",
+    to: "Seismitoad",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "swaddle",
+    to: "Swadloon",
+    kinds: ["time"],
+    time: "fast",
+  },
+  {
+    from: "swadloon",
+    to: "Leavanny",
+    kinds: ["happiness_loyalty"],
+    happiness: 4,
+  },
+  {
+    from: "venipede",
+    to: "Whirlpede",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "whirlpede",
+    to: "Scolipede",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "cottonee",
+    to: "Whimsicott",
+    kinds: ["item"],
+    items: ["sun stone"],
+  },
+  {
+    from: "petilil",
+    to: "Liligant",
+    kinds: ["item"],
+    items: ["sun stone"],
+  },
+  {
+    from: "sandile",
+    to: "Krokorok",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "krokorok",
+    to: "Krookodile",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "darumaka",
+    to: "Darmanitan",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "darumaka",
+    to: "Darmanitan Zen mode",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "dwebble",
+    to: "Crustle",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "scraggy",
+    to: "Scrafty",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "yamask",
+    to: "Cofagrigus",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "tirtouga",
+    to: "Carracosta",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "archen",
+    to: "Archeops",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "trubbish",
+    to: "Garbodor",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "zorua",
+    to: "Zoroark",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "minccino",
+    to: "Cinccino",
+    kinds: ["item"],
+    items: ["shine stone"],
+  },
+  {
+    from: "gothita",
+    to: "Gothorita",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "gothorita",
+    to: "Gothitelle",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "solosis",
+    to: "Duosion",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "duosion",
+    to: "Reuniclus",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "ducklett",
+    to: "Swanna",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "vanilite",
+    to: "Vanillish",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "vanilish",
+    to: "Vanilluxe",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "deerling",
+    to: "Sawsbuck",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "karrablast",
+    to: "Escavalier",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "foongus",
+    to: "Amoonguss",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "frillish",
+    to: "Jellicent",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "joltik",
+    to: "Galvantula",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "ferroseed",
+    to: "Ferrothorn",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "klink",
+    to: "Klang",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "klank",
+    to: "Klinklang",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "tynamo",
+    to: "Eelektrik",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "eelektrik",
+    to: "Eelektross",
+    kinds: ["item"],
+    items: ["thunder stone"],
+  },
+  {
+    from: "elgyem",
+    to: "Beheeyem",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "litwick",
+    to: "Lampent",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "lampert",
+    to: "Chandelure",
+    kinds: ["item"],
+    items: ["dusk stone"],
+  },
+  {
+    from: "axew",
+    to: "Fraxure",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "fraxure",
+    to: "Haxorus",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "cubchoo",
+    to: "Beartic",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "shelmet",
+    to: "Accelgor",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "mienfoo",
+    to: "Mienshao",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "golett",
+    to: "Golurk",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "pawniard",
+    to: "Bisharp",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "rufflet",
+    to: "Braviary",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "vullaby",
+    to: "Mandibuzz",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "deino",
+    to: "Zweilous",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "zweilous",
+    to: "Hydreigon",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "larvesta",
+    to: "Volcarona",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "chespin",
+    to: "Quilladin",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "quiladin",
+    to: "Chesnaught",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "fennekin",
+    to: "Braixen",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Braixen",
+    to: "Delphox",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "froakie",
+    to: "Frogadier",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "frogadier",
+    to: "Greninja",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "bunnelby",
+    to: "Diggersby",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "fletchling",
+    to: "Fletchinder",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "fletchinder",
+    to: "Talonflame",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "scatterbug",
+    to: "Spewpa",
+    kinds: ["time"],
+    time: "fast",
+  },
+  {
+    from: "spewda",
+    to: "Vivillon",
+    kinds: ["time"],
+    time: "fast",
+  },
+  {
+    from: "litleo",
+    to: "Pyroar",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "flabebe",
+    to: "Floette",
+    kinds: ["time"],
+    time: "fast",
+  },
+  {
+    from: "floette",
+    to: "Florges",
+    kinds: ["item"],
+    items: ["shine stone"],
+  },
+  {
+    from: "skiddo",
+    to: "Gogoat",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "pancham",
+    to: "Pangoro",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "espurr",
+    to: "Meowstic",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "honedge",
+    to: "Doublade",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "doublade",
+    to: "Aegislash",
+    kinds: ["item"],
+    items: ["dusk stone"],
+  },
+  {
+    from: "spritzee",
+    to: "Aromatisse",
+    kinds: ["item", "trade"],
+    items: ["sachet"],
+  },
+  {
+    from: "swirlix",
+    to: "Slurpuff",
+    kinds: ["item", "trade"],
+    items: ["whipped dream"],
+  },
+  {
+    from: "inkay",
+    to: "Malamar",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "binacle",
+    to: "Barbaracle",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "skrelp",
+    to: "Dragalge",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "clauncher",
+    to: "Clawitzer",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "helioptile",
+    to: "Heliolisk",
+    kinds: ["item"],
+    items: ["sun stone"],
+  },
+  {
+    from: "tyrunt",
+    to: "Tyrantrum",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "amaura",
+    to: "Aurorus",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "goomy",
+    to: "Sliggoo",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "slinggoo",
+    to: "Goodra",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "phantump",
+    to: "Trevenant",
+    kinds: ["trade"],
+  },
+  {
+    from: "pumpkaboo",
+    to: "Gourgeist",
+    kinds: ["trade"],
+  },
+  {
+    from: "bergmite",
+    to: "Avalugg",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "noibat",
+    to: "Noivern",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "rowlet",
+    to: "Dartrix",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "dartrix",
+    to: "Decidueye",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "litten",
+    to: "Torracat",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "torracat",
+    to: "Incineroar",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "popplio",
+    to: "Brionne",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "brionne",
+    to: "Primarina",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "pikipek",
+    to: "Trumbeak",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "trumbeak",
+    to: "Toucannon",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "yungoos",
+    to: "Gumshoos",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "grubbin",
+    to: "Charjabug",
+    kinds: ["time"],
+    time: "fast",
+  },
+  {
+    from: "charjabug",
+    to: "Vikavolt",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "crabrawler",
+    to: "Crabominable",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "cutielfy",
+    to: "Ribombee",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "rockruff",
+    to: "lycanroc",
+    kinds: ["time"],
+    time: "medium",
+    specific: "day",
+  },
+  {
+    from: "rockruff",
+    to: "lycanroc",
+    kinds: ["time"],
+    time: "medium",
+    specific: "dawn",
+  },
+  {
+    from: "rockruff",
+    to: "lycanroc",
+    kinds: ["time"],
+    time: "medium",
+    specific: "night",
+  },
+  {
+    from: "mareanie",
+    to: "Toxapex",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "mudbray",
+    to: "Mudsdale",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "dewpider",
+    to: "Araquanid",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "fomantis",
+    to: "Lurantis",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "morelull",
+    to: "Shiinotic",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "salandit",
+    to: "Salazzle",
+    kinds: ["time"],
+    time: "medium",
+    specific: "Femea",
+  },
+  {
+    from: "stufful",
+    to: "Bewear",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "bounswet",
+    to: "Steenee",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "steenee",
+    to: "Tsareena",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "wimpod",
+    to: "Golisopod",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "sandygast",
+    to: "Palossand",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "type:null",
+    to: "Silvally",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "jangmo-o",
+    to: "Hakamo-o",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "hakamo-o",
+    to: "Kommo-o",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "cosmog",
+    to: "cosmoem",
+    kinds: ["time"],
+  },
+  {
+    from: "cosmoem",
+    to: "solgaleo",
+    kinds: ["time"],
+  },
+  {
+    from: "cosmoem",
+    to: "lunala",
+    kinds: ["time"],
+  },
+  {
+    from: "meltan",
+    to: "Melmetal",
+    kinds: ["time"],
+  },
+  {
+    from: "ub-adhesive",
+    to: "UB- Stinger",
+    kinds: ["time"],
+  },
+  {
+    from: "grookey",
+    to: "Thwakey",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "thwakey",
+    to: "Rillaboom",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "scorbunny",
+    to: "Raboot",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "raboot",
+    to: "Cinderace",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "sobble",
+    to: "Drizzile",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "drizzile",
+    to: "Inteleon",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "skwovet",
+    to: "Greedent",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "rookidee",
+    to: "Rookidee",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "corvisquire",
+    to: "Corviknight",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "blipbug",
+    to: "Dottler",
+    kinds: ["time"],
+    time: "fast",
+  },
+  {
+    from: "dottler",
+    to: "Orbeetle",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "nickit",
+    to: "Thievul",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "gossifleur",
+    to: "Eldegoss",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "wooloo",
+    to: "Dubwool",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "chewtle",
+    to: "Drednaw",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "yamper",
+    to: "Boltund",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "rolycoly",
+    to: "Carkol",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "carkol",
+    to: "Coalossal",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "applin",
+    to: "flapple",
+    kinds: ["item"],
+    items: ["tart apple"],
+  },
+  {
+    from: "applin",
+    to: "appletun",
+    kinds: ["item"],
+    items: ["sweet apple"],
+  },
+  {
+    from: "silicobra",
+    to: "Sandaconda",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "arrokuda",
+    to: "Barraskewda",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "toxel",
+    to: "Toxtricity",
+    kinds: ["time"],
+    time: "slow",
+    specific: "extrovert nature",
+  },
+  {
+    from: "toxel",
+    to: "Toxtricity",
+    kinds: ["time"],
+    time: "medium",
+    specific: "introvert nature",
+  },
+  {
+    from: "sizzlipede",
+    to: "Centiskorch",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "clobbopus",
+    to: "Grapploct",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "sinistea",
+    to: "Polteageist",
+    kinds: ["time", "item"],
+    time: "medium",
+    items: ["cracked pot"],
+  },
+  {
+    from: "hatenna",
+    to: "Hattrem",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "hattrem",
+    to: "Hatterene",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "impidimp",
+    to: "Morgrem",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "morgrem",
+    to: "Grimmsnarl",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "Zigzagoon galar",
+    to: "Linoone galar",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "linoone galar",
+    to: "Obstagoon",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "meowth galar",
+    to: "Perrserker",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "corsola galar",
+    to: "Cursola",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "farfetch'd galar",
+    to: "Sirfetchâ€™d",
+    kinds: ["specific"],
+    specific: "acertar 3 criticos em 1 batalha",
+  },
+  {
+    from: "mr. mime galar",
+    to: "Mr. Rime",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "darumaka galar",
+    to: "Darmanitan galar",
+    kinds: ["item"],
+    items: ["ice stone"],
+  },
+  {
+    from: "darumaka galar",
+    to: "Darmanitan galar zen mode",
+    kinds: ["item"],
+    items: ["ice stone"],
+  },
+  {
+    from: "yamask galar",
+    to: "Runerigus",
+    kinds: ["specific"],
+    specific: "passar perto de pinturas de ruinas",
+  },
+  {
+    from: "milcery",
+    to: "Alcremie",
+    kinds: ["specific"],
+    specific: "rodar enquanto segura uma berry",
+  },
+  {
+    from: "ponyta galar",
+    to: "Rapidash galar",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "snom",
+    to: "Frosmoth",
+    kinds: ["happiness_loyalty"],
+    happiness: 5,
+  },
+  {
+    from: "cufant",
+    to: "Copperajah",
+    kinds: ["time"],
+    time: "medium",
+  },
+  {
+    from: "dreepy",
+    to: "Drakloak",
+    kinds: ["time"],
+    time: "slow",
+  },
+  {
+    from: "drakloak",
+    to: "Dragapult",
+    kinds: ["time"],
+    time: "slow",
+  },
+];
+
+const EVOLUTION_REGION_WORDS: Record<string, string> = {
+  alolan: "alola",
+  alola: "alola",
+  galarian: "galar",
+  galar: "galar",
+  falar: "galar",
+  hisuian: "hisui",
+  hisui: "hisui",
+  paldean: "paldea",
+  paldea: "paldea",
+};
+
+export function canonicalEvolutionName(name: string | null | undefined): string {
+  if (!name) return "";
+  let text = name
+    .trim()
+    .toLowerCase()
+    .replace(/nidoran\s*â™€/g, "nidoran femea")
+    .replace(/nidoran\s*â™‚/g, "nidoran macho")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  const regions: string[] = [];
+  text = text.replace(/\(([^)]*)\)/g, (_match, content: string) => {
+    const found = content
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .map((part) => EVOLUTION_REGION_WORDS[part])
+      .filter((part): part is string => !!part);
+    regions.push(...found);
+    return " ";
+  });
+  text = text.replace(/\b(alolan|alola|galarian|galar|falar|hisuian|hisui|paldean|paldea)\b/g, (part) => {
+    const region = EVOLUTION_REGION_WORDS[part];
+    if (region) regions.push(region);
+    return " ";
+  });
+  const base = text
+    .replace(/\bform\b/g, " ")
+    .replace(/mr\./g, "mr")
+    .replace(/farfetch['â€™]d/g, "farfetchd")
+    .replace(/sirfetch['â€™]d/g, "sirfetchd")
+    .replace(/\bnidoran female\b/g, "nidoran femea")
+    .replace(/\bnidoran male\b/g, "nidoran macho")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+  const uniqueRegions = Array.from(new Set(regions));
+  return [base, ...uniqueRegions].filter(Boolean).join(" ");
+}
+
+export function displayEvolutionTargetName(target: string, candidates: string[] = []): string {
+  const targetKey = canonicalEvolutionName(target);
+  const exact = candidates.find((candidate) => canonicalEvolutionName(candidate) === targetKey);
+  if (exact) return exact;
+  const parts = targetKey.split(" ");
+  const region = parts.find((part) => ["alola", "galar", "hisui", "paldea"].includes(part));
+  if (!region) return target;
+  const base = parts.filter((part) => part !== region).join(" ");
+  const prettyBase = base
+    .split(" ")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+  const regionLabel = { alola: "Alolan", galar: "Galarian", hisui: "Hisuian", paldea: "Paldean" }[region];
+  return `${prettyBase} (${regionLabel} Form)`;
+}
+
+export function canonicalEvolutionItemName(name: string | null | undefined): string {
+  return (name ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/['\u2018\u2019]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+const RULE_INDEX: Record<string, EvolutionRule[]> = (() => {
+  const idx: Record<string, EvolutionRule[]> = {};
+  for (const r of [...EVOLUTION_RULES, ...PALDEA_HISUI_EVOLUTION_RULES]) {
+    for (const key of new Set([r.from.trim().toLowerCase(), canonicalEvolutionName(r.from)])) {
+      if (!key) continue;
+      (idx[key] ||= []).push(r);
+    }
+  }
+  return idx;
+})();
+
+export function getEvolutionRules(speciesName: string | null | undefined): EvolutionRule[] {
+  if (!speciesName) return [];
+  return RULE_INDEX[speciesName.trim().toLowerCase()] ?? RULE_INDEX[canonicalEvolutionName(speciesName)] ?? [];
+}
+
+export const TIME_THRESHOLDS = { fast: 5, medium: 15, slow: 45 } as const;
+
+export type EvolutionGate = {
+  rule: EvolutionRule;
+  ready: boolean;
+  /** Human-readable description of the method + current progress. */
+  description: string;
+  /** When true, button is always shown regardless of `ready` (e.g. trade, specific-only). */
+  alwaysShow: boolean;
+};
+
+export type EvolutionContext = {
+  victories: number;
+  happiness: number;
+  loyalty: number;
+  /** lowercased item names available to the trainer (bag + held). */
+  inventoryItems: string[];
+  /** map of pokemon attribute name â†’ { current, max }. Used for attribute-max gating. */
+  attrs: Record<string, { current: number; max: number }>;
+};
+
+const ATTR_ALIAS: Record<string, string[]> = {
+  atk: ["strength"],
+  str: ["strength"],
+  strength: ["strength"],
+  dex: ["dexterity"],
+  dexterity: ["dexterity"],
+  vit: ["vitality"],
+  vitality: ["vitality"],
+  spe: ["special"],
+  special: ["special"],
+  ins: ["insight"],
+  insight: ["insight"],
+};
+
+export function evaluateEvolution(rule: EvolutionRule, ctx: EvolutionContext): EvolutionGate {
+  const parts: string[] = [];
+  let ready = true;
+  let alwaysShow = false;
+
+  const hasKind = (k: EvolutionKind) => rule.kinds.includes(k);
+
+  if (hasKind("time") && rule.time) {
+    const need = TIME_THRESHOLDS[rule.time];
+    parts.push(`Tempo (${rule.time}) â€” ${ctx.victories}/${need} vitÃ³rias`);
+    if (ctx.victories < need) ready = false;
+  }
+  if (hasKind("item") && rule.items && rule.items.length > 0) {
+    const inventory = new Set(ctx.inventoryItems.map(canonicalEvolutionItemName));
+    const available = rule.items.filter((it) => inventory.has(canonicalEvolutionItemName(it)));
+    parts.push(`Item â€” ${rule.items.join(" ou ")} (${available.length}/${rule.items.length} no inventÃ¡rio)`);
+    if (available.length === 0) ready = false;
+  }
+  if (hasKind("happiness_loyalty")) {
+    const needH = rule.happiness ?? 0;
+    const needL = rule.loyalty ?? 0;
+    if (needH > 0 && needL > 0) {
+      parts.push(`Felicidade ${ctx.happiness}/${needH} ou Lealdade ${ctx.loyalty}/${needL}`);
+      if (ctx.happiness < needH && ctx.loyalty < needL) ready = false;
+    } else if (needH > 0) {
+      parts.push(`Felicidade ${ctx.happiness}/${needH}`);
+      if (ctx.happiness < needH) ready = false;
+    } else if (needL > 0) {
+      parts.push(`Lealdade ${ctx.loyalty}/${needL}`);
+      if (ctx.loyalty < needL) ready = false;
+    } else {
+      parts.push(`Felicidade ou Lealdade altas`);
+    }
+  }
+  if (hasKind("attribute") && rule.attribute) {
+    const aliases = ATTR_ALIAS[rule.attribute.toLowerCase()] ?? [rule.attribute.toLowerCase()];
+    const match = aliases.map((a) => ctx.attrs[a]).find(Boolean);
+    if (match) {
+      parts.push(`${rule.attribute.toUpperCase()} maximizado (${match.current}/${match.max})`);
+      if (match.current < match.max) ready = false;
+    } else {
+      parts.push(`${rule.attribute.toUpperCase()} maximizado`);
+      ready = false;
+    }
+  }
+  if (hasKind("trade")) {
+    alwaysShow = true;
+    parts.push(rule.items && rule.items.length > 0 ? `Troca segurando ${rule.items.join(" ou ")}` : `Evolui por troca`);
+  }
+  if (hasKind("specific") && rule.specific) {
+    // If specific is the ONLY kind, the button always shows.
+    if (rule.kinds.length === 1) alwaysShow = true;
+    parts.push(`CondiÃ§Ã£o: ${rule.specific}`);
+  }
+
+  if (parts.length === 0) {
+    parts.push("Sem condiÃ§Ã£o registrada");
+    alwaysShow = true;
+  }
+
+  return {
+    rule,
+    ready,
+    alwaysShow,
+    description: parts.join(" Â· "),
+  };
+}

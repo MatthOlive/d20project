@@ -376,12 +376,7 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
     );
   }
   if (msg.kind === "move" && msg.roll_data && (msg.roll_data as MoveRollMessage).v === "move-1") {
-    const m = msg.roll_data as MoveRollMessage & {
-      damage?: Omit<NonNullable<MoveRollMessage["damage"]>, "targets"> & {
-        targets: NonNullable<NonNullable<MoveRollMessage["damage"]>["targets"]>;
-      };
-      chance: NonNullable<MoveRollMessage["chance"]>;
-    };
+    const m = msg.roll_data as MoveRollMessage;
     const crit = m.accuracy.crit;
     return (
       <div className="space-y-1">
@@ -401,13 +396,13 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
           hasStab={m.hasStab}
           accuracySlot={null}
           damageSlot={
-            m.damage?.targets && m.damage.targets.length > 0
+            m.damage?.targets && m.damage!.targets!.length > 0
               ? null
               : m.damage ? (
                   <span className="inline-flex items-center gap-1">
-                    <SuccessHover label="dmg" successes={m.damage.successes} dice={m.damage.dice} tone="danger" />
-                    {m.damage.critBonus ? (
-                      <span className="text-[10px] font-bold text-amber-600">+{m.damage.critBonus} dado crit</span>
+                    <SuccessHover label="dmg" successes={m.damage!.successes} dice={m.damage!.dice} tone="danger" />
+                    {m.damage!.critBonus ? (
+                      <span className="text-[10px] font-bold text-amber-600">+{m.damage!.critBonus} dado crit</span>
                     ) : null}
                   </span>
                 ) : (
@@ -415,13 +410,13 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
                 )
           }
           damageDetailsSlot={
-            m.damage?.targets && m.damage.targets.length > 0 ? (
+            m.damage?.targets && m.damage!.targets!.length > 0 ? (
               <div className="rounded-md border border-border bg-muted/30 p-2">
                 <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                   Dano por alvo
                 </div>
                 <ul className="space-y-0.5">
-                  {m.damage.targets.map((t, i) => (
+                  {m.damage!.targets!.map((t, i) => (
                     <li key={i} className="flex items-center justify-between gap-2">
                       <span className="truncate font-semibold">{t.name}</span>
                       <span className="flex items-center gap-1 tabular-nums">
@@ -446,9 +441,9 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
             ) : null
           }
           chanceSlot={
-            m.chance && m.chance.length > 0 ? (
+            m.chance && m.chance!.length > 0 ? (
               <>
-                {m.chance.map((c, i) => (
+                {m.chance!.map((c, i) => (
                   <SuccessHover
                     key={i}
                     label={`6s · ${c.label}`}

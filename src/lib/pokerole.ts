@@ -178,6 +178,46 @@ const REGIONAL_FORM_ALIASES: Record<string, string> = {
   paldea: "paldea",
 };
 
+// Showdown has animated sprites for these forms, but no gen5-style pixel
+// sprite yet. Pixel mode falls back to the correct animated form instead of
+// showing a broken image or the base Pokemon.
+const ANIMATED_FALLBACK_FOR_PIXEL_FORMS = new Set([
+  "barbaracle-mega",
+  "dragalge-mega",
+  "eelektross-mega",
+  "falinks-mega",
+  "malamar-mega",
+  "pyroar-mega",
+  "raichu-megax",
+  "raichu-megay",
+  "scolipede-mega",
+  "scrafty-mega",
+  "staraptor-mega",
+]);
+
+const FORMS_WITHOUT_SHOWDOWN_SPRITES = new Set([
+  "absol-megaz",
+  "baxcalibur-mega",
+  "darkrai-mega",
+  "garchomp-megaz",
+  "golisopod-mega",
+  "heatran-mega",
+  "lucario-megaz",
+  "magearna-mega",
+  "magearna-original-mega",
+  "tatsugiri-curly-mega",
+  "tatsugiri-droopy-mega",
+  "tatsugiri-stretchy-mega",
+  "zeraora-mega",
+  "zygarde-mega",
+]);
+
+const SHOWDOWN_FORM_SLUG_ALIASES: Record<string, string> = {
+  // Showdown separates Meowstic's male and female Mega files. Until sex is
+  // part of the species name, use the male sprite as the stable default.
+  "meowstic-mega": "meowstic-mmega",
+};
+
 function normalizePokemonSlugText(value: string): string {
   return value
     .toLowerCase()
@@ -196,6 +236,18 @@ export function pokemonFormSlug(speciesName: string | null | undefined): string 
   if (!speciesName) return null;
   let name = speciesName.trim();
   if (!name) return null;
+  const megaMatch = name.match(/\((?:(Original Color|Curly|Droopy|Stretchy)\s+)?Mega(?:\s+(X|Y|Z))?\s+Form\)/i);
+  if (megaMatch) {
+    const base = normalizePokemonSlugText(name.replace(megaMatch[0], ""));
+    const variant = megaMatch[1]
+      ? normalizePokemonSlugText(megaMatch[1].replace(/\bcolor\b/i, ""))
+      : megaMatch[2]?.toLowerCase();
+    if (!base) return null;
+    const slug = variant && megaMatch[1]
+      ? `${base}-${variant}-mega`
+      : `${base}-mega${variant ?? ""}`;
+    return SHOWDOWN_FORM_SLUG_ALIASES[slug] ?? slug;
+  }
   const regionMatch = name.match(/\((Alolan|Galarian|Hisuian|Paldean)\s+Form\)/i);
   if (regionMatch) {
     const region = REGIONAL_FORM_ALIASES[regionMatch[1].toLowerCase()];
@@ -230,6 +282,10 @@ export function formSpriteUrl(
 ): string | null {
   const slug = style === "3d" ? pokemonSpriteSlug(speciesName) : pokemonFormSlug(speciesName);
   if (!slug) return null;
+  if (FORMS_WITHOUT_SHOWDOWN_SPRITES.has(slug)) return null;
+  if (style === "pixel" && ANIMATED_FALLBACK_FOR_PIXEL_FORMS.has(slug)) {
+    return `https://play.pokemonshowdown.com/sprites/ani/${slug}.gif`;
+  }
   const folder = style === "3d" ? (shiny ? "ani-shiny" : "ani") : (shiny ? "gen5-shiny" : "gen5");
   const ext = style === "3d" ? "gif" : "png";
   return `https://play.pokemonshowdown.com/sprites/${folder}/${slug}.${ext}`;
@@ -245,6 +301,31 @@ export function preferredPokemonSprite(
   if (formSprite) return formSprite;
   if (shiny) return shinyize(spriteUrl) ?? spriteUrl ?? null;
   return spriteUrl ?? null;
+}
+
+export function pokemonSpriteCandidates(
+  speciesName: string | null | undefined,
+  spriteUrl: string | null | undefined,
+  shiny = false,
+  style: PokemonSpriteStyle = "pixel",
+  customUrl?: string | null,
+): string[] {
+  const sources: Array<string | null | undefined> = [];
+  if (customUrl) sources.push(customUrl);
+
+  const slug = pokemonSpriteSlug(speciesName);
+  if (style === "pixel" && slug) {
+    sources.push(
+      `https://play.pokemonshowdown.com/sprites/${shiny ? "gen5ani-shiny" : "gen5ani"}/${slug}.gif`,
+    );
+  }
+
+  sources.push(preferredPokemonSprite(speciesName, spriteUrl, shiny, style));
+
+  const baseFallback = shiny ? (shinyize(spriteUrl) ?? spriteUrl) : spriteUrl;
+  sources.push(baseFallback);
+
+  return Array.from(new Set(sources.filter((source): source is string => !!source)));
 }
 
 

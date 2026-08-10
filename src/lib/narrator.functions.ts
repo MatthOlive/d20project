@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { searchKnowledge } from "./knowledge.functions";
+import { applyPaldeaHisuiSpeciesBalance } from "@/lib/paldea-hisui-balance";
 
 // ---------- Knowledge: Pokérole 2.0 core mechanics (fallback when no RAG hits) ----------
 const POKEROLE_RULES = `
@@ -143,10 +144,10 @@ async function spawnWildPokemon(
   if (sErr || !speciesData || speciesData.length === 0) {
     return { ok: false, message: `Species "${params.species}" not found in the Pokédex.` };
   }
-  const sp = speciesData[0] as {
+  const sp = applyPaldeaHisuiSpeciesBalance(speciesData[0] as {
     id: string; name: string; base_hp: number; base_attrs: Record<string, number>;
-    attr_limits: Record<string, number>; abilities: string[]; sprite_url: string | null;
-  };
+    attr_limits: Record<string, number>; abilities: string[]; sprite_url: string | null; suggested_rank: Rank | null;
+  });
 
   // Reuse an existing AI-spawned sheet for the same species in this game.
   const existing = await findExistingAiCharacter(supabase, gameId, "pokemon", { species_id: sp.id });
