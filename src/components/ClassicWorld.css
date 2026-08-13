@@ -1,0 +1,393 @@
+.classic-world-shell {
+  --classic-sun: rgba(255, 231, 164, 0.2);
+  isolation: isolate;
+  background: #07110d;
+}
+
+.classic-world-viewport {
+  position: relative;
+  scrollbar-color: rgba(239, 200, 105, 0.45) rgba(5, 10, 8, 0.7);
+}
+
+.classic-world-map {
+  overflow: hidden;
+  background: #4f8c46;
+  image-rendering: pixelated;
+  filter: saturate(1.1) contrast(1.04);
+}
+
+.classic-world-map::before {
+  position: absolute;
+  inset: 0;
+  z-index: 22;
+  pointer-events: none;
+  content: "";
+  background:
+    linear-gradient(118deg, var(--classic-sun), transparent 24%, transparent 72%, rgba(2, 7, 5, 0.18)),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.04), transparent 45%, rgba(1, 6, 4, 0.19));
+  mix-blend-mode: screen;
+}
+
+.classic-world-map::after {
+  position: absolute;
+  inset: 0;
+  z-index: 23;
+  pointer-events: none;
+  content: "";
+  box-shadow: inset 0 0 70px 18px rgba(1, 5, 3, 0.42);
+}
+
+.classic-world-atmosphere {
+  background:
+    linear-gradient(110deg, rgba(255, 243, 199, 0.08), transparent 28%),
+    linear-gradient(to bottom, transparent 68%, rgba(2, 7, 5, 0.2));
+  box-shadow: inset 0 0 90px rgba(0, 0, 0, 0.52);
+}
+
+.classic-scene-bedroom,
+.classic-scene-player_house_1f,
+.classic-scene-rival_house_1f,
+.classic-scene-rival_bedroom,
+.classic-scene-lab {
+  --classic-sun: rgba(255, 206, 124, 0.15);
+}
+
+.classic-scene-route_1,
+.classic-scene-route_2,
+.classic-scene-route_22 {
+  --classic-sun: rgba(255, 241, 174, 0.25);
+}
+
+.classic-world-grid {
+  position: relative;
+  z-index: 1;
+}
+
+.classic-tile {
+  z-index: 1;
+  border: 0 !important;
+  box-shadow: none;
+  transition: filter 90ms ease;
+}
+
+.classic-tile:hover {
+  filter: brightness(1.08);
+}
+
+.classic-tile::before,
+.classic-tile::after {
+  pointer-events: none;
+  content: "";
+  position: absolute;
+}
+
+.classic-tile[data-kind="grass"],
+.classic-tile[data-kind="mother"],
+.classic-tile[data-kind="daisy"],
+.classic-tile[data-kind="npc-mart"] {
+  background-color: #5f9e4b;
+  background-image:
+    linear-gradient(135deg, transparent 75%, rgba(26, 88, 44, 0.18) 75%),
+    linear-gradient(315deg, transparent 75%, rgba(170, 206, 95, 0.15) 75%);
+  background-size: 11px 11px;
+}
+
+.classic-tile[data-kind="grass"]::after {
+  left: 18%;
+  bottom: 18%;
+  width: 3px;
+  height: 8px;
+  background: #2e7138;
+  box-shadow: 17px -7px 0 #79b85a, 27px 4px 0 #347840;
+  transform: skewX(-18deg);
+}
+
+.classic-tile[data-kind="tall-grass"] {
+  z-index: 6;
+  overflow: visible;
+  background: #477f3e;
+  box-shadow: inset 0 -7px 0 rgba(19, 67, 35, 0.34);
+}
+
+.classic-tile[data-kind="tall-grass"]::before {
+  left: -4%;
+  right: -4%;
+  bottom: 0;
+  height: 72%;
+  background:
+    repeating-linear-gradient(76deg, transparent 0 7px, #8dbc55 8px 11px, transparent 12px 15px),
+    repeating-linear-gradient(105deg, transparent 0 9px, #689f45 10px 13px, transparent 14px 18px);
+  clip-path: polygon(0 35%, 7% 54%, 14% 12%, 21% 57%, 30% 4%, 39% 58%, 48% 20%, 57% 62%, 68% 0, 76% 55%, 86% 17%, 94% 58%, 100% 29%, 100% 100%, 0 100%);
+  filter: drop-shadow(0 3px 0 rgba(17, 53, 27, 0.45));
+}
+
+.classic-tile[data-kind="path"] {
+  background-color: #c9ad72;
+  background-image:
+    linear-gradient(90deg, rgba(101, 81, 49, 0.2) 1px, transparent 1px),
+    linear-gradient(rgba(255, 236, 178, 0.18) 1px, transparent 1px);
+  background-size: 13px 10px;
+  box-shadow: inset 0 1px rgba(255, 240, 193, 0.3);
+}
+
+.classic-tile[data-kind="water"] {
+  background-color: #3789b2;
+  background-image: repeating-linear-gradient(0deg, transparent 0 8px, rgba(135, 218, 232, 0.28) 9px 11px, transparent 12px 16px);
+  animation: classic-water 2.8s steps(4, end) infinite;
+}
+
+.classic-tile[data-kind="water"]::after {
+  left: 12%;
+  top: 30%;
+  width: 44%;
+  height: 3px;
+  background: rgba(194, 241, 241, 0.68);
+  box-shadow: 13px 15px 0 rgba(96, 186, 211, 0.65);
+}
+
+@keyframes classic-water {
+  50% { background-position: 8px 0; }
+}
+
+.classic-tile[data-kind="tree"] {
+  z-index: 12;
+  overflow: visible;
+  background: #4f8b45;
+}
+
+.classic-tile[data-kind="tree"] > span {
+  display: none;
+}
+
+.classic-tile[data-kind="tree"]::before {
+  left: -12%;
+  bottom: 12%;
+  width: 124%;
+  height: 132%;
+  border-radius: 42% 47% 34% 37%;
+  background:
+    linear-gradient(135deg, rgba(124, 180, 89, 0.95) 0 28%, transparent 29%),
+    linear-gradient(315deg, #194f32 0 35%, transparent 36%),
+    #2f7646;
+  box-shadow:
+    inset 7px 7px 0 rgba(125, 181, 89, 0.8),
+    inset -8px -9px 0 rgba(16, 67, 38, 0.72),
+    0 9px 0 rgba(11, 47, 27, 0.5),
+    0 14px 12px rgba(4, 23, 14, 0.38);
+  clip-path: polygon(50% 0, 65% 12%, 83% 11%, 88% 28%, 100% 41%, 91% 57%, 96% 76%, 74% 82%, 63% 100%, 45% 89%, 25% 96%, 17% 77%, 0 66%, 9% 48%, 3% 30%, 25% 21%, 32% 6%);
+}
+
+.classic-tile[data-kind="tree"]::after {
+  left: 43%;
+  bottom: -2%;
+  width: 18%;
+  height: 42%;
+  z-index: -1;
+  background: #714927;
+  box-shadow: inset -4px 0 #4c301d, 8px 5px 9px rgba(11, 37, 21, 0.45);
+}
+
+.classic-tile[data-kind="flowers"] {
+  background: #5f9e4b;
+}
+
+.classic-tile[data-kind="flowers"] > div {
+  text-shadow: 1px 1px 0 rgba(55, 57, 32, 0.5);
+}
+
+.classic-tile[data-kind="floor"],
+.classic-tile[data-kind="mother"],
+.classic-tile[data-kind="daisy"] {
+  background-color: #cba96d;
+  background-image: repeating-linear-gradient(90deg, transparent 0 21px, rgba(105, 71, 39, 0.22) 22px 23px);
+  box-shadow: inset 0 -1px rgba(92, 61, 35, 0.18);
+}
+
+.classic-tile[data-kind="lab-floor"] {
+  background-color: #afc8bb;
+  background-image:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.13) 25%, transparent 25% 75%, rgba(255, 255, 255, 0.13) 75%),
+    linear-gradient(45deg, rgba(70, 100, 87, 0.1) 25%, transparent 25% 75%, rgba(70, 100, 87, 0.1) 75%);
+  background-position: 0 0, 9px 9px;
+  background-size: 18px 18px;
+}
+
+.classic-tile[data-kind="wall"] {
+  z-index: 7;
+  background: #53686a;
+  box-shadow: inset 0 -8px #2d4143, inset 0 3px rgba(182, 211, 201, 0.2);
+}
+
+.classic-tile[data-kind="rug"] {
+  background: #a63c3c;
+  box-shadow: inset 0 0 0 4px #e4b95f, inset 0 0 0 7px #743033;
+}
+
+.classic-tile[data-kind="bed"],
+.classic-tile[data-kind="desk"],
+.classic-tile[data-kind="table"],
+.classic-tile[data-kind="shelf"],
+.classic-tile[data-kind="counter"],
+.classic-tile[data-kind="machine"],
+.classic-tile[data-kind="pc"],
+.classic-tile[data-kind="tv"],
+.classic-tile[data-kind="kitchen"],
+.classic-tile[data-kind="starter-pod"],
+.classic-tile[data-kind="professor"] {
+  z-index: 8;
+  box-shadow: inset 0 -5px rgba(32, 24, 18, 0.25), 0 5px 7px rgba(25, 24, 18, 0.25);
+}
+
+.classic-tile[data-kind="fence"] {
+  z-index: 9;
+  background: #5f9e4b;
+  filter: drop-shadow(0 5px 3px rgba(25, 57, 31, 0.3));
+}
+
+.classic-tile[data-kind="ledge"] {
+  background: #5f9e4b;
+  box-shadow: inset 0 -9px #79513b, inset 0 -12px #a57952;
+}
+
+.classic-tile[data-kind^="building-"] {
+  background: #9c7356 !important;
+}
+
+.classic-tile[data-kind^="building-"] > span {
+  display: none;
+}
+
+.classic-building {
+  position: absolute;
+  z-index: 50;
+  pointer-events: none;
+  overflow: visible;
+  filter: drop-shadow(0 11px 8px rgba(17, 30, 22, 0.42));
+}
+
+.classic-building__roof {
+  position: absolute;
+  z-index: 3;
+  left: -4%;
+  right: -4%;
+  top: -18%;
+  height: 55%;
+  background-color: #8d3f3c;
+  background-image:
+    repeating-linear-gradient(0deg, transparent 0 8px, rgba(58, 28, 29, 0.35) 9px 11px),
+    repeating-linear-gradient(90deg, transparent 0 18px, rgba(245, 162, 117, 0.2) 19px 21px);
+  border: 3px solid #4e2f2b;
+  box-shadow: inset 0 5px rgba(241, 156, 113, 0.22), inset 0 -8px rgba(58, 30, 30, 0.38);
+  clip-path: polygon(8% 0, 92% 0, 100% 80%, 95% 100%, 5% 100%, 0 80%);
+}
+
+.classic-building__facade {
+  position: absolute;
+  inset: 28% 3% 2%;
+  z-index: 2;
+  overflow: hidden;
+  background-color: #dfc995;
+  background-image:
+    linear-gradient(90deg, rgba(94, 66, 48, 0.22) 2px, transparent 2px),
+    linear-gradient(rgba(255, 240, 196, 0.22) 2px, transparent 2px);
+  background-size: 22px 100%, 100% 16px;
+  border: 3px solid #674a39;
+  box-shadow: inset 0 -9px #b8996c, inset 5px 0 rgba(255, 237, 188, 0.25);
+}
+
+.classic-building__window {
+  position: absolute;
+  top: 34%;
+  width: 17%;
+  height: 32%;
+  border: 3px solid #5b4638;
+  background: #82bbb0;
+  box-shadow: inset 4px 4px rgba(201, 241, 211, 0.5), inset -4px -4px rgba(34, 94, 89, 0.5), 0 4px #a45545;
+}
+
+.classic-building__window::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 45%, #5b4638 45% 55%, transparent 55%);
+}
+
+.classic-building__window--left { left: 12%; }
+.classic-building__window--right { right: 12%; }
+
+.classic-building__trim {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 7%;
+  height: 5px;
+  background: #815644;
+  box-shadow: 0 5px rgba(76, 50, 40, 0.35);
+}
+
+.classic-building--lab .classic-building__roof {
+  background-color: #587a78;
+  border-color: #2f4a49;
+}
+
+.classic-building--lab .classic-building__facade {
+  background-color: #d6dfcf;
+  border-color: #526a66;
+}
+
+.classic-building--center .classic-building__roof {
+  background-color: #b7313d;
+  border-color: #672832;
+}
+
+.classic-building--center .classic-building__facade {
+  background-color: #f0e7d3;
+}
+
+.classic-building--mart .classic-building__roof {
+  background-color: #347ca4;
+  border-color: #244f6b;
+}
+
+.classic-building--mart .classic-building__facade {
+  background-color: #d7e4d5;
+}
+
+.classic-building--gym .classic-building__roof {
+  background-color: #676963;
+  border-color: #383b38;
+}
+
+.classic-building--gym .classic-building__facade {
+  background-color: #c8c2ad;
+  border-color: #5b5d56;
+}
+
+.classic-world-player,
+.classic-world-npc {
+  filter: drop-shadow(0 7px 4px rgba(8, 24, 15, 0.45));
+}
+
+.classic-world-player::before,
+.classic-world-npc::before {
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: 3%;
+  height: 17%;
+  border-radius: 50%;
+  background: rgba(6, 25, 14, 0.48);
+  content: "";
+  filter: blur(2px);
+}
+
+@media (max-width: 640px) {
+  .classic-world-atmosphere { box-shadow: inset 0 0 48px rgba(0, 0, 0, 0.42); }
+  .classic-building__window { border-width: 2px; }
+  .classic-building__roof { border-width: 2px; }
+  .classic-building__facade { border-width: 2px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .classic-tile[data-kind="water"] { animation: none; }
+}

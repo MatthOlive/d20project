@@ -14,11 +14,23 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Users, Crown, Sparkles, Trash2, CheckSquare, X } from "lucide-react";
+import { Plus, Users, Crown, Sparkles, Trash2, CheckSquare, X, Compass } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useT, LANGS, type Lang } from "@/lib/i18n";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { SettingsDialog, RPG_SYSTEMS } from "@/components/SettingsDialog";
+import { CLASSIC_REGIONS, CLASSIC_START_CITIES, type ClassicRegionId } from "@/lib/classic-mode";
+
+type DashboardGame = {
+  id: string;
+  name: string;
+  background_url: string | null;
+  narrator_id: string;
+  system?: string | null;
+  narrator_type?: string | null;
+  classic_region?: string | null;
+  game_members?: { user_id: string; role: string }[] | null;
+};
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: Dashboard,
@@ -44,20 +56,22 @@ function Dashboard() {
   const { data: games, isLoading } = useQuery({
     queryKey: ["games"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("games")
-        .select("id,name,background_url,narrator_id,created_at,language,system,game_members(user_id,role)")
+      const { data, error } = await (supabase
+        .from("games") as any)
+        .select("id,name,background_url,narrator_id,created_at,language,system,narrator_type,classic_region,game_members(user_id,role)")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as DashboardGame[];
     },
   });
 
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
-  const [narratorType, setNarratorType] = useState<"human" | "ai">("human");
+  const [narratorType, setNarratorType] = useState<"human" | "ai" | "classic">("human");
   const [language, setLanguage] = useState<Lang>("pt-BR");
   const [system, setSystem] = useState<string>("pokerole");
+  const [classicRegion, setClassicRegion] = useState<ClassicRegionId>("kanto");
+  const [classicStartCity, setClassicStartCity] = useState("pallet");
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -67,10 +81,30 @@ function Dashboard() {
       const { data, error } = await supabase
         .from("games")
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .insert({ name: gameName, narrator_id: user.id, narrator_type: narratorType, language, system } as any)
+        .insert({
+          name: gameName,
+          narrator_id: user.id,
+          narrator_type: narratorType,
+          language,
+          system,
+          classic_region: narratorType === "classic" ? classicRegion : null,
+          classic_start_city: narratorType === "classic" ? classicStartCity : null,
+        } as any)
         .select("id,name,background_url,narrator_id,created_at,language,narrator_type,system")
         .single();
       if (error) throw error;
+      if (narratorType === "classic") {
+        const { error: campaignError } = await (supabase.from("classic_campaigns" as never) as any).insert({
+          game_id: data.id,
+          region: classicRegion,
+          start_city: classicStartCity,
+          story_key: "kanto_pallet_v1",
+        });
+        if (campaignError) {
+          await supabase.from("games").delete().eq("id", data.id);
+          throw campaignError;
+        }
+      }
       return data;
     },
     onSuccess: () => {
@@ -80,6 +114,8 @@ function Dashboard() {
       setNarratorType("human");
       setLanguage("pt-BR");
       setSystem("pokerole");
+      setClassicRegion("kanto");
+      setClassicStartCity("pallet");
       toast.success("Game created!");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -150,7 +186,10 @@ function Dashboard() {
                 </div>
                 <div className="space-y-2">
                   <Label>Sistema</Label>
-                  <Select value={system} onValueChange={setSystem}>
+                  <Select value={system} onValueChange={(value) => {
+                    setSystem(value);
+                    if (value !== "pokerole" && narratorType === "classic") setNarratorType("human");
+                  }}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {RPG_SYSTEMS.map((s) => (
@@ -163,14 +202,52 @@ function Dashboard() {
                 </div>
                 <div className="space-y-2">
                   <Label>{t("narrator")}</Label>
-                  <Select value={narratorType} onValueChange={(v) => setNarratorType(v as "human" | "ai")}>
+                  <Select value={narratorType} onValueChange={(v) => setNarratorType(v as "human" | "ai" | "classic")}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="human"><span className="inline-flex items-center gap-2"><Crown className="h-3.5 w-3.5" /> {t("narratedByPerson")}</span></SelectItem>
                       <SelectItem value="ai"><span className="inline-flex items-center gap-2"><Sparkles className="h-3.5 w-3.5" /> {t("narratedByAi")}</span></SelectItem>
+                      {system === "pokerole" && (
+                        <SelectItem value="classic"><span className="inline-flex items-center gap-2"><Compass className="h-3.5 w-3.5" /> Modo Clássico</span></SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
+                {narratorType === "classic" && (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Região inicial</Label>
+                      <Select value={classicRegion} onValueChange={(value) => {
+                        const region = value as ClassicRegionId;
+                        setClassicRegion(region);
+                        setClassicStartCity(CLASSIC_START_CITIES[region][0]?.id ?? "");
+                      }}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {CLASSIC_REGIONS.map((region) => (
+                            <SelectItem key={region.id} value={region.id} disabled={!region.available}>
+                              {region.label}{!region.available ? " — em breve" : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Cidade inicial</Label>
+                      <Select value={classicStartCity} onValueChange={setClassicStartCity}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {CLASSIC_START_CITIES[classicRegion].map((city) => (
+                            <SelectItem key={city.id} value={city.id}>{city.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <p className="text-xs text-muted-foreground sm:col-span-2">
+                      Cada jogador criará seu próprio treinador e escolherá um Pokémon inicial ao entrar na jornada.
+                    </p>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label>{t("language")}</Label>
                   <Select value={language} onValueChange={(v) => setLanguage(v as Lang)}>
@@ -198,6 +275,8 @@ function Dashboard() {
           games.map((g) => {
             const isOwner = g.narrator_id === user?.id;
             const memberCount = g.game_members?.length ?? 0;
+            const gameMeta = g as { system?: string; narrator_type?: string; classic_region?: string | null };
+            const isClassic = gameMeta.narrator_type === "classic";
             const systemLabel = RPG_SYSTEMS.find((s) => s.id === (g as { system?: string }).system)?.label ?? "PokÃ©role 2.0";
             const card = (
               <div className="relative">
@@ -223,7 +302,8 @@ function Dashboard() {
                     <h3 className="font-bold">{g.name}</h3>
                     {isOwner ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-                        <Crown className="h-3 w-3" /> {t("narrator")}
+                        {isClassic ? <Compass className="h-3 w-3" /> : <Crown className="h-3 w-3" />}
+                        {isClassic ? "Organizador" : t("narrator")}
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs">
@@ -232,6 +312,7 @@ function Dashboard() {
                     )}
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
+                    {isClassic && <span>Clássico · Kanto · </span>}
                     {systemLabel} Â· {memberCount} {memberCount === 1 ? t("member") : t("members")}
                   </p>
                 </div>

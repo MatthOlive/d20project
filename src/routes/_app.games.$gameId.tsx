@@ -34,6 +34,8 @@ import { MacroBar } from "@/components/MacroBar";
 import { MusicPanel } from "@/components/MusicPanel";
 import { MusicPlayer } from "@/components/MusicPlayer";
 import { DeckPanel } from "@/components/DeckPanel";
+import { ClassicCampaignPanel } from "@/components/ClassicCampaignPanel";
+import { ClassicWorld } from "@/components/ClassicWorld";
 import { toast } from "sonner";
 import { ArrowLeft, Copy, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Swords, ChevronDown, ChevronUp, ChevronRight, Dices, MessageSquare } from "lucide-react";
 import { rollD6, rollShiny, preferredPokemonSprite, POKEMON_ATTRS, SOCIAL_ATTRS, POKEMON_TYPES, RANKS, RANK_LABELS, TYPE_COLORS, type PokemonType, type Rank } from "@/lib/pokerole";
@@ -127,9 +129,9 @@ function GameRoom() {
     queryKey: ["game", gameId],
     queryFn: async () => {
       // Note: invite_code is intentionally excluded — narrator fetches it via get_game_invite_code RPC.
-      const { data, error } = await supabase
-        .from("games")
-        .select("id,narrator_id,name,background_url,created_at,system,language,narrator_type,shiny_chance,overgrown_chance,contest_weights,grid_enabled,grid_snap,grid_snap_mode,grid_size,grid_color,grid_opacity,grid_unit_m,grid_unit_label,fog_enabled,dynamic_lighting,master_volume,current_scenario_id,active_page_id")
+      const { data, error } = await (supabase
+        .from("games") as any)
+        .select("id,narrator_id,name,background_url,created_at,system,language,narrator_type,classic_region,classic_start_city,shiny_chance,overgrown_chance,contest_weights,grid_enabled,grid_snap,grid_snap_mode,grid_size,grid_color,grid_opacity,grid_unit_m,grid_unit_label,fog_enabled,dynamic_lighting,master_volume,current_scenario_id,active_page_id")
         .eq("id", gameId)
         .single();
       if (error) throw error;
@@ -177,7 +179,9 @@ function GameRoom() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const isNarrator = !!game && !!user && game.narrator_id === user.id;
+  const isGameOwner = !!game && !!user && game.narrator_id === user.id;
+  const isClassic = (game as { narrator_type?: string } | undefined)?.narrator_type === "classic";
+  const isNarrator = isGameOwner && !isClassic;
 
   async function rollFromSheet(
     label: string,
@@ -250,11 +254,11 @@ function GameRoom() {
   const { data: inviteCode } = useQuery({
     queryKey: ["invite", gameId],
     queryFn: async () => {
-      if (!isNarrator) return null;
+      if (!isGameOwner) return null;
       const { data } = await supabase.rpc("get_game_invite_code", { _game: gameId });
       return (data as string | null) ?? null;
     },
-    enabled: !!isNarrator,
+    enabled: !!isGameOwner,
   });
   const inviteUrl = typeof window !== "undefined" && inviteCode
     ? `${window.location.origin}/join/${inviteCode}` : "";
@@ -271,7 +275,50 @@ function GameRoom() {
   if (gameLoading || !game || !user) return <div className="p-8 text-sm text-muted-foreground">Carregando jogo…</div>;
   const gameSystem = (game as { system?: string | null }).system ?? "pokerole";
 
-  const mapBoard = (
+  const handleClassicOpenTrainer = (id: string, name: string) => {
+    openWindow({ kind: "trainer", id, title: name });
+    if (isMobile) setMobileTab(`sheet:trainer:${id}`);
+  };
+
+  const handleClassicOpenPokemon = (id: string, name: string) => {
+    openWindow({ kind: "pokemon", id, title: name });
+    if (isMobile) setMobileTab(`sheet:pokemon:${id}`);
+  };
+
+  const mapToolbar = (
+    <div className="flex flex-col gap-1.5">
+      <Button asChild size="sm" variant="secondary" className="h-8 justify-start">
+        <Link to="/dashboard">
+          <ArrowLeft className="mr-1 h-3.5 w-3.5" /> Dashboard
+        </Link>
+      </Button>
+      {isGameOwner && (
+        <div className="grid grid-cols-2 gap-1">
+          <InviteButton url={inviteUrl} />
+          <GameSettingsButton gameId={gameId} />
+          <Button
+            size="sm"
+            variant="secondary"
+            className="h-8 justify-start"
+            onClick={() => setTurnOrderOpen((v) => !v)}
+          >
+            <Swords className="mr-1 h-3.5 w-3.5" /> Turn Order
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+
+  const mapBoard = isClassic ? (
+    <ClassicWorld
+      gameId={gameId}
+      userId={user.id}
+      toolbarSlot={mapToolbar}
+      onOpenTrainer={handleClassicOpenTrainer}
+      onOpenPokemon={handleClassicOpenPokemon}
+      onOpenTurnOrder={() => setTurnOrderOpen(true)}
+    />
+  ) : (
     <MapBoard
       gameId={gameId}
       backgroundUrl={game.background_url}
@@ -294,29 +341,7 @@ function GameRoom() {
         fogEnabled: (game as never as { fog_enabled?: boolean }).fog_enabled ?? false,
         dynamicLighting: (game as never as { dynamic_lighting?: boolean }).dynamic_lighting ?? false,
       }}
-      toolbarSlot={(
-        <div className="flex flex-col gap-1.5">
-          <Button asChild size="sm" variant="secondary" className="h-8 justify-start">
-            <Link to="/dashboard">
-              <ArrowLeft className="mr-1 h-3.5 w-3.5" /> Dashboard
-            </Link>
-          </Button>
-          {isNarrator && (
-            <div className="grid grid-cols-2 gap-1">
-              <InviteButton url={inviteUrl} />
-              <GameSettingsButton gameId={gameId} />
-              <Button
-                size="sm"
-                variant="secondary"
-                className="h-8 justify-start"
-                onClick={() => setTurnOrderOpen((v) => !v)}
-              >
-                <Swords className="mr-1 h-3.5 w-3.5" /> Turn Order
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
+      toolbarSlot={mapToolbar}
     />
   );
 
@@ -349,16 +374,27 @@ function GameRoom() {
   );
 
   if (isMobile) {
-    const baseTabs = ["map", "chat", "compendium", "files", "decks", "music"] as const;
-    type BaseTab = (typeof baseTabs)[number];
+    const baseTabs = isClassic
+      ? ["map", "journey", "chat", "compendium", "files", "decks", "music"]
+      : ["map", "chat", "compendium", "files", "decks", "music"];
     const sheetTabKey = (w: OpenWindow) => `sheet:${w.kind}:${w.id}`;
     const isSheetTab = mobileTab.startsWith("sheet:");
     const activeSheet = isSheetTab ? windows.find((w) => sheetTabKey(w) === mobileTab) ?? null : null;
 
     // If user opened a sheet from another tab, auto-switch to its tab.
     // If the active sheet was closed, fall back to map.
-    function onClickBaseTab(t: BaseTab) {
+    function onClickBaseTab(t: string) {
       setMobileTab(t);
+    }
+
+    function mobileTabLabel(tab: string) {
+      if (tab === "map") return "Mapa";
+      if (tab === "journey") return "Jornada";
+      if (tab === "chat") return "Chat";
+      if (tab === "compendium") return "Compendium";
+      if (tab === "files") return "Files";
+      if (tab === "decks") return "Decks";
+      return "Música";
     }
 
     const openWindowMobile = (w: OpenWindow) => {
@@ -376,7 +412,7 @@ function GameRoom() {
               onClick={() => onClickBaseTab(t)}
               className={`shrink-0 rounded-md px-2 py-2 text-xs font-bold uppercase ${mobileTab === t ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
             >
-              {t === "map" ? "Mapa" : t === "chat" ? "Chat" : t === "compendium" ? "Compendium" : t === "files" ? "Files" : t === "decks" ? "Decks" : "Música"}
+              {mobileTabLabel(t)}
             </button>
           ))}
           {windows.map((w) => {
@@ -412,7 +448,16 @@ function GameRoom() {
           {mobileTab === "chat" && (
             <div className="h-full overflow-hidden">
               <div className="p-2"><OnlinePresence gameId={gameId} userId={user.id} isNarrator={isNarrator} /></div>
-              <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} isGameOwner={isNarrator} />
+              <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} isGameOwner={isGameOwner} />
+            </div>
+          )}
+          {isClassic && mobileTab === "journey" && (
+            <div className="h-full overflow-hidden bg-background">
+              <ClassicCampaignPanel
+                gameId={gameId}
+                userId={user.id}
+                onOpenTrainer={(id, name) => openWindowMobile({ kind: "trainer", id, title: name })}
+              />
             </div>
           )}
           {mobileTab === "compendium" && (
@@ -463,16 +508,26 @@ function GameRoom() {
             <div className="shrink-0 p-2">
               <OnlinePresence gameId={gameId} userId={user.id} isNarrator={isNarrator} />
             </div>
-            <Tabs defaultValue="chat" className="flex min-h-0 flex-1 flex-col">
-              <TabsList className="m-2 grid shrink-0 grid-cols-5">
+            <Tabs defaultValue={isClassic ? "journey" : "chat"} className="flex min-h-0 flex-1 flex-col">
+              <TabsList className={`m-2 grid shrink-0 ${isClassic ? "h-auto grid-cols-3 gap-1" : "grid-cols-5"}`}>
+                {isClassic && <TabsTrigger value="journey">Jornada</TabsTrigger>}
                 <TabsTrigger value="chat">Chat</TabsTrigger>
                 <TabsTrigger value="compendium">Compendium</TabsTrigger>
                 <TabsTrigger value="files">Files</TabsTrigger>
                 <TabsTrigger value="decks">Decks</TabsTrigger>
                 <TabsTrigger value="music">Música</TabsTrigger>
               </TabsList>
+              {isClassic && (
+                <TabsContent value="journey" className="mt-0 min-h-0 flex-1 overflow-hidden">
+                  <ClassicCampaignPanel
+                    gameId={gameId}
+                    userId={user.id}
+                    onOpenTrainer={(id, name) => openWindow({ kind: "trainer", id, title: name })}
+                  />
+                </TabsContent>
+              )}
               <TabsContent value="chat" className="mt-0 min-h-0 flex-1 overflow-hidden">
-                <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} isGameOwner={isNarrator} />
+                <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} isGameOwner={isGameOwner} />
               </TabsContent>
               <TabsContent value="compendium" className="mt-0 min-h-0 flex-1 overflow-auto p-3">
                 <CompendiumPanel system={gameSystem} />
@@ -834,7 +889,7 @@ function FilesPanel({
     queryKey: ["characters", gameId],
     queryFn: async () => {
       const [pkm, tr] = await Promise.all([
-        supabase.from("pokemon").select("id,nickname,owner_id,image_url,folder,is_shiny,species:species_id(name,sprite_url)").eq("game_id", gameId),
+        supabase.from("pokemon").select("id,nickname,owner_id,image_url,folder,is_shiny,species:species_id(name,sprite_url)").eq("game_id", gameId).eq("ai_spawned", false),
         supabase.from("trainers").select("id,name,owner_id,image_url,folder").eq("game_id", gameId),
       ]);
       return {
