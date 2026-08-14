@@ -30,6 +30,7 @@ import {
   HpAndStatusBlock, AttackRollButton, GenericRollButton, painPenaltyFor,
 } from "@/components/SheetRolls";
 import { SheetPermissionsDialog } from "@/components/SheetPermissionsDialog";
+import { TrainerAppearanceImage } from "@/components/TrainerAppearance";
 
 const POKEBALLS = {
   pokeball:  { label: "Pokéball",  pool: 4 },
@@ -199,7 +200,7 @@ export function TrainerSheet({
           </div>
           <div className="flex flex-col items-center gap-3 p-6">
             {trainer.image_url ? (
-              <img src={trainer.image_url} alt={trainer.name} className="h-48 w-48 rounded-lg object-contain" />
+              <TrainerAppearanceImage value={trainer.image_url} alt={trainer.name} className="h-48 w-48 rounded-lg bg-muted/30 object-contain" />
             ) : (
               <div className="grid h-48 w-48 place-items-center rounded-lg border border-dashed border-border text-xs text-muted-foreground">
                 Sem imagem
@@ -754,7 +755,7 @@ function TrainerImage({
   return (
     <div className="flex flex-col items-start gap-2">
       {trainer.image_url ? (
-        <img src={trainer.image_url} alt={trainer.name} className="h-24 w-24 rounded-xl border border-border bg-muted object-cover" />
+        <TrainerAppearanceImage value={trainer.image_url} alt={trainer.name} className="h-24 w-24 rounded-xl border border-border bg-muted object-cover" />
       ) : (
         <div className="flex h-24 w-24 items-center justify-center rounded-xl border border-dashed border-border bg-muted text-xs text-muted-foreground">No image</div>
       )}

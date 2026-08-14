@@ -52,6 +52,155 @@
   --classic-sun: rgba(255, 206, 124, 0.15);
 }
 
+.classic-scene-bedroom {
+  background: #100b08;
+}
+
+.classic-scene-bedroom .classic-world-map {
+  background-color: #21130b;
+  background-image: var(--classic-scene-art);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  filter: saturate(1.08) contrast(1.05);
+}
+
+.classic-scene-bedroom .classic-world-map::before {
+  background:
+    linear-gradient(116deg, rgba(255, 216, 127, 0.12), transparent 34%),
+    linear-gradient(to bottom, rgba(255, 247, 218, 0.025), transparent 58%, rgba(8, 3, 2, 0.15));
+}
+
+.classic-scene-bedroom .classic-world-map::after {
+  box-shadow:
+    inset 0 0 30px 5px rgba(4, 2, 1, 0.38),
+    inset 0 -15px 24px rgba(4, 2, 1, 0.18);
+}
+
+.classic-scene-bedroom .classic-world-grid {
+  z-index: 12;
+}
+
+.classic-scene-bedroom .classic-tile {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.classic-scene-bedroom .classic-tile::before,
+.classic-scene-bedroom .classic-tile::after {
+  display: none;
+}
+
+.classic-scene-bedroom .classic-tile > * {
+  opacity: 0;
+}
+
+.classic-bedroom-ambience {
+  position: absolute;
+  inset: 0;
+  z-index: 18;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.classic-bedroom-ambience > span {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+}
+
+.classic-bedroom-ambience__sunbeam {
+  left: 14%;
+  top: 8%;
+  width: 35%;
+  height: 57%;
+  background: linear-gradient(116deg, rgba(255, 234, 165, 0.22), rgba(255, 202, 93, 0.075) 52%, transparent 74%);
+  clip-path: polygon(3% 0, 44% 0, 100% 100%, 52% 100%);
+  mix-blend-mode: screen;
+  animation: classic-bedroom-light 5.5s steps(4, end) infinite;
+}
+
+.classic-bedroom-ambience__pc-glow {
+  left: 34%;
+  top: 15%;
+  width: 13%;
+  height: 11%;
+  border-radius: 16%;
+  background: rgba(255, 176, 79, 0.08);
+  box-shadow: 0 0 16px 7px rgba(255, 135, 45, 0.11);
+  mix-blend-mode: screen;
+  animation: classic-bedroom-screen 2.8s steps(3, end) infinite;
+}
+
+.classic-bedroom-ambience__tv-glow {
+  left: 57%;
+  top: 16%;
+  width: 12%;
+  height: 11%;
+  border-radius: 14%;
+  background: rgba(118, 164, 255, 0.045);
+  box-shadow: 0 0 13px 5px rgba(88, 131, 216, 0.07);
+}
+
+.classic-bedroom-ambience__stair-glow {
+  right: 10%;
+  top: 9%;
+  width: 14%;
+  height: 31%;
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.12));
+  box-shadow: inset -8px 0 18px rgba(0, 0, 0, 0.2);
+}
+
+.classic-bedroom-ambience__dust {
+  width: 2px;
+  height: 2px;
+  background: rgba(255, 232, 169, 0.62);
+  box-shadow:
+    13px 17px rgba(255, 232, 169, 0.42),
+    29px 5px rgba(255, 232, 169, 0.5),
+    47px 28px rgba(255, 232, 169, 0.35),
+    66px 11px rgba(255, 232, 169, 0.46),
+    84px 38px rgba(255, 232, 169, 0.32);
+  image-rendering: pixelated;
+  opacity: 0;
+  animation: classic-bedroom-dust 6.5s steps(10, end) infinite;
+}
+
+.classic-bedroom-ambience__dust--one {
+  left: 20%;
+  top: 17%;
+}
+
+.classic-bedroom-ambience__dust--two {
+  left: 27%;
+  top: 29%;
+  animation-delay: -2.2s;
+}
+
+.classic-bedroom-ambience__dust--three {
+  left: 34%;
+  top: 40%;
+  animation-delay: -4.4s;
+}
+
+@keyframes classic-bedroom-light {
+  0%, 100% { opacity: 0.62; }
+  50% { opacity: 0.82; }
+}
+
+@keyframes classic-bedroom-screen {
+  0%, 100% { opacity: 0.48; }
+  45% { opacity: 0.7; }
+  52% { opacity: 0.34; }
+}
+
+@keyframes classic-bedroom-dust {
+  0% { opacity: 0; transform: translate3d(0, 8px, 0); }
+  18%, 72% { opacity: 0.58; }
+  100% { opacity: 0; transform: translate3d(18px, -24px, 0); }
+}
+
 .classic-scene-route_1,
 .classic-scene-route_2,
 .classic-scene-route_22 {
@@ -368,6 +517,54 @@
   filter: drop-shadow(0 7px 4px rgba(8, 24, 15, 0.45));
 }
 
+.classic-world-player {
+  isolation: isolate;
+  overflow: visible;
+}
+
+.classic-world-player__sprite {
+  position: absolute;
+  left: 50%;
+  bottom: 5%;
+  z-index: 2;
+  width: 150%;
+  height: 150%;
+  pointer-events: none;
+  transform: translateX(-50%);
+  transform-origin: 50% 100%;
+  filter: drop-shadow(0 4px 1px rgba(0, 0, 0, 0.58));
+}
+
+.classic-world-player--selected::after {
+  position: absolute;
+  left: 19%;
+  right: 19%;
+  bottom: 0;
+  z-index: 1;
+  height: 18%;
+  border: 2px solid rgba(255, 235, 145, 0.95);
+  border-radius: 50%;
+  content: "";
+  box-shadow: 0 0 8px rgba(255, 91, 72, 0.72);
+}
+
+.classic-world-player__fallback {
+  position: absolute;
+  left: 50%;
+  bottom: 12%;
+  z-index: 2;
+  width: 70%;
+  height: 95%;
+  padding: 12%;
+  color: #f7d76b;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 3px 1px rgba(0, 0, 0, 0.7));
+}
+
+.classic-world-player__name {
+  z-index: 4;
+}
+
 .classic-world-player::before,
 .classic-world-npc::before {
   position: absolute;
@@ -381,6 +578,50 @@
   filter: blur(2px);
 }
 
+.classic-world-map--illustrated {
+  background-color: #172117;
+  background-image: var(--classic-scene-art);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  filter: saturate(1.03) contrast(1.02);
+}
+
+.classic-world-map--illustrated .classic-world-grid {
+  z-index: 12;
+}
+
+.classic-world-map--illustrated .classic-tile {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  filter: none;
+}
+
+.classic-world-map--illustrated .classic-tile:hover {
+  background: rgba(255, 255, 255, 0.025) !important;
+}
+
+.classic-world-map--illustrated .classic-tile::before,
+.classic-world-map--illustrated .classic-tile::after {
+  display: none;
+}
+
+.classic-world-map--illustrated .classic-tile > * {
+  opacity: 0;
+}
+
+.classic-tile[data-detail="false"] > * {
+  display: none !important;
+}
+
+.classic-world-map--illustrated .classic-tile[data-kind="mother"] > *,
+.classic-world-map--illustrated .classic-tile[data-kind="npc-mart"] > *,
+.classic-world-map--illustrated .classic-tile[data-kind="professor"] > *,
+.classic-world-map--illustrated .classic-tile[data-kind="starter-pod"] > * {
+  opacity: 1;
+}
+
 @media (max-width: 640px) {
   .classic-world-atmosphere { box-shadow: inset 0 0 48px rgba(0, 0, 0, 0.42); }
   .classic-building__window { border-width: 2px; }
@@ -390,4 +631,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .classic-tile[data-kind="water"] { animation: none; }
+  .classic-bedroom-ambience__sunbeam,
+  .classic-bedroom-ambience__pc-glow,
+  .classic-bedroom-ambience__dust { animation: none; }
+  .classic-world-player { transition-duration: 0ms !important; }
 }

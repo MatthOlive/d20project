@@ -36,6 +36,14 @@ export type MoveData = {
   category: string;
 };
 
+export type BattleMoveRollOptions = {
+  accuracyBonus: number;
+  damageBonus: number;
+  criticalMargin: number;
+  actionsAlreadyMade: number;
+  extraDamageBonus: number;
+};
+
 // Z-Move names per type (Pokérole 2.0)
 export const Z_MOVE_NAMES: Record<string, string> = {
   normal: "Breakneck Blitz",
@@ -351,6 +359,12 @@ export function MoveRollDialog({
   painPenalty,
   imageUrl,
   triggerLabel,
+  initialActions = 0,
+  controlledOpen,
+  onControlledOpenChange,
+  hideTrigger = false,
+  battleMode = false,
+  onBattleConfirm,
 }: {
   move: MoveData;
   pokemonName: string;
@@ -366,8 +380,15 @@ export function MoveRollDialog({
   painPenalty: number;
   imageUrl?: string | null;
   triggerLabel?: string;
+  initialActions?: number;
+  controlledOpen?: boolean;
+  onControlledOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
+  battleMode?: boolean;
+  onBattleConfirm?: (options: BattleMoveRollOptions) => Promise<boolean | void>;
 }) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
   const [accBonusText, setAccBonusText] = useState("0");
   const [dmgBonusText, setDmgBonusText] = useState("0");
   const [targetDefText, setTargetDefText] = useState("0");
@@ -377,7 +398,7 @@ export function MoveRollDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const spdefUsesInsight = useGameSpdefUsesInsight(gameId);
   const effectivenessFlat = useGameEffectivenessFlat(gameId);
-  const { tokens, infoMap } = useTargetsForGame(gameId, open && !isStatus);
+  const { tokens, infoMap } = useTargetsForGame(gameId, open && !isStatus && !battleMode);
   const extras = useMemo(() => parseMoveExtras(move.effect), [move.effect]);
   const [extraOn, setExtraOn] = useState<boolean[]>(() => extras.extra.map(() => false));
   const accBonus = readIntegerInput(accBonusText);
@@ -386,9 +407,15 @@ export function MoveRollDialog({
   const critMargin = readIntegerInput(critMarginText, 0);
   const actions = readIntegerInput(actionsText, 0);
 
+  function changeOpen(next: boolean) {
+    setInternalOpen(next);
+    onControlledOpenChange?.(next);
+  }
+
   useEffect(() => {
-    if (!open) setSelectedTokenIds([]);
-  }, [open]);
+    if (open) setActionsText(String(Math.max(0, initialActions)));
+    else setSelectedTokenIds([]);
+  }, [initialActions, open]);
 
   const defLabel = isSpecial ? "Target Sp.Def" : "Target Def";
   const extraDmgBonus = extras.extra.reduce((acc, e, i) => acc + (extraOn[i] ? e.count : 0), 0);
@@ -408,6 +435,32 @@ export function MoveRollDialog({
 
   async function confirm() {
     if (isSubmitting) return;
+    if (onBattleConfirm) {
+      setIsSubmitting(true);
+      try {
+        const completed = await onBattleConfirm({
+          accuracyBonus: accBonus,
+          damageBonus: dmgBonus,
+          criticalMargin: critMargin,
+          actionsAlreadyMade: actions,
+          extraDamageBonus: extraDmgBonus,
+        });
+        if (completed !== false) {
+          changeOpen(false);
+          setAccBonusText("0");
+          setDmgBonusText("0");
+          setTargetDefText("0");
+          setCritMarginText("0");
+          setSelectedTokenIds([]);
+          setExtraOn(extras.extra.map(() => false));
+        }
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : String(error));
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
     if (hasTargets && !selectedTargetsReady) {
       toast.error("Aguarde os dados dos alvos carregarem.");
       return;
@@ -439,7 +492,7 @@ export function MoveRollDialog({
           const tgtPool = Math.max(0, dmgPoolAfterPain + effDicePool - def);
           const rolled = eff.immune ? { dice: [] as number[], successes: 0 } : rollD6(tgtPool);
           const successesFlatAdj = effectivenessFlat ? Math.max(0, rolled.successes + eff.delta) : rolled.successes;
-          const finalDamage = eff.immune ? 0 : successesFlatAdj;
+          const finalDamage = eff.immune ? 0 : Math.max(1, successesFlatAdj);
 
           targets.push({
             name: t.name,
@@ -459,7 +512,7 @@ export function MoveRollDialog({
       } else {
         const rolled = rollD6(dmgPoolAfterPain);
         aggDice = rolled.dice;
-        aggSuccesses = rolled.successes;
+        aggSuccesses = Math.max(1, rolled.successes);
       }
 
       dmg = {
@@ -519,7 +572,7 @@ export function MoveRollDialog({
       setIsSubmitting(false);
       return;
     }
-    setOpen(false);
+    changeOpen(false);
     setAccBonusText("0");
     setDmgBonusText("0");
     setTargetDefText("0");
@@ -531,13 +584,15 @@ export function MoveRollDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm">
-          <Dices className="mr-1.5 h-3.5 w-3.5" />{" "}
-          {triggerLabel ?? `Roll ${accPool}d6${isStatus ? "" : ` / ${dmgPool}d6`}`}
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={changeOpen}>
+      {!hideTrigger && (
+        <DialogTrigger asChild>
+          <Button size="sm">
+            <Dices className="mr-1.5 h-3.5 w-3.5" />{" "}
+            {triggerLabel ?? `Roll ${accPool}d6${isStatus ? "" : ` / ${dmgPool}d6`}`}
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
@@ -612,7 +667,11 @@ export function MoveRollDialog({
                 />
               </div>
 
-              <div className="rounded-md border border-border bg-muted/30 p-2">
+              {battleMode ? (
+                <div className="rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+                  O alvo e a defesa serão calculados automaticamente pela batalha.
+                </div>
+              ) : <><div className="rounded-md border border-border bg-muted/30 p-2">
                 <Label className="text-xs font-semibold">Alvos no campo (opcional)</Label>
                 <p className="text-[10px] text-muted-foreground">
                   Selecione um ou mais tokens. O dano é calculado por alvo usando {isSpecial ? "Sp.Def" : "Def"} e tipo.
@@ -673,7 +732,7 @@ export function MoveRollDialog({
                     className="h-9 w-20"
                   />
                 </div>
-              )}
+              )}</>}
             </>
           )}
           {extras.extra.length > 0 && (

@@ -53,6 +53,18 @@ export type MoveRollMessage = {
     critBonus?: number;
     targets?: MoveRollTarget[];
   } | null;
+  reaction?: {
+    choice: "none" | "clash" | "evade";
+    pool: number;
+    dice: number[];
+    successes: number;
+    required: number;
+    actionNumber?: number;
+    minimumPool?: number;
+    succeeded: boolean;
+    damageToAttacker: number;
+    preventedMoveDamage: boolean;
+  };
   chance?: { label: string; dice: number[]; successes: number }[];
 };
 
@@ -280,6 +292,36 @@ export function MoveRollResultCard({ message }: { message: MoveRollMessage }) {
           </div>
         </section>
       ) : null}
+
+      {message.reaction && message.reaction.choice !== "none" && (
+        <section className="border-b border-border px-4 py-3">
+          <SectionPill accent={tcol.bg}>Reação</SectionPill>
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/35 px-3 py-3">
+            <div className="min-w-0">
+              <p className="text-sm font-black uppercase text-foreground">
+                {message.reaction.choice === "clash" ? "Clash" : "Evasion"}
+              </p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                Ação {message.reaction.actionNumber ?? 1} · pool mínima {message.reaction.minimumPool ?? message.reaction.required} · precisava igualar {message.reaction.required} sucesso(s)
+              </p>
+              <p className={cn("mt-1 text-xs font-bold", message.reaction.succeeded ? "text-success" : "text-destructive")}>
+                {message.reaction.succeeded
+                  ? message.reaction.choice === "clash"
+                    ? "Sucesso: ambos sofreram 1 de dano"
+                    : "Sucesso: todo o dano foi evitado"
+                  : "Falhou: o dano normal foi aplicado"}
+              </p>
+            </div>
+            <ResultBadge
+              label={`${message.reaction.pool}d6`}
+              value={message.reaction.successes}
+              dice={message.reaction.dice}
+              accent={tcol.bg}
+              foreground={tcol.fg}
+            />
+          </div>
+        </section>
+      )}
 
       {!isHit && (
         <section className="border-b border-border px-4 py-3">

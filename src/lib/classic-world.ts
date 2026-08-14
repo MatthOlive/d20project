@@ -90,6 +90,7 @@ export type ClassicScene = {
   spawn: { x: number; y: number };
   tiles: ClassicTileKind[][];
   transitions: Record<string, ClassicTransition>;
+  clickTargets?: Record<string, { x: number; y: number }>;
   starterZones?: Set<string>;
   routeEndZones?: Set<string>;
   interactions?: Record<string, ClassicInteraction>;
@@ -107,7 +108,8 @@ export const CLASSIC_ROUTE_ENCOUNTERS: Partial<Record<ClassicSceneId, readonly s
   route_22: ["Rattata", "Spearow", "Mankey"],
 };
 
-export const CLASSIC_ENCOUNTER_CHANCE = 0.16;
+export const CLASSIC_ENCOUNTER_CHANCE = 0.083;
+export const CLASSIC_MIN_GRASS_STEPS = 12;
 
 const WALKABLE_TILES = new Set<ClassicTileKind>([
   "floor",
@@ -154,27 +156,51 @@ function border(grid: ClassicTileKind[][], tile: ClassicTileKind) {
 }
 
 function bedroomScene(): ClassicScene {
-  const tiles = makeGrid(12, 10, "floor");
+  const tiles = makeGrid(24, 20, "floor");
   border(tiles, "wall");
-  rect(tiles, 1, 2, 2, 4, "bed");
-  tiles[1][4] = "pc";
-  rect(tiles, 4, 2, 2, 1, "desk");
-  tiles[1][7] = "tv";
-  tiles[2][7] = "desk";
-  rect(tiles, 4, 5, 4, 3, "rug");
-  tiles[8][1] = "plant";
-  tiles[1][10] = "stairs";
+
+  // The room uses a finer grid than the outdoor maps so the character can
+  // walk around furniture without getting trapped by oversized hit boxes.
+  rect(tiles, 1, 1, 22, 4, "wall");
+  rect(tiles, 1, 4, 3, 3, "shelf");
+  rect(tiles, 7, 2, 5, 4, "desk");
+  rect(tiles, 8, 5, 3, 2, "desk");
+  tiles[4][10] = "pc";
+  rect(tiles, 12, 4, 2, 2, "shelf");
+  rect(tiles, 14, 2, 4, 5, "tv");
+  rect(tiles, 18, 2, 3, 6, "stairs");
+
+  rect(tiles, 1, 6, 5, 10, "bed");
+  rect(tiles, 1, 15, 3, 3, "table");
+  rect(tiles, 5, 16, 2, 3, "plant");
+  rect(tiles, 21, 11, 2, 7, "shelf");
+  rect(tiles, 8, 10, 8, 6, "rug");
+
+  const clickTargets: Record<string, { x: number; y: number }> = {};
+  for (let y = 2; y <= 6; y += 1) {
+    for (let x = 7; x <= 11; x += 1) clickTargets[key(x, y)] = { x: 10, y: 7 };
+    for (let x = 14; x <= 17; x += 1) clickTargets[key(x, y)] = { x: 15, y: 7 };
+  }
+  for (let y = 2; y <= 7; y += 1) {
+    for (let x = 18; x <= 20; x += 1) clickTargets[key(x, y)] = { x: 19, y: 7 };
+  }
+
   return {
     id: "bedroom",
     label: "Seu quarto",
-    width: 12,
-    height: 10,
-    spawn: { x: 6, y: 5 },
+    width: 24,
+    height: 20,
+    spawn: { x: 12, y: 12 },
     tiles,
-    transitions: { [key(10, 1)]: { scene: "player_house_1f", x: 10, y: 2 } },
+    transitions: {
+      [key(18, 7)]: { scene: "player_house_1f", x: 10, y: 2 },
+      [key(19, 7)]: { scene: "player_house_1f", x: 10, y: 2 },
+      [key(20, 7)]: { scene: "player_house_1f", x: 10, y: 2 },
+    },
+    clickTargets,
     interactions: {
-      [key(4, 1)]: { kind: "pc-storage" },
-      [key(7, 1)]: { kind: "message", message: "Um videogame. É hora de começar a jornada!" },
+      [key(10, 7)]: { kind: "pc-storage" },
+      [key(15, 7)]: { kind: "message", message: "Um videogame. É hora de começar a jornada!" },
     },
   };
 }
@@ -197,7 +223,7 @@ function playerHouseScene(): ClassicScene {
     spawn: { x: 10, y: 2 },
     tiles,
     transitions: {
-      [key(10, 1)]: { scene: "bedroom", x: 9, y: 1 },
+      [key(10, 1)]: { scene: "bedroom", x: 19, y: 7 },
       [key(5, 9)]: { scene: "pallet", x: 6, y: 8 },
     },
     interactions: {
@@ -241,6 +267,10 @@ function rivalBedroomScene(): ClassicScene {
   rect(tiles, 8, 4, 2, 3, "shelf");
   rect(tiles, 4, 5, 3, 3, "rug");
   tiles[1][10] = "stairs";
+  const clickTargets: Record<string, { x: number; y: number }> = {};
+  for (let y = 1; y <= 2; y += 1) {
+    for (let x = 4; x <= 6; x += 1) clickTargets[key(x, y)] = { x: 5, y: 3 };
+  }
   return {
     id: "rival_bedroom",
     label: "Quarto do rival",
@@ -249,8 +279,9 @@ function rivalBedroomScene(): ClassicScene {
     spawn: { x: 9, y: 1 },
     tiles,
     transitions: { [key(10, 1)]: { scene: "rival_house_1f", x: 10, y: 2 } },
+    clickTargets,
     interactions: {
-      [key(5, 1)]: { kind: "message", message: "Há anotações sobre treinadores e mapas da região." },
+      [key(5, 3)]: { kind: "message", message: "Há anotações sobre treinadores e mapas da região." },
     },
   };
 }
@@ -722,7 +753,7 @@ function routeTwentyTwoSceneV2(): ClassicScene {
   };
 }
 
-export const CLASSIC_SCENES: Record<ClassicSceneId, ClassicScene> = {
+const BASE_CLASSIC_SCENES: Record<ClassicSceneId, ClassicScene> = {
   bedroom: bedroomScene(),
   player_house_1f: playerHouseScene(),
   rival_house_1f: rivalHouseScene(),
@@ -734,6 +765,106 @@ export const CLASSIC_SCENES: Record<ClassicSceneId, ClassicScene> = {
   route_2: routeTwoSceneV2(),
   route_22: routeTwentyTwoSceneV2(),
 };
+
+const DOUBLE_GRID_SCENES = new Set<ClassicSceneId>([
+  "player_house_1f",
+  "rival_house_1f",
+  "rival_bedroom",
+  "pallet",
+  "lab",
+  "route_1",
+  "viridian",
+  "route_2",
+  "route_22",
+]);
+
+function parseTileKey(value: string) {
+  const [x, y] = value.split(",").map(Number);
+  return { x, y };
+}
+
+function expandKeyedRecord<T>(record: Record<string, T> | undefined, scale: number) {
+  if (!record) return undefined;
+  const expanded: Record<string, T> = {};
+  for (const [position, value] of Object.entries(record)) {
+    const { x, y } = parseTileKey(position);
+    for (let offsetY = 0; offsetY < scale; offsetY += 1) {
+      for (let offsetX = 0; offsetX < scale; offsetX += 1) {
+        expanded[key(x * scale + offsetX, y * scale + offsetY)] = value;
+      }
+    }
+  }
+  return expanded;
+}
+
+function expandKeySet(values: Set<string> | undefined, scale: number) {
+  if (!values) return undefined;
+  const expanded = new Set<string>();
+  for (const position of values) {
+    const { x, y } = parseTileKey(position);
+    for (let offsetY = 0; offsetY < scale; offsetY += 1) {
+      for (let offsetX = 0; offsetX < scale; offsetX += 1) {
+        expanded.add(key(x * scale + offsetX, y * scale + offsetY));
+      }
+    }
+  }
+  return expanded;
+}
+
+function doubleSceneGrid(scene: ClassicScene): ClassicScene {
+  const scale = 2;
+  const tiles = scene.tiles.flatMap((row) => {
+    const expandedRow = row.flatMap((tile) => [tile, tile]);
+    return [expandedRow.slice(), expandedRow.slice()];
+  });
+  const clickTargets = expandKeyedRecord(scene.clickTargets, scale);
+
+  return {
+    ...scene,
+    width: scene.width * scale,
+    height: scene.height * scale,
+    spawn: { x: scene.spawn.x * scale, y: scene.spawn.y * scale },
+    tiles,
+    transitions: expandKeyedRecord(scene.transitions, scale) ?? {},
+    clickTargets: clickTargets
+      ? Object.fromEntries(Object.entries(clickTargets).map(([position, target]) => [
+        position,
+        { x: target.x * scale, y: target.y * scale },
+      ]))
+      : undefined,
+    interactions: expandKeyedRecord(scene.interactions, scale),
+    starterZones: expandKeySet(scene.starterZones, scale),
+    routeEndZones: expandKeySet(scene.routeEndZones, scale),
+    npcTrainers: scene.npcTrainers?.map((npc) => ({
+      ...npc,
+      x: npc.x * scale,
+      y: npc.y * scale,
+      sightRange: npc.sightRange * scale,
+    })),
+  };
+}
+
+const expandedClassicScenes = Object.fromEntries(
+  Object.entries(BASE_CLASSIC_SCENES).map(([sceneId, scene]) => [
+    sceneId,
+    DOUBLE_GRID_SCENES.has(sceneId as ClassicSceneId) ? doubleSceneGrid(scene) : scene,
+  ]),
+) as Record<ClassicSceneId, ClassicScene>;
+
+export const CLASSIC_SCENES = Object.fromEntries(
+  Object.entries(expandedClassicScenes).map(([sceneId, scene]) => [
+    sceneId,
+    {
+      ...scene,
+      transitions: Object.fromEntries(Object.entries(scene.transitions).map(([position, transition]) => [
+        position,
+        DOUBLE_GRID_SCENES.has(transition.scene)
+          ? { ...transition, x: transition.x * 2, y: transition.y * 2 }
+          : transition,
+      ])),
+    },
+  ]),
+) as Record<ClassicSceneId, ClassicScene>;
 
 export function classicTileKey(x: number, y: number) {
   return key(x, y);
@@ -778,6 +909,20 @@ export function findClassicPath(
   if (start.x === target.x && start.y === target.y) return [];
 
   const targetKey = key(target.x, target.y);
+  const targetTransition = scene.transitions[targetKey];
+  const targetInteraction = scene.interactions?.[targetKey];
+  const isRequestedEndpoint = (x: number, y: number) => {
+    if (x === target.x && y === target.y) return true;
+    const candidateKey = key(x, y);
+    const candidateTransition = scene.transitions[candidateKey];
+    if (targetTransition && candidateTransition) {
+      return candidateTransition.scene === targetTransition.scene
+        && candidateTransition.x === targetTransition.x
+        && candidateTransition.y === targetTransition.y
+        && candidateTransition.requiresStarter === targetTransition.requiresStarter;
+    }
+    return !!targetInteraction && scene.interactions?.[candidateKey] === targetInteraction;
+  };
   const targetIsEndpoint = !!scene.transitions[targetKey]
     || !!scene.interactions?.[targetKey]
     || isClassicTileWalkable(scene, target.x, target.y);
@@ -799,10 +944,10 @@ export function findClassicPath(
       const adjacentX = current.x + direction.dx;
       const adjacentY = current.y + direction.dy;
       const adjacentKey = key(adjacentX, adjacentY);
-      const isRequestedEndpoint = adjacentX === target.x && adjacentY === target.y;
+      const reachesRequestedEndpoint = isRequestedEndpoint(adjacentX, adjacentY);
 
       if (scene.transitions[adjacentKey] || scene.interactions?.[adjacentKey]) {
-        if (isRequestedEndpoint) return [...current.steps, direction];
+        if (reachesRequestedEndpoint) return [...current.steps, direction];
         continue;
       }
 

@@ -101,4 +101,3 @@ export function gymEncounterScale(playerCount: number, challengerBadgeCount: num
     reservePokemon: Math.max(0, players - 2),
   };
 }
-

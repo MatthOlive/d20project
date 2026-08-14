@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useGameSpriteStyle } from "@/hooks/use-game-sprite-style";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
+import { TrainerAppearanceImage } from "@/components/TrainerAppearance";
 
 /**
  * Reads the live character image + status conditions for a token. Subscribes
@@ -105,6 +106,15 @@ export function TokenAvatar({
     );
   }
   const img = data?.image_url ?? fallbackImage;
+  if (kind === "trainer" && img) {
+    return (
+      <TrainerAppearanceImage
+        value={img}
+        alt={label}
+        className={`h-full w-full object-cover ${variant === "handout" ? "rounded-none" : "rounded-full"}`}
+      />
+    );
+  }
   return img ? (
     <img src={img} alt={label} className={`h-full w-full object-cover ${variant === "handout" ? "rounded-none" : "rounded-full"}`} draggable={false} />
   ) : (

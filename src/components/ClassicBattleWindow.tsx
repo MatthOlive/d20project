@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentPropsWithoutRef, type PointerEvent as ReactPointerEvent } from "react";
-import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Activity, ArrowLeftRight, Backpack, CircleDot, Dices, DoorOpen, GripHorizontal, Heart, LoaderCircle, MoveDiagonal2, Shield, Sparkles, Swords, Zap } from "lucide-react";
 import { toast } from "sonner";
@@ -9,8 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { painPenaltyFor } from "@/components/SheetRolls";
-import { computeMoveStats, parseMoveExtras, type MoveData } from "@/components/MoveRollDialog";
-import { ClassicMoveRollDialog, type BattleMoveRollOptions } from "@/components/ClassicMoveRollDialog";
+import { MoveRollDialog, computeMoveStats, parseMoveExtras, type BattleMoveRollOptions, type MoveData } from "@/components/MoveRollDialog";
 import { resolveMoveAccuracy } from "@/lib/move-resolution";
 import {
   chooseNpcReaction,
@@ -28,24 +26,6 @@ import {
   type Rank,
 } from "@/lib/pokerole";
 import { useGameSpriteStyle } from "@/hooks/use-game-sprite-style";
-import { cn } from "@/lib/utils";
-
-function ClassicBattleDialogContent({ className, children, ...props }: ComponentPropsWithoutRef<typeof DialogPrimitive.Content>) {
-  return (
-    <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="pointer-events-none fixed inset-0 z-50 bg-transparent" />
-      <DialogPrimitive.Content
-        className={cn(
-          "fixed left-1/2 top-1/2 z-50 grid w-full -translate-x-1/2 -translate-y-1/2 gap-4 border border-border bg-background p-6 shadow-lg duration-200",
-          className,
-        )}
-        {...props}
-      >
-        {children}
-      </DialogPrimitive.Content>
-    </DialogPrimitive.Portal>
-  );
-}
 
 type BattleSide = "player" | "opponent";
 type BattlePhase = "choose_pokemon" | "initiative" | "active" | "finished";
@@ -1815,11 +1795,11 @@ export function ClassicBattleWindow({
   if (!encounter || !wild) {
     return (
       <Dialog open modal={false}>
-        <ClassicBattleDialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm" overlayClassName="pointer-events-none bg-transparent" hideClose>
           <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
             <LoaderCircle className="h-5 w-5 animate-spin" /> Preparando a batalha...
           </div>
-        </ClassicBattleDialogContent>
+        </DialogContent>
       </Dialog>
     );
   }
@@ -1846,8 +1826,10 @@ export function ClassicBattleWindow({
 
   return (
     <Dialog open modal={false}>
-      <ClassicBattleDialogContent
+      <DialogContent
         className="flex max-h-none max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden border-[#d8b85a]/45 bg-[#09110d] p-0 shadow-2xl"
+        overlayClassName="pointer-events-none bg-transparent"
+        hideClose
         style={{
           left: windowFrame.x,
           top: windowFrame.y,
@@ -2153,21 +2135,26 @@ export function ClassicBattleWindow({
         </Dialog>
 
         {selectedBattleMove && selectedBattleMoveStats && player && (
-          <ClassicMoveRollDialog
-            open
+          <MoveRollDialog
             move={selectedBattleMove}
             pokemonName={pokemonName(player)}
             accPool={selectedBattleMoveStats.accPool}
             dmgPool={selectedBattleMoveStats.dmgPool}
             isStatus={selectedBattleMoveStats.isStatus}
+            isSpecial={selectedBattleMoveStats.isSpecial}
             hasStab={selectedBattleMoveStats.hasStab}
             accuracyText={selectedBattleMoveStats.accuracyText}
             damagePoolText={selectedBattleMoveStats.damagePoolText}
+            gameId={gameId}
+            userId={userId}
             painPenalty={painPenaltyFor(currentHp(player), player.hp)}
             imageUrl={frontSprite(player, spriteStyle)}
             initialActions={Number(encounter.player_actions ?? 0)}
-            onOpenChange={(open) => !open && setSelectedBattleMove(null)}
-            onConfirm={(options) => playerMove(selectedBattleMove, options)}
+            controlledOpen
+            onControlledOpenChange={(open) => !open && setSelectedBattleMove(null)}
+            hideTrigger
+            battleMode
+            onBattleConfirm={(options) => playerMove(selectedBattleMove, options)}
           />
         )}
 
@@ -2279,7 +2266,7 @@ export function ClassicBattleWindow({
         >
           <MoveDiagonal2 className="h-4 w-4" />
         </div>
-      </ClassicBattleDialogContent>
+      </DialogContent>
     </Dialog>
   );
 }

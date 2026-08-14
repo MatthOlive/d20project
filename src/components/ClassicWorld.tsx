@@ -31,6 +31,7 @@ import { rollPokemonAutofill } from "@/lib/pokemon-autofill";
 import { RANK_LABELS, type Rank } from "@/lib/pokerole";
 import {
   CLASSIC_ENCOUNTER_CHANCE,
+  CLASSIC_MIN_GRASS_STEPS,
   CLASSIC_ROUTE_ENCOUNTERS,
   CLASSIC_SCENES,
   classicObjective,
@@ -49,6 +50,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { ClassicBattleWindow, type ClassicBattleEncounter } from "@/components/ClassicBattleWindow";
+import { TrainerAppearanceImage, TrainerIdentityFields } from "@/components/TrainerAppearance";
+import {
+  trainerAppearanceStorageValue,
+  type TrainerAppearanceId,
+  type TrainerGender,
+} from "@/lib/trainer-appearances";
+import classicBedroomPixel from "@/assets/classic-bedroom-pixel.png";
+import classicPlayerHouseGroundFloor from "@/assets/classic-player-house-ground-floor.png";
+import classicPalletTown from "@/assets/classic-pallet-town.png";
+import classicPalletLaboratory from "@/assets/classic-pallet-laboratory.png";
+import classicRouteOne from "@/assets/classic-route-1.png";
+import classicRouteTwo from "@/assets/classic-route-2.png";
+import classicRouteTwentyTwo from "@/assets/classic-route-22.png";
+import classicViridianCity from "@/assets/classic-viridian-city.png";
 import "./ClassicWorld.css";
 
 type TrainerSummary = {
@@ -116,6 +131,18 @@ function supabaseErrorMessage(error: unknown) {
 
 const TILE_SIZE_DESKTOP = 44;
 const TILE_SIZE_MOBILE = 36;
+const WALK_ANIMATION_FRAMES = [1, 2, 3, 2] as const;
+
+const CLASSIC_SCENE_ART: Partial<Record<ClassicSceneId, string>> = {
+  bedroom: classicBedroomPixel,
+  player_house_1f: classicPlayerHouseGroundFloor,
+  pallet: classicPalletTown,
+  lab: classicPalletLaboratory,
+  route_1: classicRouteOne,
+  viridian: classicViridianCity,
+  route_2: classicRouteTwo,
+  route_22: classicRouteTwentyTwo,
+};
 
 function isTypingTarget(target: EventTarget | null) {
   const element = target as HTMLElement | null;
@@ -169,7 +196,11 @@ export function ClassicWorld({
   const autoWalkStopRef = useRef(false);
   const routeSpeciesRef = useRef<WildSpecies[]>([]);
   const grassStepsRef = useRef<Partial<Record<ClassicSceneId, number>>>({});
+  const previousPlayerPositionsRef = useRef<Map<string, string>>(new Map());
+  const movementStopTimersRef = useRef<Map<string, number>>(new Map());
   const [trainerName, setTrainerName] = useState("");
+  const [trainerGender, setTrainerGender] = useState<TrainerGender>("male");
+  const [trainerAppearanceId, setTrainerAppearanceId] = useState<TrainerAppearanceId>("male-urban");
   const [tokenSelected, setTokenSelected] = useState(true);
   const [starterPickerOpen, setStarterPickerOpen] = useState(false);
   const [pcStorageOpen, setPcStorageOpen] = useState(false);
@@ -178,6 +209,8 @@ export function ClassicWorld({
   const [localEncounter, setLocalEncounter] = useState<WildEncounter | null>(null);
   const [isAutoWalking, setIsAutoWalking] = useState(false);
   const [isCompact, setIsCompact] = useState(false);
+  const [walkingPlayers, setWalkingPlayers] = useState<Record<string, boolean>>({});
+  const [walkAnimationTick, setWalkAnimationTick] = useState(0);
 
   const playersQueryKey = useMemo(() => ["classic-world-players", gameId] as const, [gameId]);
   const { data: players = [], isLoading } = useQuery({
@@ -193,6 +226,57 @@ export function ClassicWorld({
 
   const ownProgress = players.find((player) => player.user_id === userId) ?? null;
   const ownScene = ownProgress ? CLASSIC_SCENES[ownProgress.world_scene] : CLASSIC_SCENES.bedroom;
+
+  useEffect(() => {
+    const nextPositions = new Map<string, string>();
+    const movedPlayerIds: string[] = [];
+
+    for (const player of players) {
+      const positionKey = `${player.world_scene}:${player.tile_x}:${player.tile_y}`;
+      nextPositions.set(player.user_id, positionKey);
+      const previousPosition = previousPlayerPositionsRef.current.get(player.user_id);
+      if (previousPosition && previousPosition !== positionKey) movedPlayerIds.push(player.user_id);
+    }
+    previousPlayerPositionsRef.current = nextPositions;
+    if (movedPlayerIds.length === 0) return;
+
+    setWalkingPlayers((current) => {
+      const next = { ...current };
+      for (const playerId of movedPlayerIds) next[playerId] = true;
+      return next;
+    });
+
+    for (const playerId of movedPlayerIds) {
+      const previousTimer = movementStopTimersRef.current.get(playerId);
+      if (previousTimer) window.clearTimeout(previousTimer);
+      const timer = window.setTimeout(() => {
+        movementStopTimersRef.current.delete(playerId);
+        setWalkingPlayers((current) => {
+          if (!current[playerId]) return current;
+          const next = { ...current };
+          delete next[playerId];
+          return next;
+        });
+      }, 190);
+      movementStopTimersRef.current.set(playerId, timer);
+    }
+  }, [players]);
+
+  useEffect(() => {
+    if (!Object.values(walkingPlayers).some(Boolean)) {
+      setWalkAnimationTick(0);
+      return;
+    }
+    const timer = window.setInterval(() => {
+      setWalkAnimationTick((current) => (current + 1) % WALK_ANIMATION_FRAMES.length);
+    }, 85);
+    return () => window.clearInterval(timer);
+  }, [walkingPlayers]);
+
+  useEffect(() => () => {
+    for (const timer of movementStopTimersRef.current.values()) window.clearTimeout(timer);
+    movementStopTimersRef.current.clear();
+  }, []);
 
   useEffect(() => {
     const updateCompact = () => setIsCompact(window.innerWidth < 720);
@@ -294,7 +378,13 @@ export function ClassicWorld({
       try {
         const { data: trainer, error: trainerError } = await supabase
           .from("trainers")
-          .insert({ game_id: gameId, owner_id: userId, name: cleanName })
+          .insert({
+            game_id: gameId,
+            owner_id: userId,
+            name: cleanName,
+            sex: trainerGender,
+            image_url: trainerAppearanceStorageValue(trainerAppearanceId),
+          })
           .select("id,name")
           .single();
         if (trainerError) throw trainerError;
@@ -311,6 +401,7 @@ export function ClassicWorld({
           current_city: "pallet",
           regional_badges: { kanto: [] },
           story_step: "leave_bedroom",
+          story_flags: { bedroom_grid_v2: true, world_grid_v2: true },
           world_scene: "bedroom",
           tile_x: CLASSIC_SCENES.bedroom.spawn.x,
           tile_y: CLASSIC_SCENES.bedroom.spawn.y,
@@ -484,13 +575,44 @@ export function ClassicWorld({
       });
   }, [gameId, playersQueryKey, qc, userId]);
 
+  useEffect(() => {
+    if (!ownProgress || pendingPersistsRef.current > 0) return;
+    if (ownProgress.story_flags?.world_grid_v2 === true) return;
+
+    const scene = CLASSIC_SCENES[ownProgress.world_scene];
+    const shouldScalePosition = ownProgress.world_scene !== "bedroom"
+      || (
+        ownProgress.story_flags?.bedroom_grid_v2 !== true
+        && ownProgress.tile_x < 12
+        && ownProgress.tile_y < 10
+      );
+    let next: Position = {
+      scene: ownProgress.world_scene,
+      x: shouldScalePosition ? ownProgress.tile_x * 2 : ownProgress.tile_x,
+      y: shouldScalePosition ? ownProgress.tile_y * 2 : ownProgress.tile_y,
+      facing: ownProgress.facing,
+    };
+    if (!isClassicTileWalkable(scene, next.x, next.y)) {
+      next = { scene: ownProgress.world_scene, ...scene.spawn, facing: ownProgress.facing };
+    }
+
+    const storyFlags = {
+      ...(ownProgress.story_flags ?? {}),
+      bedroom_grid_v2: true,
+      world_grid_v2: true,
+    };
+    positionRef.current = next;
+    patchPlayerCache(next, { story_flags: storyFlags });
+    persistPosition(next, { story_flags: storyFlags });
+  }, [ownProgress, patchPlayerCache, persistPosition]);
+
   const startWildEncounter = useCallback(async (position: Position) => {
     const encounterNames: readonly string[] = CLASSIC_ROUTE_ENCOUNTERS[position.scene] ?? [];
     if (encounterRollRef.current || activeEncounter || encounterNames.length === 0) return;
 
     const grassSteps = (grassStepsRef.current[position.scene] ?? 0) + 1;
     grassStepsRef.current[position.scene] = grassSteps;
-    if (grassSteps < 6 && Math.random() >= CLASSIC_ENCOUNTER_CHANCE) return;
+    if (grassSteps < CLASSIC_MIN_GRASS_STEPS && Math.random() >= CLASSIC_ENCOUNTER_CHANCE) return;
 
     encounterRollRef.current = true;
     autoWalkStopRef.current = true;
@@ -735,7 +857,8 @@ export function ClassicWorld({
       facing: ownProgress.facing,
     };
     const scene = CLASSIC_SCENES[current.scene];
-    const path = findClassicPath(scene, current, { x: targetX, y: targetY });
+    const resolvedTarget = scene.clickTargets?.[classicTileKey(targetX, targetY)] ?? { x: targetX, y: targetY };
+    const path = findClassicPath(scene, current, resolvedTarget);
     if (!path) {
       toast("Não há um caminho livre até esse local.");
       return;
@@ -810,20 +933,16 @@ export function ClassicWorld({
               <h2 className="text-xl font-extrabold text-white">Crie seu treinador</h2>
             </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="classic-world-trainer-name" className="text-white/80">Nome</Label>
-            <Input
-              id="classic-world-trainer-name"
-              value={trainerName}
-              onChange={(event) => setTrainerName(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && trainerName.trim() && !createTrainer.isPending) createTrainer.mutate();
-              }}
-              placeholder="Nome do personagem"
-              maxLength={60}
-              autoFocus
-            />
-          </div>
+          <TrainerIdentityFields
+            name={trainerName}
+            onNameChange={setTrainerName}
+            gender={trainerGender}
+            onGenderChange={setTrainerGender}
+            appearanceId={trainerAppearanceId}
+            onAppearanceChange={setTrainerAppearanceId}
+            disabled={createTrainer.isPending}
+            idPrefix="classic-world-trainer"
+          />
           <Button
             className="mt-5 w-full"
             disabled={!trainerName.trim() || createTrainer.isPending}
@@ -840,6 +959,7 @@ export function ClassicWorld({
   const objective = classicObjective(ownProgress.starter_pokemon_id, ownProgress.world_scene);
   const scenePlayers = players.filter((player) => player.world_scene === ownProgress.world_scene && player.trainer_id);
   const bedroomPotionTaken = ownProgress.story_flags?.bedroom_potion_taken === true;
+  const sceneArt = CLASSIC_SCENE_ART[ownProgress.world_scene];
 
   return (
     <div className={`classic-world-shell classic-scene-${ownProgress.world_scene} relative h-full min-h-[420px] overflow-hidden bg-[#07100c]`}>
@@ -850,9 +970,13 @@ export function ClassicWorld({
         aria-label={`${ownScene.label}. Mapa do modo clássico.`}
       >
         <div
-          className="classic-world-map relative isolate mx-auto my-auto shadow-[0_0_70px_rgba(0,0,0,0.75)]"
+          className={`classic-world-map relative isolate mx-auto my-auto shadow-[0_0_70px_rgba(0,0,0,0.75)] ${sceneArt ? "classic-world-map--illustrated" : ""}`}
           data-scene={ownProgress.world_scene}
-          style={{ width: ownScene.width * tileSize, height: ownScene.height * tileSize }}
+          style={{
+            width: ownScene.width * tileSize,
+            height: ownScene.height * tileSize,
+            "--classic-scene-art": sceneArt ? `url("${sceneArt}")` : undefined,
+          } as CSSProperties}
         >
           <div
             className="classic-world-grid grid h-full w-full"
@@ -874,8 +998,20 @@ export function ClassicWorld({
             )))}
           </div>
 
-          <SceneArchitecture tiles={ownScene.tiles} tileSize={tileSize} />
-          <SceneLandmarks scene={ownProgress.world_scene} tileSize={tileSize} />
+          {!sceneArt && <SceneArchitecture tiles={ownScene.tiles} tileSize={tileSize} />}
+          {!sceneArt && <SceneLandmarks scene={ownProgress.world_scene} tileSize={tileSize} />}
+
+          {ownProgress.world_scene === "bedroom" && (
+            <div className="classic-bedroom-ambience" aria-hidden="true">
+              <span className="classic-bedroom-ambience__sunbeam" />
+              <span className="classic-bedroom-ambience__pc-glow" />
+              <span className="classic-bedroom-ambience__tv-glow" />
+              <span className="classic-bedroom-ambience__stair-glow" />
+              <span className="classic-bedroom-ambience__dust classic-bedroom-ambience__dust--one" />
+              <span className="classic-bedroom-ambience__dust classic-bedroom-ambience__dust--two" />
+              <span className="classic-bedroom-ambience__dust classic-bedroom-ambience__dust--three" />
+            </div>
+          )}
 
           {(ownScene.npcTrainers ?? []).map((npc) => {
             const defeated = ownProgress.story_flags?.[npc.defeatedFlag] === true;
@@ -899,12 +1035,14 @@ export function ClassicWorld({
 
           {scenePlayers.map((player) => {
             const isOwn = player.user_id === userId;
+            const isWalking = walkingPlayers[player.user_id] === true;
+            const animationFrame = isWalking ? WALK_ANIMATION_FRAMES[walkAnimationTick] : 0;
             return (
               <button
                 key={player.user_id}
                 ref={isOwn ? tokenRef : undefined}
                 type="button"
-                className={`classic-world-player absolute z-[100] flex items-center justify-center transition-[left,top] duration-100 ease-linear ${isOwn ? "cursor-pointer" : "pointer-events-none"}`}
+                className={`classic-world-player absolute z-[100] flex items-center justify-center transition-[left,top] duration-[140ms] ease-linear ${isWalking ? "classic-world-player--walking" : ""} ${isOwn && tokenSelected ? "classic-world-player--selected" : ""} ${isOwn ? "cursor-pointer" : "pointer-events-none"}`}
                 style={{
                   left: player.tile_x * tileSize,
                   top: player.tile_y * tileSize,
@@ -921,15 +1059,18 @@ export function ClassicWorld({
                 }}
                 title={isOwn ? `${player.trainer?.name ?? "Treinador"} · selecionado` : player.trainer?.name ?? "Treinador"}
               >
-                <span className={`relative flex h-[84%] w-[84%] items-center justify-center overflow-hidden rounded-full border-2 bg-[#f7d76b] shadow-[0_3px_0_rgba(0,0,0,0.45)] ${isOwn && tokenSelected ? "border-white ring-2 ring-primary ring-offset-2 ring-offset-black/60" : "border-[#402b20]"}`}>
-                  {player.trainer?.image_url ? (
-                    <img src={player.trainer.image_url} alt="" className="h-full w-full object-cover [image-rendering:pixelated]" />
-                  ) : (
-                    <UserRound className="h-3/5 w-3/5 text-[#412d21]" />
-                  )}
-                  <span className={`absolute h-1.5 w-1.5 rounded-sm bg-[#412d21] ${facingPositionClass(player.facing)}`} />
-                </span>
-                <span className="absolute left-1/2 top-full max-w-[7rem] -translate-x-1/2 truncate rounded bg-black/75 px-1.5 py-0.5 text-[9px] font-bold text-white">
+                {player.trainer?.image_url ? (
+                  <TrainerAppearanceImage
+                    value={player.trainer.image_url}
+                    alt={player.trainer.name}
+                    facing={player.facing}
+                    frame={animationFrame}
+                    className="classic-world-player__sprite [image-rendering:pixelated]"
+                  />
+                ) : (
+                  <UserRound className="classic-world-player__fallback" />
+                )}
+                <span className="classic-world-player__name absolute left-1/2 top-full max-w-[7rem] -translate-x-1/2 truncate rounded bg-black/75 px-1.5 py-0.5 text-[9px] font-bold text-white">
                   {player.trainer?.name ?? "Treinador"}
                 </span>
               </button>
@@ -1112,6 +1253,7 @@ function ClassicTile({
 }) {
   const style = { width: size, height: size } as CSSProperties;
   const common = "classic-tile relative cursor-pointer overflow-visible [image-rendering:pixelated]";
+  const showTileDetails = scene === "bedroom" || (x % 2 === 0 && y % 2 === 0);
   const tileClass: Record<ClassicTileKind, string> = {
     floor: "bg-[#d4b77c] border-[1px] border-[#bea064]/30",
     rug: "bg-[#b9433d] border-[3px] border-[#f0bf69]",
@@ -1157,6 +1299,7 @@ function ClassicTile({
       style={style}
       data-tile={`${scene}:${x}:${y}:${tile}`}
       data-kind={tile}
+      data-detail={showTileDetails ? "true" : "false"}
       onClick={() => {
         if (tile === "starter-pod") onStarter();
         else onTarget(x, y);

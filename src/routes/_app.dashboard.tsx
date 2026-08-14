@@ -21,17 +21,6 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { SettingsDialog, RPG_SYSTEMS } from "@/components/SettingsDialog";
 import { CLASSIC_REGIONS, CLASSIC_START_CITIES, type ClassicRegionId } from "@/lib/classic-mode";
 
-type DashboardGame = {
-  id: string;
-  name: string;
-  background_url: string | null;
-  narrator_id: string;
-  system?: string | null;
-  narrator_type?: string | null;
-  classic_region?: string | null;
-  game_members?: { user_id: string; role: string }[] | null;
-};
-
 export const Route = createFileRoute("/_app/dashboard")({
   component: Dashboard,
   head: () => ({
@@ -56,12 +45,12 @@ function Dashboard() {
   const { data: games, isLoading } = useQuery({
     queryKey: ["games"],
     queryFn: async () => {
-      const { data, error } = await (supabase
-        .from("games") as any)
+      const { data, error } = await supabase
+        .from("games")
         .select("id,name,background_url,narrator_id,created_at,language,system,narrator_type,classic_region,game_members(user_id,role)")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as DashboardGame[];
+      return data ?? [];
     },
   });
 

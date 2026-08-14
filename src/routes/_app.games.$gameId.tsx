@@ -36,6 +36,7 @@ import { MusicPlayer } from "@/components/MusicPlayer";
 import { DeckPanel } from "@/components/DeckPanel";
 import { ClassicCampaignPanel } from "@/components/ClassicCampaignPanel";
 import { ClassicWorld } from "@/components/ClassicWorld";
+import { TrainerAppearanceImage, TrainerIdentityFields } from "@/components/TrainerAppearance";
 import { toast } from "sonner";
 import { ArrowLeft, Copy, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Swords, ChevronDown, ChevronUp, ChevronRight, Dices, MessageSquare } from "lucide-react";
 import { rollD6, rollShiny, preferredPokemonSprite, POKEMON_ATTRS, SOCIAL_ATTRS, POKEMON_TYPES, RANKS, RANK_LABELS, TYPE_COLORS, type PokemonType, type Rank } from "@/lib/pokerole";
@@ -44,6 +45,11 @@ import { T20_MECHANICS, T20_MECHANICS_CATEGORY_ORDER, defaultT20Attributes, defa
 import { rollPokemonAutofill } from "@/lib/pokemon-autofill";
 import { applyPaldeaHisuiSpeciesBalance } from "@/lib/paldea-hisui-balance";
 import { REACTION_DECK } from "@/lib/contest";
+import {
+  trainerAppearanceStorageValue,
+  type TrainerAppearanceId,
+  type TrainerGender,
+} from "@/lib/trainer-appearances";
 
 const BIOME_LABELS: Record<string, string> = {
   cave: "Caverna",
@@ -129,8 +135,8 @@ function GameRoom() {
     queryKey: ["game", gameId],
     queryFn: async () => {
       // Note: invite_code is intentionally excluded — narrator fetches it via get_game_invite_code RPC.
-      const { data, error } = await (supabase
-        .from("games") as any)
+      const { data, error } = await supabase
+        .from("games")
         .select("id,narrator_id,name,background_url,created_at,system,language,narrator_type,classic_region,classic_start_city,shiny_chance,overgrown_chance,contest_weights,grid_enabled,grid_snap,grid_snap_mode,grid_size,grid_color,grid_opacity,grid_unit_m,grid_unit_label,fog_enabled,dynamic_lighting,master_volume,current_scenario_id,active_page_id")
         .eq("id", gameId)
         .single();
@@ -699,6 +705,10 @@ function FilesPanel({
   const qc = useQueryClient();
   const spriteStyle = useGameSpriteStyle(gameId);
   const [pkmDialogOpen, setPkmDialogOpen] = useState(false);
+  const [trainerDialogOpen, setTrainerDialogOpen] = useState(false);
+  const [newTrainerName, setNewTrainerName] = useState("");
+  const [newTrainerGender, setNewTrainerGender] = useState<TrainerGender>("male");
+  const [newTrainerAppearanceId, setNewTrainerAppearanceId] = useState<TrainerAppearanceId>("male-urban");
   const [newPkmSpecies, setNewPkmSpecies] = useState<string>("");
   const [speciesPickerOpen, setSpeciesPickerOpen] = useState(false);
   const [speciesSearch, setSpeciesSearch] = useState("");
@@ -928,14 +938,26 @@ function FilesPanel({
 
   const createTrainer = useMutation({
     mutationFn: async () => {
+      const cleanName = newTrainerName.trim();
+      if (!cleanName) throw new Error("Digite o nome do treinador.");
       const { data, error } = await supabase
         .from("trainers")
-        .insert({ game_id: gameId, owner_id: userId, name: "New Trainer" })
+        .insert({
+          game_id: gameId,
+          owner_id: userId,
+          name: cleanName,
+          sex: newTrainerGender,
+          image_url: trainerAppearanceStorageValue(newTrainerAppearanceId),
+        })
         .select().single();
       if (error) throw error;
       return data;
     },
     onSuccess: (t) => {
+      setTrainerDialogOpen(false);
+      setNewTrainerName("");
+      setNewTrainerGender("male");
+      setNewTrainerAppearanceId("male-urban");
       qc.invalidateQueries({ queryKey: ["characters", gameId] });
       onOpen({ kind: "trainer", id: t.id, title: t.name });
     },
@@ -1389,7 +1411,9 @@ function FilesPanel({
                 className="h-6 w-6 shrink-0 object-contain"
                 style={{ WebkitUserDrag: "none" } as CSSProperties}
               />
-            : <User className="h-3.5 w-3.5 shrink-0" />}
+            : r.kind === "trainer" && r.image_url
+              ? <TrainerAppearanceImage value={r.image_url} alt="" className="h-8 w-8 shrink-0 bg-muted/40" />
+              : <User className="h-3.5 w-3.5 shrink-0" />}
           <span className="truncate">{r.label}</span>
         </div>
       </div>
@@ -1611,9 +1635,38 @@ function FilesPanel({
             </Button>
           ) : (
             <>
-              <Button size="sm" variant="outline" onClick={() => createTrainer.mutate()}>
+              <Button size="sm" variant="outline" onClick={() => setTrainerDialogOpen(true)}>
                 <User className="mr-1 h-3.5 w-3.5" /> Trainer
               </Button>
+              <Dialog
+                open={trainerDialogOpen}
+                onOpenChange={(open) => {
+                  if (createTrainer.isPending) return;
+                  setTrainerDialogOpen(open);
+                }}
+              >
+                <DialogContent className="max-w-lg">
+                  <DialogHeader><DialogTitle>Criar treinador</DialogTitle></DialogHeader>
+                  <TrainerIdentityFields
+                    name={newTrainerName}
+                    onNameChange={setNewTrainerName}
+                    gender={newTrainerGender}
+                    onGenderChange={setNewTrainerGender}
+                    appearanceId={newTrainerAppearanceId}
+                    onAppearanceChange={setNewTrainerAppearanceId}
+                    disabled={createTrainer.isPending}
+                    idPrefix="files-trainer"
+                  />
+                  <DialogFooter>
+                    <Button
+                      onClick={() => createTrainer.mutate()}
+                      disabled={!newTrainerName.trim() || createTrainer.isPending}
+                    >
+                      {createTrainer.isPending ? "Criando..." : "Criar treinador"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
               <MinimalSheetButton gameId={gameId} userId={userId} onCreated={(id: string, name: string) => { qc.invalidateQueries({ queryKey: ["characters", gameId] }); onOpen({ kind: "trainer", id, title: name }); }} />
             </>
           )}
