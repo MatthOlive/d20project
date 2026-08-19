@@ -8,6 +8,8 @@ on:
         required: true
         type: string
   push:
+    branches:
+      - "main"
     tags:
       - "v*"
 
@@ -19,7 +21,7 @@ jobs:
     name: Build Windows installer
     runs-on: windows-latest
     env:
-      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+      RELEASE_TAG: ${{ inputs.tag || (github.ref == 'refs/heads/main' && 'v0.2.30') || github.ref_name }}
 
     steps:
       - name: Checkout
