@@ -2,7 +2,9 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const repo = process.env.GITHUB_REPOSITORY ?? "MatthOlive/d20project";
-const tag = process.env.GITHUB_REF_NAME ?? process.argv[2];
+// RELEASE_TAG is explicit because GitHub's built-in GITHUB_REF_NAME cannot be
+// overridden when a release is triggered from the main branch.
+const tag = process.env.RELEASE_TAG ?? process.env.GITHUB_REF_NAME ?? process.argv[2];
 const bundleDir = process.argv[3] ?? "src-tauri/target/release/bundle/nsis";
 
 if (!tag) {
