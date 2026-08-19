@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useGameSpdefUsesInsight } from "@/hooks/use-game-spdef-uses-insight";
@@ -43,10 +44,25 @@ function T20Stats({ id, editable, expanded }: { id: string; editable: boolean; e
   if (!data) return null;
 
   async function patch(field: "hp_current" | "mp_current", value: number) {
+    const key = ["token-t20-stats", id] as const;
+    const previous = qc.getQueryData<typeof data>(key)?.[field];
     qc.setQueryData(["token-t20-stats", id], (old: typeof data) => old ? { ...old, [field]: value } : old);
-    const { error } = await (supabase.from("t20_characters" as never) as any).update({ [field]: value }).eq("id", id);
-    if (error) toast.error(error.message);
-    qc.invalidateQueries({ queryKey: ["t20-character", id] });
+    try {
+      const { data: saved, error } = await (supabase.from("t20_characters" as never) as any)
+        .update({ [field]: value })
+        .eq("id", id)
+        .select("hp_current,mp_current")
+        .maybeSingle();
+      if (error) throw error;
+      if (!saved) throw new Error("A alteração foi recusada pelas permissões desta ficha.");
+      qc.setQueryData(key, (old: typeof data) => old ? { ...old, ...saved } : old);
+      qc.setQueryData(["t20-character", id], (old: Record<string, unknown> | undefined) =>
+        old ? { ...old, [field]: value } : old,
+      );
+    } catch (error) {
+      qc.setQueryData(key, (old: typeof data) => old ? { ...old, [field]: previous } : old);
+      toast.error(error instanceof Error ? error.message : "Não foi possível salvar o valor.");
+    }
   }
 
   return (
@@ -106,11 +122,27 @@ function TrainerStats({ id, gameId, editable, expanded }: { id: string; gameId?:
   const spDef = spDefUsesInsight ? total("insight") : total("vitality");
 
   async function patch(field: "current_hp" | "current_will" | "confidence", value: number) {
-    qc.setQueryData(["token-trainer-stats", id], (old: typeof data) => old ? { ...old, [field]: value } : old);
+    const key = ["token-trainer-stats", id] as const;
+    const previous = qc.getQueryData<typeof data>(key)?.[field];
+    qc.setQueryData(key, (old: typeof data) => old ? { ...old, [field]: value } : old);
     const upd = { [field]: value } as { current_hp?: number; current_will?: number; confidence?: number };
-    const { error } = await supabase.from("trainers").update(upd).eq("id", id);
-    if (error) toast.error(error.message);
-    qc.invalidateQueries({ queryKey: ["token-trainer", id] });
+    try {
+      const { data: saved, error } = await supabase
+        .from("trainers")
+        .update(upd)
+        .eq("id", id)
+        .select("current_hp,current_will,confidence")
+        .maybeSingle();
+      if (error) throw error;
+      if (!saved) throw new Error("Você não tem permissão para alterar esta ficha.");
+      qc.setQueryData(key, (old: typeof data) => old ? { ...old, ...saved } : old);
+      qc.setQueryData(["trainer", id], (old: Record<string, unknown> | undefined) =>
+        old ? { ...old, [field]: value } : old,
+      );
+    } catch (error) {
+      qc.setQueryData(key, (old: typeof data) => old ? { ...old, [field]: previous } : old);
+      toast.error(error instanceof Error ? error.message : "Não foi possível salvar o valor.");
+    }
   }
 
   return (
@@ -174,11 +206,27 @@ function PokemonStats({ id, gameId, editable, expanded }: { id: string; gameId?:
   const spDef = (spDefUsesInsight ? ins : vit) + spdefBonus;
 
   async function patch(field: "current_hp" | "current_will" | "confidence", value: number) {
-    qc.setQueryData(["token-pokemon-stats", id], (old: typeof data) => old ? { ...old, [field]: value } : old);
+    const key = ["token-pokemon-stats", id] as const;
+    const previous = qc.getQueryData<typeof data>(key)?.[field];
+    qc.setQueryData(key, (old: typeof data) => old ? { ...old, [field]: value } : old);
     const upd = { [field]: value } as { current_hp?: number; current_will?: number; confidence?: number };
-    const { error } = await supabase.from("pokemon").update(upd).eq("id", id);
-    if (error) toast.error(error.message);
-    qc.invalidateQueries({ queryKey: ["token-pokemon", id] });
+    try {
+      const { data: saved, error } = await supabase
+        .from("pokemon")
+        .update(upd)
+        .eq("id", id)
+        .select("current_hp,current_will,confidence")
+        .maybeSingle();
+      if (error) throw error;
+      if (!saved) throw new Error("Você não tem permissão para alterar esta ficha.");
+      qc.setQueryData(key, (old: typeof data) => old ? { ...old, ...saved } : old);
+      qc.setQueryData(["pokemon", id], (old: Record<string, unknown> | undefined) =>
+        old ? { ...old, [field]: value } : old,
+      );
+    } catch (error) {
+      qc.setQueryData(key, (old: typeof data) => old ? { ...old, [field]: previous } : old);
+      toast.error(error instanceof Error ? error.message : "Não foi possível salvar o valor.");
+    }
   }
 
   return (
@@ -216,12 +264,7 @@ function StatsRow({ stats, defenses, editable }: { stats: Stat[]; defenses?: Def
               />
             </div>
             {editable ? (
-              <input
-                type="number"
-                value={s.cur}
-                onChange={(e) => s.onChange(parseInt(e.target.value) || 0)}
-                className="h-5 w-10 rounded border border-border bg-background px-1 text-center text-[10px] font-bold tabular-nums"
-              />
+              <StatInput value={s.cur} onCommit={s.onChange} />
             ) : (
               <span className="text-[10px] font-bold tabular-nums">{s.cur}</span>
             )}
@@ -243,5 +286,40 @@ function StatsRow({ stats, defenses, editable }: { stats: Stat[]; defenses?: Def
         </div>
       )}
     </div>
+  );
+}
+
+function StatInput({ value, onCommit }: { value: number; onCommit: (value: number) => void }) {
+  const [draft, setDraft] = useState(String(value));
+  const focused = useRef(false);
+
+  useEffect(() => {
+    if (!focused.current) setDraft(String(value));
+  }, [value]);
+
+  function commit() {
+    focused.current = false;
+    const parsed = Number.parseInt(draft, 10);
+    const next = Number.isFinite(parsed) ? parsed : value;
+    setDraft(String(next));
+    if (next !== value) onCommit(next);
+  }
+
+  return (
+    <input
+      type="number"
+      value={draft}
+      onFocus={() => { focused.current = true; }}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") event.currentTarget.blur();
+        if (event.key === "Escape") {
+          setDraft(String(value));
+          event.currentTarget.blur();
+        }
+      }}
+      className="h-5 w-10 rounded border border-border bg-background px-1 text-center text-[10px] font-bold tabular-nums"
+    />
   );
 }

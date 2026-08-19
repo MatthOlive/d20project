@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -166,10 +166,11 @@ export function TrainerSheet({
   onRoll: (label: string, n: number, penalty?: number, meta?: { characterKind: "trainer" | "pokemon"; characterId: string; imageUrl?: string | null }) => void;
   onDeleted?: () => void;
 }) {
+  const qc = useQueryClient();
   const [ballKey, setBallKey] = useState<BallKey>("pokeball");
   const [catchBonus, setCatchBonus] = useState(0);
   const queryKey = useMemo(() => ["trainer", trainerId], [trainerId]);
-  const { data: trainer } = useQuery({
+  const { data: trainer, error: trainerError, refetch: refetchTrainer } = useQuery({
     queryKey,
     queryFn: async () => {
       const { data, error } = await supabase.from("trainers").select("*").eq("id", trainerId).single();
@@ -186,7 +187,32 @@ export function TrainerSheet({
     storageKey: `d20:pending:trainer:${userId}:${trainerId}`,
   });
 
-  if (!trainer) return <div className="p-4 text-sm text-muted-foreground">Loading…</div>;
+  useEffect(() => {
+    const channel = supabase
+      .channel(`trainer-sheet:${trainerId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "trainers", filter: `id=eq.${trainerId}` },
+        (payload) => {
+          const next = payload.new as Partial<Trainer>;
+          qc.setQueryData<Trainer>(queryKey, (current) => current ? { ...current, ...next } : current);
+        },
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") void qc.invalidateQueries({ queryKey });
+      });
+    return () => { void supabase.removeChannel(channel); };
+  }, [qc, queryKey, trainerId]);
+
+  if (trainerError) {
+    return (
+      <div className="grid min-h-48 place-items-center gap-3 p-6 text-center text-sm">
+        <p className="text-destructive">Não foi possível abrir a ficha: {trainerError.message}</p>
+        <Button size="sm" variant="outline" onClick={() => { void refetchTrainer(); }}>Tentar novamente</Button>
+      </div>
+    );
+  }
+  if (!trainer) return <div className="p-4 text-sm text-muted-foreground">Carregando ficha…</div>;
   const canEdit = trainer.owner_id === userId
     || isNarrator
     || (trainer.allowed_editors ?? []).includes(userId);

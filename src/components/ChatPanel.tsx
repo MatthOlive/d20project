@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -70,17 +70,20 @@ export function ChatPanel({
     },
   });
 
+  const profileIds = useMemo(
+    () => Array.from(new Set(messages.map((message) => message.user_id))).sort(),
+    [messages],
+  );
   const { data: profiles = {} } = useQuery({
-    queryKey: ["profiles-for-chat", gameId, messages.length],
+    queryKey: ["profiles-for-chat", gameId, profileIds.join(",")],
     queryFn: async () => {
-      const ids = Array.from(new Set(messages.map((m) => m.user_id)));
-      if (ids.length === 0) return {};
-      const { data } = await supabase.from("profiles").select("id,display_name").in("id", ids);
+      if (profileIds.length === 0) return {};
+      const { data } = await supabase.from("profiles").select("id,display_name").in("id", profileIds);
       const map: Record<string, string> = {};
       (data ?? []).forEach((p) => (map[p.id] = p.display_name));
       return map;
     },
-    enabled: messages.length > 0,
+    enabled: profileIds.length > 0,
   });
 
   useEffect(() => {
@@ -90,9 +93,13 @@ export function ChatPanel({
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "chat_messages", filter: `game_id=eq.${gameId}` },
         (payload) => {
-          qc.invalidateQueries({ queryKey: ["chat", gameId] });
+          const incoming = payload.new as Msg;
+          qc.setQueryData<Msg[]>(["chat", gameId], (old) => {
+            if ((old ?? []).some((message) => message.id === incoming.id)) return old ?? [];
+            return [...(old ?? []), incoming].slice(-200);
+          });
           // Auto-trigger AI narrator on any player chat/roll message.
-          const row = payload.new as { id: string; kind: string; user_id: string; body: string };
+          const row = incoming;
           if (!aiNarrator || !isGameOwner) return;
           if (row.kind === "narrator") return;
           if (row.id === lastTriggeredIdRef.current) return;
@@ -123,20 +130,22 @@ export function ChatPanel({
     if (roll) {
       const result = rollDice(roll.n, roll.faces);
       const body = roll.label ?? `${roll.n}d${roll.faces}`;
-      await supabase.from("chat_messages").insert({
+      const { error } = await supabase.from("chat_messages").insert({
         game_id: gameId,
         user_id: userId,
         kind: "roll",
         body,
         roll_data: { ...result, label: body },
       });
+      if (error) toast.error(`Não foi possível enviar a rolagem: ${error.message}`);
     } else {
-      await supabase.from("chat_messages").insert({
+      const { error } = await supabase.from("chat_messages").insert({
         game_id: gameId,
         user_id: userId,
         kind: "chat",
         body: trimmed,
       });
+      if (error) toast.error(`Não foi possível enviar a mensagem: ${error.message}`);
     }
   }
 
@@ -164,13 +173,14 @@ export function ChatPanel({
     const mode: "sum" | "success" = faces === 6 && successMode ? "success" : "sum";
     const modStr = mod === 0 ? "" : mod > 0 ? ` +${mod}` : ` ${mod}`;
     const body = `${n}d${faces}${modStr}`;
-    await supabase.from("chat_messages").insert({
+    const { error } = await supabase.from("chat_messages").insert({
       game_id: gameId,
       user_id: userId,
       kind: "roll",
       body,
       roll_data: { ...result, label: body, modifier: mod, mode },
     });
+    if (error) toast.error(`Não foi possível enviar a rolagem: ${error.message}`);
   }
 
   async function drawContest() {

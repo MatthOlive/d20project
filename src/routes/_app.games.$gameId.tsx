@@ -34,8 +34,6 @@ import { MacroBar } from "@/components/MacroBar";
 import { MusicPanel } from "@/components/MusicPanel";
 import { MusicPlayer } from "@/components/MusicPlayer";
 import { DeckPanel } from "@/components/DeckPanel";
-import { ClassicCampaignPanel } from "@/components/ClassicCampaignPanel";
-import { ClassicWorld } from "@/components/ClassicWorld";
 import { TrainerAppearanceImage, TrainerIdentityFields } from "@/components/TrainerAppearance";
 import { toast } from "sonner";
 import { ArrowLeft, Copy, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Swords, ChevronDown, ChevronUp, ChevronRight, Dices, MessageSquare } from "lucide-react";
@@ -137,7 +135,7 @@ function GameRoom() {
       // Note: invite_code is intentionally excluded — narrator fetches it via get_game_invite_code RPC.
       const { data, error } = await supabase
         .from("games")
-        .select("id,narrator_id,name,background_url,created_at,system,language,narrator_type,classic_region,classic_start_city,shiny_chance,overgrown_chance,contest_weights,grid_enabled,grid_snap,grid_snap_mode,grid_size,grid_color,grid_opacity,grid_unit_m,grid_unit_label,fog_enabled,dynamic_lighting,master_volume,current_scenario_id,active_page_id")
+        .select("id,narrator_id,name,background_url,created_at,system,language,narrator_type,shiny_chance,overgrown_chance,contest_weights,grid_enabled,grid_snap,grid_snap_mode,grid_size,grid_color,grid_opacity,grid_unit_m,grid_unit_label,fog_enabled,dynamic_lighting,master_volume,current_scenario_id,active_page_id")
         .eq("id", gameId)
         .single();
       if (error) throw error;
@@ -186,8 +184,7 @@ function GameRoom() {
   }, []);
 
   const isGameOwner = !!game && !!user && game.narrator_id === user.id;
-  const isClassic = (game as { narrator_type?: string } | undefined)?.narrator_type === "classic";
-  const isNarrator = isGameOwner && !isClassic;
+  const isNarrator = isGameOwner;
 
   async function rollFromSheet(
     label: string,
@@ -201,18 +198,26 @@ function GameRoom() {
       const result = rollD20(modifier);
       const finalLabel = modifier === 0 ? label : `${label} (${modifier >= 0 ? "+" : ""}${modifier})`;
       const extraDice = rollInlineDice(meta?.diceExpressions);
-      await supabase.from("chat_messages").insert({
+      const { error: chatError } = await supabase.from("chat_messages").insert({
         game_id: gameId, user_id: user.id, kind: "roll",
         body: finalLabel, roll_data: { ...result, label: finalLabel, extraDice },
       });
+      if (chatError) {
+        toast.error(`Não foi possível enviar a rolagem: ${chatError.message}`);
+        return;
+      }
       if (meta && /iniciativa|initiative/i.test(label)) {
         const name = label.split("-")[0]?.trim() || label;
-        await supabase
+        const { error: deleteError } = await supabase
           .from("initiative")
           .delete()
           .eq("game_id", gameId)
           .eq("character_ref", meta.characterId);
-        await supabase.from("initiative").insert({
+        if (deleteError) {
+          toast.error(`A iniciativa não pôde ser atualizada: ${deleteError.message}`);
+          return;
+        }
+        const { error: initiativeError } = await supabase.from("initiative").insert({
           game_id: gameId,
           character_kind: meta.characterKind,
           character_ref: meta.characterId,
@@ -221,6 +226,7 @@ function GameRoom() {
           successes: result.total,
           position: 0,
         });
+        if (initiativeError) toast.error(`A iniciativa não pôde ser registrada: ${initiativeError.message}`);
       }
       return;
     }
@@ -228,18 +234,26 @@ function GameRoom() {
     const finalPool = Math.max(0, n - (penalty || 0));
     const result = rollD6(finalPool);
     const finalLabel = penalty > 0 ? `${label} (pool ${n}−${penalty} pain)` : label;
-    await supabase.from("chat_messages").insert({
+    const { error: chatError } = await supabase.from("chat_messages").insert({
       game_id: gameId, user_id: user.id, kind: "roll",
       body: finalLabel, roll_data: { ...result, pool: finalPool, originalPool: n, penalty, label: finalLabel },
     });
+    if (chatError) {
+      toast.error(`Não foi possível enviar a rolagem: ${chatError.message}`);
+      return;
+    }
     if (meta && /initiative/i.test(label)) {
       const name = label.split("·")[0]?.trim() || label;
-      await supabase
+      const { error: deleteError } = await supabase
         .from("initiative")
         .delete()
         .eq("game_id", gameId)
         .eq("character_ref", meta.characterId);
-      await supabase.from("initiative").insert({
+      if (deleteError) {
+        toast.error(`A iniciativa não pôde ser atualizada: ${deleteError.message}`);
+        return;
+      }
+      const { error: initiativeError } = await supabase.from("initiative").insert({
         game_id: gameId,
         character_kind: meta.characterKind,
         character_ref: meta.characterId,
@@ -248,13 +262,15 @@ function GameRoom() {
         successes: result.successes,
         position: 0,
       });
+      if (initiativeError) toast.error(`A iniciativa não pôde ser registrada: ${initiativeError.message}`);
     }
   }
   async function sendChatFromSheet(body: string) {
     if (!user || !body.trim()) return;
-    await supabase.from("chat_messages").insert({
+    const { error } = await supabase.from("chat_messages").insert({
       game_id: gameId, user_id: user.id, kind: "chat", body,
     });
+    if (error) toast.error(`Não foi possível enviar a mensagem: ${error.message}`);
   }
 
   const { data: inviteCode } = useQuery({
@@ -281,16 +297,6 @@ function GameRoom() {
   if (gameLoading || !game || !user) return <div className="p-8 text-sm text-muted-foreground">Carregando jogo…</div>;
   const gameSystem = (game as { system?: string | null }).system ?? "pokerole";
 
-  const handleClassicOpenTrainer = (id: string, name: string) => {
-    openWindow({ kind: "trainer", id, title: name });
-    if (isMobile) setMobileTab(`sheet:trainer:${id}`);
-  };
-
-  const handleClassicOpenPokemon = (id: string, name: string) => {
-    openWindow({ kind: "pokemon", id, title: name });
-    if (isMobile) setMobileTab(`sheet:pokemon:${id}`);
-  };
-
   const mapToolbar = (
     <div className="flex flex-col gap-1.5">
       <Button asChild size="sm" variant="secondary" className="h-8 justify-start">
@@ -315,16 +321,7 @@ function GameRoom() {
     </div>
   );
 
-  const mapBoard = isClassic ? (
-    <ClassicWorld
-      gameId={gameId}
-      userId={user.id}
-      toolbarSlot={mapToolbar}
-      onOpenTrainer={handleClassicOpenTrainer}
-      onOpenPokemon={handleClassicOpenPokemon}
-      onOpenTurnOrder={() => setTurnOrderOpen(true)}
-    />
-  ) : (
+  const mapBoard = (
     <MapBoard
       gameId={gameId}
       backgroundUrl={game.background_url}
@@ -380,9 +377,7 @@ function GameRoom() {
   );
 
   if (isMobile) {
-    const baseTabs = isClassic
-      ? ["map", "journey", "chat", "compendium", "files", "decks", "music"]
-      : ["map", "chat", "compendium", "files", "decks", "music"];
+    const baseTabs = ["map", "chat", "compendium", "files", "decks", "music"];
     const sheetTabKey = (w: OpenWindow) => `sheet:${w.kind}:${w.id}`;
     const isSheetTab = mobileTab.startsWith("sheet:");
     const activeSheet = isSheetTab ? windows.find((w) => sheetTabKey(w) === mobileTab) ?? null : null;
@@ -395,7 +390,6 @@ function GameRoom() {
 
     function mobileTabLabel(tab: string) {
       if (tab === "map") return "Mapa";
-      if (tab === "journey") return "Jornada";
       if (tab === "chat") return "Chat";
       if (tab === "compendium") return "Compendium";
       if (tab === "files") return "Files";
@@ -457,15 +451,6 @@ function GameRoom() {
               <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} isGameOwner={isGameOwner} />
             </div>
           )}
-          {isClassic && mobileTab === "journey" && (
-            <div className="h-full overflow-hidden bg-background">
-              <ClassicCampaignPanel
-                gameId={gameId}
-                userId={user.id}
-                onOpenTrainer={(id, name) => openWindowMobile({ kind: "trainer", id, title: name })}
-              />
-            </div>
-          )}
           {mobileTab === "compendium" && (
             <div className="h-full overflow-auto p-3"><CompendiumPanel system={gameSystem} /></div>
           )}
@@ -514,24 +499,14 @@ function GameRoom() {
             <div className="shrink-0 p-2">
               <OnlinePresence gameId={gameId} userId={user.id} isNarrator={isNarrator} />
             </div>
-            <Tabs defaultValue={isClassic ? "journey" : "chat"} className="flex min-h-0 flex-1 flex-col">
-              <TabsList className={`m-2 grid shrink-0 ${isClassic ? "h-auto grid-cols-3 gap-1" : "grid-cols-5"}`}>
-                {isClassic && <TabsTrigger value="journey">Jornada</TabsTrigger>}
+            <Tabs defaultValue="chat" className="flex min-h-0 flex-1 flex-col">
+              <TabsList className="m-2 grid shrink-0 grid-cols-5">
                 <TabsTrigger value="chat">Chat</TabsTrigger>
                 <TabsTrigger value="compendium">Compendium</TabsTrigger>
                 <TabsTrigger value="files">Files</TabsTrigger>
                 <TabsTrigger value="decks">Decks</TabsTrigger>
                 <TabsTrigger value="music">Música</TabsTrigger>
               </TabsList>
-              {isClassic && (
-                <TabsContent value="journey" className="mt-0 min-h-0 flex-1 overflow-hidden">
-                  <ClassicCampaignPanel
-                    gameId={gameId}
-                    userId={user.id}
-                    onOpenTrainer={(id, name) => openWindow({ kind: "trainer", id, title: name })}
-                  />
-                </TabsContent>
-              )}
               <TabsContent value="chat" className="mt-0 min-h-0 flex-1 overflow-hidden">
                 <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} isGameOwner={isGameOwner} />
               </TabsContent>

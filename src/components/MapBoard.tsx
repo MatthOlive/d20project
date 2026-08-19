@@ -192,6 +192,8 @@ export function MapBoard({
   const panOrigin = useRef<{ mx: number; my: number; ox: number; oy: number } | null>(null);
   const [mapPings, setMapPings] = useState<MapPing[]>([]);
   const pingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const visiblePokemonIdsRef = useRef(new Set<string>());
+  const visibleTrainerIdsRef = useRef(new Set<string>());
 
   // Map tool state
   const [mode, setMode] = useState<Mode>("select");
@@ -248,6 +250,10 @@ export function MapBoard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePageId, isNarrator, playerEffectivePage]);
   const pageId = viewingPageId;
+
+  useEffect(() => {
+    qc.setQueryData(["current-map-page", gameId, userId], pageId);
+  }, [gameId, pageId, qc, userId]);
 
   const addMapPing = useCallback((x: number, y: number) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -379,6 +385,14 @@ export function MapBoard({
     () => tokensRaw.filter((t) => isNarrator || (t.layer ?? "tokens") !== "gm"),
     [tokensRaw, isNarrator],
   );
+  useEffect(() => {
+    visiblePokemonIdsRef.current = new Set(
+      tokens.filter((token) => token.character_kind === "pokemon").map((token) => token.character_id),
+    );
+    visibleTrainerIdsRef.current = new Set(
+      tokens.filter((token) => token.character_kind === "trainer").map((token) => token.character_id),
+    );
+  }, [tokens]);
 
   // Character ids where the current user is in allowed_editors → treated as creator
   const { data: editableCharIds } = useQuery({
@@ -446,30 +460,55 @@ export function MapBoard({
   useEffect(() => {
     const pendingPokemonIds = new Set<string>();
     const pendingTrainerIds = new Set<string>();
+    const pendingPokemonRows = new Map<string, Record<string, unknown>>();
+    const pendingTrainerRows = new Map<string, Record<string, unknown>>();
     let flushTimer: number | null = null;
 
     const flushCharacterUpdates = () => {
       flushTimer = null;
       for (const id of pendingPokemonIds) {
-        void qc.invalidateQueries({ queryKey: ["token-pokemon", id] });
-        void qc.invalidateQueries({ queryKey: ["token-pokemon-stats", id] });
-        void qc.invalidateQueries({ queryKey: ["token-pokemon-status", id] });
-        void qc.invalidateQueries({ queryKey: ["pokemon", id] });
+        const row = pendingPokemonRows.get(id);
+        if (row) {
+          qc.setQueryData(["token-pokemon", id], (old: Record<string, unknown> | undefined) => old ? { ...old, ...row } : old);
+          qc.setQueryData(["token-pokemon-stats", id], (old: Record<string, unknown> | undefined) => old ? { ...old, ...row } : old);
+          qc.setQueryData(["token-pokemon-status", id], (old: Record<string, unknown> | undefined) => old ? { ...old, ...row } : old);
+          qc.setQueryData(["pokemon", id], (old: Record<string, unknown> | undefined) => old ? { ...old, ...row } : old);
+        } else {
+          void qc.invalidateQueries({ queryKey: ["token-pokemon", id] });
+          void qc.invalidateQueries({ queryKey: ["token-pokemon-stats", id] });
+          void qc.invalidateQueries({ queryKey: ["token-pokemon-status", id] });
+        }
       }
       for (const id of pendingTrainerIds) {
-        void qc.invalidateQueries({ queryKey: ["token-trainer", id] });
-        void qc.invalidateQueries({ queryKey: ["token-trainer-stats", id] });
-        void qc.invalidateQueries({ queryKey: ["token-trainer-status", id] });
-        void qc.invalidateQueries({ queryKey: ["trainer", id] });
+        const row = pendingTrainerRows.get(id);
+        if (row) {
+          qc.setQueryData(["token-trainer", id], (old: Record<string, unknown> | undefined) => old ? { ...old, ...row } : old);
+          qc.setQueryData(["token-trainer-stats", id], (old: Record<string, unknown> | undefined) => old ? { ...old, ...row } : old);
+          qc.setQueryData(["token-trainer-status", id], (old: Record<string, unknown> | undefined) => old ? { ...old, ...row } : old);
+          qc.setQueryData(["trainer", id], (old: Record<string, unknown> | undefined) => old ? { ...old, ...row } : old);
+        } else {
+          void qc.invalidateQueries({ queryKey: ["token-trainer", id] });
+          void qc.invalidateQueries({ queryKey: ["token-trainer-stats", id] });
+          void qc.invalidateQueries({ queryKey: ["token-trainer-status", id] });
+        }
       }
       pendingPokemonIds.clear();
       pendingTrainerIds.clear();
+      pendingPokemonRows.clear();
+      pendingTrainerRows.clear();
     };
 
-    const scheduleCharacterUpdate = (kind: "pokemon" | "trainer", id?: string) => {
+    const scheduleCharacterUpdate = (
+      kind: "pokemon" | "trainer",
+      id?: string,
+      row?: Record<string, unknown>,
+    ) => {
       if (!id) return;
+      const visibleIds = kind === "pokemon" ? visiblePokemonIdsRef.current : visibleTrainerIdsRef.current;
+      if (!visibleIds.has(id)) return;
       (kind === "pokemon" ? pendingPokemonIds : pendingTrainerIds).add(id);
-      if (flushTimer === null) flushTimer = window.setTimeout(flushCharacterUpdates, 120);
+      if (row) (kind === "pokemon" ? pendingPokemonRows : pendingTrainerRows).set(id, row);
+      if (flushTimer === null) flushTimer = window.setTimeout(flushCharacterUpdates, 300);
     };
 
     let wasSubscribed = false;
@@ -481,7 +520,7 @@ export function MapBoard({
         (payload) => {
           const id = (payload.new as { id?: string } | null)?.id
             ?? (payload.old as { id?: string } | null)?.id;
-          scheduleCharacterUpdate("pokemon", id);
+          scheduleCharacterUpdate("pokemon", id, payload.new as Record<string, unknown> | undefined);
         },
       )
       .on(
@@ -490,18 +529,14 @@ export function MapBoard({
         (payload) => {
           const id = (payload.new as { id?: string } | null)?.id
             ?? (payload.old as { id?: string } | null)?.id;
-          scheduleCharacterUpdate("trainer", id);
+          scheduleCharacterUpdate("trainer", id, payload.new as Record<string, unknown> | undefined);
         },
       )
       .subscribe((status) => {
         if (status !== "SUBSCRIBED") return;
         if (wasSubscribed) {
-          void qc.invalidateQueries({ queryKey: ["token-pokemon"] });
-          void qc.invalidateQueries({ queryKey: ["token-pokemon-stats"] });
-          void qc.invalidateQueries({ queryKey: ["token-pokemon-status"] });
-          void qc.invalidateQueries({ queryKey: ["token-trainer"] });
-          void qc.invalidateQueries({ queryKey: ["token-trainer-stats"] });
-          void qc.invalidateQueries({ queryKey: ["token-trainer-status"] });
+          for (const id of visiblePokemonIdsRef.current) scheduleCharacterUpdate("pokemon", id);
+          for (const id of visibleTrainerIdsRef.current) scheduleCharacterUpdate("trainer", id);
         }
         wasSubscribed = true;
       });

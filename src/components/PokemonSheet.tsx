@@ -206,7 +206,7 @@ export function PokemonSheet({
   const [dynaMode, setDynaMode] = useState<null | "dynamax" | "gigantamax">(null);
 
   const queryKey = useMemo(() => ["pokemon", pokemonId], [pokemonId]);
-  const { data: pokemon } = useQuery({
+  const { data: pokemon, error: pokemonError, refetch: refetchPokemon } = useQuery({
     queryKey,
     queryFn: async () => {
       const { data, error } = await supabase.from("pokemon").select("*").eq("id", pokemonId).single();
@@ -214,7 +214,7 @@ export function PokemonSheet({
       return data as Pokemon;
     },
   });
-  const { data: species } = useQuery({
+  const { data: species, error: speciesError, refetch: refetchSpecies } = useQuery({
     queryKey: ["species", pokemon?.species_id],
     enabled: !!pokemon?.species_id,
     queryFn: async () => {
@@ -371,8 +371,24 @@ export function PokemonSheet({
 
   const spDefUsesInsightGlobal = useGameSpdefUsesInsight(_gameId);
 
-  if (!pokemon) return <div className="p-4 text-sm text-muted-foreground">Loading…</div>;
-  if (!species) return <div className="p-4 text-sm text-muted-foreground">Loading species…</div>;
+  if (pokemonError) {
+    return (
+      <div className="grid min-h-48 place-items-center gap-3 p-6 text-center text-sm">
+        <p className="text-destructive">Não foi possível abrir a ficha: {pokemonError.message}</p>
+        <Button size="sm" variant="outline" onClick={() => { void refetchPokemon(); }}>Tentar novamente</Button>
+      </div>
+    );
+  }
+  if (!pokemon) return <div className="p-4 text-sm text-muted-foreground">Carregando ficha…</div>;
+  if (speciesError) {
+    return (
+      <div className="grid min-h-48 place-items-center gap-3 p-6 text-center text-sm">
+        <p className="text-destructive">Não foi possível carregar a espécie: {speciesError.message}</p>
+        <Button size="sm" variant="outline" onClick={() => { void refetchSpecies(); }}>Tentar novamente</Button>
+      </div>
+    );
+  }
+  if (!species) return <div className="p-4 text-sm text-muted-foreground">Carregando espécie…</div>;
 
   if (!canEdit) {
     const viewName = pokemon.nickname || species.name;

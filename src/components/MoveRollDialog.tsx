@@ -269,15 +269,42 @@ type TargetInfo = {
   types: string[];
 };
 
-function useTargetsForGame(gameId: string, enabled: boolean) {
-  const tokensQ = useQuery({
-    queryKey: ["mrd-tokens", gameId],
+function useCurrentMapPage(gameId: string, userId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["current-map-page", gameId, userId],
     enabled,
+    staleTime: Infinity,
+    queryFn: async () => {
+      const [gameRes, memberRes] = await Promise.all([
+        supabase.from("games").select("active_page_id,narrator_id").eq("id", gameId).single(),
+        supabase
+          .from("game_members")
+          .select("viewing_page_id")
+          .eq("game_id", gameId)
+          .eq("user_id", userId)
+          .maybeSingle(),
+      ]);
+      if (gameRes.error) throw gameRes.error;
+      if (memberRes.error) throw memberRes.error;
+      const game = gameRes.data as { active_page_id: string | null; narrator_id: string };
+      const member = memberRes.data as { viewing_page_id: string | null } | null;
+      return game.narrator_id === userId
+        ? game.active_page_id
+        : member?.viewing_page_id ?? game.active_page_id;
+    },
+  });
+}
+
+function useTargetsForGame(gameId: string, pageId: string | null | undefined, enabled: boolean) {
+  const tokensQ = useQuery({
+    queryKey: ["mrd-tokens", gameId, pageId],
+    enabled: enabled && !!pageId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tokens")
         .select("id,label,character_kind,character_id")
-        .eq("game_id", gameId);
+        .eq("game_id", gameId)
+        .eq("page_id", pageId!);
       if (error) throw error;
       return (data ?? []) as TokenLite[];
     },
@@ -291,8 +318,8 @@ function useTargetsForGame(gameId: string, enabled: boolean) {
     queryKey: ["mrd-target-info", gameId, ids],
     enabled: enabled && tokens.length > 0,
     queryFn: async () => {
-      const pkIds = tokens.filter((t) => t.character_kind === "pokemon").map((t) => t.character_id);
-      const trIds = tokens.filter((t) => t.character_kind === "trainer").map((t) => t.character_id);
+      const pkIds = [...new Set(tokens.filter((t) => t.character_kind === "pokemon").map((t) => t.character_id))];
+      const trIds = [...new Set(tokens.filter((t) => t.character_kind === "trainer").map((t) => t.character_id))];
       const [pkRes, trRes] = await Promise.all([
         pkIds.length
           ? supabase
@@ -306,17 +333,25 @@ function useTargetsForGame(gameId: string, enabled: boolean) {
       ]);
       if (pkRes.error) throw pkRes.error;
       if (trRes.error) throw trRes.error;
+      const pokemonById = new Map(
+        (pkRes.data as Array<{
+          id: string;
+          current_attrs: Record<string, number> | null;
+          modifiers: Record<string, unknown> | null;
+          species: { types: string[]; base_attrs: Record<string, number> } | null;
+        }>).map((row) => [row.id, row]),
+      );
+      const trainerById = new Map(
+        (trRes.data as Array<{
+          id: string;
+          attr_points: Record<string, number> | null;
+          attr_bonus: Record<string, number> | null;
+        }>).map((row) => [row.id, row]),
+      );
       const map = new Map<string, TargetInfo>();
       for (const t of tokens) {
         if (t.character_kind === "pokemon") {
-          const row = (
-            pkRes.data as Array<{
-              id: string;
-              current_attrs: Record<string, number> | null;
-              modifiers: Record<string, unknown> | null;
-              species: { types: string[]; base_attrs: Record<string, number> } | null;
-            }>
-          ).find((r) => r.id === t.character_id);
+          const row = pokemonById.get(t.character_id);
           if (!row) continue;
           const base = row.species?.base_attrs ?? {};
           const defBonus = Number(row.modifiers?._def_bonus ?? 0) || 0;
@@ -325,13 +360,7 @@ function useTargetsForGame(gameId: string, enabled: boolean) {
           const ins = (row.current_attrs?.insight ?? base.insight ?? 1) + spdefBonus;
           map.set(t.id, { id: t.id, name: t.label, kind: "pokemon", vit, ins, types: row.species?.types ?? [] });
         } else {
-          const row = (
-            trRes.data as Array<{
-              id: string;
-              attr_points: Record<string, number> | null;
-              attr_bonus: Record<string, number> | null;
-            }>
-          ).find((r) => r.id === t.character_id);
+          const row = trainerById.get(t.character_id);
           if (!row) continue;
           const vit = 1 + (row.attr_points?.vitality ?? 0) + (row.attr_bonus?.vitality ?? 0);
           const ins = 1 + (row.attr_points?.insight ?? 0) + (row.attr_bonus?.insight ?? 0);
@@ -398,7 +427,9 @@ export function MoveRollDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const spdefUsesInsight = useGameSpdefUsesInsight(gameId);
   const effectivenessFlat = useGameEffectivenessFlat(gameId);
-  const { tokens, infoMap } = useTargetsForGame(gameId, open && !isStatus && !battleMode);
+  const targetSelectionEnabled = open && !isStatus && !battleMode;
+  const { data: currentPageId } = useCurrentMapPage(gameId, userId, targetSelectionEnabled);
+  const { tokens, infoMap } = useTargetsForGame(gameId, currentPageId, targetSelectionEnabled);
   const extras = useMemo(() => parseMoveExtras(move.effect), [move.effect]);
   const [extraOn, setExtraOn] = useState<boolean[]>(() => extras.extra.map(() => false));
   const accBonus = readIntegerInput(accBonusText);
