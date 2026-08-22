@@ -157,6 +157,7 @@ export function MapBoard({
   activePageId,
   topLeftSlot,
   toolbarSlot,
+  collapsedToolbarSlot,
   onRoll,
   onOpenSheet,
   gridSettings = DEFAULT_GRID,
@@ -169,7 +170,8 @@ export function MapBoard({
   activePageId: string | null;
   topLeftSlot?: React.ReactNode;
   toolbarSlot?: React.ReactNode;
-  onRoll?: (label: string, n: number, penalty?: number, meta?: { characterKind: "trainer" | "pokemon" | "t20"; characterId: string; imageUrl?: string | null }) => void;
+  collapsedToolbarSlot?: React.ReactNode;
+  onRoll?: (label: string, n: number, penalty?: number, meta?: { characterKind: "trainer" | "pokemon" | "t20"; characterId: string; imageUrl?: string | null; tokenId?: string | null }) => void;
   onOpenSheet?: (kind: "trainer" | "pokemon" | "t20", id: string, label: string) => void;
   gridSettings?: GridSettings;
   visibility?: Visibility;
@@ -394,20 +396,20 @@ export function MapBoard({
     );
   }, [tokens]);
 
-  // Character ids where the current user is in allowed_editors → treated as creator
+  // Character ids owned by the current user or explicitly shared with them.
   const { data: editableCharIds } = useQuery({
     queryKey: ["editable-char-ids", gameId, userId],
     queryFn: async () => {
       const [pkm, trs] = await Promise.all([
-        supabase.from("pokemon").select("id, allowed_editors").eq("game_id", gameId),
-        supabase.from("trainers").select("id, allowed_editors").eq("game_id", gameId),
+        supabase.from("pokemon").select("id, owner_id, allowed_editors").eq("game_id", gameId),
+        supabase.from("trainers").select("id, owner_id, allowed_editors").eq("game_id", gameId),
       ]);
       const set = new Set<string>();
-      for (const r of (pkm.data ?? []) as { id: string; allowed_editors: string[] | null }[]) {
-        if ((r.allowed_editors ?? []).includes(userId)) set.add(r.id);
+      for (const r of (pkm.data ?? []) as { id: string; owner_id: string; allowed_editors: string[] | null }[]) {
+        if (r.owner_id === userId || (r.allowed_editors ?? []).includes(userId)) set.add(r.id);
       }
-      for (const r of (trs.data ?? []) as { id: string; allowed_editors: string[] | null }[]) {
-        if ((r.allowed_editors ?? []).includes(userId)) set.add(r.id);
+      for (const r of (trs.data ?? []) as { id: string; owner_id: string; allowed_editors: string[] | null }[]) {
+        if (r.owner_id === userId || (r.allowed_editors ?? []).includes(userId)) set.add(r.id);
       }
       return set;
     },
@@ -1488,6 +1490,7 @@ export function MapBoard({
           />
         )}
         toolbarSlot={toolbarSlot}
+        collapsedToolbarSlot={collapsedToolbarSlot}
       />
 
       <div
@@ -1765,6 +1768,7 @@ export function MapBoard({
         const showStats = isSelected || isHover;
         const onGmLayer = (t.layer ?? "tokens") === "gm";
         const isHandout = t.style === "handout";
+        const isPokemonSprite = t.character_kind === "pokemon" && !isHandout;
         return (
           <div
             key={t.id}
@@ -1837,7 +1841,17 @@ export function MapBoard({
                 </span>
               </div>
             )}
-            <div className={`relative flex h-full w-full items-center justify-center ${isHandout ? "" : `rounded-full border-2 ${isSelected ? "border-amber-400 ring-2 ring-amber-400/50" : onGmLayer ? "border-purple-500 ring-2 ring-purple-500/40 border-dashed" : "border-primary ring-2 ring-background"} bg-card shadow-md`}`}>
+            <div className={`relative flex h-full w-full items-center justify-center ${
+              isHandout
+                ? ""
+                : isPokemonSprite
+                  ? isSelected
+                    ? "drop-shadow-[0_0_6px_rgba(251,191,36,0.95)]"
+                    : onGmLayer
+                      ? "drop-shadow-[0_0_5px_rgba(168,85,247,0.9)]"
+                      : ""
+                  : `rounded-full border-2 ${isSelected ? "border-amber-400 ring-2 ring-amber-400/50" : onGmLayer ? "border-purple-500 ring-2 ring-purple-500/40 border-dashed" : "border-primary ring-2 ring-background"} bg-card shadow-md`
+            }`}>
               <TokenAvatar
                 kind={t.character_kind}
                 id={t.character_id}
@@ -1847,7 +1861,7 @@ export function MapBoard({
                 gameId={gameId}
               />
               {!isHandout && <TokenStatusBadges kind={t.character_kind} id={t.character_id} />}
-              {t.tint_color && (
+              {t.tint_color && !isPokemonSprite && (
                 <div
                   className="pointer-events-none absolute inset-0 rounded-full"
                   style={{ backgroundColor: t.tint_color, opacity: 0.45, mixBlendMode: "multiply" }}
@@ -1888,6 +1902,7 @@ export function MapBoard({
                 <TokenActionBar
                   kind={t.character_kind}
                   id={t.character_id}
+                  tokenId={t.id}
                   label={t.label}
                   gameId={gameId}
                   userId={userId}
@@ -2071,6 +2086,7 @@ function MapToolbar({
   onDeleteSelectedBg, onSendBgBack, onBringBgFront, selectedBgId,
   pageSwitcherSlot,
   toolbarSlot,
+  collapsedToolbarSlot,
 }: {
   mode: Mode; setMode: (m: Mode) => void;
   drawTool: DrawKind; setDrawTool: (k: DrawKind) => void;
@@ -2102,6 +2118,7 @@ function MapToolbar({
   selectedBgId: string | null;
   pageSwitcherSlot?: React.ReactNode;
   toolbarSlot?: React.ReactNode;
+  collapsedToolbarSlot?: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -2142,6 +2159,11 @@ function MapToolbar({
               {modeIcon(m)}
             </ToolBtn>
           ))}
+          {collapsedToolbarSlot && (
+            <div className="mt-0.5 flex w-full flex-col items-center gap-1 border-t border-border pt-1.5">
+              {collapsedToolbarSlot}
+            </div>
+          )}
         </div>
       ) : (
         <>

@@ -425,7 +425,12 @@ export function PokemonSheet({
   const maxHpEff = dynaMode ? pokemon.hp * 2 : pokemon.hp;
   const curHp = pokemon.current_hp ?? maxHpEff;
   const painPen = painPenaltyFor(curHp, maxHpEff);
-  const boundRoll = (label: string, n: number, p?: number) => onRoll(label, n, p ?? painPen);
+  const boundRoll = (label: string, n: number, p?: number) =>
+    onRoll(label, n, p ?? painPen, {
+      characterKind: "pokemon",
+      characterId: pokemonId,
+      imageUrl: displayImage,
+    });
 
   async function setAttrBreakdown(key: string, delta: { points?: number; bonus?: number }) {
     if (!canEdit) return;
@@ -841,7 +846,11 @@ export function PokemonSheet({
                 size="sm"
                 variant="outline"
                 className="h-7"
-                onClick={() => onRoll(`${name} · Clash (Str+Clash)`, clash, painPen)}
+                onClick={() => onRoll(`${name} · Clash (Str+Clash)`, clash, painPen, {
+                  characterKind: "pokemon",
+                  characterId: pokemonId,
+                  imageUrl: displayImage,
+                })}
               >
                 <Dices className="mr-1 h-3.5 w-3.5" /> Clash · {clash}d6
               </Button>
@@ -849,7 +858,11 @@ export function PokemonSheet({
                 size="sm"
                 variant="outline"
                 className="h-7"
-                onClick={() => onRoll(`${name} · Evasion (Dex+Evasion)`, evasion, painPen)}
+                onClick={() => onRoll(`${name} · Evasion (Dex+Evasion)`, evasion, painPen, {
+                  characterKind: "pokemon",
+                  characterId: pokemonId,
+                  imageUrl: displayImage,
+                })}
               >
                 <Dices className="mr-1 h-3.5 w-3.5" /> Evasion · {evasion}d6
               </Button>
@@ -1165,6 +1178,8 @@ export function PokemonSheet({
                       userId={userId}
                       painPenalty={painPen}
                       imageUrl={displayImage}
+                      characterId={pokemonId}
+                      characterKind="pokemon"
                     />
                     {canEdit && (
                       <Button size="icon" variant="ghost" onClick={() => deleteMove(m.id)}>

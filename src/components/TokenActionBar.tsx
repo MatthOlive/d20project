@@ -19,10 +19,11 @@ import { useGameSpriteStyle } from "@/hooks/use-game-sprite-style";
 type Props = {
   kind: "trainer" | "pokemon" | "t20";
   id: string;
+  tokenId?: string | null;
   label: string;
   gameId: string;
   userId: string;
-  onRoll: (label: string, n: number, penalty?: number, meta?: { characterKind: "trainer" | "pokemon" | "t20"; characterId: string; imageUrl?: string | null }) => void;
+  onRoll: (label: string, n: number, penalty?: number, meta?: { characterKind: "trainer" | "pokemon" | "t20"; characterId: string; imageUrl?: string | null; tokenId?: string | null }) => void;
   onClose: () => void;
   onOpenSheet: () => void;
   extra?: React.ReactNode;
@@ -64,7 +65,7 @@ function T20Bar({ id, label, onRoll, onClose, onOpenSheet, extra }: Props) {
   );
 }
 
-function TrainerBar({ id, label, onRoll, onClose, onOpenSheet, extra }: Props) {
+function TrainerBar({ id, tokenId, label, onRoll, onClose, onOpenSheet, extra }: Props) {
   const { data: t } = useQuery({
     queryKey: ["token-trainer", id],
     queryFn: async () => {
@@ -108,9 +109,9 @@ function TrainerBar({ id, label, onRoll, onClose, onOpenSheet, extra }: Props) {
         onClick={() => onRoll(`${label} · Initiative (Dex+Alert)`, dex + alert, pen, { characterKind: "trainer", characterId: id, imageUrl: t.image_url })} />
       <CatchButton label={label} dex={dex} throwSk={throwSk} pen={pen} onRoll={onRoll} />
       <ActionBtn icon={<Swords className="h-3.5 w-3.5" />} label="Evasion"
-        onClick={() => onRoll(`${label} · Evasion (Dex+Evasion)`, dex + evasion, pen)} />
+        onClick={() => onRoll(`${label} · Evasion (Dex+Evasion)`, dex + evasion, pen, { characterKind: "trainer", characterId: id, imageUrl: t.image_url, tokenId })} />
       <ActionBtn icon={<Swords className="h-3.5 w-3.5" />} label="Clash"
-        onClick={() => onRoll(`${label} · Clash (Str+Brawl)`, str + brawl, pen)} />
+        onClick={() => onRoll(`${label} · Clash (Str+Brawl)`, str + brawl, pen, { characterKind: "trainer", characterId: id, imageUrl: t.image_url, tokenId })} />
       <GenericRollButton
         characterName={label}
         attrs={attrList}
@@ -125,7 +126,7 @@ function TrainerBar({ id, label, onRoll, onClose, onOpenSheet, extra }: Props) {
   );
 }
 
-function PokemonBar({ id, label, gameId, userId, onRoll, onClose, onOpenSheet, extra }: Props) {
+function PokemonBar({ id, tokenId, label, gameId, userId, onRoll, onClose, onOpenSheet, extra }: Props) {
   const spriteStyle = useGameSpriteStyle(gameId);
   const { data: p } = useQuery({
     queryKey: ["token-pokemon", id, spriteStyle],
@@ -187,9 +188,9 @@ function PokemonBar({ id, label, gameId, userId, onRoll, onClose, onOpenSheet, e
       <ActionBtn icon={<Zap className="h-3.5 w-3.5" />} label="Initiative"
         onClick={() => onRoll(`${label} · Initiative (Dex+Alert)`, dex + alert, pen, { characterKind: "pokemon", characterId: id, imageUrl: displayImage })} />
       <ActionBtn icon={<Swords className="h-3.5 w-3.5" />} label="Evasion"
-        onClick={() => onRoll(`${label} · Evasion (Dex+Evasion)`, dex + evasion, pen)} />
+        onClick={() => onRoll(`${label} · Evasion (Dex+Evasion)`, dex + evasion, pen, { characterKind: "pokemon", characterId: id, imageUrl: displayImage, tokenId })} />
       <ActionBtn icon={<Swords className="h-3.5 w-3.5" />} label="Clash"
-        onClick={() => onRoll(`${label} · Clash (Str+Clash)`, str + clash, pen)} />
+        onClick={() => onRoll(`${label} · Clash (Str+Clash)`, str + clash, pen, { characterKind: "pokemon", characterId: id, imageUrl: displayImage, tokenId })} />
       <GenericRollButton
         characterName={label}
         attrs={attrList}
@@ -206,6 +207,8 @@ function PokemonBar({ id, label, gameId, userId, onRoll, onClose, onOpenSheet, e
         userId={userId}
         painPenalty={pen}
         imageUrl={displayImage}
+        characterId={id}
+        tokenId={tokenId}
       />
       <StatusDialogButton kind="pokemon" id={id} label={label} status={(p as unknown as { status?: string[] }).status ?? []} />
       <AttrsDialogButton kind="pokemon" id={id} label={label} />
@@ -320,7 +323,7 @@ function AbilitiesButton({
 }
 
 function MovesButton({
-  moves, label, pokemonData, gameId, userId, painPenalty, imageUrl,
+  moves, label, pokemonData, gameId, userId, painPenalty, imageUrl, characterId, tokenId,
 }: {
   moves: MoveData[];
   label: string;
@@ -336,6 +339,8 @@ function MovesButton({
   userId: string;
   painPenalty: number;
   imageUrl: string | null;
+  characterId: string;
+  tokenId?: string | null;
 }) {
   const [open, setOpen] = useState(false);
   if (moves.length === 0) return null;
@@ -403,6 +408,9 @@ function MovesButton({
                     userId={userId}
                     painPenalty={painPenalty}
                     imageUrl={imageUrl}
+                    characterId={characterId}
+                    characterKind="pokemon"
+                    tokenId={tokenId}
                   />
                 }
               />

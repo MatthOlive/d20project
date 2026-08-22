@@ -15,6 +15,8 @@ export type MoveCardData = {
 };
 
 export type MoveRollTarget = {
+  requestId?: string;
+  tokenId?: string;
   name: string;
   def: number;
   defStat: "def" | "spdef";
@@ -29,8 +31,49 @@ export type MoveRollTarget = {
   effectivenessMode?: "dice" | "successes";
 };
 
+export type MoveReactionTarget = {
+  requestId: string;
+  tokenId: string;
+  characterId: string;
+  characterKind: "trainer" | "pokemon";
+  name: string;
+  controllerIds: string[];
+  clashPool: number;
+  evadePool: number;
+  painPenalty: number;
+};
+
+export type MoveReactionResponse = {
+  v: "move-reaction-1";
+  resolutionId: string;
+  requestId: string;
+  targetTokenId: string;
+  targetCharacterId: string;
+  targetCharacterKind: "trainer" | "pokemon";
+  targetName: string;
+  choice: "none" | "clash" | "evade";
+  pool: number;
+  dice: number[];
+  successes: number;
+  moveSuccesses: number;
+  actionsBefore: number;
+  required: number;
+  succeeded: boolean;
+  appliedDamage?: number;
+  attackerDamage?: number;
+};
+
 export type MoveRollMessage = {
   v: "move-1";
+  phase?: "accuracy" | "resolution";
+  resolutionId?: string;
+  attacker?: {
+    characterId?: string;
+    characterKind?: "trainer" | "pokemon" | "t20";
+    tokenId?: string | null;
+  };
+  reactionTargets?: MoveReactionTarget[];
+  reactions?: MoveReactionResponse[];
   card: MoveCardData;
   pokemonName: string;
   hasStab: boolean;
@@ -157,7 +200,13 @@ export function MoveCard({
   );
 }
 
-export function MoveRollResultCard({ message }: { message: MoveRollMessage }) {
+export function MoveRollResultCard({
+  message,
+  resolutionComplete = false,
+}: {
+  message: MoveRollMessage;
+  resolutionComplete?: boolean;
+}) {
   const targets = message.damage?.targets?.filter(Boolean) ?? [];
   const hasTargets = targets.length > 0;
   const crit = message.accuracy.crit;
@@ -167,6 +216,8 @@ export function MoveRollResultCard({ message }: { message: MoveRollMessage }) {
   const tcol = TYPE_COLORS[message.card.type as keyof typeof TYPE_COLORS] ?? { bg: "#888", fg: "#fff" };
   const requiredSuccesses = crit?.required ?? 1;
   const isHit = message.accuracy.isHit ?? message.accuracy.successes >= requiredSuccesses;
+  const showAccuracy = message.phase !== "resolution";
+  const showResolution = message.phase !== "accuracy";
 
   return (
     <div
@@ -200,7 +251,7 @@ export function MoveRollResultCard({ message }: { message: MoveRollMessage }) {
         </div>
       </div>
 
-      <section className="border-b border-border px-4 py-3">
+      {showAccuracy && <section className="border-b border-border px-4 py-3">
         <SectionPill accent={tcol.bg}>Accuracy</SectionPill>
         <div className="mt-3 grid grid-cols-[104px_1fr] items-center gap-3">
           <ResultCircle
@@ -240,9 +291,30 @@ export function MoveRollResultCard({ message }: { message: MoveRollMessage }) {
             Critical Hit +1 dado
           </p>
         )}
-      </section>
+      </section>}
 
-      {hasTargets ? (
+      {message.phase === "accuracy" && (
+        <section className="px-4 py-3">
+          <p className={cn(
+            "rounded-lg border px-3 py-2 text-center text-xs font-bold",
+            resolutionComplete
+              ? "border-success/30 bg-success/10 text-success"
+              : isHit && (message.reactionTargets?.length ?? 0) > 0
+                ? "border-primary/30 bg-primary/10 text-primary"
+                : "border-border bg-muted/35 text-muted-foreground",
+          )}>
+            {resolutionComplete
+              ? "Reações concluídas. Dano e efeitos foram resolvidos abaixo."
+              : !isHit
+                ? "O golpe errou. Finalizando a resolução."
+                : (message.reactionTargets?.length ?? 0) > 0
+                  ? `Aguardando reação de ${message.reactionTargets?.length ?? 0} alvo(s).`
+                  : "Acurácia resolvida. Calculando dano e efeitos."}
+          </p>
+        </section>
+      )}
+
+      {showResolution && (hasTargets ? (
         <section className="border-b border-border px-4 py-3">
           <div className="grid grid-cols-[1fr_52px_86px_44px] items-end gap-2">
             <SectionPill accent={tcol.bg} className="col-span-1">Per Target</SectionPill>
@@ -291,9 +363,57 @@ export function MoveRollResultCard({ message }: { message: MoveRollMessage }) {
             </div>
           </div>
         </section>
-      ) : null}
+      ) : null)}
 
-      {message.reaction && message.reaction.choice !== "none" && (
+      {showResolution && (message.reactions?.length ?? 0) > 0 && (
+        <section className="border-b border-border px-4 py-3">
+          <SectionPill accent={tcol.bg}>Reações</SectionPill>
+          <div className="mt-2 space-y-2">
+            {message.reactions?.map((reaction) => (
+              <div key={reaction.requestId} className="rounded-lg border border-border bg-muted/30 px-3 py-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-black uppercase text-foreground">{reaction.targetName}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {reaction.choice === "none"
+                        ? "Não reagiu"
+                        : `${reaction.choice === "clash" ? "Clash" : "Evade"}: ${reaction.moveSuccesses} do move + ${reaction.actionsBefore} ação(ões) = ${reaction.required}`}
+                    </p>
+                    <div className="mt-1 flex flex-wrap gap-1 text-[11px] font-black uppercase">
+                      <span className={cn(
+                        "rounded px-1.5 py-0.5",
+                        (reaction.appliedDamage ?? targets.find((target) => target.requestId === reaction.requestId)?.finalDamage ?? 0) === 0
+                          ? "bg-success/15 text-success"
+                          : "bg-destructive/15 text-destructive",
+                      )}>
+                        {reaction.targetName}: {Math.max(
+                          0,
+                          reaction.appliedDamage ?? targets.find((target) => target.requestId === reaction.requestId)?.finalDamage ?? 0,
+                        )} dano
+                      </span>
+                      {reaction.choice === "clash" && reaction.succeeded && (
+                        <span className="rounded bg-destructive/15 px-1.5 py-0.5 text-destructive">
+                          {message.pokemonName}: {Math.max(1, reaction.attackerDamage ?? 1)} dano
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {reaction.choice !== "none" && (
+                    <span className={cn(
+                      "shrink-0 rounded-full px-2 py-1 text-xs font-black",
+                      reaction.succeeded ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive",
+                    )}>
+                      {reaction.successes} · {reaction.succeeded ? "Sucesso" : "Falhou"}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {showResolution && message.reaction && message.reaction.choice !== "none" && (
         <section className="border-b border-border px-4 py-3">
           <SectionPill accent={tcol.bg}>Reação</SectionPill>
           <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/35 px-3 py-3">
@@ -323,7 +443,7 @@ export function MoveRollResultCard({ message }: { message: MoveRollMessage }) {
         </section>
       )}
 
-      {!isHit && (
+      {showResolution && !isHit && (
         <section className="border-b border-border px-4 py-3">
           <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-center text-xs font-bold text-destructive">
             O golpe errou. Dano e efeitos secundários não foram rolados.
@@ -331,7 +451,7 @@ export function MoveRollResultCard({ message }: { message: MoveRollMessage }) {
         </section>
       )}
 
-      <section className="px-4 py-3">
+      {showResolution && <section className="px-4 py-3">
         <SectionPill accent={tcol.bg}>Effect</SectionPill>
         <div className={cn("mt-3 gap-3", chance.length > 0 ? "grid grid-cols-[104px_1fr]" : "block")}>
           {chance.length > 0 ? (
@@ -357,7 +477,7 @@ export function MoveRollResultCard({ message }: { message: MoveRollMessage }) {
             ))}
           </div>
         </div>
-      </section>
+      </section>}
     </div>
   );
 }

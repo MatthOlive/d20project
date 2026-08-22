@@ -99,7 +99,7 @@ export function TokenAvatar({
         shiny={data?.is_shiny}
         spriteStyle={spriteStyle}
         alt={label}
-        className={`h-full w-full object-cover ${variant === "handout" ? "rounded-none" : "rounded-full"}`}
+        className="h-full w-full rounded-none object-contain"
         draggable={false}
         emptyFallback={<span className="text-xs font-bold">{label.slice(0, 2).toUpperCase()}</span>}
       />

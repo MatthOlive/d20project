@@ -317,8 +317,6 @@ export type Database = {
         Row: {
           active_page_id: string | null
           background_url: string | null
-          classic_region: string | null
-          classic_start_city: string | null
           contest_weights: Json | null
           created_at: string
           current_scenario_id: string | null
@@ -348,8 +346,6 @@ export type Database = {
         Insert: {
           active_page_id?: string | null
           background_url?: string | null
-          classic_region?: string | null
-          classic_start_city?: string | null
           contest_weights?: Json | null
           created_at?: string
           current_scenario_id?: string | null
@@ -379,8 +375,6 @@ export type Database = {
         Update: {
           active_page_id?: string | null
           background_url?: string | null
-          classic_region?: string | null
-          classic_start_city?: string | null
           contest_weights?: Json | null
           created_at?: string
           current_scenario_id?: string | null
