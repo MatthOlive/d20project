@@ -248,6 +248,9 @@ function StatsRow({ stats, defenses, editable }: { stats: Stat[]; defenses?: Def
       className="pointer-events-auto flex flex-col gap-1 rounded-md border border-border bg-card/95 px-2 py-1.5 shadow-md backdrop-blur"
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+      onDoubleClick={(e) => e.stopPropagation()}
+      onDragStart={(e) => e.preventDefault()}
       draggable={false}
     >
       {stats.map((s) => {
@@ -309,6 +312,8 @@ function StatInput({ value, onCommit }: { value: number; onCommit: (value: numbe
     <input
       type="number"
       value={draft}
+      onClick={(event) => event.stopPropagation()}
+      onPointerDown={(event) => event.stopPropagation()}
       onFocus={() => { focused.current = true; }}
       onChange={(event) => setDraft(event.target.value)}
       onBlur={commit}

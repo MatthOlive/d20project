@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -34,20 +35,23 @@ import { MacroBar } from "@/components/MacroBar";
 import { MusicPanel } from "@/components/MusicPanel";
 import { MusicPlayer } from "@/components/MusicPlayer";
 import { DeckPanel } from "@/components/DeckPanel";
-import { TrainerAppearanceImage, TrainerIdentityFields } from "@/components/TrainerAppearance";
+import { GameEnginePanel } from "@/components/GameEnginePanel";
+import { GameEngineActionBridge } from "@/components/GameEngineActionBridge";
+import { MoveReactionCoordinator } from "@/components/MoveReactionCoordinator";
+import {
+  emitEngineActionRolled,
+  type EngineReactionResolution,
+} from "@/lib/game-engine/action-events";
+import type { EngineParticipant, EngineSession } from "@/lib/game-engine/types";
+import { TrainerAppearanceImage } from "@/components/TrainerAppearance";
 import { toast } from "sonner";
-import { ArrowLeft, Copy, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, Swords, ChevronDown, ChevronUp, ChevronRight, Dices, MessageSquare } from "lucide-react";
+import { ArrowLeft, Copy, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, ChevronDown, ChevronUp, ChevronRight, Dices, MessageSquare, Map as MapIcon, Cpu, Layers3, Music2 } from "lucide-react";
 import { rollD6, rollShiny, preferredPokemonSprite, POKEMON_ATTRS, SOCIAL_ATTRS, POKEMON_TYPES, RANKS, RANK_LABELS, TYPE_COLORS, type PokemonType, type Rank } from "@/lib/pokerole";
 import type { PokemonSpriteStyle } from "@/lib/pokerole";
 import { T20_MECHANICS, T20_MECHANICS_CATEGORY_ORDER, defaultT20Attributes, defaultT20Skills, rollD20 } from "@/lib/tormenta20";
 import { rollPokemonAutofill } from "@/lib/pokemon-autofill";
 import { applyPaldeaHisuiSpeciesBalance } from "@/lib/paldea-hisui-balance";
 import { REACTION_DECK } from "@/lib/contest";
-import {
-  trainerAppearanceStorageValue,
-  type TrainerAppearanceId,
-  type TrainerGender,
-} from "@/lib/trainer-appearances";
 
 const BIOME_LABELS: Record<string, string> = {
   cave: "Caverna",
@@ -71,7 +75,49 @@ type OpenWindow =
   | { kind: "trainer"; id: string; title: string }
   | { kind: "t20"; id: string; title: string };
 
+const MAIN_PANEL_LABELS = {
+  map: "Mapa",
+  chat: "Chat",
+  files: "Arquivos",
+  decks: "Baralhos",
+  music: "Música",
+} as const;
+
+type MainPanelTab = keyof typeof MAIN_PANEL_LABELS;
+
+function MainPanelIcon({ tab, className = "h-4 w-4" }: { tab: MainPanelTab; className?: string }) {
+  if (tab === "map") return <MapIcon className={className} />;
+  if (tab === "chat") return <MessageSquare className={className} />;
+  if (tab === "files") return <FolderOpen className={className} />;
+  if (tab === "decks") return <Layers3 className={className} />;
+  return <Music2 className={className} />;
+}
+
+function MainPanelTabTrigger({ tab }: { tab: Exclude<MainPanelTab, "map"> }) {
+  const label = MAIN_PANEL_LABELS[tab];
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <TabsTrigger value={tab} aria-label={label} className="h-9 min-w-0 px-2">
+          <MainPanelIcon tab={tab} />
+          <span className="sr-only">{label}</span>
+        </TabsTrigger>
+      </TooltipTrigger>
+      <TooltipContent side="bottom">{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 type InlineDiceRequest = { label: string; expression: string };
+
+type SheetRollMeta = {
+  characterKind: "trainer" | "pokemon" | "t20";
+  characterId: string;
+  imageUrl?: string | null;
+  tokenId?: string | null;
+  diceExpressions?: InlineDiceRequest[];
+};
 
 type InlineDiceRoll = {
   label: string;
@@ -158,7 +204,7 @@ function GameRoom() {
   });
 
   const [windows, setWindows] = useState<OpenWindow[]>([]);
-  const [turnOrderOpen, setTurnOrderOpen] = useState(false);
+  const [engineOpen, setEngineOpen] = useState(false);
 
   function openWindow(w: OpenWindow) {
     if (!windows.find((x) => x.kind === w.kind && x.id === w.id)) {
@@ -186,11 +232,81 @@ function GameRoom() {
   const isGameOwner = !!game && !!user && game.narrator_id === user.id;
   const isNarrator = isGameOwner;
 
+  function reactionFromLabel(label: string): "Clash" | "Evade" | null {
+    return /\bclash\b/i.test(label)
+      ? "Clash"
+      : /\b(?:evasion|evade)\b/i.test(label)
+        ? "Evade"
+        : null;
+  }
+
+  function participantForRoll(
+    session: EngineSession,
+    meta: SheetRollMeta,
+  ): EngineParticipant | null {
+    const matching = session.state.participants.filter(
+      (participant) =>
+        participant.characterId === meta.characterId && participant.kind === meta.characterKind,
+    );
+    const current = session.state.participants[session.state.turnIndex] ?? null;
+    return (
+      matching.find((participant) => meta.tokenId && participant.tokenId === meta.tokenId) ??
+      matching.find((participant) => participant.id === current?.id) ??
+      matching.find((participant) => participant.ownerId === user?.id) ??
+      null
+    );
+  }
+
+  function resolveEngineReaction(
+    label: string,
+    rolledSuccesses: number,
+    meta?: SheetRollMeta,
+  ): EngineReactionResolution | null {
+    const reaction = reactionFromLabel(label);
+    if (!reaction || !meta || game?.system === "t20") return null;
+    const session = qc.getQueryData<EngineSession | null>(["game-engine-session", gameId]);
+    if (!session || session.status !== "running" || session.state.phase !== "turns") return null;
+    const participant = participantForRoll(session, meta);
+    const lastMove = session.state.lastMove;
+    if (!participant || !lastMove) return null;
+    const moveSuccesses = Math.max(0, Math.trunc(lastMove.successes));
+    const actionsBefore = Math.max(0, participant.actionsUsed);
+    const requiredSuccesses = moveSuccesses + actionsBefore;
+    return {
+      kind: reaction === "Clash" ? "clash" : "evade",
+      moveName: lastMove.name,
+      moveSuccesses,
+      actionsBefore,
+      requiredSuccesses,
+      rolledSuccesses,
+      succeeded: rolledSuccesses >= requiredSuccesses,
+    };
+  }
+
+  function registerRolledReaction(
+    label: string,
+    resultSuccesses: number,
+    meta?: SheetRollMeta,
+  ) {
+    if (!meta) return;
+    const reaction = reactionFromLabel(label);
+    if (!reaction) return;
+    emitEngineActionRolled({
+      gameId,
+      tokenId: meta.tokenId,
+      characterId: meta.characterId,
+      characterKind: meta.characterKind,
+      actionType: "reaction",
+      label: reaction,
+      resultSuccesses,
+    });
+  }
+
   async function rollFromSheet(
     label: string,
     n: number,
     penalty = 0,
-    meta?: { characterKind: "trainer" | "pokemon" | "t20"; characterId: string; imageUrl?: string | null; diceExpressions?: InlineDiceRequest[] },
+    meta?: SheetRollMeta,
   ) {
     if (!user) return;
     if (meta?.characterKind === "t20" || game?.system === "t20") {
@@ -206,6 +322,7 @@ function GameRoom() {
         toast.error(`Não foi possível enviar a rolagem: ${chatError.message}`);
         return;
       }
+      registerRolledReaction(label, result.total, meta);
       if (meta && /iniciativa|initiative/i.test(label)) {
         const name = label.split("-")[0]?.trim() || label;
         const { error: deleteError } = await supabase
@@ -234,14 +351,24 @@ function GameRoom() {
     const finalPool = Math.max(0, n - (penalty || 0));
     const result = rollD6(finalPool);
     const finalLabel = penalty > 0 ? `${label} (pool ${n}−${penalty} pain)` : label;
+    const engineReaction = resolveEngineReaction(label, result.successes, meta);
     const { error: chatError } = await supabase.from("chat_messages").insert({
       game_id: gameId, user_id: user.id, kind: "roll",
-      body: finalLabel, roll_data: { ...result, pool: finalPool, originalPool: n, penalty, label: finalLabel },
+      body: finalLabel,
+      roll_data: {
+        ...result,
+        pool: finalPool,
+        originalPool: n,
+        penalty,
+        label: finalLabel,
+        ...(engineReaction ? { engineReaction } : {}),
+      },
     });
     if (chatError) {
       toast.error(`Não foi possível enviar a rolagem: ${chatError.message}`);
       return;
     }
+    registerRolledReaction(label, result.successes, meta);
     if (meta && /initiative/i.test(label)) {
       const name = label.split("·")[0]?.trim() || label;
       const { error: deleteError } = await supabase
@@ -308,16 +435,16 @@ function GameRoom() {
         <div className="grid grid-cols-2 gap-1">
           <InviteButton url={inviteUrl} />
           <GameSettingsButton gameId={gameId} />
-          <Button
-            size="sm"
-            variant="secondary"
-            className="h-8 justify-start"
-            onClick={() => setTurnOrderOpen((v) => !v)}
-          >
-            <Swords className="mr-1 h-3.5 w-3.5" /> Turn Order
-          </Button>
         </div>
       )}
+      <Button
+        size="sm"
+        variant="secondary"
+        className="h-8 justify-start"
+        onClick={() => setEngineOpen(true)}
+      >
+        <Cpu className="mr-1 h-3.5 w-3.5" /> Motor
+      </Button>
     </div>
   );
 
@@ -345,6 +472,19 @@ function GameRoom() {
         dynamicLighting: (game as never as { dynamic_lighting?: boolean }).dynamic_lighting ?? false,
       }}
       toolbarSlot={mapToolbar}
+      collapsedToolbarSlot={(
+        <button
+          type="button"
+          onClick={() => setEngineOpen(true)}
+          title="Abrir Motor"
+          aria-label="Abrir Motor"
+          className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
+            engineOpen ? "bg-primary text-primary-foreground" : "bg-background text-foreground hover:bg-accent"
+          }`}
+        >
+          <Cpu className="h-4 w-4" />
+        </button>
+      )}
     />
   );
 
@@ -376,8 +516,31 @@ function GameRoom() {
     </div>
   );
 
+  const engineWindow = engineOpen ? (
+    <div className="pointer-events-none">
+      <FloatingWindow
+        title="Motor"
+        onClose={() => setEngineOpen(false)}
+        initialX={isMobile ? 8 : 24}
+        initialY={isMobile ? 52 : 72}
+        width={isMobile ? Math.max(280, Math.min(window.innerWidth - 16, 460)) : 420}
+        height={isMobile ? Math.max(360, Math.min(window.innerHeight - 68, 720)) : 680}
+        minWidth={280}
+        minHeight={320}
+      >
+        <GameEnginePanel
+          gameId={gameId}
+          userId={user.id}
+          isNarrator={isNarrator}
+          systemId={gameSystem}
+          activePageId={(game as never as { active_page_id?: string | null }).active_page_id ?? null}
+        />
+      </FloatingWindow>
+    </div>
+  ) : null;
+
   if (isMobile) {
-    const baseTabs = ["map", "chat", "compendium", "files", "decks", "music"];
+    const baseTabs: MainPanelTab[] = ["map", "chat", "files", "decks", "music"];
     const sheetTabKey = (w: OpenWindow) => `sheet:${w.kind}:${w.id}`;
     const isSheetTab = mobileTab.startsWith("sheet:");
     const activeSheet = isSheetTab ? windows.find((w) => sheetTabKey(w) === mobileTab) ?? null : null;
@@ -388,15 +551,6 @@ function GameRoom() {
       setMobileTab(t);
     }
 
-    function mobileTabLabel(tab: string) {
-      if (tab === "map") return "Mapa";
-      if (tab === "chat") return "Chat";
-      if (tab === "compendium") return "Compendium";
-      if (tab === "files") return "Files";
-      if (tab === "decks") return "Decks";
-      return "Música";
-    }
-
     const openWindowMobile = (w: OpenWindow) => {
       openWindow(w);
       setMobileTab(sheetTabKey(w));
@@ -405,16 +559,27 @@ function GameRoom() {
     return (
       <div className="relative flex h-screen w-full flex-col">
         <h1 className="sr-only">{game.name ? `${game.name} — D20 Project game room` : "D20 Project game room"}</h1>
+        <GameEngineActionBridge gameId={gameId} userId={user.id} isNarrator={isNarrator} />
+        <MoveReactionCoordinator gameId={gameId} userId={user.id} />
         <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border bg-card p-1">
-          {baseTabs.map((t) => (
-            <button
-              key={t}
-              onClick={() => onClickBaseTab(t)}
-              className={`shrink-0 rounded-md px-2 py-2 text-xs font-bold uppercase ${mobileTab === t ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
-            >
-              {mobileTabLabel(t)}
-            </button>
-          ))}
+          <TooltipProvider delayDuration={150}>
+            {baseTabs.map((t) => (
+              <Tooltip key={t}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => onClickBaseTab(t)}
+                    aria-label={MAIN_PANEL_LABELS[t]}
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md ${mobileTab === t ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
+                  >
+                    <MainPanelIcon tab={t} className="h-4 w-4" />
+                    <span className="sr-only">{MAIN_PANEL_LABELS[t]}</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">{MAIN_PANEL_LABELS[t]}</TooltipContent>
+              </Tooltip>
+            ))}
+          </TooltipProvider>
           {windows.map((w) => {
             const key = sheetTabKey(w);
             return (
@@ -442,7 +607,6 @@ function GameRoom() {
         <div className="relative min-h-0 flex-1 overflow-hidden">
           <div className={`absolute inset-0 ${mobileTab === "map" ? "" : "hidden"}`}>
             {mapBoard}
-            <InitiativePanel gameId={gameId} isNarrator={isNarrator} open={turnOrderOpen} onClose={() => setTurnOrderOpen(false)} />
             <MacroBar gameId={gameId} userId={user.id} />
           </div>
           {mobileTab === "chat" && (
@@ -450,9 +614,6 @@ function GameRoom() {
               <div className="p-2"><OnlinePresence gameId={gameId} userId={user.id} isNarrator={isNarrator} /></div>
               <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} isGameOwner={isGameOwner} />
             </div>
-          )}
-          {mobileTab === "compendium" && (
-            <div className="h-full overflow-auto p-3"><CompendiumPanel system={gameSystem} /></div>
           )}
           {mobileTab === "files" && (
             <div className="h-full overflow-auto p-3">
@@ -479,6 +640,7 @@ function GameRoom() {
             </div>
           )}
         </div>
+        {engineWindow}
         <MusicPlayer gameId={gameId} />
       </div>
     );
@@ -486,11 +648,12 @@ function GameRoom() {
   return (
     <div className="relative h-screen w-full px-3 py-3">
       <h1 className="sr-only">{game.name ? `${game.name} — D20 Project game room` : "D20 Project game room"}</h1>
+      <GameEngineActionBridge gameId={gameId} userId={user.id} isNarrator={isNarrator} />
+      <MoveReactionCoordinator gameId={gameId} userId={user.id} />
       <MusicPlayer gameId={gameId} />
       {/* Fullscreen map */}
       <div className="relative h-full w-full">
         {mapBoard}
-        <InitiativePanel gameId={gameId} isNarrator={isNarrator} open={turnOrderOpen} onClose={() => setTurnOrderOpen(false)} />
         <MacroBar gameId={gameId} userId={user.id} />
 
         {/* Right: floating chat/files/etc overlay */}
@@ -500,18 +663,16 @@ function GameRoom() {
               <OnlinePresence gameId={gameId} userId={user.id} isNarrator={isNarrator} />
             </div>
             <Tabs defaultValue="chat" className="flex min-h-0 flex-1 flex-col">
-              <TabsList className="m-2 grid shrink-0 grid-cols-5">
-                <TabsTrigger value="chat">Chat</TabsTrigger>
-                <TabsTrigger value="compendium">Compendium</TabsTrigger>
-                <TabsTrigger value="files">Files</TabsTrigger>
-                <TabsTrigger value="decks">Decks</TabsTrigger>
-                <TabsTrigger value="music">Música</TabsTrigger>
-              </TabsList>
+              <TooltipProvider delayDuration={150}>
+                <TabsList className="m-2 grid shrink-0 grid-cols-4">
+                  <MainPanelTabTrigger tab="chat" />
+                  <MainPanelTabTrigger tab="files" />
+                  <MainPanelTabTrigger tab="decks" />
+                  <MainPanelTabTrigger tab="music" />
+                </TabsList>
+              </TooltipProvider>
               <TabsContent value="chat" className="mt-0 min-h-0 flex-1 overflow-hidden">
                 <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} isGameOwner={isGameOwner} />
-              </TabsContent>
-              <TabsContent value="compendium" className="mt-0 min-h-0 flex-1 overflow-auto p-3">
-                <CompendiumPanel system={gameSystem} />
               </TabsContent>
               <TabsContent value="files" className="mt-0 min-h-0 flex-1 overflow-auto p-3">
                 <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindow} system={gameSystem} />
@@ -528,6 +689,7 @@ function GameRoom() {
       </div>
 
       {sheetWindows}
+      {engineWindow}
     </div>
   );
 }
@@ -682,8 +844,6 @@ function FilesPanel({
   const [pkmDialogOpen, setPkmDialogOpen] = useState(false);
   const [trainerDialogOpen, setTrainerDialogOpen] = useState(false);
   const [newTrainerName, setNewTrainerName] = useState("");
-  const [newTrainerGender, setNewTrainerGender] = useState<TrainerGender>("male");
-  const [newTrainerAppearanceId, setNewTrainerAppearanceId] = useState<TrainerAppearanceId>("male-urban");
   const [newPkmSpecies, setNewPkmSpecies] = useState<string>("");
   const [speciesPickerOpen, setSpeciesPickerOpen] = useState(false);
   const [speciesSearch, setSpeciesSearch] = useState("");
@@ -921,8 +1081,6 @@ function FilesPanel({
           game_id: gameId,
           owner_id: userId,
           name: cleanName,
-          sex: newTrainerGender,
-          image_url: trainerAppearanceStorageValue(newTrainerAppearanceId),
         })
         .select().single();
       if (error) throw error;
@@ -931,8 +1089,6 @@ function FilesPanel({
     onSuccess: (t) => {
       setTrainerDialogOpen(false);
       setNewTrainerName("");
-      setNewTrainerGender("male");
-      setNewTrainerAppearanceId("male-urban");
       qc.invalidateQueries({ queryKey: ["characters", gameId] });
       onOpen({ kind: "trainer", id: t.id, title: t.name });
     },
@@ -1622,16 +1778,22 @@ function FilesPanel({
               >
                 <DialogContent className="max-w-lg">
                   <DialogHeader><DialogTitle>Criar treinador</DialogTitle></DialogHeader>
-                  <TrainerIdentityFields
-                    name={newTrainerName}
-                    onNameChange={setNewTrainerName}
-                    gender={newTrainerGender}
-                    onGenderChange={setNewTrainerGender}
-                    appearanceId={newTrainerAppearanceId}
-                    onAppearanceChange={setNewTrainerAppearanceId}
-                    disabled={createTrainer.isPending}
-                    idPrefix="files-trainer"
-                  />
+                  <div className="space-y-2">
+                    <Label htmlFor="new-trainer-name">Nome</Label>
+                    <Input
+                      id="new-trainer-name"
+                      value={newTrainerName}
+                      onChange={(event) => setNewTrainerName(event.target.value)}
+                      placeholder="Nome do treinador"
+                      disabled={createTrainer.isPending}
+                      autoFocus
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" && newTrainerName.trim() && !createTrainer.isPending) {
+                          createTrainer.mutate();
+                        }
+                      }}
+                    />
+                  </div>
                   <DialogFooter>
                     <Button
                       onClick={() => createTrainer.mutate()}

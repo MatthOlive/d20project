@@ -379,11 +379,19 @@ export function TrainerSheet({
                 onRoll={onRoll}
               />
               <Button size="sm" variant="outline" className="h-7"
-                onClick={() => onRoll(`${charName} · Evasion (Dex+Evasion)`, evasionPool, painPenalty)}>
+                onClick={() => onRoll(`${charName} · Evasion (Dex+Evasion)`, evasionPool, painPenalty, {
+                  characterKind: "trainer",
+                  characterId: trainerId,
+                  imageUrl: trainer.image_url,
+                })}>
                 <Dices className="mr-1 h-3.5 w-3.5" /> Evasion · {evasionPool}d6
               </Button>
               <Button size="sm" variant="outline" className="h-7"
-                onClick={() => onRoll(`${charName} · Clash (Str+Clash)`, clashPool, painPenalty)}>
+                onClick={() => onRoll(`${charName} · Clash (Str+Clash)`, clashPool, painPenalty, {
+                  characterKind: "trainer",
+                  characterId: trainerId,
+                  imageUrl: trainer.image_url,
+                })}>
                 <Dices className="mr-1 h-3.5 w-3.5" /> Clash · {clashPool}d6
               </Button>
               <GenericRollButton

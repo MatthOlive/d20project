@@ -10,8 +10,15 @@ import { drawReactionCard } from "@/lib/contest";
 import { cn } from "@/lib/utils";
 import { narratorTurn } from "@/lib/narrator.functions";
 import { toast } from "sonner";
-import { MoveCard, MoveRollResultCard, SuccessHover, type MoveRollMessage } from "@/components/MoveCard";
+import {
+  MoveCard,
+  MoveRollResultCard,
+  SuccessHover,
+  type MoveReactionResponse,
+  type MoveRollMessage,
+} from "@/components/MoveCard";
 import { FloatingWindow } from "@/components/FloatingWindow";
+import type { EngineReactionResolution } from "@/lib/game-engine/action-events";
 
 type Msg = {
   id: string;
@@ -30,6 +37,7 @@ type Msg = {
         mode?: "sum" | "success";
       }
     | MoveRollMessage
+    | MoveReactionResponse
     | null;
   created_at: string;
 };
@@ -102,6 +110,14 @@ export function ChatPanel({
           const row = incoming;
           if (!aiNarrator || !isGameOwner) return;
           if (row.kind === "narrator") return;
+          if (row.kind === "move_reaction") return;
+          if (
+            row.kind === "move" &&
+            row.roll_data &&
+            "v" in row.roll_data &&
+            row.roll_data.v === "move-1" &&
+            row.roll_data.phase === "accuracy"
+          ) return;
           if (row.id === lastTriggeredIdRef.current) return;
           if (aiBusyRef.current) return;
           lastTriggeredIdRef.current = row.id;
@@ -215,12 +231,34 @@ export function ChatPanel({
         { count: number; mod: number }
       >,
   );
+  const resolvedMoveIds = useMemo(() => new Set(
+    messages.flatMap((message) => {
+      const data = message.roll_data;
+      return data && "v" in data && data.v === "move-1" && data.phase === "resolution" && data.resolutionId
+        ? [data.resolutionId]
+        : [];
+    }),
+  ), [messages]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div ref={scrollRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
         {messages.map((m) => (
-          <MessageBubble key={m.id} msg={m} authorName={profiles[m.user_id] ?? "…"} isMe={m.user_id === userId} />
+          <MessageBubble
+            key={m.id}
+            msg={m}
+            authorName={profiles[m.user_id] ?? "…"}
+            isMe={m.user_id === userId}
+            resolutionComplete={
+              !!(
+                m.roll_data &&
+                "v" in m.roll_data &&
+                m.roll_data.v === "move-1" &&
+                m.roll_data.resolutionId &&
+                resolvedMoveIds.has(m.roll_data.resolutionId)
+              )
+            }
+          />
         ))}
         {messages.length === 0 && (
           <p className="py-6 text-center text-sm text-muted-foreground">
@@ -354,7 +392,18 @@ export function ChatPanel({
   );
 }
 
-function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string; isMe: boolean }) {
+function MessageBubble({
+  msg,
+  authorName,
+  isMe,
+  resolutionComplete,
+}: {
+  msg: Msg;
+  authorName: string;
+  isMe: boolean;
+  resolutionComplete: boolean;
+}) {
+  if (msg.kind === "move_reaction") return null;
   if (msg.kind === "narrator") {
     return (
       <div className="rounded-lg border border-primary/30 bg-primary/10 p-3">
@@ -399,7 +448,7 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
             </span>
           )}
         </div>
-        <MoveRollResultCard message={m} />
+        <MoveRollResultCard message={m} resolutionComplete={resolutionComplete} />
         {false && (
         <MoveCard
           data={m.card}
@@ -483,6 +532,7 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
     system?: string;
     die?: number;
     total?: number;
+    engineReaction?: EngineReactionResolution;
   } | null;
   if (msg.kind === "roll" && rd) {
     if (rd.system === "t20" || typeof rd.die === "number") {
@@ -555,6 +605,31 @@ function MessageBubble({ msg, authorName, isMe }: { msg: Msg; authorName: string
             </span>
           )}
         </div>
+        {rd.engineReaction ? (
+          <div
+            className={cn(
+              "mt-2 rounded-md border px-2.5 py-2",
+              rd.engineReaction.succeeded
+                ? "border-success/35 bg-success/10"
+                : "border-destructive/35 bg-destructive/10",
+            )}
+          >
+            <p
+              className={cn(
+                "text-xs font-bold",
+                rd.engineReaction.succeeded ? "text-success" : "text-destructive",
+              )}
+            >
+              {rd.engineReaction.kind === "clash" ? "Clash" : "Evade"}{" "}
+              {rd.engineReaction.succeeded ? "funcionou" : "falhou"}
+            </p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              Dificuldade: {rd.engineReaction.moveSuccesses} de {rd.engineReaction.moveName} +{" "}
+              {rd.engineReaction.actionsBefore} ação(ões) = {rd.engineReaction.requiredSuccesses}.{" "}
+              Resultado: {rd.engineReaction.rolledSuccesses}.
+            </p>
+          </div>
+        ) : null}
       </div>
     );
   }

@@ -77,6 +77,27 @@ function Dashboard() {
         .select("id,name,background_url,narrator_id,created_at,language,narrator_type,system")
         .single();
       if (error) throw error;
+
+      const { data: firstPage, error: pageError } = await supabase
+        .from("scenarios")
+        .insert({ game_id: data.id, name: "Página 1", background_url: data.background_url })
+        .select("id")
+        .single();
+      if (pageError) {
+        await supabase.from("games").delete().eq("id", data.id);
+        throw new Error(`Não foi possível preparar a primeira página: ${pageError.message}`);
+      }
+
+      const { error: activateError } = await supabase
+        .from("games")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .update({ active_page_id: firstPage.id } as any)
+        .eq("id", data.id);
+      if (activateError) {
+        await supabase.from("games").delete().eq("id", data.id);
+        throw new Error(`Não foi possível ativar a primeira página: ${activateError.message}`);
+      }
+
       return data;
     },
     onSuccess: () => {

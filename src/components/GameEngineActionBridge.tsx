@@ -1,0 +1,91 @@
+import { useEffect, useRef } from "react";
+import { toast } from "sonner";
+import { useGameEngine } from "@/hooks/use-game-engine";
+import {
+  ENGINE_ACTION_ROLLED_EVENT,
+  type EngineActionRolledDetail,
+} from "@/lib/game-engine/action-events";
+import type { EngineSession } from "@/lib/game-engine/types";
+
+function messageOf(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object" && "message" in error) {
+    return String((error as { message?: unknown }).message ?? error);
+  }
+  return String(error);
+}
+
+export function GameEngineActionBridge({
+  gameId,
+  userId,
+  isNarrator,
+}: {
+  gameId: string;
+  userId: string;
+  isNarrator: boolean;
+}) {
+  const engine = useGameEngine({ gameId, actor: { userId, isNarrator } });
+  const sessionRef = useRef<EngineSession | null>(engine.session);
+  const queueRef = useRef<Promise<void>>(Promise.resolve());
+
+  useEffect(() => {
+    sessionRef.current = engine.session;
+  }, [engine.session]);
+
+  useEffect(() => {
+    async function record(detail: EngineActionRolledDetail) {
+      const session = sessionRef.current;
+      if (!session || session.status !== "running" || session.state.phase !== "turns") return;
+
+      const matching = session.state.participants.filter(
+        (participant) =>
+          participant.characterId === detail.characterId && participant.kind === detail.characterKind,
+      );
+      const current = session.state.participants[session.state.turnIndex] ?? null;
+      const participant =
+        matching.find((entry) => detail.tokenId && entry.tokenId === detail.tokenId) ??
+        matching.find((entry) => entry.id === current?.id) ??
+        matching.find((entry) => entry.ownerId === userId) ??
+        null;
+
+      // The narrator must not consume actions on tokens assigned to a player.
+      if (!participant || participant.ownerId !== userId) return;
+
+      const command = {
+        type: "record_action" as const,
+        participantId: participant.id,
+        participantName: participant.name,
+        actionType: detail.actionType,
+        label: detail.label,
+        resultSuccesses: detail.resultSuccesses,
+      };
+
+      try {
+        const updated = await engine.commit(command);
+        sessionRef.current = updated;
+      } catch (error) {
+        if (!/state changed|40001/i.test(messageOf(error))) throw error;
+        await engine.refresh();
+        const updated = await engine.commit(command);
+        sessionRef.current = updated;
+      }
+    }
+
+    function onActionRolled(event: Event) {
+      const detail = (event as CustomEvent<EngineActionRolledDetail>).detail;
+      if (!detail || detail.gameId !== gameId) return;
+      queueRef.current = queueRef.current
+        .then(() => record(detail))
+        .catch((error) => {
+          toast.error("A rolagem foi enviada, mas o Motor não registrou a ação.", {
+            description: messageOf(error),
+          });
+        });
+    }
+
+    window.addEventListener(ENGINE_ACTION_ROLLED_EVENT, onActionRolled);
+    return () => window.removeEventListener(ENGINE_ACTION_ROLLED_EVENT, onActionRolled);
+  }, [engine, gameId, userId]);
+
+  return null;
+}

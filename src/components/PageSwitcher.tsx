@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ChevronDown, Eye, Radio, Plus, Pencil, Trash2, Users } from "lucide-react";
+import { ChevronDown, Eye, Radio, Plus, Pencil, Trash2, Users, X } from "lucide-react";
 
 type Scenario = { id: string; name: string; background_url: string | null; darkness_level?: number };
 type Member = { user_id: string; display_name: string | null; role: string; viewing_page_id: string | null };
@@ -31,16 +31,20 @@ export function PageSwitcher({
 }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [creatingPage, setCreatingPage] = useState(false);
+  const [newPageFormOpen, setNewPageFormOpen] = useState(false);
+  const [newPageName, setNewPageName] = useState("");
   const [moveTarget, setMoveTarget] = useState<Scenario | null>(null);
 
-  const { data: scenarios = [] } = useQuery<Scenario[]>({
+  const { data: scenarios = [], isLoading: scenariosLoading, error: scenariosError } = useQuery<Scenario[]>({
     queryKey: ["scenarios", gameId],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("scenarios")
         .select("id,name,background_url,darkness_level")
         .eq("game_id", gameId)
         .order("created_at");
+      if (error) throw error;
       return (data ?? []) as Scenario[];
     },
   });
@@ -58,8 +62,6 @@ export function PageSwitcher({
     },
   });
 
-  const current = scenarios.find((s) => s.id === viewingPageId) ?? scenarios[0];
-
   async function setActive(pageId: string) {
     const { error } = await supabase
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -71,17 +73,65 @@ export function PageSwitcher({
     }
   }
 
-  async function createPage() {
-    const name = prompt("Nome da nova página")?.trim();
-    if (!name) return;
+  async function persistPage(name: string) {
+    setCreatingPage(true);
     const { data, error } = await supabase
       .from("scenarios")
       .insert({ game_id: gameId, name })
       .select("id")
       .single();
-    if (error) { toast.error(error.message); return; }
-    qc.invalidateQueries({ queryKey: ["scenarios", gameId] });
-    if (data?.id) onView(data.id);
+    if (error) {
+      toast.error(`Não foi possível criar a página: ${error.message}`);
+      setCreatingPage(false);
+      return null;
+    }
+
+    if (!activePageId) {
+      const { error: activateError } = await supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .from("games").update({ active_page_id: data.id } as any).eq("id", gameId);
+      if (activateError) {
+        toast.error(`Página criada, mas não foi possível ativá-la: ${activateError.message}`);
+      } else {
+        qc.invalidateQueries({ queryKey: ["game", gameId] });
+      }
+    }
+
+    await qc.invalidateQueries({ queryKey: ["scenarios", gameId] });
+    onView(data.id);
+    setCreatingPage(false);
+    return data.id;
+  }
+
+  async function createPage() {
+    const name = newPageName.trim();
+    if (!name) return;
+    const pageId = await persistPage(name);
+    if (!pageId) return;
+    setNewPageName("");
+    setNewPageFormOpen(false);
+  }
+
+  async function togglePages() {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    if (creatingPage || scenariosLoading) return;
+    if (scenariosError) {
+      toast.error(`Não foi possível carregar as páginas: ${scenariosError.message}`);
+      return;
+    }
+
+    if (scenarios.length === 0) {
+      const pageId = await persistPage("Página 1");
+      if (!pageId) return;
+    } else {
+      const firstPage = scenarios[0];
+      if (!viewingPageId) onView(firstPage.id);
+      if (!activePageId) await setActive(firstPage.id);
+    }
+    setOpen(true);
   }
 
   async function renamePage(s: Scenario) {
@@ -133,11 +183,12 @@ export function PageSwitcher({
     <div data-map-toolbar className={embedded ? "pointer-events-auto w-full" : "pointer-events-auto absolute left-3 top-3 z-30"}>
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => void togglePages()}
+        disabled={creatingPage || scenariosLoading}
         className={`${embedded ? "w-full justify-between" : "inline-flex"} h-8 items-center gap-1.5 rounded-lg border border-border bg-card/95 px-2.5 text-xs font-semibold shadow-lg backdrop-blur hover:bg-accent`}
         title="Trocar de página"
       >
-        <span className="flex-1 truncate text-center">Páginas</span>
+        <span className="flex-1 truncate text-center">{creatingPage ? "Preparando página..." : "Páginas"}</span>
         {viewingPageId && viewingPageId === activePageId && (
           <Radio className="h-3 w-3 text-emerald-500" aria-label="Ativa para jogadores" />
         )}
@@ -224,13 +275,56 @@ export function PageSwitcher({
               </div>
             );
           })()}
-          <button
-            type="button"
-            onClick={createPage}
-            className="mt-1 flex w-full items-center justify-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-[11px] font-semibold hover:bg-accent"
-          >
-            <Plus className="h-3 w-3" /> Nova página
-          </button>
+          {newPageFormOpen ? (
+            <form
+              className="mt-1 space-y-1 rounded-md border border-border bg-background p-1.5"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void createPage();
+              }}
+            >
+              <input
+                value={newPageName}
+                onChange={(event) => setNewPageName(event.target.value)}
+                placeholder="Nome da página"
+                aria-label="Nome da nova página"
+                autoFocus
+                disabled={creatingPage}
+                className="h-8 w-full rounded-md border border-border bg-card px-2 text-xs outline-none focus:ring-2 focus:ring-primary"
+              />
+              <div className="flex gap-1">
+                <button
+                  type="submit"
+                  disabled={!newPageName.trim() || creatingPage}
+                  className="flex h-8 flex-1 items-center justify-center gap-1 rounded-md bg-primary px-2 text-[11px] font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Plus className="h-3 w-3" /> {creatingPage ? "Criando..." : "Criar"}
+                </button>
+                <button
+                  type="button"
+                  aria-label="Cancelar nova página"
+                  title="Cancelar"
+                  disabled={creatingPage}
+                  onClick={() => {
+                    setNewPageName("");
+                    setNewPageFormOpen(false);
+                  }}
+                  className="flex h-8 w-8 items-center justify-center rounded-md border border-border hover:bg-accent"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </form>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setNewPageFormOpen(true)}
+              disabled={creatingPage}
+              className="mt-1 flex w-full items-center justify-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-[11px] font-semibold hover:bg-accent"
+            >
+              <Plus className="h-3 w-3" /> Nova página
+            </button>
+          )}
         </div>
       )}
 

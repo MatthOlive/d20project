@@ -17,12 +17,19 @@ import {
 } from "@/lib/pokerole";
 import { useGameSpdefUsesInsight } from "@/hooks/use-game-spdef-uses-insight";
 import { useGameEffectivenessFlat } from "@/hooks/use-game-effectiveness-flat";
-import type { MoveRollMessage, MoveRollTarget } from "@/components/MoveCard";
+import type {
+  MoveReactionTarget,
+  MoveRollMessage,
+  MoveRollTarget,
+} from "@/components/MoveCard";
+import { painPenaltyFor } from "@/components/SheetRolls";
 import {
   resolveMoveAccuracy,
   shouldRollMoveDamage,
   shouldRollMoveSecondaryEffects,
 } from "@/lib/move-resolution";
+import { emitEngineActionRolled } from "@/lib/game-engine/action-events";
+import type { EngineSession } from "@/lib/game-engine/types";
 
 export type MoveData = {
   id: string;
@@ -258,15 +265,21 @@ type TokenLite = {
   label: string;
   character_kind: "trainer" | "pokemon";
   character_id: string;
+  owner_id: string;
 };
 
 type TargetInfo = {
   id: string;
+  characterId: string;
   name: string;
   kind: "trainer" | "pokemon";
+  controllerIds: string[];
   vit: number;
   ins: number;
   types: string[];
+  clashPool: number;
+  evadePool: number;
+  painPenalty: number;
 };
 
 function useCurrentMapPage(gameId: string, userId: string, enabled: boolean) {
@@ -302,7 +315,7 @@ function useTargetsForGame(gameId: string, pageId: string | null | undefined, en
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tokens")
-        .select("id,label,character_kind,character_id")
+        .select("id,label,character_kind,character_id,owner_id")
         .eq("game_id", gameId)
         .eq("page_id", pageId!);
       if (error) throw error;
@@ -324,11 +337,11 @@ function useTargetsForGame(gameId: string, pageId: string | null | undefined, en
         pkIds.length
           ? supabase
               .from("pokemon")
-              .select("id,current_attrs,modifiers,species:species_id(types,base_attrs)")
+              .select("id,owner_id,allowed_editors,current_attrs,modifiers,skills,hp,current_hp,species:species_id(types,base_attrs)")
               .in("id", pkIds)
           : Promise.resolve({ data: [] as unknown[], error: null as unknown as null }),
         trIds.length
-          ? supabase.from("trainers").select("id,attr_points,attr_bonus").in("id", trIds)
+          ? supabase.from("trainers").select("id,owner_id,allowed_editors,attr_points,attr_bonus,skills,current_hp").in("id", trIds)
           : Promise.resolve({ data: [] as unknown[], error: null as unknown as null }),
       ]);
       if (pkRes.error) throw pkRes.error;
@@ -336,16 +349,25 @@ function useTargetsForGame(gameId: string, pageId: string | null | undefined, en
       const pokemonById = new Map(
         (pkRes.data as Array<{
           id: string;
+          owner_id: string;
+          allowed_editors: string[] | null;
           current_attrs: Record<string, number> | null;
           modifiers: Record<string, unknown> | null;
+          skills: Record<string, number> | null;
+          hp: number;
+          current_hp: number | null;
           species: { types: string[]; base_attrs: Record<string, number> } | null;
         }>).map((row) => [row.id, row]),
       );
       const trainerById = new Map(
         (trRes.data as Array<{
           id: string;
+          owner_id: string;
+          allowed_editors: string[] | null;
           attr_points: Record<string, number> | null;
           attr_bonus: Record<string, number> | null;
+          skills: Record<string, number> | null;
+          current_hp: number | null;
         }>).map((row) => [row.id, row]),
       );
       const map = new Map<string, TargetInfo>();
@@ -358,13 +380,42 @@ function useTargetsForGame(gameId: string, pageId: string | null | undefined, en
           const spdefBonus = Number(row.modifiers?._spdef_bonus ?? 0) || 0;
           const vit = (row.current_attrs?.vitality ?? base.vitality ?? 1) + defBonus;
           const ins = (row.current_attrs?.insight ?? base.insight ?? 1) + spdefBonus;
-          map.set(t.id, { id: t.id, name: t.label, kind: "pokemon", vit, ins, types: row.species?.types ?? [] });
+          const strength = row.current_attrs?.strength ?? base.strength ?? 1;
+          const dexterity = row.current_attrs?.dexterity ?? base.dexterity ?? 1;
+          map.set(t.id, {
+            id: t.id,
+            characterId: t.character_id,
+            name: t.label,
+            kind: "pokemon",
+            controllerIds: [...new Set([row.owner_id, t.owner_id, ...(row.allowed_editors ?? [])].filter(Boolean))],
+            vit,
+            ins,
+            types: row.species?.types ?? [],
+            clashPool: Math.max(0, strength + (row.skills?.Clash ?? 0)),
+            evadePool: Math.max(0, dexterity + (row.skills?.Evasion ?? 0)),
+            painPenalty: painPenaltyFor(row.current_hp ?? row.hp, row.hp),
+          });
         } else {
           const row = trainerById.get(t.character_id);
           if (!row) continue;
-          const vit = 1 + (row.attr_points?.vitality ?? 0) + (row.attr_bonus?.vitality ?? 0);
-          const ins = 1 + (row.attr_points?.insight ?? 0) + (row.attr_bonus?.insight ?? 0);
-          map.set(t.id, { id: t.id, name: t.label, kind: "trainer", vit, ins, types: [] });
+          const attr = (name: string) =>
+            1 + (row.attr_points?.[name] ?? 0) + (row.attr_bonus?.[name] ?? 0);
+          const vit = attr("vitality");
+          const ins = attr("insight");
+          const maxHp = 4 + vit;
+          map.set(t.id, {
+            id: t.id,
+            characterId: t.character_id,
+            name: t.label,
+            kind: "trainer",
+            controllerIds: [...new Set([row.owner_id, t.owner_id, ...(row.allowed_editors ?? [])].filter(Boolean))],
+            vit,
+            ins,
+            types: [],
+            clashPool: Math.max(0, attr("strength") + (row.skills?.Clash ?? row.skills?.Brawl ?? 0)),
+            evadePool: Math.max(0, attr("dexterity") + (row.skills?.Evasion ?? 0)),
+            painPenalty: painPenaltyFor(row.current_hp ?? maxHp, maxHp),
+          });
         }
       }
       return map;
@@ -388,12 +439,15 @@ export function MoveRollDialog({
   painPenalty,
   imageUrl,
   triggerLabel,
-  initialActions = 0,
+  initialActions,
   controlledOpen,
   onControlledOpenChange,
   hideTrigger = false,
   battleMode = false,
   onBattleConfirm,
+  characterId,
+  characterKind = "pokemon",
+  tokenId,
 }: {
   move: MoveData;
   pokemonName: string;
@@ -415,6 +469,9 @@ export function MoveRollDialog({
   hideTrigger?: boolean;
   battleMode?: boolean;
   onBattleConfirm?: (options: BattleMoveRollOptions) => Promise<boolean | void>;
+  characterId?: string;
+  characterKind?: "pokemon" | "trainer" | "t20";
+  tokenId?: string | null;
 }) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
@@ -437,6 +494,41 @@ export function MoveRollDialog({
   const targetDef = readIntegerInput(targetDefText, 0);
   const critMargin = readIntegerInput(critMarginText, 0);
   const actions = readIntegerInput(actionsText, 0);
+  const { data: engineSession = null } = useQuery<EngineSession | null>({
+    queryKey: ["game-engine-session", gameId],
+    queryFn: async () => {
+      const query = supabase.from("game_engine_sessions" as never) as never as {
+        select: (columns: string) => {
+          eq: (column: string, value: string) => {
+            maybeSingle: () => Promise<{
+              data: EngineSession | null;
+              error: { message: string } | null;
+            }>;
+          };
+        };
+      };
+      const { data, error } = await query.select("*").eq("game_id", gameId).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!characterId,
+    retry: false,
+  });
+  const engineParticipant = useMemo(() => {
+    if (!characterId || !engineSession || engineSession.status !== "running") return null;
+    const matching = engineSession.state.participants.filter(
+      (participant) =>
+        participant.characterId === characterId && participant.kind === characterKind,
+    );
+    const current = engineSession.state.participants[engineSession.state.turnIndex] ?? null;
+    return (
+      matching.find((participant) => tokenId && participant.tokenId === tokenId) ??
+      matching.find((participant) => participant.id === current?.id) ??
+      matching.find((participant) => participant.ownerId === userId) ??
+      null
+    );
+  }, [characterId, characterKind, engineSession, tokenId, userId]);
+  const effectiveInitialActions = initialActions ?? engineParticipant?.actionsUsed ?? 0;
 
   function changeOpen(next: boolean) {
     setInternalOpen(next);
@@ -444,9 +536,9 @@ export function MoveRollDialog({
   }
 
   useEffect(() => {
-    if (open) setActionsText(String(Math.max(0, initialActions)));
+    if (open) setActionsText(String(Math.max(0, effectiveInitialActions)));
     else setSelectedTokenIds([]);
-  }, [initialActions, open]);
+  }, [effectiveInitialActions, open]);
 
   const defLabel = isSpecial ? "Target Sp.Def" : "Target Def";
   const extraDmgBonus = extras.extra.reduce((acc, e, i) => acc + (extraOn[i] ? e.count : 0), 0);
@@ -502,6 +594,28 @@ export function MoveRollDialog({
     const accuracyOutcome = resolveMoveAccuracy(accSuccesses, actions, critMargin);
     const isHit = accuracyOutcome.isHit;
     const isCrit = accuracyOutcome.isCritical;
+    const resolutionId = crypto.randomUUID();
+    const requestIdByToken = new Map(
+      selectedTokenIds.map((selectedTokenId) => [selectedTokenId, crypto.randomUUID()]),
+    );
+    const reactionTargets: MoveReactionTarget[] = isHit
+      ? selectedTokenIds.flatMap((selectedTokenId) => {
+          const target = infoMap.get(selectedTokenId);
+          const requestId = requestIdByToken.get(selectedTokenId);
+          if (!target || !requestId) return [];
+          return [{
+            requestId,
+            tokenId: target.id,
+            characterId: target.characterId,
+            characterKind: target.kind,
+            name: target.name,
+            controllerIds: target.controllerIds,
+            clashPool: target.clashPool,
+            evadePool: target.evadePool,
+            painPenalty: target.painPenalty,
+          }];
+        })
+      : [];
 
     let dmg: MoveRollMessage["damage"] = null;
     if (shouldRollMoveDamage(isHit, !!isStatus, baseDmgPool)) {
@@ -526,6 +640,8 @@ export function MoveRollDialog({
           const finalDamage = eff.immune ? 0 : Math.max(1, successesFlatAdj);
 
           targets.push({
+            requestId: requestIdByToken.get(tid),
+            tokenId: tid,
             name: t.name,
             def,
             defStat: isSpecial ? ("spdef" as const) : ("def" as const),
@@ -568,6 +684,14 @@ export function MoveRollDialog({
     });
     const payload: MoveRollMessage = {
       v: "move-1",
+      phase: "accuracy",
+      resolutionId,
+      attacker: {
+        characterId,
+        characterKind,
+        tokenId,
+      },
+      reactionTargets,
       pokemonName,
       hasStab: !!hasStab,
       imageUrl: imageUrl ?? null,
@@ -595,13 +719,40 @@ export function MoveRollDialog({
       game_id: gameId,
       user_id: userId,
       kind: "move",
-      body: `${pokemonName} used ${move.name}`,
+      body: `${pokemonName} used ${move.name} · Accuracy`,
       roll_data: payload as unknown as never,
     });
     if (error) {
       toast.error(`Não foi possível enviar a rolagem: ${error.message}`);
       setIsSubmitting(false);
       return;
+    }
+    if (!isHit || reactionTargets.length === 0) {
+      const { error: resolutionError } = await supabase.from("chat_messages").insert({
+        game_id: gameId,
+        user_id: userId,
+        kind: "move",
+        body: `${pokemonName} used ${move.name} · Damage & Effects`,
+        roll_data: {
+          ...payload,
+          phase: "resolution",
+          reactions: [],
+        } as unknown as never,
+      });
+      if (resolutionError) {
+        toast.error(`A acurácia foi enviada, mas o restante do move falhou: ${resolutionError.message}`);
+      }
+    }
+    if (characterId) {
+      emitEngineActionRolled({
+        gameId,
+        tokenId,
+        characterId,
+        characterKind,
+        actionType: "move",
+        label: move.name,
+        resultSuccesses: accSuccesses,
+      });
     }
     changeOpen(false);
     setAccBonusText("0");
