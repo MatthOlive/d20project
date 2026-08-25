@@ -190,7 +190,7 @@ function AuthPage() {
 
             <div className="mt-10 grid max-w-5xl gap-4 md:grid-cols-3">
               {[
-                { icon: Users, title: "Multi-sistema", body: "Crie campanhas para qualquer sistema. Hoje Pokerole 2.0 e T20." },
+                { icon: Users, title: "Multi-sistema", body: "Crie campanhas para PokéRole 2.0, Tormenta20 e LANCER." },
                 { icon: Dice5, title: "Rolagens em tempo real", body: "Dados, sucessos e modificadores compartilhados instantaneamente." },
                 { icon: Sparkles, title: "Narrador de IA", body: "Treine a IA com PDFs e tenha um co-mestre que conhece as regras." },
               ].map((feature) => (

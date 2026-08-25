@@ -52,6 +52,31 @@ const t20Rules: EngineRulePack = {
   },
 };
 
+const lancerRules: EngineRulePack = {
+  id: "lancer",
+  label: "LANCER",
+  initiativeLabel: "Ativações alternadas",
+  actionTypes: [
+    { id: "move", label: "Move" },
+    { id: "quick", label: "Quick Action" },
+    { id: "full", label: "Full Action" },
+    { id: "protocol", label: "Protocol" },
+    { id: "reaction", label: "Reaction" },
+    { id: "free", label: "Free Action" },
+  ],
+  rollInitiative() {
+    return {
+      value: 0,
+      label: "LANCER não usa iniciativa fixa.",
+      detail: { activationModel: "alternating" },
+    };
+  },
+  actionHint(participant) {
+    if (participant.actionsUsed === 0) return "Ativação disponível.";
+    return `${participant.actionsUsed} ação(ões) registrada(s) nesta ativação.`;
+  },
+};
+
 const genericRules: EngineRulePack = {
   ...t20Rules,
   id: "generic",
@@ -61,5 +86,6 @@ const genericRules: EngineRulePack = {
 export function getEngineRulePack(systemId: EngineSystemId): EngineRulePack {
   if (systemId === "pokerole") return pokeroleRules;
   if (systemId === "t20") return t20Rules;
+  if (systemId === "lancer") return lancerRules;
   return { ...genericRules, id: systemId };
 }

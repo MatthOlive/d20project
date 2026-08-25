@@ -14,8 +14,9 @@ export type RpgSystem = { id: string; label: string; available: boolean };
 
 export const RPG_SYSTEMS: RpgSystem[] = [
   { id: "pokerole", label: "Pokérole 2.0", available: true },
-  { id: "dnd", label: "D&D", available: false },
   { id: "t20", label: "Tormenta 20", available: true },
+  { id: "lancer", label: "LANCER", available: true },
+  { id: "dnd", label: "D&D", available: false },
 ];
 
 async function extractPdfText(file: File): Promise<string> {

@@ -37,6 +37,7 @@ import { MusicPlayer } from "@/components/MusicPlayer";
 import { DeckPanel } from "@/components/DeckPanel";
 import { GameEnginePanel } from "@/components/GameEnginePanel";
 import { GameEngineActionBridge } from "@/components/GameEngineActionBridge";
+import { LancerCampaignWorkspace } from "@/components/lancer/LancerCampaignWorkspace";
 import { MoveReactionCoordinator } from "@/components/MoveReactionCoordinator";
 import {
   emitEngineActionRolled,
@@ -423,6 +424,19 @@ function GameRoom() {
   );
   if (gameLoading || !game || !user) return <div className="p-8 text-sm text-muted-foreground">Carregando jogo…</div>;
   const gameSystem = (game as { system?: string | null }).system ?? "pokerole";
+
+  if (gameSystem === "lancer") {
+    return (
+      <LancerCampaignWorkspace
+        gameId={gameId}
+        gameName={game.name}
+        userId={user.id}
+        isNarrator={isNarrator}
+        aiNarrator={game.narrator_type === "ai"}
+        inviteUrl={inviteUrl}
+      />
+    );
+  }
 
   const mapToolbar = (
     <div className="flex flex-col gap-1.5">

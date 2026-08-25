@@ -1,9 +1,9 @@
-export type EngineSystemId = "pokerole" | "t20" | string;
+export type EngineSystemId = "pokerole" | "t20" | "lancer" | string;
 
 export type EngineStatus = "setup" | "running" | "paused" | "finished";
 export type EnginePhase = "initiative" | "turns" | "complete";
 
-export type EngineParticipantKind = "pokemon" | "trainer" | "t20" | "npc";
+export type EngineParticipantKind = "pokemon" | "trainer" | "t20" | "lancer" | "npc";
 
 export type EngineParticipant = {
   id: string;
