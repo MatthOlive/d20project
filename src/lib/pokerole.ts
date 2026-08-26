@@ -135,6 +135,11 @@ export function parseRollCommand(input: string): { n: number; faces: number; lab
 // Skills in DB rows (moves table) are lowercase, sometimes compound like
 // "brawl/channel". Characters store skills with TitleCase keys. This helper
 // resolves the best matching skill value from a character's skill map.
+const SKILL_NAME_ALIASES: Record<string, string[]> = {
+  athletic: ["athletic", "athletics"],
+  athletics: ["athletic", "athletics"],
+};
+
 export function resolveSkillValue(
   skillNameFromDb: string | null | undefined,
   skillMap: Record<string, number> | null | undefined,
@@ -144,7 +149,9 @@ export function resolveSkillValue(
   const parts = skillNameFromDb.split("/").map((p) => p.trim()).filter(Boolean);
   let best: { value: number; label: string } | null = null;
   for (const p of parts) {
-    const key = Object.keys(skillMap).find((k) => k.toLowerCase() === p.toLowerCase());
+    const normalized = p.toLowerCase();
+    const acceptedNames = SKILL_NAME_ALIASES[normalized] ?? [normalized];
+    const key = Object.keys(skillMap).find((k) => acceptedNames.includes(k.toLowerCase()));
     const v = key ? (skillMap[key] ?? 0) : 0;
     const label = key ?? (p.charAt(0).toUpperCase() + p.slice(1));
     if (!best || v > best.value) best = { value: v, label };
@@ -407,7 +414,6 @@ export function damageDeltaFromMultiplier(mult: number): { delta: number; label:
   if (mult <= 0.5) return { delta: -1, label: "Não efetivo -1", immune: false };
   return { delta: 0, label: "Neutro", immune: false };
 }
-
 
 
 
