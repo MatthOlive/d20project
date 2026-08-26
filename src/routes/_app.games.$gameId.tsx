@@ -23,6 +23,10 @@ import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { ChatPanel } from "@/components/ChatPanel";
 import { useGameSpdefUsesInsight } from "@/hooks/use-game-spdef-uses-insight";
 import { saveGameSpriteStyle, useGameSpriteStyle } from "@/hooks/use-game-sprite-style";
+import {
+  gameRuntimeSettingsKey,
+  useGameRuntimeSettings,
+} from "@/hooks/use-game-runtime-settings";
 
 import { FloatingWindow } from "@/components/FloatingWindow";
 import { OnlinePresence } from "@/components/OnlinePresence";
@@ -193,16 +197,7 @@ function GameRoom() {
 
   // Character list lives in <FilesPanel>.
 
-  const { data: speciesList } = useQuery({
-    queryKey: ["species-list"],
-    queryFn: async () => {
-      return await fetchAllPaged<{ id: string; name: string }>(
-        "species",
-        "id,name",
-        { orderBy: "dex_number", ascending: true },
-      );
-    },
-  });
+  useGameRuntimeSettings(gameId);
 
   const [windows, setWindows] = useState<OpenWindow[]>([]);
   const [engineOpen, setEngineOpen] = useState(false);
@@ -325,26 +320,15 @@ function GameRoom() {
       }
       registerRolledReaction(label, result.total, meta);
       if (meta && /iniciativa|initiative/i.test(label)) {
-        const name = label.split("-")[0]?.trim() || label;
-        const { error: deleteError } = await supabase
-          .from("initiative")
-          .delete()
-          .eq("game_id", gameId)
-          .eq("character_ref", meta.characterId);
-        if (deleteError) {
-          toast.error(`A iniciativa não pôde ser atualizada: ${deleteError.message}`);
-          return;
-        }
-        const { error: initiativeError } = await supabase.from("initiative").insert({
-          game_id: gameId,
-          character_kind: meta.characterKind,
-          character_ref: meta.characterId,
-          character_name: name,
-          image_url: meta.imageUrl ?? null,
-          successes: result.total,
-          position: 0,
+        emitEngineActionRolled({
+          gameId,
+          tokenId: meta.tokenId,
+          characterId: meta.characterId,
+          characterKind: meta.characterKind,
+          actionType: "initiative",
+          label,
+          resultSuccesses: result.total,
         });
-        if (initiativeError) toast.error(`A iniciativa não pôde ser registrada: ${initiativeError.message}`);
       }
       return;
     }
@@ -371,26 +355,15 @@ function GameRoom() {
     }
     registerRolledReaction(label, result.successes, meta);
     if (meta && /initiative/i.test(label)) {
-      const name = label.split("·")[0]?.trim() || label;
-      const { error: deleteError } = await supabase
-        .from("initiative")
-        .delete()
-        .eq("game_id", gameId)
-        .eq("character_ref", meta.characterId);
-      if (deleteError) {
-        toast.error(`A iniciativa não pôde ser atualizada: ${deleteError.message}`);
-        return;
-      }
-      const { error: initiativeError } = await supabase.from("initiative").insert({
-        game_id: gameId,
-        character_kind: meta.characterKind,
-        character_ref: meta.characterId,
-        character_name: name,
-        image_url: meta.imageUrl ?? null,
-        successes: result.successes,
-        position: 0,
+      emitEngineActionRolled({
+        gameId,
+        tokenId: meta.tokenId,
+        characterId: meta.characterId,
+        characterKind: meta.characterKind,
+        actionType: "initiative",
+        label,
+        resultSuccesses: result.successes,
       });
-      if (initiativeError) toast.error(`A iniciativa não pôde ser registrada: ${initiativeError.message}`);
     }
   }
   async function sendChatFromSheet(body: string) {
@@ -541,6 +514,7 @@ function GameRoom() {
         height={isMobile ? Math.max(360, Math.min(window.innerHeight - 68, 720)) : 680}
         minWidth={280}
         minHeight={320}
+        zIndexFloor={40}
       >
         <GameEnginePanel
           gameId={gameId}
@@ -709,7 +683,7 @@ function GameRoom() {
 }
 
 function RightOverlayPanel({ children }: { children: React.ReactNode }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const [width, setWidth] = useState(360);
   const dragRef = useRef<{ mx: number; ow: number } | null>(null);
   useEffect(() => {
@@ -892,18 +866,6 @@ function FilesPanel({
     },
   });
 
-  const { data: speciesWithBiomes } = useQuery({
-    queryKey: ["species-biomes"],
-    queryFn: async () => {
-      return await fetchAllPaged<{ id: string; name: string; biomes: string[]; suggested_rank: string | null }>(
-        "species",
-        "id,name,biomes,suggested_rank",
-        { orderBy: "dex_number", ascending: true },
-      );
-    },
-  });
-
-
   const [newFolder, setNewFolder] = useState("");
   const [extraFolders, setExtraFolders] = useState<string[]>([]);
   const [dropHover, setDropHover] = useState<string | null>(null);
@@ -1077,12 +1039,15 @@ function FilesPanel({
       return await fetchAllPaged<{
         id: string; name: string; evolutions: string[];
         suggested_rank: string | null; is_starter: boolean; is_legendary: boolean;
+        biomes: string[];
       }>(
         "species",
-        "id,name,evolutions,suggested_rank,is_starter,is_legendary",
+        "id,name,evolutions,suggested_rank,is_starter,is_legendary,biomes",
         { orderBy: "dex_number", ascending: true },
       );
     },
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: 60 * 60 * 1_000,
   });
 
   const createTrainer = useMutation({
@@ -1932,7 +1897,7 @@ function FilesPanel({
                   if (randomMode === "catalog") {
                     pool = list.filter(matchesCatalog);
                   } else if (randomMode === "biome") {
-                    const sl = speciesWithBiomes ?? [];
+                    const sl = speciesList ?? [];
                     pool = sl
                       .filter((s) => (s.biomes ?? []).includes(selectedBiome))
                       .filter((s) => !fRank || s.suggested_rank === fRank);
@@ -2970,14 +2935,13 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
       return;
     }
     toast.success("Configurações salvas");
-    qc.setQueryData(["game-sprite-style", gameId], spriteStyle);
-    qc.setQueryData(["game-spdef-uses-insight", gameId], spdefIns);
-    qc.setQueryData(["game-effectiveness-flat", gameId], effFlat);
+    qc.setQueryData(gameRuntimeSettingsKey(gameId), {
+      spriteStyle,
+      spdefUsesInsight: spdefIns,
+      effectivenessFlat: effFlat,
+    });
     qc.invalidateQueries({ queryKey: ["game", gameId] });
-    qc.invalidateQueries({ queryKey: ["game-sprite-style", gameId] });
     qc.invalidateQueries({ queryKey: ["characters", gameId] });
-    qc.invalidateQueries({ queryKey: ["game-spdef-uses-insight", gameId] });
-    qc.invalidateQueries({ queryKey: ["game-effectiveness-flat", gameId] });
     setOpen(false);
   }
 

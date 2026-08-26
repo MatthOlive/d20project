@@ -25,7 +25,7 @@ const PRESET_COLORS = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#
 
 export function MacroBar({ gameId, userId }: { gameId: string; userId: string }) {
   const qc = useQueryClient();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [manageOpen, setManageOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Macro> | null>(null);
 

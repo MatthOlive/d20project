@@ -106,7 +106,7 @@ function TrainerBar({ id, tokenId, label, onRoll, onClose, onOpenSheet, extra }:
   return (
     <Shell onClose={onClose} title={label} onOpenSheet={onOpenSheet}>
       <ActionBtn icon={<Zap className="h-3.5 w-3.5" />} label="Initiative"
-        onClick={() => onRoll(`${label} · Initiative (Dex+Alert)`, dex + alert, pen, { characterKind: "trainer", characterId: id, imageUrl: t.image_url })} />
+        onClick={() => onRoll(`${label} · Initiative (Dex+Alert)`, dex + alert, pen, { characterKind: "trainer", characterId: id, imageUrl: t.image_url, tokenId })} />
       <CatchButton label={label} dex={dex} throwSk={throwSk} pen={pen} onRoll={onRoll} />
       <ActionBtn icon={<Swords className="h-3.5 w-3.5" />} label="Evasion"
         onClick={() => onRoll(`${label} · Evasion (Dex+Evasion)`, dex + evasion, pen, { characterKind: "trainer", characterId: id, imageUrl: t.image_url, tokenId })} />
@@ -186,7 +186,7 @@ function PokemonBar({ id, tokenId, label, gameId, userId, onRoll, onClose, onOpe
   return (
     <Shell onClose={onClose} title={label} onOpenSheet={onOpenSheet}>
       <ActionBtn icon={<Zap className="h-3.5 w-3.5" />} label="Initiative"
-        onClick={() => onRoll(`${label} · Initiative (Dex+Alert)`, dex + alert, pen, { characterKind: "pokemon", characterId: id, imageUrl: displayImage })} />
+        onClick={() => onRoll(`${label} · Initiative (Dex+Alert)`, dex + alert, pen, { characterKind: "pokemon", characterId: id, imageUrl: displayImage, tokenId })} />
       <ActionBtn icon={<Swords className="h-3.5 w-3.5" />} label="Evasion"
         onClick={() => onRoll(`${label} · Evasion (Dex+Evasion)`, dex + evasion, pen, { characterKind: "pokemon", characterId: id, imageUrl: displayImage, tokenId })} />
       <ActionBtn icon={<Swords className="h-3.5 w-3.5" />} label="Clash"

@@ -263,9 +263,10 @@ export function computeMoveStats(
 type TokenLite = {
   id: string;
   label: string;
-  character_kind: "trainer" | "pokemon";
+  character_kind: "trainer" | "pokemon" | string;
   character_id: string;
   owner_id: string;
+  layer?: string | null;
 };
 
 type TargetInfo = {
@@ -280,6 +281,23 @@ type TargetInfo = {
   clashPool: number;
   evadePool: number;
   painPenalty: number;
+};
+
+type CombatTargetRow = {
+  token_id: string;
+  character_id: string;
+  character_kind: "trainer" | "pokemon";
+  target_name: string;
+  token_owner_id: string;
+  character_owner_id: string;
+  allowed_editors: string[] | null;
+  vitality: number;
+  insight: number;
+  target_types: string[] | null;
+  clash_pool: number;
+  evade_pool: number;
+  current_hp: number;
+  max_hp: number;
 };
 
 function useCurrentMapPage(gameId: string, userId: string, enabled: boolean) {
@@ -310,118 +328,81 @@ function useCurrentMapPage(gameId: string, userId: string, enabled: boolean) {
 
 function useTargetsForGame(gameId: string, pageId: string | null | undefined, enabled: boolean) {
   const tokensQ = useQuery({
-    queryKey: ["mrd-tokens", gameId, pageId],
+    // Reuse the map's live token cache. This keeps target selection on the
+    // current page without issuing a second token query for every move dialog.
+    queryKey: ["tokens", gameId, pageId],
     enabled: enabled && !!pageId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tokens")
-        .select("id,label,character_kind,character_id,owner_id")
+        .select("*")
         .eq("game_id", gameId)
         .eq("page_id", pageId!);
       if (error) throw error;
       return (data ?? []) as TokenLite[];
     },
   });
-  const tokens = tokensQ.data ?? [];
+  const tokens = useMemo(
+    () => (tokensQ.data ?? []).filter(
+      (token) =>
+        (token.layer ?? "tokens") === "tokens" &&
+        (token.character_kind === "pokemon" || token.character_kind === "trainer"),
+    ),
+    [tokensQ.data],
+  );
   const ids = tokens
     .map((t) => `${t.character_kind}:${t.character_id}`)
     .sort()
     .join(",");
   const infoQ = useQuery({
-    queryKey: ["mrd-target-info", gameId, ids],
-    enabled: enabled && tokens.length > 0,
+    queryKey: ["mrd-target-info", gameId, pageId, ids],
+    enabled: enabled && !!pageId && tokens.length > 0,
+    staleTime: 0,
     queryFn: async () => {
-      const pkIds = [...new Set(tokens.filter((t) => t.character_kind === "pokemon").map((t) => t.character_id))];
-      const trIds = [...new Set(tokens.filter((t) => t.character_kind === "trainer").map((t) => t.character_id))];
-      const [pkRes, trRes] = await Promise.all([
-        pkIds.length
-          ? supabase
-              .from("pokemon")
-              .select("id,owner_id,allowed_editors,current_attrs,modifiers,skills,hp,current_hp,species:species_id(types,base_attrs)")
-              .in("id", pkIds)
-          : Promise.resolve({ data: [] as unknown[], error: null as unknown as null }),
-        trIds.length
-          ? supabase.from("trainers").select("id,owner_id,allowed_editors,attr_points,attr_bonus,skills,current_hp").in("id", trIds)
-          : Promise.resolve({ data: [] as unknown[], error: null as unknown as null }),
-      ]);
-      if (pkRes.error) throw pkRes.error;
-      if (trRes.error) throw trRes.error;
-      const pokemonById = new Map(
-        (pkRes.data as Array<{
-          id: string;
-          owner_id: string;
-          allowed_editors: string[] | null;
-          current_attrs: Record<string, number> | null;
-          modifiers: Record<string, unknown> | null;
-          skills: Record<string, number> | null;
-          hp: number;
-          current_hp: number | null;
-          species: { types: string[]; base_attrs: Record<string, number> } | null;
-        }>).map((row) => [row.id, row]),
-      );
-      const trainerById = new Map(
-        (trRes.data as Array<{
-          id: string;
-          owner_id: string;
-          allowed_editors: string[] | null;
-          attr_points: Record<string, number> | null;
-          attr_bonus: Record<string, number> | null;
-          skills: Record<string, number> | null;
-          current_hp: number | null;
-        }>).map((row) => [row.id, row]),
-      );
+      const rpc = supabase.rpc.bind(supabase) as unknown as (
+        fn: string,
+        args: { p_game_id: string; p_page_id: string },
+      ) => Promise<{ data: CombatTargetRow[] | null; error: { message: string } | null }>;
+      const { data, error } = await rpc("get_move_target_info", {
+        p_game_id: gameId,
+        p_page_id: pageId!,
+      });
+      if (error) throw new Error(error.message);
+      const rowsByTokenId = new Map((data ?? []).map((row) => [row.token_id, row]));
       const map = new Map<string, TargetInfo>();
       for (const t of tokens) {
-        if (t.character_kind === "pokemon") {
-          const row = pokemonById.get(t.character_id);
-          if (!row) continue;
-          const base = row.species?.base_attrs ?? {};
-          const defBonus = Number(row.modifiers?._def_bonus ?? 0) || 0;
-          const spdefBonus = Number(row.modifiers?._spdef_bonus ?? 0) || 0;
-          const vit = (row.current_attrs?.vitality ?? base.vitality ?? 1) + defBonus;
-          const ins = (row.current_attrs?.insight ?? base.insight ?? 1) + spdefBonus;
-          const strength = row.current_attrs?.strength ?? base.strength ?? 1;
-          const dexterity = row.current_attrs?.dexterity ?? base.dexterity ?? 1;
-          map.set(t.id, {
-            id: t.id,
-            characterId: t.character_id,
-            name: t.label,
-            kind: "pokemon",
-            controllerIds: [...new Set([row.owner_id, t.owner_id, ...(row.allowed_editors ?? [])].filter(Boolean))],
-            vit,
-            ins,
-            types: row.species?.types ?? [],
-            clashPool: Math.max(0, strength + (row.skills?.Clash ?? 0)),
-            evadePool: Math.max(0, dexterity + (row.skills?.Evasion ?? 0)),
-            painPenalty: painPenaltyFor(row.current_hp ?? row.hp, row.hp),
-          });
-        } else {
-          const row = trainerById.get(t.character_id);
-          if (!row) continue;
-          const attr = (name: string) =>
-            1 + (row.attr_points?.[name] ?? 0) + (row.attr_bonus?.[name] ?? 0);
-          const vit = attr("vitality");
-          const ins = attr("insight");
-          const maxHp = 4 + vit;
-          map.set(t.id, {
-            id: t.id,
-            characterId: t.character_id,
-            name: t.label,
-            kind: "trainer",
-            controllerIds: [...new Set([row.owner_id, t.owner_id, ...(row.allowed_editors ?? [])].filter(Boolean))],
-            vit,
-            ins,
-            types: [],
-            clashPool: Math.max(0, attr("strength") + (row.skills?.Clash ?? row.skills?.Brawl ?? 0)),
-            evadePool: Math.max(0, attr("dexterity") + (row.skills?.Evasion ?? 0)),
-            painPenalty: painPenaltyFor(row.current_hp ?? maxHp, maxHp),
-          });
-        }
+        const row = rowsByTokenId.get(t.id);
+        if (!row) continue;
+        map.set(t.id, {
+          id: t.id,
+          characterId: row.character_id,
+          name: row.target_name || t.label,
+          kind: row.character_kind,
+          controllerIds: [
+            ...new Set([
+              row.character_owner_id,
+              row.token_owner_id,
+              ...(row.allowed_editors ?? []),
+            ].filter(Boolean)),
+          ],
+          vit: row.vitality,
+          ins: row.insight,
+          types: row.target_types ?? [],
+          clashPool: row.clash_pool,
+          evadePool: row.evade_pool,
+          painPenalty: painPenaltyFor(row.current_hp, row.max_hp),
+        });
       }
       return map;
     },
+    retry: 2,
   });
-  return { tokens, infoMap: infoQ.data ?? new Map<string, TargetInfo>() };
+  return {
+    tokens,
+    infoMap: infoQ.data ?? new Map<string, TargetInfo>(),
+    targetInfoError: infoQ.error,
+    targetInfoLoading: infoQ.isFetching,
+  };
 }
 
 export function MoveRollDialog({
@@ -486,7 +467,26 @@ export function MoveRollDialog({
   const effectivenessFlat = useGameEffectivenessFlat(gameId);
   const targetSelectionEnabled = open && !isStatus && !battleMode;
   const { data: currentPageId } = useCurrentMapPage(gameId, userId, targetSelectionEnabled);
-  const { tokens, infoMap } = useTargetsForGame(gameId, currentPageId, targetSelectionEnabled);
+  const { tokens, infoMap, targetInfoError, targetInfoLoading } = useTargetsForGame(
+    gameId,
+    currentPageId,
+    targetSelectionEnabled,
+  );
+  const targetGroups = useMemo(
+    () => [
+      {
+        key: "pokemon",
+        label: "Pokémon",
+        tokens: tokens.filter((token) => token.character_kind === "pokemon"),
+      },
+      {
+        key: "trainer",
+        label: "Treinadores",
+        tokens: tokens.filter((token) => token.character_kind === "trainer"),
+      },
+    ].filter((group) => group.tokens.length > 0),
+    [tokens],
+  );
   const extras = useMemo(() => parseMoveExtras(move.effect), [move.effect]);
   const [extraOn, setExtraOn] = useState<boolean[]>(() => extras.extra.map(() => false));
   const accBonus = readIntegerInput(accBonusText);
@@ -539,6 +539,12 @@ export function MoveRollDialog({
     if (open) setActionsText(String(Math.max(0, effectiveInitialActions)));
     else setSelectedTokenIds([]);
   }, [effectiveInitialActions, open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const validTokenIds = new Set(tokens.map((target) => target.id));
+    setSelectedTokenIds((current) => current.filter((id) => validTokenIds.has(id)));
+  }, [open, tokens]);
 
   const defLabel = isSpecial ? "Target Sp.Def" : "Target Def";
   const extraDmgBonus = extras.extra.reduce((acc, e, i) => acc + (extraOn[i] ? e.count : 0), 0);
@@ -860,41 +866,59 @@ export function MoveRollDialog({
                 </p>
                 <div className="mt-2 max-h-40 space-y-1 overflow-y-auto">
                   {tokens.length === 0 && <p className="text-[11px] text-muted-foreground">Nenhum token no campo.</p>}
-                  {tokens.map((tk) => {
-                    const info = infoMap.get(tk.id);
-                    const checked = selectedTokenIds.includes(tk.id);
-                    const def = info ? defValueFor(info) : null;
-                    const mult = info ? damageMultiplierFor(move.type as string, info.types) : 1;
-                    const eff = damageDeltaFromMultiplier(mult);
-                    return (
-                      <label
-                        key={tk.id}
-                        className="flex items-center gap-2 rounded border border-border bg-card/50 p-1.5 text-xs"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={(ev) =>
-                            setSelectedTokenIds((arr) =>
-                              ev.target.checked ? [...arr, tk.id] : arr.filter((x) => x !== tk.id),
-                            )
-                          }
-                        />
-                        <span className="flex-1 truncate font-semibold">{tk.label}</span>
-                        {info && (
-                          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                            <span>
-                              {isSpecial ? "SpDef" : "Def"} {def}
-                            </span>
-                            <span className="rounded bg-muted px-1">{eff.label}</span>
-                          </span>
-                        )}
-                      </label>
-                    );
-                  })}
+                  {targetGroups.map((group) => (
+                    <section key={group.key} className="space-y-1" aria-label={group.label}>
+                      <div className="sticky top-0 z-10 flex items-center justify-between bg-muted px-2 py-1 text-[10px] font-bold uppercase text-muted-foreground">
+                        <span>{group.label}</span>
+                        <span>{group.tokens.length}</span>
+                      </div>
+                      {group.tokens.map((tk) => {
+                        const info = infoMap.get(tk.id);
+                        const checked = selectedTokenIds.includes(tk.id);
+                        const def = info ? defValueFor(info) : null;
+                        const mult = info ? damageMultiplierFor(move.type as string, info.types) : 1;
+                        const eff = damageDeltaFromMultiplier(mult);
+                        return (
+                          <label
+                            key={tk.id}
+                            className="flex items-center gap-2 rounded border border-border bg-card/50 p-1.5 text-xs"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(ev) =>
+                                setSelectedTokenIds((arr) =>
+                                  ev.target.checked ? [...arr, tk.id] : arr.filter((x) => x !== tk.id),
+                                )
+                              }
+                            />
+                            <span className="flex-1 truncate font-semibold">{tk.label}</span>
+                            {info && (
+                              <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                <span>
+                                  {isSpecial ? "SpDef" : "Def"} {def}
+                                </span>
+                                <span className="rounded bg-muted px-1">{eff.label}</span>
+                              </span>
+                            )}
+                            {!info && !targetInfoLoading && (
+                              <span className="text-[10px] font-semibold text-destructive">
+                                Dados indisponíveis
+                              </span>
+                            )}
+                          </label>
+                        );
+                      })}
+                    </section>
+                  ))}
                 </div>
-                {hasTargets && !selectedTargetsReady && (
+                {hasTargets && !selectedTargetsReady && targetInfoLoading && (
                   <p className="mt-1 text-[10px] font-semibold text-muted-foreground">Carregando dados dos alvos…</p>
+                )}
+                {targetInfoError && (
+                  <p className="mt-1 text-[10px] font-semibold text-destructive">
+                    Não foi possível carregar Defesa e tipo dos alvos. Atualize a mesa após aplicar a migração do banco.
+                  </p>
                 )}
               </div>
 

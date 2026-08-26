@@ -26,16 +26,28 @@ export function GameEngineActionBridge({
 }) {
   const engine = useGameEngine({ gameId, actor: { userId, isNarrator } });
   const sessionRef = useRef<EngineSession | null>(engine.session);
+  const commitRef = useRef(engine.commit);
+  const refreshRef = useRef(engine.refresh);
   const queueRef = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
     sessionRef.current = engine.session;
-  }, [engine.session]);
+    commitRef.current = engine.commit;
+    refreshRef.current = engine.refresh;
+  }, [engine.commit, engine.refresh, engine.session]);
 
   useEffect(() => {
     async function record(detail: EngineActionRolledDetail) {
-      const session = sessionRef.current;
-      if (!session || session.status !== "running" || session.state.phase !== "turns") return;
+      let session = sessionRef.current;
+      const sessionAcceptsEvent = (candidate: EngineSession | null) =>
+        detail.actionType === "initiative"
+          ? candidate?.state.phase === "initiative"
+          : candidate?.status === "running" && candidate.state.phase === "turns";
+      if (!sessionAcceptsEvent(session)) {
+        session = await refreshRef.current();
+        sessionRef.current = session;
+      }
+      if (!session || !sessionAcceptsEvent(session)) return;
 
       const matching = session.state.participants.filter(
         (participant) =>
@@ -51,24 +63,23 @@ export function GameEngineActionBridge({
       // The narrator must not consume actions on tokens assigned to a player.
       if (!participant || participant.ownerId !== userId) return;
 
-      const command = {
-        type: "record_action" as const,
-        participantId: participant.id,
-        participantName: participant.name,
-        actionType: detail.actionType,
-        label: detail.label,
-        resultSuccesses: detail.resultSuccesses,
-      };
-
-      try {
-        const updated = await engine.commit(command);
-        sessionRef.current = updated;
-      } catch (error) {
-        if (!/state changed|40001/i.test(messageOf(error))) throw error;
-        await engine.refresh();
-        const updated = await engine.commit(command);
-        sessionRef.current = updated;
-      }
+      const command = detail.actionType === "initiative"
+        ? {
+            type: "set_initiative" as const,
+            participantId: participant.id,
+            value: Math.trunc(detail.resultSuccesses ?? 0),
+            detail: { label: detail.label },
+          }
+        : {
+            type: "record_action" as const,
+            participantId: participant.id,
+            participantName: participant.name,
+            actionType: detail.actionType,
+            label: detail.label,
+            resultSuccesses: detail.resultSuccesses,
+          };
+      const updated = await commitRef.current(command);
+      sessionRef.current = updated;
     }
 
     function onActionRolled(event: Event) {
@@ -85,7 +96,7 @@ export function GameEngineActionBridge({
 
     window.addEventListener(ENGINE_ACTION_ROLLED_EVENT, onActionRolled);
     return () => window.removeEventListener(ENGINE_ACTION_ROLLED_EVENT, onActionRolled);
-  }, [engine, gameId, userId]);
+  }, [gameId, userId]);
 
   return null;
 }

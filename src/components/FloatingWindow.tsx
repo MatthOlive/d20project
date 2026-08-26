@@ -16,6 +16,7 @@ export function FloatingWindow({
   height = 600,
   minWidth = 320,
   minHeight = 240,
+  zIndexFloor = 10,
 }: {
   title: string;
   onClose: () => void;
@@ -27,13 +28,14 @@ export function FloatingWindow({
   height?: number;
   minWidth?: number;
   minHeight?: number;
+  zIndexFloor?: number;
 }) {
   const [pos, setPos] = useState({ x: initialX, y: initialY });
   const [size, setSize] = useState({ w: width, h: height });
   const [minimized, setMinimized] = useState(false);
   const nextZ = () => {
     zCounter = zCounter >= 45 ? 10 : zCounter + 1;
-    return zCounter;
+    return Math.max(zCounter, Math.min(45, zIndexFloor));
   };
   const [z, setZ] = useState(() => nextZ());
   const dragOrigin = useRef<{ mx: number; my: number; ox: number; oy: number } | null>(null);

@@ -2120,7 +2120,7 @@ function MapToolbar({
   toolbarSlot?: React.ReactNode;
   collapsedToolbarSlot?: React.ReactNode;
 }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
 
   const modeIcon = (m: Mode) => {
     switch (m) {

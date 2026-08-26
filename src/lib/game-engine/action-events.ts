@@ -17,7 +17,7 @@ export type EngineActionRolledDetail = {
   tokenId?: string | null;
   characterId: string;
   characterKind: EngineParticipantKind;
-  actionType: "move" | "reaction";
+  actionType: "move" | "reaction" | "initiative";
   label: string;
   resultSuccesses?: number;
 };

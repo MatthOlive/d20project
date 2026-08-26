@@ -217,6 +217,8 @@ export function PokemonSheet({
   const { data: species, error: speciesError, refetch: refetchSpecies } = useQuery({
     queryKey: ["species", pokemon?.species_id],
     enabled: !!pokemon?.species_id,
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: 60 * 60 * 1_000,
     queryFn: async () => {
       const { data, error } = await supabase.from("species").select("*").eq("id", pokemon!.species_id).single();
       if (error) throw error;
@@ -226,6 +228,8 @@ export function PokemonSheet({
   const { data: learnable = [] } = useQuery({
     queryKey: ["species-moves", pokemon?.species_id],
     enabled: !!pokemon?.species_id,
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: 60 * 60 * 1_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("species_moves")
@@ -247,6 +251,8 @@ export function PokemonSheet({
   const { data: abilityDetails = [] } = useQuery({
     queryKey: ["abilities", speciesAbilityNames],
     enabled: speciesAbilityNames.length > 0,
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: 60 * 60 * 1_000,
     queryFn: async () => {
       const { data, error } = await supabase.from("abilities").select("name, effect").in("name", speciesAbilityNames);
       if (error) throw error;
@@ -359,6 +365,8 @@ export function PokemonSheet({
   const { data: allMovesList = [] } = useQuery({
     queryKey: ["all-moves"],
     enabled: isNarrator,
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: 60 * 60 * 1_000,
     queryFn: async () => {
       const { fetchAllPaged } = await import("@/lib/supabase-paged");
       return await fetchAllPaged<Move>("moves", "*", { orderBy: "name", ascending: true });
@@ -1670,7 +1678,8 @@ function EvolveButton({
         ascending: true,
       });
     },
-    staleTime: 10 * 60 * 1000,
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: 60 * 60 * 1_000,
   });
   const rawNormalEvos = useMemo(
     () =>
