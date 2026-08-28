@@ -37,3 +37,31 @@ export function shouldRollMoveDamage(isHit: boolean, isStatus: boolean, damagePo
 export function shouldRollMoveSecondaryEffects(isHit: boolean): boolean {
   return isHit;
 }
+
+type DamageTarget = {
+  requestId?: string;
+  immune: boolean;
+  finalDamage: number;
+};
+
+type DamageReaction = {
+  requestId: string;
+  choice: "none" | "clash" | "evade";
+  succeeded: boolean;
+};
+
+export function adjustedDamageTargets<T extends DamageTarget>(
+  targets: T[] | undefined,
+  responses: DamageReaction[],
+): T[] | undefined {
+  if (!targets) return undefined;
+  const byRequest = new Map(responses.map((response) => [response.requestId, response]));
+  return targets.map((target) => {
+    const response = target.requestId ? byRequest.get(target.requestId) : null;
+    if (target.immune) return { ...target, finalDamage: 0 };
+    if (!response?.succeeded) return { ...target, finalDamage: Math.max(1, target.finalDamage) };
+    if (response.choice === "evade") return { ...target, finalDamage: 0 };
+    if (response.choice === "clash") return { ...target, finalDamage: 1 };
+    return { ...target, finalDamage: Math.max(1, target.finalDamage) };
+  });
+}

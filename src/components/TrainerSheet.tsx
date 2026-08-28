@@ -80,6 +80,8 @@ type Trainer = {
   retrains: number;
   allowed_editors: string[];
   allowed_viewers: string[];
+  row_version?: number;
+  updated_at?: string;
 };
 
 type CustomSkill = { name: string; value: number };
@@ -180,11 +182,34 @@ export function TrainerSheet({
   });
 
   const commit = useCallback(async (p: Partial<Trainer>) => {
-    const { error } = await supabase.from("trainers").update(p).eq("id", trainerId);
+    const expectedVersion = qc.getQueryData<Trainer>(queryKey)?.row_version;
+    if (typeof expectedVersion !== "number") {
+      const { error } = await supabase.from("trainers").update(p as never).eq("id", trainerId);
+      if (error) throw new Error(error.message);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("trainers")
+      .update(p as never)
+      .eq("id", trainerId)
+      .eq("row_version" as never, expectedVersion)
+      .select("row_version,updated_at" as never)
+      .maybeSingle();
     if (error) throw new Error(error.message);
-  }, [trainerId]);
-  const { patch, retry: retrySave, saveState, saveError } = useDebouncedPatch<Trainer>(queryKey, commit, 400, {
+    if (!data) {
+      const latest = await supabase.from("trainers").select("*").eq("id", trainerId).single();
+      if (latest.error) throw new Error(latest.error.message);
+      qc.setQueryData<Trainer>(queryKey, { ...(latest.data as unknown as Trainer), ...p });
+      throw new Error("A ficha mudou em outra sessão. As alterações locais serão reaplicadas.");
+    }
+    qc.setQueryData<Trainer>(queryKey, (current) => current
+      ? { ...current, ...(data as unknown as Partial<Trainer>) }
+      : current);
+  }, [qc, queryKey, trainerId]);
+  const { patch, retry: retrySave, mergeServerPatch, saveState, saveError } = useDebouncedPatch<Trainer>(queryKey, commit, 400, {
     storageKey: `d20:pending:trainer:${userId}:${trainerId}`,
+    snapshotKey: `sheet:${userId}:trainer:${trainerId}`,
   });
 
   useEffect(() => {
@@ -195,14 +220,14 @@ export function TrainerSheet({
         { event: "UPDATE", schema: "public", table: "trainers", filter: `id=eq.${trainerId}` },
         (payload) => {
           const next = payload.new as Partial<Trainer>;
-          qc.setQueryData<Trainer>(queryKey, (current) => current ? { ...current, ...next } : current);
+          mergeServerPatch(next);
         },
       )
       .subscribe((status) => {
         if (status === "SUBSCRIBED") void qc.invalidateQueries({ queryKey });
       });
     return () => { void supabase.removeChannel(channel); };
-  }, [qc, queryKey, trainerId]);
+  }, [mergeServerPatch, qc, queryKey, trainerId]);
 
   if (trainerError) {
     return (

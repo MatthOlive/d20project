@@ -39,7 +39,7 @@ function T20Bar({ id, label, onRoll, onClose, onOpenSheet, extra }: Props) {
   const { data: c } = useQuery({
     queryKey: ["token-t20", id],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("t20_characters" as never) as any)
+      const { data, error } = await supabase.from("t20_characters")
         .select("image_url,skills")
         .eq("id", id)
         .single();
@@ -160,7 +160,7 @@ function PokemonBar({ id, tokenId, label, gameId, userId, onRoll, onClose, onOpe
         .select("moves(id,name,type,power,accuracy_stat,accuracy_skill,damage_stat,effect,category)")
         .eq("pokemon_id", id);
       if (error) throw error;
-      return (data ?? []).map((r: any) => r.moves).filter(Boolean) as MoveData[];
+      return (data ?? []).flatMap((row) => row.moves ? [row.moves] : []);
     },
   });
 

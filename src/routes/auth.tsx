@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { ArrowRight, Dice5, Sparkles, Users } from "lucide-react";
-import loginHero from "@/assets/login-hero.png";
+import loginHero from "@/assets/login-hero.webp";
 import { DesktopUpdater } from "@/components/DesktopUpdater";
 
 export const Route = createFileRoute("/auth")({
@@ -31,7 +31,7 @@ function AuthPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
-  function postAuthRedirect() {
+  const postAuthRedirect = useCallback(() => {
     const pending = typeof window !== "undefined" ? sessionStorage.getItem("pendingInvite") : null;
     if (pending) {
       sessionStorage.removeItem("pendingInvite");
@@ -39,12 +39,11 @@ function AuthPage() {
     } else {
       navigate({ to: "/dashboard" });
     }
-  }
+  }, [navigate]);
 
   useEffect(() => {
     if (!loading && user) postAuthRedirect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, loading]);
+  }, [user, loading, postAuthRedirect]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

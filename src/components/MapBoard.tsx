@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { clearRealtimeStatus, reportRealtimeStatus } from "@/lib/client-health";
+import { readLocalGameSnapshot, writeLocalGameSnapshot } from "@/lib/local-game-cache";
 import { toast } from "sonner";
 import {
   X, MousePointer2, Ruler, Pencil, Square, Circle as CircleIcon,
@@ -10,7 +12,7 @@ import {
 } from "lucide-react";
 import { TokenActionBar } from "@/components/TokenActionBar";
 import { TokenStatsBar } from "@/components/TokenStatsBar";
-import { TokenAvatar, TokenStatusBadges } from "@/components/TokenAvatar";
+import { TokenAvatar, TokenStatusBadges, type TokenCharacterVisual } from "@/components/TokenAvatar";
 import { TokenAppearanceDialog, type AppearanceToken } from "@/components/TokenAppearanceDialog";
 import { TokenLightDialog, type TokenLightInit } from "@/components/TokenLightDialog";
 import { PageSwitcher } from "@/components/PageSwitcher";
@@ -249,8 +251,7 @@ export function MapBoard({
     } else if (!viewingPageId && activePageId) {
       setViewingPageId(activePageId);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePageId, isNarrator, playerEffectivePage]);
+  }, [activePageId, isNarrator, playerEffectivePage, viewingPageId]);
   const pageId = viewingPageId;
 
   useEffect(() => {
@@ -373,20 +374,114 @@ export function MapBoard({
 
 
 
-  const { data: tokensRaw = [] } = useQuery({
+  const tokenCacheKey = `tokens:${userId}:${gameId}:${pageId ?? "none"}`;
+  const tokenLocalQueryKey = ["local-tokens", userId, gameId, pageId] as const;
+  const { data: cachedTokenSnapshot } = useQuery({
+    queryKey: tokenLocalQueryKey,
+    enabled: !!pageId,
+    queryFn: () => readLocalGameSnapshot<Token[]>(tokenCacheKey),
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: Number.POSITIVE_INFINITY,
+  });
+  const tokensQuery = useQuery({
     queryKey: ["tokens", gameId, pageId],
     enabled: !!pageId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tokens").select("*").eq("game_id", gameId).eq("page_id", pageId!);
       if (error) throw error;
-      return (data ?? []) as Token[];
+      const snapshot = (data ?? []) as Token[];
+      const savedAt = Date.now();
+      qc.setQueryData(tokenLocalQueryKey, { key: tokenCacheKey, savedAt, data: snapshot });
+      void writeLocalGameSnapshot(tokenCacheKey, snapshot);
+      return snapshot;
     },
   });
+  const tokensRaw = useMemo(
+    () => tokensQuery.data ?? cachedTokenSnapshot?.data ?? [],
+    [cachedTokenSnapshot?.data, tokensQuery.data],
+  );
+  useEffect(() => {
+    if (!pageId) return;
+    const timer = window.setTimeout(() => {
+      void writeLocalGameSnapshot(tokenCacheKey, tokensRaw);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [pageId, tokenCacheKey, tokensRaw]);
   const tokens = useMemo(
     () => tokensRaw.filter((t) => isNarrator || (t.layer ?? "tokens") !== "gm"),
     [tokensRaw, isNarrator],
   );
+  const visiblePokemonIds = useMemo(
+    () => [...new Set(tokens.filter((token) => token.character_kind === "pokemon").map((token) => token.character_id))].sort(),
+    [tokens],
+  );
+  const visibleTrainerIds = useMemo(
+    () => [...new Set(tokens.filter((token) => token.character_kind === "trainer").map((token) => token.character_id))].sort(),
+    [tokens],
+  );
+  const tokenVisualQueryKey = useMemo(
+    () => ["map-token-visuals", gameId, pageId, visiblePokemonIds.join(","), visibleTrainerIds.join(",")] as const,
+    [gameId, pageId, visiblePokemonIds, visibleTrainerIds],
+  );
+  const tokenVisualQueryKeyRef = useRef(tokenVisualQueryKey);
+  useEffect(() => {
+    tokenVisualQueryKeyRef.current = tokenVisualQueryKey;
+  }, [tokenVisualQueryKey]);
+  const { data: tokenVisuals = new Map<string, TokenCharacterVisual>() } = useQuery({
+    queryKey: tokenVisualQueryKey,
+    enabled: !!pageId && (visiblePokemonIds.length > 0 || visibleTrainerIds.length > 0),
+    staleTime: Number.POSITIVE_INFINITY,
+    queryFn: async () => {
+      const [pokemonResult, trainerResult] = await Promise.all([
+        visiblePokemonIds.length
+          ? supabase
+              .from("pokemon")
+              .select("id,image_url,status,is_shiny,species:species_id(name,sprite_url)")
+              .in("id", visiblePokemonIds)
+          : Promise.resolve({ data: [], error: null }),
+        visibleTrainerIds.length
+          ? supabase
+              .from("trainers")
+              .select("id,image_url,status_conditions")
+              .in("id", visibleTrainerIds)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+      if (pokemonResult.error) throw pokemonResult.error;
+      if (trainerResult.error) throw trainerResult.error;
+
+      const visuals = new Map<string, TokenCharacterVisual>();
+      for (const row of (pokemonResult.data ?? []) as Array<{
+        id: string;
+        image_url: string | null;
+        status: string[] | null;
+        is_shiny: boolean | null;
+        species: { name: string | null; sprite_url: string | null } | null;
+      }>) {
+        visuals.set(`pokemon:${row.id}`, {
+          image_url: row.image_url,
+          status: row.status ?? [],
+          species_name: row.species?.name ?? null,
+          species_sprite_url: row.species?.sprite_url ?? null,
+          is_shiny: !!row.is_shiny,
+        });
+      }
+      for (const row of (trainerResult.data ?? []) as Array<{
+        id: string;
+        image_url: string | null;
+        status_conditions: string[] | null;
+      }>) {
+        visuals.set(`trainer:${row.id}`, {
+          image_url: row.image_url,
+          status: row.status_conditions ?? [],
+          species_name: null,
+          species_sprite_url: null,
+          is_shiny: false,
+        });
+      }
+      return visuals;
+    },
+  });
   useEffect(() => {
     visiblePokemonIdsRef.current = new Set(
       tokens.filter((token) => token.character_kind === "pokemon").map((token) => token.character_id),
@@ -421,6 +516,7 @@ export function MapBoard({
 
   useEffect(() => {
     if (!pageId) return;
+    let active = true;
     const ch = supabase
       .channel(`tokens:${gameId}:${pageId}`)
       .on(
@@ -450,11 +546,17 @@ export function MapBoard({
         },
       )
       .subscribe((status) => {
+        if (!active) return;
+        reportRealtimeStatus(`tokens:${gameId}:${pageId}`, status);
         if (status === "SUBSCRIBED") {
           void qc.invalidateQueries({ queryKey: ["tokens", gameId, pageId] });
         }
       });
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      active = false;
+      clearRealtimeStatus(`tokens:${gameId}:${pageId}`);
+      void supabase.removeChannel(ch);
+    };
   }, [gameId, pageId, qc]);
 
   // Real-time updates from pokemon / trainers so token images, stats,
@@ -468,10 +570,15 @@ export function MapBoard({
 
     const flushCharacterUpdates = () => {
       flushTimer = null;
+      const needsVisualRefetch = [...pendingPokemonIds].some((id) => !pendingPokemonRows.has(id))
+        || [...pendingTrainerIds].some((id) => !pendingTrainerRows.has(id));
       for (const id of pendingPokemonIds) {
         const row = pendingPokemonRows.get(id);
         if (row) {
-          qc.setQueryData(["token-pokemon", id], (old: Record<string, unknown> | undefined) => old ? { ...old, ...row } : old);
+          qc.setQueriesData<Record<string, unknown>>(
+            { queryKey: ["token-pokemon", id] },
+            (old) => old ? { ...old, ...row } : old,
+          );
           qc.setQueryData(["token-pokemon-stats", id], (old: Record<string, unknown> | undefined) => old ? { ...old, ...row } : old);
           qc.setQueryData(["token-pokemon-status", id], (old: Record<string, unknown> | undefined) => old ? { ...old, ...row } : old);
           qc.setQueryData(["pokemon", id], (old: Record<string, unknown> | undefined) => old ? { ...old, ...row } : old);
@@ -484,7 +591,10 @@ export function MapBoard({
       for (const id of pendingTrainerIds) {
         const row = pendingTrainerRows.get(id);
         if (row) {
-          qc.setQueryData(["token-trainer", id], (old: Record<string, unknown> | undefined) => old ? { ...old, ...row } : old);
+          qc.setQueriesData<Record<string, unknown>>(
+            { queryKey: ["token-trainer", id] },
+            (old) => old ? { ...old, ...row } : old,
+          );
           qc.setQueryData(["token-trainer-stats", id], (old: Record<string, unknown> | undefined) => old ? { ...old, ...row } : old);
           qc.setQueryData(["token-trainer-status", id], (old: Record<string, unknown> | undefined) => old ? { ...old, ...row } : old);
           qc.setQueryData(["trainer", id], (old: Record<string, unknown> | undefined) => old ? { ...old, ...row } : old);
@@ -493,6 +603,35 @@ export function MapBoard({
           void qc.invalidateQueries({ queryKey: ["token-trainer-stats", id] });
           void qc.invalidateQueries({ queryKey: ["token-trainer-status", id] });
         }
+      }
+      qc.setQueryData<Map<string, TokenCharacterVisual>>(tokenVisualQueryKeyRef.current, (current) => {
+        if (!current) return current;
+        const next = new Map(current);
+        for (const [id, row] of pendingPokemonRows) {
+          const key = `pokemon:${id}`;
+          const previous = next.get(key);
+          if (!previous) continue;
+          next.set(key, {
+            ...previous,
+            image_url: "image_url" in row ? (row.image_url as string | null) : previous.image_url,
+            status: Array.isArray(row.status) ? row.status as string[] : previous.status,
+            is_shiny: "is_shiny" in row ? Boolean(row.is_shiny) : previous.is_shiny,
+          });
+        }
+        for (const [id, row] of pendingTrainerRows) {
+          const key = `trainer:${id}`;
+          const previous = next.get(key);
+          if (!previous) continue;
+          next.set(key, {
+            ...previous,
+            image_url: "image_url" in row ? (row.image_url as string | null) : previous.image_url,
+            status: Array.isArray(row.status_conditions) ? row.status_conditions as string[] : previous.status,
+          });
+        }
+        return next;
+      });
+      if (needsVisualRefetch) {
+        void qc.invalidateQueries({ queryKey: ["map-token-visuals", gameId, pageId] });
       }
       pendingPokemonIds.clear();
       pendingTrainerIds.clear();
@@ -514,6 +653,7 @@ export function MapBoard({
     };
 
     let wasSubscribed = false;
+    let active = true;
     const ch = supabase
       .channel(`token-chars:${gameId}`)
       .on(
@@ -535,6 +675,8 @@ export function MapBoard({
         },
       )
       .subscribe((status) => {
+        if (!active) return;
+        reportRealtimeStatus(`characters:${gameId}`, status);
         if (status !== "SUBSCRIBED") return;
         if (wasSubscribed) {
           for (const id of visiblePokemonIdsRef.current) scheduleCharacterUpdate("pokemon", id);
@@ -543,10 +685,12 @@ export function MapBoard({
         wasSubscribed = true;
       });
     return () => {
+      active = false;
       if (flushTimer !== null) window.clearTimeout(flushTimer);
+      clearRealtimeStatus(`characters:${gameId}`);
       void supabase.removeChannel(ch);
     };
-  }, [gameId, qc]);
+  }, [gameId, pageId, qc]);
 
   // Drawings query + realtime
   const { data: drawings = [] } = useQuery({
@@ -683,6 +827,9 @@ export function MapBoard({
   const [visEnabled, setVisEnabled] = useState(true);
   // fogActive declared after pageMeta below.
 
+  const insertWallRef = useRef(insertWall);
+  insertWallRef.current = insertWall;
+
   useEffect(() => {
     if (mode !== "walls") return;
     function onKeyDown(e: KeyboardEvent) {
@@ -693,7 +840,7 @@ export function MapBoard({
         setSelectedWallId(null);
       }
       if (e.key === "Enter" && wallTool === "poly" && wallStart && wallPolyFirst) {
-        void insertWall(wallStart.x, wallStart.y, wallPolyFirst.x, wallPolyFirst.y);
+        void insertWallRef.current(wallStart.x, wallStart.y, wallPolyFirst.x, wallPolyFirst.y);
         setWallStart(null);
         setWallPolyFirst(null);
         setWallCursor(null);
@@ -893,7 +1040,7 @@ export function MapBoard({
     const W = rect.width, H = rect.height;
     const wallsPx = walls.filter((w) => !w.is_open && w.blocks_sight !== false).map((w) => ({ ax: w.x1 * W, ay: w.y1 * H, bx: w.x2 * W, by: w.y2 * H }));
     return sources.map((t) => ptsToPath(castPolygon(t.x * W, t.y * H, (t.vision_radius ?? 0) * gridSettings.size, wallsPx), W, H));
-  }, [tokens, walls, visibility.dynamicLighting, darknessLevel, isNarrator, userId, gridSettings.size]);
+  }, [tokens, walls, visibility.dynamicLighting, darknessLevel, isNarrator, gridSettings.size, canActAsOwner]);
 
   // Light polygons — colored tint, blocks_light only.
   const lightPolygons = useMemo(() => {
@@ -944,7 +1091,11 @@ export function MapBoard({
     if (isNarrator || visibilityPolygons.length === 0) return;
     setExploredPaths((prev) => {
       const unique = Array.from(new Set([...prev, ...visibilityPolygons].filter(Boolean))).slice(-160);
-      try { window.localStorage.setItem(exploredStorageKey, JSON.stringify(unique)); } catch {}
+      try {
+        window.localStorage.setItem(exploredStorageKey, JSON.stringify(unique));
+      } catch {
+        // Fog memory is best-effort when browser storage is unavailable.
+      }
       return unique;
     });
   }, [isNarrator, visibilityPolygons, exploredStorageKey]);
@@ -960,7 +1111,7 @@ export function MapBoard({
       })();
     }, 1200);
     return () => window.clearTimeout(timer);
-  }, [isNarrator, exploredPaths, tokens]);
+  }, [isNarrator, exploredPaths, tokens, canActAsOwner]);
 
   const savedExploredPaths = useMemo(() => {
     const paths = tokens.flatMap((t) => {
@@ -968,7 +1119,7 @@ export function MapBoard({
       return t.explored_mask.filter((v): v is string => typeof v === "string");
     });
     return Array.from(new Set([...paths, ...exploredPaths])).slice(-200);
-  }, [tokens, exploredPaths, userId]);
+  }, [tokens, exploredPaths, canActAsOwner]);
 
   function snap(v: number, dim: number) {
     if (!gridSettings.enabled) return v;
@@ -1234,7 +1385,7 @@ export function MapBoard({
       qc.setQueryData<Token[]>(["tokens", gameId, pageId], (old) => (old ?? []).filter((t) => t.id !== optimisticId));
     };
 
-    const { data: createdTokenId, error } = await (supabase.rpc("create_token_from_character" as never, {
+    const { data: createdTokenId, error } = await supabase.rpc("create_token_from_character", {
       p_game_id: gameId,
       p_page_id: pageId,
       p_character_kind: p.kind,
@@ -1243,7 +1394,7 @@ export function MapBoard({
       p_image_url: p.imageUrl ?? null,
       p_x: x,
       p_y: y,
-    } as never) as unknown as Promise<{ data: string | null; error: { message: string } | null }>);
+    });
     if (!error) {
       if (createdTokenId) {
         qc.setQueryData<Token[]>(["tokens", gameId, pageId], (old) => {
@@ -1291,6 +1442,11 @@ export function MapBoard({
     }
   }
 
+  const pointToRelRef = useRef(pointToRel);
+  pointToRelRef.current = pointToRel;
+  const placeCharacterTokenRef = useRef(placeCharacterToken);
+  placeCharacterTokenRef.current = placeCharacterToken;
+
   useEffect(() => {
     function onPointerDrop(e: Event) {
       const detail = (e as CustomEvent).detail as { payload?: DragCharacterPayload; clientX?: number; clientY?: number } | undefined;
@@ -1311,12 +1467,12 @@ export function MapBoard({
         detail.clientY >= rect.top &&
         detail.clientY <= rect.bottom;
       if (!inside) return;
-      const { x, y } = pointToRel(detail.clientX, detail.clientY);
-      void placeCharacterToken(detail.payload, x, y);
+      const { x, y } = pointToRelRef.current(detail.clientX, detail.clientY);
+      void placeCharacterTokenRef.current(detail.payload, x, y);
     }
     window.addEventListener(CHARACTER_POINTER_DROP_EVENT, onPointerDrop);
     return () => window.removeEventListener(CHARACTER_POINTER_DROP_EVENT, onPointerDrop);
-  }, [gameId, pageId, gridSettings.enabled, gridSettings.snap, gridSettings.snapMode, gridSettings.size]);
+  }, []);
 
   async function onDrop(e: React.DragEvent) {
     e.preventDefault();
@@ -1482,6 +1638,7 @@ export function MapBoard({
         pageSwitcherSlot={(
           <PageSwitcher
             gameId={gameId}
+            userId={userId}
             viewingPageId={viewingPageId}
             activePageId={activePageId}
             isNarrator={isNarrator}
@@ -1859,8 +2016,15 @@ export function MapBoard({
                 label={t.label}
                 variant={isHandout ? "handout" : "token"}
                 gameId={gameId}
+                character={tokenVisuals.get(`${t.character_kind}:${t.character_id}`)}
               />
-              {!isHandout && <TokenStatusBadges kind={t.character_kind} id={t.character_id} />}
+              {!isHandout && (
+                <TokenStatusBadges
+                  kind={t.character_kind}
+                  id={t.character_id}
+                  character={tokenVisuals.get(`${t.character_kind}:${t.character_id}`)}
+                />
+              )}
               {t.tint_color && !isPokemonSprite && (
                 <div
                   className="pointer-events-none absolute inset-0 rounded-full"

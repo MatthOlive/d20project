@@ -108,7 +108,7 @@ export function T20CharacterSheet({
   const { data: sheet, isLoading } = useQuery({
     queryKey: ["t20-character", characterId],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("t20_characters" as never) as any)
+      const { data, error } = await supabase.from("t20_characters")
         .select("*")
         .eq("id", characterId)
         .single();
@@ -132,7 +132,7 @@ export function T20CharacterSheet({
   const { data: powerCatalog = [] } = useQuery({
     queryKey: ["t20-power-catalog", gameId],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("t20_powers" as never) as any)
+      const { data, error } = await supabase.from("t20_powers")
         .select("*")
         .or(`game_id.is.null,game_id.eq.${gameId}`)
         .order("name");
@@ -143,7 +143,7 @@ export function T20CharacterSheet({
   const { data: spellCatalog = [] } = useQuery({
     queryKey: ["t20-spell-catalog", gameId],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("t20_spells" as never) as any)
+      const { data, error } = await supabase.from("t20_spells")
         .select("*")
         .or(`game_id.is.null,game_id.eq.${gameId}`)
         .order("name");
@@ -154,27 +154,27 @@ export function T20CharacterSheet({
   const { data: knownPowers = [] } = useQuery({
     queryKey: ["t20-character-powers", characterId],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("t20_character_powers" as never) as any)
+      const { data, error } = await supabase.from("t20_character_powers")
         .select("notes,t20_powers(*)")
         .eq("character_id", characterId);
       if (error) throw error;
-      return (data ?? []).map((row: any) => row.t20_powers).filter(Boolean) as T20Power[];
+      return (data ?? []).flatMap((row) => row.t20_powers ? [row.t20_powers] : []);
     },
   });
   const { data: knownSpells = [] } = useQuery({
     queryKey: ["t20-character-spells", characterId],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("t20_character_spells" as never) as any)
+      const { data, error } = await supabase.from("t20_character_spells")
         .select("notes,prepared,t20_spells(*)")
         .eq("character_id", characterId);
       if (error) throw error;
-      return (data ?? []).map((row: any) => row.t20_spells).filter(Boolean) as T20Spell[];
+      return (data ?? []).flatMap((row) => row.t20_spells ? [row.t20_spells] : []);
     },
   });
 
   const patch = useMutation({
     mutationFn: async (partial: Partial<T20Character>) => {
-      const { error } = await (supabase.from("t20_characters" as never) as any)
+      const { error } = await supabase.from("t20_characters")
         .update(partial)
         .eq("id", characterId);
       if (error) throw error;
@@ -189,7 +189,7 @@ export function T20CharacterSheet({
   async function remove() {
     if (!sheet || !canEdit) return;
     if (!confirm(`Deletar "${sheet.name}"?`)) return;
-    const { error } = await (supabase.from("t20_characters" as never) as any).delete().eq("id", sheet.id);
+    const { error } = await supabase.from("t20_characters").delete().eq("id", sheet.id);
     if (error) { toast.error(error.message); return; }
     qc.invalidateQueries({ queryKey: ["characters", gameId] });
     onDeleted?.();
@@ -213,21 +213,21 @@ export function T20CharacterSheet({
   }
 
   async function addPower(powerId: string) {
-    const { error } = await (supabase.from("t20_character_powers" as never) as any)
+    const { error } = await supabase.from("t20_character_powers")
       .insert({ character_id: characterId, power_id: powerId });
     if (error) { toast.error(error.message); return; }
     qc.invalidateQueries({ queryKey: ["t20-character-powers", characterId] });
   }
 
   async function addSpell(spellId: string) {
-    const { error } = await (supabase.from("t20_character_spells" as never) as any)
+    const { error } = await supabase.from("t20_character_spells")
       .insert({ character_id: characterId, spell_id: spellId });
     if (error) { toast.error(error.message); return; }
     qc.invalidateQueries({ queryKey: ["t20-character-spells", characterId] });
   }
 
   async function removePower(powerId: string) {
-    const { error } = await (supabase.from("t20_character_powers" as never) as any)
+    const { error } = await supabase.from("t20_character_powers")
       .delete()
       .eq("character_id", characterId)
       .eq("power_id", powerId);
@@ -236,7 +236,7 @@ export function T20CharacterSheet({
   }
 
   async function removeSpell(spellId: string) {
-    const { error } = await (supabase.from("t20_character_spells" as never) as any)
+    const { error } = await supabase.from("t20_character_spells")
       .delete()
       .eq("character_id", characterId)
       .eq("spell_id", spellId);
@@ -402,7 +402,7 @@ export function T20CharacterSheet({
         knownIds={new Set(knownPowers.map((p) => p.id))}
         onAdd={addPower}
         onCreate={async (entry) => {
-          const { data, error } = await (supabase.from("t20_powers" as never) as any)
+          const { data, error } = await supabase.from("t20_powers")
             .insert({ ...entry, game_id: gameId, created_by: userId })
             .select()
             .single();
@@ -425,7 +425,7 @@ export function T20CharacterSheet({
         knownIds={new Set(knownSpells.map((s) => s.id))}
         onAdd={addSpell}
         onCreate={async (entry) => {
-          const { data, error } = await (supabase.from("t20_spells" as never) as any)
+          const { data, error } = await supabase.from("t20_spells")
             .insert({ ...entry, game_id: gameId, created_by: userId })
             .select()
             .single();

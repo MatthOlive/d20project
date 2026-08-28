@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ChevronDown, Eye, Radio, Plus, Pencil, Trash2, Users, X } from "lucide-react";
+import { readLocalGameSnapshot, writeLocalGameSnapshot } from "@/lib/local-game-cache";
 
 type Scenario = { id: string; name: string; background_url: string | null; darkness_level?: number };
 type Member = { user_id: string; display_name: string | null; role: string; viewing_page_id: string | null };
@@ -16,6 +17,7 @@ type Member = { user_id: string; display_name: string | null; role: string; view
  */
 export function PageSwitcher({
   gameId,
+  userId,
   viewingPageId,
   activePageId,
   isNarrator,
@@ -23,6 +25,7 @@ export function PageSwitcher({
   embedded = false,
 }: {
   gameId: string;
+  userId: string;
   viewingPageId: string | null;
   activePageId: string | null;
   isNarrator: boolean;
@@ -36,7 +39,15 @@ export function PageSwitcher({
   const [newPageName, setNewPageName] = useState("");
   const [moveTarget, setMoveTarget] = useState<Scenario | null>(null);
 
-  const { data: scenarios = [], isLoading: scenariosLoading, error: scenariosError } = useQuery<Scenario[]>({
+  const scenarioCacheKey = `scenarios:${userId}:${gameId}`;
+  const scenarioLocalQueryKey = ["local-scenarios", userId, gameId] as const;
+  const { data: cachedScenarioSnapshot } = useQuery({
+    queryKey: scenarioLocalQueryKey,
+    queryFn: () => readLocalGameSnapshot<Scenario[]>(scenarioCacheKey),
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: Number.POSITIVE_INFINITY,
+  });
+  const scenariosQuery = useQuery<Scenario[]>({
     queryKey: ["scenarios", gameId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -45,9 +56,16 @@ export function PageSwitcher({
         .eq("game_id", gameId)
         .order("created_at");
       if (error) throw error;
-      return (data ?? []) as Scenario[];
+      const snapshot = (data ?? []) as Scenario[];
+      const savedAt = Date.now();
+      qc.setQueryData(scenarioLocalQueryKey, { key: scenarioCacheKey, savedAt, data: snapshot });
+      void writeLocalGameSnapshot(scenarioCacheKey, snapshot);
+      return snapshot;
     },
   });
+  const scenarios = scenariosQuery.data ?? cachedScenarioSnapshot?.data ?? [];
+  const scenariosLoading = scenariosQuery.isLoading && !cachedScenarioSnapshot;
+  const scenariosError = scenarios.length > 0 ? null : scenariosQuery.error;
 
   const { data: members = [] } = useQuery<Member[]>({
     queryKey: ["game-members-view", gameId],

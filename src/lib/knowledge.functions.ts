@@ -44,14 +44,14 @@ async function embedBatch(inputs: string[]): Promise<number[][]> {
  * into the knowledge_chunks table. Only narrators of any game may ingest.
  */
 export const ingestKnowledge = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
+  .validator((d) =>
     z.object({
       source: z.string().min(1).max(120).default("pokerole"),
       text: z.string().min(20).max(2_000_000),
       replace: z.boolean().optional().default(true),
     }).parse(d),
   )
+  .middleware([requireSupabaseAuth])
   .handler(async ({ data, context }) => {
 
 
@@ -104,8 +104,8 @@ export const ingestKnowledge = createServerFn({ method: "POST" })
 
 
 export const deleteKnowledgeSource = createServerFn({ method: "POST" })
+  .validator((d) => z.object({ source: z.string().min(1).max(120) }).parse(d))
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ source: z.string().min(1).max(120) }).parse(d))
   .handler(async ({ data, context }) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = context.supabase as any;

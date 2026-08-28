@@ -19,6 +19,7 @@ import {
 } from "@/components/MoveCard";
 import { FloatingWindow } from "@/components/FloatingWindow";
 import type { EngineReactionResolution } from "@/lib/game-engine/action-events";
+import { useSharedChatRealtime } from "@/hooks/use-shared-chat-realtime";
 
 type Msg = {
   id: string;
@@ -94,45 +95,23 @@ export function ChatPanel({
     enabled: profileIds.length > 0,
   });
 
-  useEffect(() => {
-    const channel = supabase
-      .channel(`chat:${gameId}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "chat_messages", filter: `game_id=eq.${gameId}` },
-        (payload) => {
-          const incoming = payload.new as Msg;
-          qc.setQueryData<Msg[]>(["chat", gameId], (old) => {
-            if ((old ?? []).some((message) => message.id === incoming.id)) return old ?? [];
-            return [...(old ?? []), incoming].slice(-200);
-          });
-          // Auto-trigger AI narrator on any player chat/roll message.
-          const row = incoming;
-          if (!aiNarrator || !isGameOwner) return;
-          if (row.kind === "narrator") return;
-          if (row.kind === "move_reaction") return;
-          if (
-            row.kind === "move" &&
-            row.roll_data &&
-            "v" in row.roll_data &&
-            row.roll_data.v === "move-1" &&
-            row.roll_data.phase === "accuracy"
-          ) return;
-          if (row.id === lastTriggeredIdRef.current) return;
-          if (aiBusyRef.current) return;
-          lastTriggeredIdRef.current = row.id;
-          // Small debounce so a chat + roll combo is consumed as one beat.
-          window.setTimeout(() => {
-            void askNarrator(row.kind === "roll" ? undefined : row.body);
-          }, 800);
-        },
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameId, qc, aiNarrator, isGameOwner]);
+  useSharedChatRealtime(gameId, (message) => {
+    const row = message as Msg;
+    if (!aiNarrator || !isGameOwner) return;
+    if (row.kind === "narrator" || row.kind === "move_reaction") return;
+    if (
+      row.kind === "move" &&
+      row.roll_data &&
+      "v" in row.roll_data &&
+      row.roll_data.v === "move-1" &&
+      row.roll_data.phase === "accuracy"
+    ) return;
+    if (row.id === lastTriggeredIdRef.current || aiBusyRef.current) return;
+    lastTriggeredIdRef.current = row.id;
+    window.setTimeout(() => {
+      void askNarrator(row.kind === "roll" ? undefined : row.body);
+    }, 800);
+  });
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
@@ -449,74 +428,6 @@ function MessageBubble({
           )}
         </div>
         <MoveRollResultCard message={m} resolutionComplete={resolutionComplete} />
-        {false && (
-        <MoveCard
-          data={m.card}
-          hasStab={m.hasStab}
-          accuracySlot={null}
-          damageSlot={
-            m.damage?.targets && m.damage!.targets!.length > 0
-              ? null
-              : m.damage ? (
-                  <span className="inline-flex items-center gap-1">
-                    <SuccessHover label="dmg" successes={m.damage!.successes} dice={m.damage!.dice} tone="danger" />
-                    {m.damage!.critBonus ? (
-                      <span className="text-[10px] font-bold text-amber-600">+{m.damage!.critBonus} dado crit</span>
-                    ) : null}
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground">Status</span>
-                )
-          }
-          damageDetailsSlot={
-            m.damage?.targets && m.damage!.targets!.length > 0 ? (
-              <div className="rounded-md border border-border bg-muted/30 p-2">
-                <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Dano por alvo
-                </div>
-                <ul className="space-y-0.5">
-                  {m.damage!.targets!.map((t, i) => (
-                    <li key={i} className="flex items-center justify-between gap-2">
-                      <span className="truncate font-semibold">{t.name}</span>
-                      <span className="flex items-center gap-1 tabular-nums">
-                        <span className="rounded bg-muted px-1 text-[10px]">
-                          {t.defStat === "spdef" ? "SpDef" : "Def"} {t.def}
-                        </span>
-                        <span className="rounded bg-muted/60 px-1 text-[10px]">{t.effLabel}</span>
-                        {t.immune ? (
-                          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">
-                            Imune (0)
-                          </span>
-                        ) : (
-                          <span className="rounded bg-destructive px-1.5 py-0.5 text-[10px] font-bold text-destructive-foreground">
-                            {t.finalDamage} dmg
-                          </span>
-                        )}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null
-          }
-          chanceSlot={
-            m.chance && m.chance!.length > 0 ? (
-              <>
-                {m.chance!.map((c, i) => (
-                  <SuccessHover
-                    key={i}
-                    label={`6s · ${c.label}`}
-                    successes={c.successes}
-                    dice={c.dice}
-                    tone="amber"
-                    highlight={(d) => d === 6}
-                  />
-                ))}
-              </>
-            ) : null
-          }
-        />
-        )}
       </div>
     );
   }

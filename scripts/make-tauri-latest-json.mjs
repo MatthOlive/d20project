@@ -14,7 +14,9 @@ if (!tag) {
 const config = JSON.parse(readFileSync("src-tauri/tauri.conf.json", "utf8"));
 const version = config.version;
 const files = readdirSync(bundleDir);
-const installer = files.find((name) => name.includes(`_${version}_`) && name.endsWith("_x64-setup.exe"));
+const installer = files.find(
+  (name) => name.includes(`_${version}_`) && name.endsWith("_x64-setup.exe"),
+);
 
 if (!installer) {
   throw new Error(`No NSIS setup executable found in ${bundleDir}`);

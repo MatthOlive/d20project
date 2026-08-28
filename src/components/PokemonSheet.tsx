@@ -118,6 +118,8 @@ type Pokemon = {
   retrains: number;
   allowed_editors: string[];
   allowed_viewers: string[];
+  row_version?: number;
+  updated_at?: string;
 };
 
 function findEvolutionSpecies<T extends { name: string }>(catalog: T[], target: string): T | null {
@@ -264,13 +266,36 @@ export function PokemonSheet({
     !!pokemon && (pokemon.owner_id === userId || isNarrator || (pokemon.allowed_editors ?? []).includes(userId));
   const commit = useCallback(
     async (p: Partial<Pokemon>) => {
-      const { error } = await supabase.from("pokemon").update(p).eq("id", pokemonId);
+      const expectedVersion = qc.getQueryData<Pokemon>(queryKey)?.row_version;
+      if (typeof expectedVersion !== "number") {
+        const { error } = await supabase.from("pokemon").update(p as never).eq("id", pokemonId);
+        if (error) throw new Error(error.message);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("pokemon")
+        .update(p as never)
+        .eq("id", pokemonId)
+        .eq("row_version" as never, expectedVersion)
+        .select("row_version,updated_at" as never)
+        .maybeSingle();
       if (error) throw new Error(error.message);
+      if (!data) {
+        const latest = await supabase.from("pokemon").select("*").eq("id", pokemonId).single();
+        if (latest.error) throw new Error(latest.error.message);
+        qc.setQueryData<Pokemon>(queryKey, { ...(latest.data as Pokemon), ...p });
+        throw new Error("A ficha mudou em outra sessão. As alterações locais serão reaplicadas.");
+      }
+      qc.setQueryData<Pokemon>(queryKey, (current) => current
+        ? { ...current, ...(data as unknown as Partial<Pokemon>) }
+        : current);
     },
-    [pokemonId],
+    [pokemonId, qc, queryKey],
   );
-  const { patch, retry: retrySave, saveState, saveError } = useDebouncedPatch<Pokemon>(queryKey, commit, 250, {
+  const { patch, retry: retrySave, mergeServerPatch, saveState, saveError } = useDebouncedPatch<Pokemon>(queryKey, commit, 250, {
     storageKey: `d20:pending:pokemon:${userId}:${pokemonId}`,
+    snapshotKey: `sheet:${userId}:pokemon:${pokemonId}`,
   });
   const [nicknameDraft, setNicknameDraft] = useState("");
   const nicknameFocusedRef = useRef(false);
@@ -296,7 +321,7 @@ export function PokemonSheet({
         { event: "UPDATE", schema: "public", table: "pokemon", filter: `id=eq.${pokemonId}` },
         (payload) => {
           const next = payload.new as Partial<Pokemon>;
-          qc.setQueryData<Pokemon>(queryKey, (current) => current ? { ...current, ...next } : current);
+          mergeServerPatch(next);
         },
       )
       .on(
@@ -315,7 +340,7 @@ export function PokemonSheet({
       if (movesRefreshTimer) clearTimeout(movesRefreshTimer);
       void supabase.removeChannel(channel);
     };
-  }, [pokemonId, qc, queryKey]);
+  }, [mergeServerPatch, pokemonId, qc, queryKey]);
 
   useEffect(() => {
     if (nicknameFocusedRef.current) return;

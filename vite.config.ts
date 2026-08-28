@@ -17,4 +17,21 @@ export default defineConfig({
     host: "127.0.0.1",
     port: 5173,
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (id.includes("@supabase") || id.includes("realtime-js")) return "vendor-supabase";
+          if (id.includes("@radix-ui")) return "vendor-radix";
+          if (id.includes("lucide-react")) return "vendor-icons";
+          if (id.includes("pdfjs-dist")) return "vendor-pdf";
+          if (id.includes("recharts") || /[/\\]d3-[^/\\]+[/\\]/.test(id)) {
+            return "vendor-charts";
+          }
+          return undefined;
+        },
+      },
+    },
+  },
 });

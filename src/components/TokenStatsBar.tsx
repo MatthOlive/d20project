@@ -33,7 +33,7 @@ function T20Stats({ id, editable, expanded }: { id: string; editable: boolean; e
   const { data } = useQuery({
     queryKey: ["token-t20-stats", id],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("t20_characters" as never) as any)
+      const { data, error } = await supabase.from("t20_characters")
         .select("hp_current,hp_max,mp_current,mp_max,defense")
         .eq("id", id)
         .single();
@@ -48,8 +48,9 @@ function T20Stats({ id, editable, expanded }: { id: string; editable: boolean; e
     const previous = qc.getQueryData<typeof data>(key)?.[field];
     qc.setQueryData(["token-t20-stats", id], (old: typeof data) => old ? { ...old, [field]: value } : old);
     try {
-      const { data: saved, error } = await (supabase.from("t20_characters" as never) as any)
-        .update({ [field]: value })
+      const update = field === "hp_current" ? { hp_current: value } : { mp_current: value };
+      const { data: saved, error } = await supabase.from("t20_characters")
+        .update(update)
         .eq("id", id)
         .select("hp_current,mp_current")
         .maybeSingle();

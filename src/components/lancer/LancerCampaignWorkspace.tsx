@@ -356,7 +356,7 @@ export function LancerCampaignWorkspace({
     onError: (error: Error) => toast.error(error.message),
   });
 
-  const entities = entitiesQuery.data ?? [];
+  const entities = useMemo(() => entitiesQuery.data ?? [], [entitiesQuery.data]);
   const counts = useMemo(() => ({
     pilots: entities.filter((entity) => entity.entity_type === "pilot").length,
     mechs: entities.filter((entity) => entity.entity_type === "mech").length,

@@ -12,8 +12,14 @@ import type {
   MoveReactionResponse,
   MoveReactionTarget,
   MoveRollMessage,
-  MoveRollTarget,
 } from "@/components/MoveCard";
+import {
+  finalizeAtomicMove,
+  isAtomicCombatRpcUnavailable,
+  submitAtomicMoveReaction,
+} from "@/lib/pokerole-combat-rpc";
+import { useSharedChatRealtime } from "@/hooks/use-shared-chat-realtime";
+import { adjustedDamageTargets } from "@/lib/move-resolution";
 
 type FlowMessage = {
   id: string;
@@ -45,22 +51,6 @@ function participantForTarget(session: EngineSession | null, target: MoveReactio
     (participant.tokenId && participant.tokenId === target.tokenId) ||
     (participant.characterId === target.characterId && participant.kind === target.characterKind),
   ) ?? null;
-}
-
-function adjustedDamageTargets(
-  targets: MoveRollTarget[] | undefined,
-  responses: MoveReactionResponse[],
-): MoveRollTarget[] | undefined {
-  if (!targets) return undefined;
-  const byRequest = new Map(responses.map((response) => [response.requestId, response]));
-  return targets.map((target) => {
-    const response = target.requestId ? byRequest.get(target.requestId) : null;
-    if (target.immune) return { ...target, finalDamage: 0 };
-    if (!response?.succeeded) return { ...target, finalDamage: Math.max(1, target.finalDamage) };
-    if (response.choice === "evade") return { ...target, finalDamage: 0 };
-    if (response.choice === "clash") return { ...target, finalDamage: 1 };
-    return { ...target, finalDamage: Math.max(1, target.finalDamage) };
-  });
 }
 
 async function applyDamageToTarget(
@@ -147,25 +137,7 @@ export function MoveReactionCoordinator({
     },
   });
 
-  useEffect(() => {
-    const channel = supabase
-      .channel(`move-reactions:${gameId}:${userId}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "chat_messages", filter: `game_id=eq.${gameId}` },
-        (payload) => {
-          const incoming = payload.new as FlowMessage;
-          queryClient.setQueryData<FlowMessage[]>(["chat", gameId], (old) => {
-            if ((old ?? []).some((message) => message.id === incoming.id)) return old ?? [];
-            return [...(old ?? []), incoming].slice(-250);
-          });
-        },
-      )
-      .subscribe();
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [gameId, queryClient, userId]);
+  useSharedChatRealtime(gameId);
 
   const reactionByRequest = useMemo(() => {
     const map = new Map<string, MoveReactionResponse>();
@@ -220,6 +192,20 @@ export function MoveReactionCoordinator({
         0,
       );
       void (async () => {
+        const atomicResolution = await finalizeAtomicMove(gameId, source.id);
+        if (!atomicResolution.error) {
+          void queryClient.invalidateQueries({ queryKey: ["mrd-target-info", gameId] });
+          if (move.attacker?.characterId) {
+            void queryClient.invalidateQueries({ queryKey: [move.attacker.characterKind, move.attacker.characterId] });
+          }
+          return;
+        }
+        if (!isAtomicCombatRpcUnavailable(atomicResolution.error)) {
+          finalizingRef.current.delete(resolutionId);
+          toast.error(`As reações terminaram, mas o dano não pôde ser publicado: ${atomicResolution.error.message}`);
+          return;
+        }
+
         const { error } = await supabase.from("chat_messages").insert({
           game_id: gameId,
           user_id: userId,
@@ -300,20 +286,32 @@ export function MoveReactionCoordinator({
         : null;
       response.appliedDamage = Math.max(0, resolvedDamageTarget?.finalDamage ?? 0);
       response.attackerDamage = choice === "clash" && response.succeeded ? 1 : 0;
-      const { error } = await supabase.from("chat_messages").insert({
-        game_id: gameId,
-        user_id: userId,
-        kind: "move_reaction",
-        body: choice === "none" ? `${target.name} não reagiu` : `${target.name} usou ${choice === "clash" ? "Clash" : "Evade"}`,
-        roll_data: response as unknown as never,
-      });
-      if (error) throw error;
-      if (response.appliedDamage > 0) {
-        try {
-          await applyDamageToTarget(queryClient, gameId, target, response.appliedDamage);
-        } catch (damageError) {
-          toast.error(`A reação foi registrada, mas o dano não pôde ser aplicado: ${damageError instanceof Error ? damageError.message : String(damageError)}`);
+      const atomicReaction = await submitAtomicMoveReaction(
+        gameId,
+        pendingReaction.source.id,
+        response as unknown as Record<string, unknown>,
+      );
+      if (atomicReaction.error && isAtomicCombatRpcUnavailable(atomicReaction.error)) {
+        const { error } = await supabase.from("chat_messages").insert({
+          game_id: gameId,
+          user_id: userId,
+          kind: "move_reaction",
+          body: choice === "none" ? `${target.name} não reagiu` : `${target.name} usou ${choice === "clash" ? "Clash" : "Evade"}`,
+          roll_data: response as unknown as never,
+        });
+        if (error) throw error;
+        if (response.appliedDamage > 0) {
+          try {
+            await applyDamageToTarget(queryClient, gameId, target, response.appliedDamage);
+          } catch (damageError) {
+            toast.error(`A reação foi registrada, mas o dano não pôde ser aplicado: ${damageError instanceof Error ? damageError.message : String(damageError)}`);
+          }
         }
+      } else if (atomicReaction.error) {
+        throw new Error(atomicReaction.error.message);
+      } else {
+        void queryClient.invalidateQueries({ queryKey: [target.characterKind, target.characterId] });
+        void queryClient.invalidateQueries({ queryKey: ["mrd-target-info", gameId] });
       }
       if (choice !== "none") {
         emitEngineActionRolled({

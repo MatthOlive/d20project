@@ -1,12 +1,9 @@
 import { useEffect } from "react";
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-  type QueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { clearRealtimeStatus, reportRealtimeStatus } from "@/lib/client-health";
 import { applyEngineCommand, engineCommandPayload } from "@/lib/game-engine/core";
+import { reconcileVersionedEvents, reconcileVersionedState } from "@/lib/multiplayer-sync";
 import type {
   EngineActor,
   EngineCommand,
@@ -15,16 +12,9 @@ import type {
   EngineState,
 } from "@/lib/game-engine/types";
 
-type RpcResult<T> = { data: T | null; error: { message: string; code?: string } | null };
-
 const SESSION_COLUMNS =
   "id,game_id,page_id,system_id,status,version,state,created_by,created_at,updated_at";
-const EVENT_COLUMNS =
-  "id,session_id,game_id,version,actor_user_id,command,payload,created_at";
-
-function rpc<T>(name: string, args: Record<string, unknown>): Promise<RpcResult<T>> {
-  return supabase.rpc(name as never, args as never) as unknown as Promise<RpcResult<T>>;
-}
+const EVENT_COLUMNS = "id,session_id,game_id,version,actor_user_id,command,payload,created_at";
 
 function messageOf(error: unknown) {
   if (error instanceof Error) return error.message;
@@ -51,6 +41,16 @@ function isRetryableEngineError(error: unknown) {
   );
 }
 
+function isServerCommandRpcUnavailable(error: unknown) {
+  const message = messageOf(error);
+  const code = codeOf(error);
+  return (
+    code === "PGRST202" ||
+    code === "42883" ||
+    /function .* does not exist|schema cache/i.test(message)
+  );
+}
+
 function commandId() {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
@@ -58,29 +58,18 @@ function commandId() {
 }
 
 async function fetchSession(gameId: string): Promise<EngineSession | null> {
-  const query = supabase.from("game_engine_sessions" as never) as never as {
-    select: (columns: string) => {
-      eq: (column: string, value: string) => {
-        maybeSingle: () => Promise<RpcResult<EngineSession>>;
-      };
-    };
-  };
-  const { data, error } = await query.select(SESSION_COLUMNS).eq("game_id", gameId).maybeSingle();
+  const { data, error } = await supabase
+    .from("game_engine_sessions")
+    .select(SESSION_COLUMNS)
+    .eq("game_id", gameId)
+    .maybeSingle();
   if (error) throw error;
   return data;
 }
 
 async function fetchEvents(sessionId: string): Promise<EngineEvent[]> {
-  const query = supabase.from("game_engine_events" as never) as never as {
-    select: (columns: string) => {
-      eq: (column: string, value: string) => {
-        order: (column: string, options: { ascending: boolean }) => {
-          limit: (count: number) => Promise<RpcResult<EngineEvent[]>>;
-        };
-      };
-    };
-  };
-  const { data, error } = await query
+  const { data, error } = await supabase
+    .from("game_engine_events")
     .select(EVENT_COLUMNS)
     .eq("session_id", sessionId)
     .order("version", { ascending: false })
@@ -90,16 +79,8 @@ async function fetchEvents(sessionId: string): Promise<EngineEvent[]> {
 }
 
 async function commandWasCommitted(sessionId: string, id: string) {
-  const query = supabase.from("game_engine_events" as never) as never as {
-    select: (columns: string) => {
-      eq: (column: string, value: string) => {
-        contains: (column: string, value: Record<string, unknown>) => {
-          limit: (count: number) => Promise<RpcResult<Array<{ id: number }>>>;
-        };
-      };
-    };
-  };
-  const { data, error } = await query
+  const { data, error } = await supabase
+    .from("game_engine_events")
     .select("id")
     .eq("session_id", sessionId)
     .contains("payload", { commandId: id })
@@ -112,6 +93,7 @@ type SharedEngineSubscription = {
   queryClient: QueryClient;
   channel: ReturnType<typeof supabase.channel>;
   cleanupTimer: number | null;
+  active: boolean;
 };
 
 const sharedEngineSubscriptions = new Map<string, SharedEngineSubscription>();
@@ -133,6 +115,7 @@ function retainEngineSubscription(gameId: string, queryClient: QueryClient) {
     queryClient,
     channel: supabase.channel(`game-engine:${gameId}`),
     cleanupTimer: null,
+    active: true,
   };
   entry.channel
     .on(
@@ -150,7 +133,9 @@ function retainEngineSubscription(gameId: string, queryClient: QueryClient) {
         }
         const incoming = payload.new as unknown as EngineSession;
         if (!incoming?.id) return;
-        entry.queryClient.setQueryData(sessionKey, incoming);
+        entry.queryClient.setQueryData<EngineSession | null>(sessionKey, (currentSession) =>
+          reconcileVersionedState(currentSession, incoming),
+        );
       },
     )
     .on(
@@ -167,17 +152,14 @@ function retainEngineSubscription(gameId: string, queryClient: QueryClient) {
         entry.queryClient.setQueryData<EngineEvent[]>(
           ["game-engine-events", incoming.session_id],
           (currentEvents) => {
-            const withoutDuplicate = (currentEvents ?? []).filter(
-              (event) => event.id !== incoming.id,
-            );
-            return [incoming, ...withoutDuplicate]
-              .sort((left, right) => right.version - left.version)
-              .slice(0, 40);
+            return reconcileVersionedEvents(currentEvents, incoming, 40);
           },
         );
       },
     )
     .subscribe((status) => {
+      if (!entry.active) return;
+      reportRealtimeStatus(`engine:${gameId}`, status);
       if (status !== "SUBSCRIBED") return;
       // A single refetch on subscribe closes the fetch/subscription race and
       // also restores state after the WebSocket reconnects.
@@ -197,6 +179,8 @@ function releaseEngineSubscription(gameId: string) {
     const latest = sharedEngineSubscriptions.get(gameId);
     if (!latest || latest.refs > 0) return;
     sharedEngineSubscriptions.delete(gameId);
+    latest.active = false;
+    clearRealtimeStatus(`engine:${gameId}`);
     void supabase.removeChannel(latest.channel);
   }, 1_000);
 }
@@ -214,20 +198,18 @@ export function useGameEngine({ gameId, actor }: { gameId: string; actor: Engine
 
   const eventsQuery = useQuery({
     queryKey: ["game-engine-events", sessionQuery.data?.id],
-    queryFn: () => (sessionQuery.data?.id ? fetchEvents(sessionQuery.data.id) : Promise.resolve([])),
+    queryFn: () =>
+      sessionQuery.data?.id ? fetchEvents(sessionQuery.data.id) : Promise.resolve([]),
     enabled: !!sessionQuery.data?.id,
     staleTime: Number.POSITIVE_INFINITY,
     retry: 2,
   });
 
-  useEffect(
-    () => retainEngineSubscription(gameId, queryClient),
-    [gameId, queryClient],
-  );
+  useEffect(() => retainEngineSubscription(gameId, queryClient), [gameId, queryClient]);
 
   const startMutation = useMutation({
     mutationFn: async (state: EngineState) => {
-      const { data, error } = await rpc<EngineSession>("start_game_engine_session", {
+      const { data, error } = await supabase.rpc("start_game_engine_session", {
         p_game_id: gameId,
         p_page_id: state.pageId,
         p_system_id: state.systemId,
@@ -248,20 +230,28 @@ export function useGameEngine({ gameId, actor }: { gameId: string; actor: Engine
   const commandMutation = useMutation({
     mutationFn: async (command: EngineCommand) => {
       const id = commandId();
-      let latest =
-        queryClient.getQueryData<EngineSession | null>(sessionKey) ?? sessionQuery.data;
+      let latest = queryClient.getQueryData<EngineSession | null>(sessionKey) ?? sessionQuery.data;
       if (!latest) throw new Error("Nenhum encontro ativo foi encontrado.");
 
       for (let attempt = 0; attempt < 4; attempt += 1) {
-        const nextState = applyEngineCommand(latest.state, command, actor);
         const payload = { ...engineCommandPayload(command), commandId: id };
-        const { data, error } = await rpc<EngineSession>("commit_game_engine_state", {
+        let result = await supabase.rpc("commit_game_engine_command", {
           p_session_id: latest.id,
           p_expected_version: latest.version,
           p_command: command.type,
           p_payload: payload,
-          p_next_state: nextState,
         });
+        if (result.error && isServerCommandRpcUnavailable(result.error)) {
+          const nextState = applyEngineCommand(latest.state, command, actor);
+          result = await supabase.rpc("commit_game_engine_state", {
+            p_session_id: latest.id,
+            p_expected_version: latest.version,
+            p_command: command.type,
+            p_payload: payload,
+            p_next_state: nextState,
+          });
+        }
+        const { data, error } = result;
         if (!error && data) return data;
 
         const failure = error ?? new Error("O banco não retornou o novo estado do encontro.");

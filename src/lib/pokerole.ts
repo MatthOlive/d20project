@@ -241,7 +241,7 @@ function normalizePokemonSlugText(value: string): string {
 
 export function pokemonFormSlug(speciesName: string | null | undefined): string | null {
   if (!speciesName) return null;
-  let name = speciesName.trim();
+  const name = speciesName.trim();
   if (!name) return null;
   const megaMatch = name.match(/\((?:(Original Color|Curly|Droopy|Stretchy)\s+)?Mega(?:\s+(X|Y|Z))?\s+Form\)/i);
   if (megaMatch) {
@@ -414,6 +414,5 @@ export function damageDeltaFromMultiplier(mult: number): { delta: number; label:
   if (mult <= 0.5) return { delta: -1, label: "Não efetivo -1", immune: false };
   return { delta: 0, label: "Neutro", immune: false };
 }
-
 
 

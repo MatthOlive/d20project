@@ -300,9 +300,9 @@ export function LancerHexMap({ gameId, userId, isNarrator, entities, items, auto
     retry: false,
   });
 
-  const tokens = tokensQuery.data ?? [];
-  const participants = participantsQuery.data ?? [];
-  const hexes = hexesQuery.data ?? [];
+  const tokens = useMemo(() => tokensQuery.data ?? [], [tokensQuery.data]);
+  const participants = useMemo(() => participantsQuery.data ?? [], [participantsQuery.data]);
+  const hexes = useMemo(() => hexesQuery.data ?? [], [hexesQuery.data]);
   const entityById = useMemo(() => new Map(entities.map((entity) => [entity.id, entity])), [entities]);
   const tokenById = useMemo(() => new Map(tokens.map((token) => [token.id, token])), [tokens]);
   const tokenByHex = useMemo(() => new Map(tokens.map((token) => [hexKey(token), token])), [tokens]);
@@ -342,7 +342,10 @@ export function LancerHexMap({ gameId, userId, isNarrator, entities, items, auto
       compendiumItemId: actionSourceItemId.get(action.id) ?? null,
     }) : null,
   ])), [actionSourceItemId, activeActions, activeEntity, frequencyContext]);
-  const bounds = map ? { qMin: map.q_min, qMax: map.q_max, rMin: map.r_min, rMax: map.r_max } : undefined;
+  const bounds = useMemo(
+    () => map ? { qMin: map.q_min, qMax: map.q_max, rMin: map.r_min, rMax: map.r_max } : undefined,
+    [map],
+  );
   const selectedSpeed = Math.max(0, Number(selectedEntity?.current_state.stats.speed ?? 0));
   const reachable = useMemo(() => {
     if (!selectedToken || mode !== "move" || !bounds) return null;

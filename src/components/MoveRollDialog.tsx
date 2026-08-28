@@ -30,6 +30,7 @@ import {
 } from "@/lib/move-resolution";
 import { emitEngineActionRolled } from "@/lib/game-engine/action-events";
 import type { EngineSession } from "@/lib/game-engine/types";
+import { finalizeAtomicMove, isAtomicCombatRpcUnavailable } from "@/lib/pokerole-combat-rpc";
 
 export type MoveData = {
   id: string;
@@ -359,11 +360,7 @@ function useTargetsForGame(gameId: string, pageId: string | null | undefined, en
     enabled: enabled && !!pageId && tokens.length > 0,
     staleTime: 0,
     queryFn: async () => {
-      const rpc = supabase.rpc.bind(supabase) as unknown as (
-        fn: string,
-        args: { p_game_id: string; p_page_id: string },
-      ) => Promise<{ data: CombatTargetRow[] | null; error: { message: string } | null }>;
-      const { data, error } = await rpc("get_move_target_info", {
+      const { data, error } = await supabase.rpc("get_move_target_info", {
         p_game_id: gameId,
         p_page_id: pageId!,
       });
@@ -721,32 +718,41 @@ export function MoveRollDialog({
       damage: dmg,
       chance,
     };
-    const { error } = await supabase.from("chat_messages").insert({
-      game_id: gameId,
-      user_id: userId,
-      kind: "move",
-      body: `${pokemonName} used ${move.name} · Accuracy`,
-      roll_data: payload as unknown as never,
-    });
+    const { data: sourceMessage, error } = await supabase
+      .from("chat_messages")
+      .insert({
+        game_id: gameId,
+        user_id: userId,
+        kind: "move",
+        body: `${pokemonName} used ${move.name} · Accuracy`,
+        roll_data: payload as unknown as never,
+      })
+      .select("id")
+      .single();
     if (error) {
       toast.error(`Não foi possível enviar a rolagem: ${error.message}`);
       setIsSubmitting(false);
       return;
     }
     if (!isHit || reactionTargets.length === 0) {
-      const { error: resolutionError } = await supabase.from("chat_messages").insert({
-        game_id: gameId,
-        user_id: userId,
-        kind: "move",
-        body: `${pokemonName} used ${move.name} · Damage & Effects`,
-        roll_data: {
-          ...payload,
-          phase: "resolution",
-          reactions: [],
-        } as unknown as never,
-      });
-      if (resolutionError) {
-        toast.error(`A acurácia foi enviada, mas o restante do move falhou: ${resolutionError.message}`);
+      const atomicResolution = await finalizeAtomicMove(gameId, sourceMessage.id);
+      if (atomicResolution.error && isAtomicCombatRpcUnavailable(atomicResolution.error)) {
+        const { error: resolutionError } = await supabase.from("chat_messages").insert({
+          game_id: gameId,
+          user_id: userId,
+          kind: "move",
+          body: `${pokemonName} used ${move.name} · Damage & Effects`,
+          roll_data: {
+            ...payload,
+            phase: "resolution",
+            reactions: [],
+          } as unknown as never,
+        });
+        if (resolutionError) {
+          toast.error(`A acurácia foi enviada, mas o restante do move falhou: ${resolutionError.message}`);
+        }
+      } else if (atomicResolution.error) {
+        toast.error(`A acurácia foi enviada, mas o restante do move falhou: ${atomicResolution.error.message}`);
       }
     }
     if (characterId) {

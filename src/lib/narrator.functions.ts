@@ -392,13 +392,13 @@ const LANG_INSTRUCTION: Record<string, string> = {
 };
 
 export const narratorTurn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data) =>
+  .validator((data) =>
     z.object({
       gameId: z.string().uuid(),
       userPrompt: z.string().max(2000).optional(),
     }).parse(data),
   )
+  .middleware([requireSupabaseAuth])
   .handler(async ({ data, context }) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = context.supabase as any;
@@ -419,7 +419,7 @@ export const narratorTurn = createServerFn({ method: "POST" })
       supabase.from("chat_messages").select("kind,body,roll_data,created_at,user_id").eq("game_id", data.gameId).order("created_at", { ascending: false }).limit(40),
       supabase.from("pokemon").select("id,nickname,rank,current_hp,hp,current_attrs,ai_spawned,species:species_id(name)").eq("game_id", data.gameId),
       supabase.from("trainers").select("id,name,rank,current_hp,attrs,ai_spawned").eq("game_id", data.gameId),
-      (supabase.from("t20_characters" as never) as any).select("id,name,race,class_name,level,hp_current,hp_max,mp_current,mp_max,defense,skills").eq("game_id", data.gameId),
+      supabase.from("t20_characters").select("id,name,race,class_name,level,hp_current,hp_max,mp_current,mp_max,defense,skills").eq("game_id", data.gameId),
       supabase.from("initiative").select("character_name,successes,position").eq("game_id", data.gameId).order("position"),
       supabase.from("game_members").select("user_id,role").eq("game_id", data.gameId),
     ]);

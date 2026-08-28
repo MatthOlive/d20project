@@ -1,0 +1,50 @@
+name: Database Migrations
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Aplicar as migrações após validar o dry-run"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    name: Verify and migrate Supabase
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_REF: vgacodixwgwivxczqsnt
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Verify migration files
+        run: node scripts/verify-migrations.mjs
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link production project
+        run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Preview migration plan
+        run: supabase db push --include-all --dry-run
+
+      - name: Apply migrations
+        if: ${{ inputs.deploy }}
+        run: supabase db push --include-all

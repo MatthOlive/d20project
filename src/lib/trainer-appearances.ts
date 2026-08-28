@@ -1,9 +1,9 @@
-import maleUrban from "@/assets/trainer-male-urban.png";
-import maleResearcher from "@/assets/trainer-male-researcher.png";
-import maleExplorer from "@/assets/trainer-male-explorer.png";
-import femaleUrban from "@/assets/trainer-female-urban.png";
-import femaleResearcher from "@/assets/trainer-female-researcher.png";
-import femaleExplorer from "@/assets/trainer-female-explorer.png";
+import maleUrban from "@/assets/trainer-male-urban.webp";
+import maleResearcher from "@/assets/trainer-male-researcher.webp";
+import maleExplorer from "@/assets/trainer-male-explorer.webp";
+import femaleUrban from "@/assets/trainer-female-urban.webp";
+import femaleResearcher from "@/assets/trainer-female-researcher.webp";
+import femaleExplorer from "@/assets/trainer-female-explorer.webp";
 
 export type TrainerGender = "male" | "female";
 

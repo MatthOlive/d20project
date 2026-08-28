@@ -36,6 +36,8 @@ export function PokemonSpriteImage({
 
   return (
     <img
+      loading="lazy"
+      decoding="async"
       {...imageProps}
       src={source}
       onError={(event) => {

@@ -180,7 +180,11 @@ main().catch((error) => {
 });
 
 async function main() {
-  console.log(execute ? "Modo EXECUTAR: vai gravar no Supabase novo." : "Modo TESTE: nada sera gravado. Use --execute para importar.");
+  console.log(
+    execute
+      ? "Modo EXECUTAR: vai gravar no Supabase novo."
+      : "Modo TESTE: nada sera gravado. Use --execute para importar.",
+  );
   console.log(`Dados: ${dataDir}`);
   console.log(`Mapa de usuarios: ${usersPath}`);
   console.log(`Usuarios mapeados: ${userMap.size}`);
@@ -191,15 +195,15 @@ async function main() {
     const rows = loadRows(table);
     if (!rows) continue;
 
-    const transformed = rows
-      .map((row) => transformRow(table, row, true))
-      .filter(Boolean);
+    const transformed = rows.map((row) => transformRow(table, row, true)).filter(Boolean);
 
     if ((deferredFields[table] ?? []).length) {
       deferredRows.set(table, rows);
     }
 
-    console.log(`${table}: ${rows.length} lido(s), ${transformed.length} pronto(s)${execute ? "" : " [teste]"}`);
+    console.log(
+      `${table}: ${rows.length} lido(s), ${transformed.length} pronto(s)${execute ? "" : " [teste]"}`,
+    );
     if (!execute || transformed.length === 0) continue;
 
     await upsertRows(table, transformed);
@@ -209,7 +213,9 @@ async function main() {
     await patchDeferredRows(deferredRows);
   }
 
-  console.log(execute ? "\nImportacao concluida." : "\nTeste concluido. Rode com --execute para gravar.");
+  console.log(
+    execute ? "\nImportacao concluida." : "\nTeste concluido. Rode com --execute para gravar.",
+  );
 }
 
 function loadRows(table) {
@@ -267,9 +273,7 @@ function transformRow(table, row, clearDeferred) {
 
   for (const field of userArrayFields[table] ?? []) {
     if (!Array.isArray(out[field])) continue;
-    out[field] = out[field]
-      .map((id) => mapUserId(id, `${table}.${field}`, true))
-      .filter(Boolean);
+    out[field] = out[field].map((id) => mapUserId(id, `${table}.${field}`, true)).filter(Boolean);
   }
 
   if (clearDeferred) {
@@ -296,7 +300,8 @@ async function patchDeferredRows(deferredRows) {
       if (!match) continue;
 
       const { error } = await db.from(table).update(transformedPatch).match(match);
-      if (error) throw new Error(`Erro atualizando referencias finais de ${table}: ${error.message}`);
+      if (error)
+        throw new Error(`Erro atualizando referencias finais de ${table}: ${error.message}`);
     }
   }
 }
@@ -414,7 +419,10 @@ function parseCell(value) {
   if (trimmed === "true") return true;
   if (trimmed === "false") return false;
   if (/^-?\d+(\.\d+)?$/.test(trimmed)) return Number(trimmed);
-  if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+  if (
+    (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+    (trimmed.startsWith("[") && trimmed.endsWith("]"))
+  ) {
     try {
       return JSON.parse(trimmed);
     } catch {
@@ -439,7 +447,8 @@ function chunks(rows, size) {
 }
 
 function adminClient(url, serviceRoleKey) {
-  if (!url || !serviceRoleKey) throw new Error("Preencha NEW_SUPABASE_URL e NEW_SUPABASE_SERVICE_ROLE_KEY.");
+  if (!url || !serviceRoleKey)
+    throw new Error("Preencha NEW_SUPABASE_URL e NEW_SUPABASE_SERVICE_ROLE_KEY.");
   return createClient(url, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
@@ -457,7 +466,10 @@ function loadEnv(path) {
     const index = trimmed.indexOf("=");
     if (index === -1) continue;
     const key = trimmed.slice(0, index).trim();
-    const value = trimmed.slice(index + 1).trim().replace(/^"|"$/g, "");
+    const value = trimmed
+      .slice(index + 1)
+      .trim()
+      .replace(/^"|"$/g, "");
     result[key] = value;
   }
   return result;

@@ -2,7 +2,9 @@ import { createClient } from "@supabase/supabase-js";
 import { readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 
-const envPath = process.argv.find((arg) => arg.startsWith("--env="))?.slice("--env=".length) ?? ".env.migration.local";
+const envPath =
+  process.argv.find((arg) => arg.startsWith("--env="))?.slice("--env=".length) ??
+  ".env.migration.local";
 const execute = process.argv.includes("--execute");
 
 const env = loadEnv(envPath);
@@ -115,7 +117,11 @@ main().catch((error) => {
 });
 
 async function main() {
-  console.log(execute ? "Modo EXECUTAR: vai gravar no Supabase novo." : "Modo TESTE: nada sera gravado. Use --execute para migrar.");
+  console.log(
+    execute
+      ? "Modo EXECUTAR: vai gravar no Supabase novo."
+      : "Modo TESTE: nada sera gravado. Use --execute para migrar.",
+  );
   console.log(`Lendo configuracao de ${envPath}`);
 
   const userMap = await prepareUsers();
@@ -134,13 +140,17 @@ async function main() {
   console.log("  - Catalogos copiados antes dos jogos.");
   console.log("  - Usuarios remapeados por e-mail.");
   console.log("  - Senhas antigas nao sao copiadas pelo Supabase.");
-  console.log(execute ? "Migração concluida." : "Teste concluido. Rode novamente com --execute para gravar.");
+  console.log(
+    execute ? "Migração concluida." : "Teste concluido. Rode novamente com --execute para gravar.",
+  );
 }
 
 async function prepareUsers() {
   const oldUsers = await listUsers(oldDb, "antigo");
   const newUsers = await listUsers(newDb, "novo");
-  const newByEmail = new Map(newUsers.filter((u) => u.email).map((u) => [u.email.toLowerCase(), u]));
+  const newByEmail = new Map(
+    newUsers.filter((u) => u.email).map((u) => [u.email.toLowerCase(), u]),
+  );
   const userMap = new Map();
 
   console.log(`Usuarios no antigo: ${oldUsers.length}`);
@@ -237,7 +247,8 @@ function transformRow(table, row, userMap, clearDeferred) {
   }
 
   for (const field of userArrayFields[table] ?? []) {
-    if (Array.isArray(out[field])) out[field] = out[field].map((id) => mapUserId(userMap, id, `${table}.${field}`));
+    if (Array.isArray(out[field]))
+      out[field] = out[field].map((id) => mapUserId(userMap, id, `${table}.${field}`));
   }
 
   if (clearDeferred) {
@@ -259,7 +270,10 @@ async function readAll(client, table) {
   const out = [];
   const pageSize = 1000;
   for (let from = 0; ; from += pageSize) {
-    const { data, error } = await client.from(table).select("*").range(from, from + pageSize - 1);
+    const { data, error } = await client
+      .from(table)
+      .select("*")
+      .range(from, from + pageSize - 1);
     if (error) {
       if (isMissingTable(error)) {
         console.log(`${table}: tabela nao existe neste projeto, pulando`);
@@ -303,7 +317,8 @@ function isMissingTable(error) {
 }
 
 function adminClient(url, serviceRoleKey) {
-  if (!url || !serviceRoleKey) throw new Error("Preencha URL e SERVICE_ROLE_KEY dos dois Supabases.");
+  if (!url || !serviceRoleKey)
+    throw new Error("Preencha URL e SERVICE_ROLE_KEY dos dois Supabases.");
   return createClient(url, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
@@ -321,7 +336,10 @@ function loadEnv(path) {
     const index = trimmed.indexOf("=");
     if (index === -1) continue;
     const key = trimmed.slice(0, index).trim();
-    const value = trimmed.slice(index + 1).trim().replace(/^"|"$/g, "");
+    const value = trimmed
+      .slice(index + 1)
+      .trim()
+      .replace(/^"|"$/g, "");
     result[key] = value;
   }
   return result;

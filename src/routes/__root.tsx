@@ -13,6 +13,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { I18nProvider } from "@/lib/i18n";
 import { initTheme } from "@/components/ThemeToggle";
 import { DesktopAutoUpdater } from "@/components/DesktopUpdater";
+import { ConnectionStatus } from "@/components/ConnectionStatus";
+import { installClientDiagnostics } from "@/lib/client-diagnostics";
 import "../styles.css";
 
 function isTauriDesktop() {
@@ -139,6 +141,7 @@ function RootComponent() {
 
   useEffect(() => {
     initTheme();
+    const uninstallDiagnostics = installClientDiagnostics();
     const desktop = isTauriDesktop();
     if (desktop) {
       clearDesktopWebCache();
@@ -150,22 +153,28 @@ function RootComponent() {
     let unsubscribe: (() => void) | undefined;
     try {
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-        if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
+        if (event === "SIGNED_OUT") {
+          queryClient.clear();
           router.invalidate();
-          queryClient.invalidateQueries();
+        } else if (event === "SIGNED_IN") {
+          router.invalidate();
         }
       });
       unsubscribe = () => subscription.unsubscribe();
     } catch (error) {
       console.warn("[Auth] Auth listener failed during startup", error);
     }
-    return () => unsubscribe?.();
+    return () => {
+      unsubscribe?.();
+      uninstallDiagnostics();
+    };
   }, [router, queryClient]);
 
   return (
     <QueryClientProvider client={queryClient}>
       <I18nProvider>
         <Outlet />
+        <ConnectionStatus />
         <Toaster richColors position="top-right" />
         <DesktopAutoUpdater />
       </I18nProvider>

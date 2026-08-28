@@ -66,14 +66,13 @@ function Dashboard() {
       if (!user) throw new Error("Not signed in");
       const { data, error } = await supabase
         .from("games")
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .insert({
           name: gameName,
           narrator_id: user.id,
           narrator_type: narratorType,
           language,
           system,
-        } as any)
+        })
         .select("id,name,background_url,narrator_id,created_at,language,narrator_type,system")
         .single();
       if (error) throw error;
@@ -90,8 +89,7 @@ function Dashboard() {
 
       const { error: activateError } = await supabase
         .from("games")
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .update({ active_page_id: firstPage.id } as any)
+        .update({ active_page_id: firstPage.id })
         .eq("id", data.id);
       if (activateError) {
         await supabase.from("games").delete().eq("id", data.id);

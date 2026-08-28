@@ -22,8 +22,8 @@ function extractVideoId(input: string): string | null {
 }
 
 export const lookupYouTubeVideo = createServerFn({ method: "POST" })
+  .validator((input) => z.object({ query: z.string().min(1).max(500) }).parse(input))
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ query: z.string().min(1).max(500) }).parse(input))
   .handler(async ({ data }) => {
     const apiKey = process.env.YOUTUBE_API_KEY;
     if (!apiKey) throw new Error("YOUTUBE_API_KEY not configured");

@@ -9,12 +9,20 @@ import { TrainerAppearanceImage } from "@/components/TrainerAppearance";
  * are wired centrally in MapBoard's realtime channel, which invalidates
  * `token-pokemon`/`token-trainer` queries on any change to the source row.
  */
-function useCharacter(kind: "trainer" | "pokemon" | "t20", id: string) {
+export type TokenCharacterVisual = {
+  image_url: string | null;
+  status: string[];
+  species_name: string | null;
+  species_sprite_url: string | null;
+  is_shiny: boolean;
+};
+
+function useCharacter(kind: "trainer" | "pokemon" | "t20", id: string, enabled: boolean) {
   return useQuery({
     queryKey: [kind === "trainer" ? "token-trainer-status" : kind === "pokemon" ? "token-pokemon-status" : "token-t20-status", id],
     queryFn: async () => {
       if (kind === "t20") {
-        const { data, error } = await (supabase.from("t20_characters" as never) as any)
+        const { data, error } = await supabase.from("t20_characters")
           .select("image_url")
           .eq("id", id)
           .maybeSingle();
@@ -62,6 +70,7 @@ function useCharacter(kind: "trainer" | "pokemon" | "t20", id: string) {
         is_shiny: !!row?.is_shiny,
       };
     },
+    enabled,
     staleTime: 0,
   });
 }
@@ -79,7 +88,7 @@ const STATUS_ICONS: Record<string, { emoji: string; color: string; title: string
 };
 
 export function TokenAvatar({
-  kind, id, fallbackImage, label, variant = "token", gameId,
+  kind, id, fallbackImage, label, variant = "token", gameId, character,
 }: {
   kind: "trainer" | "pokemon" | "t20";
   id: string;
@@ -87,8 +96,10 @@ export function TokenAvatar({
   label: string;
   variant?: "token" | "handout";
   gameId?: string;
+  character?: TokenCharacterVisual;
 }) {
-  const { data } = useCharacter(kind, id);
+  const query = useCharacter(kind, id, !character);
+  const data = character ?? query.data;
   const spriteStyle = useGameSpriteStyle(gameId);
   if (kind === "pokemon") {
     return (
@@ -123,12 +134,14 @@ export function TokenAvatar({
 }
 
 export function TokenStatusBadges({
-  kind, id,
+  kind, id, character,
 }: {
   kind: "trainer" | "pokemon" | "t20";
   id: string;
+  character?: TokenCharacterVisual;
 }) {
-  const { data } = useCharacter(kind, id);
+  const query = useCharacter(kind, id, !character);
+  const data = character ?? query.data;
   const list = data?.status ?? [];
   if (list.length === 0) return null;
   return (

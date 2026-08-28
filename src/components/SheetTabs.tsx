@@ -24,8 +24,7 @@ import { cn } from "@/lib/utils";
 import { preferredPokemonSprite } from "@/lib/pokerole";
 import { useGameSpriteStyle } from "@/hooks/use-game-sprite-style";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
-
-export const TRAINER_SHEET_POINTER_DROP_EVENT = "d20-trainer-sheet-pointer-drop";
+import { TRAINER_SHEET_POINTER_DROP_EVENT } from "@/lib/sheet-events";
 
 type SlotPokemon = {
   id: string;
@@ -48,11 +47,11 @@ type Tab =
 const SLOTS = [1, 2, 3, 4, 5, 6] as const;
 
 async function assignPokemonToTrainerRpc(pokemonId: string, trainerId: string, teamSlot: number | null) {
-  const { error } = await (supabase.rpc("assign_pokemon_to_trainer" as never, {
+  const { error } = await supabase.rpc("assign_pokemon_to_trainer", {
     p_pokemon_id: pokemonId,
     p_trainer_id: trainerId,
     p_team_slot: teamSlot,
-  } as never) as unknown as Promise<{ error: { message: string } | null }>);
+  });
   if (error) throw new Error(error.message);
 }
 
@@ -306,6 +305,11 @@ export function SheetTabs(props: {
     await movePokemonToTrainer(payload.id, payload.label, target, "fromSlot" in payload ? payload.fromSlot : undefined);
   }
 
+  const targetFromPointRef = useRef(targetFromPoint);
+  targetFromPointRef.current = targetFromPoint;
+  const movePayloadToTargetRef = useRef(movePayloadToTarget);
+  movePayloadToTargetRef.current = movePayloadToTarget;
+
   // Auto-register a pokemon (and its species) in this trainer's Pokédex as captured.
   async function registerInPokedex(pokemonId: string) {
     const { data: pkm } = await supabase
@@ -378,7 +382,7 @@ export function SheetTabs(props: {
     function handlePointerDrop(e: Event) {
       const detail = (e as CustomEvent).detail as { payload?: DragCharacterPayload; clientX?: number; clientY?: number } | undefined;
       if (!detail?.payload || typeof detail.clientX !== "number" || typeof detail.clientY !== "number") return;
-      const target = targetFromPoint(detail.clientX, detail.clientY);
+      const target = targetFromPointRef.current(detail.clientX, detail.clientY);
       if (!target) return;
       e.preventDefault();
       e.stopPropagation();
@@ -392,7 +396,7 @@ export function SheetTabs(props: {
       }
       void (async () => {
         try {
-          await movePayloadToTarget(detail.payload!, target);
+          await movePayloadToTargetRef.current(detail.payload!, target);
         } catch (error) {
           toast.error(error instanceof Error ? error.message : "Nao foi possivel mover este Pokemon.");
         }
@@ -406,7 +410,7 @@ export function SheetTabs(props: {
       root?.removeEventListener(TRAINER_SHEET_POINTER_DROP_EVENT, handlePointerDrop);
       window.removeEventListener(CHARACTER_POINTER_DROP_EVENT, handlePointerDrop, { capture: true });
     };
-  }, [active, roster, trainerId, canEditRoster]);
+  }, [canEditRoster]);
 
   useEffect(() => {
     function move(e: PointerEvent) {
@@ -427,9 +431,9 @@ export function SheetTabs(props: {
       if (!drag.active) return;
       e.preventDefault();
       suppressTeamClickRef.current = true;
-      const target = targetFromPoint(e.clientX, e.clientY);
+      const target = targetFromPointRef.current(e.clientX, e.clientY);
       if (target) {
-        void movePayloadToTarget({ id: drag.payload.id, label: drag.payload.label, fromSlot: drag.fromSlot }, target)
+        void movePayloadToTargetRef.current({ id: drag.payload.id, label: drag.payload.label, fromSlot: drag.fromSlot }, target)
           .catch((error) => toast.error(error instanceof Error ? error.message : "Nao foi possivel mover este Pokemon."));
         return;
       }
@@ -454,11 +458,11 @@ export function SheetTabs(props: {
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", cancel);
     };
-  }, [active, roster, trainerId, canEditRoster]);
+  }, []);
 
   if (trainerMeta?.is_minimal) {
     const canEdit = isNarrator || trainerMeta.owner_id === userId || (trainerMeta.allowed_editors ?? []).includes(userId);
-    return <MinimalSheetView trainerId={trainerId} meta={trainerMeta} canEdit={canEdit} onDeleted={props.onDeleted} />;
+    return <MinimalSheetView trainerId={trainerId} gameId={gameId} meta={trainerMeta} canEdit={canEdit} onDeleted={props.onDeleted} />;
   }
 
   return (
@@ -1077,9 +1081,10 @@ function PcGrid({
 }
 
 function MinimalSheetView({
-  trainerId, meta, canEdit, onDeleted,
+  trainerId, gameId, meta, canEdit, onDeleted,
 }: {
   trainerId: string;
+  gameId: string;
   meta: { name: string; image_url: string | null; description: string | null };
   canEdit: boolean;
   onDeleted?: () => void;
@@ -1093,7 +1098,7 @@ function MinimalSheetView({
     const { error } = await (supabase.from("trainers") as any).update(fields).eq("id", trainerId);
     if (error) { toast.error(error.message); return; }
     qc.invalidateQueries({ queryKey: ["trainer-meta", trainerId] });
-    qc.invalidateQueries({ queryKey: ["characters"] });
+    qc.invalidateQueries({ queryKey: ["characters", gameId] });
   }
   return (
     <div className="space-y-3 p-4">

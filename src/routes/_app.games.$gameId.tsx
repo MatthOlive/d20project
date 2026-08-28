@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllPaged } from "@/lib/supabase-paged";
+import { readLocalGameSnapshot, writeLocalGameSnapshot } from "@/lib/local-game-cache";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,6 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { ImageSourceDialog } from "@/components/ImageSourceDialog";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
-import { ChatPanel } from "@/components/ChatPanel";
 import { useGameSpdefUsesInsight } from "@/hooks/use-game-spdef-uses-insight";
 import { saveGameSpriteStyle, useGameSpriteStyle } from "@/hooks/use-game-sprite-style";
 import {
@@ -30,18 +30,13 @@ import {
 
 import { FloatingWindow } from "@/components/FloatingWindow";
 import { OnlinePresence } from "@/components/OnlinePresence";
+import { PanelErrorBoundary } from "@/components/PanelErrorBoundary";
 
-import { PokemonSheet } from "@/components/PokemonSheet";
-import { SheetTabs, TRAINER_SHEET_POINTER_DROP_EVENT } from "@/components/SheetTabs";
-import { T20CharacterSheet } from "@/components/T20CharacterSheet";
+import { TRAINER_SHEET_POINTER_DROP_EVENT } from "@/lib/sheet-events";
 import { MapBoard, DRAG_MIME, CHARACTER_POINTER_DROP_EVENT, type DragCharacterPayload } from "@/components/MapBoard";
 import { MacroBar } from "@/components/MacroBar";
-import { MusicPanel } from "@/components/MusicPanel";
 import { MusicPlayer } from "@/components/MusicPlayer";
-import { DeckPanel } from "@/components/DeckPanel";
-import { GameEnginePanel } from "@/components/GameEnginePanel";
 import { GameEngineActionBridge } from "@/components/GameEngineActionBridge";
-import { LancerCampaignWorkspace } from "@/components/lancer/LancerCampaignWorkspace";
 import { MoveReactionCoordinator } from "@/components/MoveReactionCoordinator";
 import {
   emitEngineActionRolled,
@@ -57,6 +52,15 @@ import { T20_MECHANICS, T20_MECHANICS_CATEGORY_ORDER, defaultT20Attributes, defa
 import { rollPokemonAutofill } from "@/lib/pokemon-autofill";
 import { applyPaldeaHisuiSpeciesBalance } from "@/lib/paldea-hisui-balance";
 import { REACTION_DECK } from "@/lib/contest";
+
+const PokemonSheet = lazy(() => import("@/components/PokemonSheet").then((module) => ({ default: module.PokemonSheet })));
+const SheetTabs = lazy(() => import("@/components/SheetTabs").then((module) => ({ default: module.SheetTabs })));
+const T20CharacterSheet = lazy(() => import("@/components/T20CharacterSheet").then((module) => ({ default: module.T20CharacterSheet })));
+const GameEnginePanel = lazy(() => import("@/components/GameEnginePanel").then((module) => ({ default: module.GameEnginePanel })));
+const LancerCampaignWorkspace = lazy(() => import("@/components/lancer/LancerCampaignWorkspace").then((module) => ({ default: module.LancerCampaignWorkspace })));
+const ChatPanel = lazy(() => import("@/components/ChatPanel").then((module) => ({ default: module.ChatPanel })));
+const DeckPanel = lazy(() => import("@/components/DeckPanel").then((module) => ({ default: module.DeckPanel })));
+const MusicPanel = lazy(() => import("@/components/MusicPanel").then((module) => ({ default: module.MusicPanel })));
 
 const BIOME_LABELS: Record<string, string> = {
   cave: "Caverna",
@@ -79,6 +83,14 @@ type OpenWindow =
   | { kind: "pokemon"; id: string; title: string }
   | { kind: "trainer"; id: string; title: string }
   | { kind: "t20"; id: string; title: string };
+
+function PanelLoading({ label = "Carregando..." }: { label?: string }) {
+  return (
+    <div className="flex h-full min-h-32 items-center justify-center p-6 text-sm text-muted-foreground">
+      {label}
+    </div>
+  );
+}
 
 const MAIN_PANEL_LABELS = {
   map: "Mapa",
@@ -173,6 +185,18 @@ function parseInlineDiceExpression(expression: string) {
   return { groups, flatModifier };
 }
 
+async function fetchGameRoom(gameId: string) {
+  const { data, error } = await supabase
+    .from("games")
+    .select("id,narrator_id,name,background_url,created_at,system,language,narrator_type,shiny_chance,overgrown_chance,contest_weights,grid_enabled,grid_snap,grid_snap_mode,grid_size,grid_color,grid_opacity,grid_unit_m,grid_unit_label,fog_enabled,dynamic_lighting,master_volume,current_scenario_id,active_page_id")
+    .eq("id", gameId)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+type GameRoomData = Awaited<ReturnType<typeof fetchGameRoom>>;
+
 function GameRoom() {
   const { gameId } = Route.useParams();
   const { user } = useAuth();
@@ -180,20 +204,29 @@ function GameRoom() {
   const [mobileTab, setMobileTab] = useState<string>("map");
   const qc = useQueryClient();
 
-  const { data: game, error: gameError, isLoading: gameLoading } = useQuery({
+  const gameCacheKey = `game:${user?.id ?? "anonymous"}:${gameId}`;
+  const gameLocalQueryKey = ["local-game", user?.id, gameId] as const;
+  const { data: cachedGameSnapshot } = useQuery({
+    queryKey: gameLocalQueryKey,
+    enabled: !!user,
+    queryFn: () => readLocalGameSnapshot<GameRoomData>(gameCacheKey),
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: Number.POSITIVE_INFINITY,
+  });
+  const gameQuery = useQuery({
     queryKey: ["game", gameId],
     queryFn: async () => {
-      // Note: invite_code is intentionally excluded — narrator fetches it via get_game_invite_code RPC.
-      const { data, error } = await supabase
-        .from("games")
-        .select("id,narrator_id,name,background_url,created_at,system,language,narrator_type,shiny_chance,overgrown_chance,contest_weights,grid_enabled,grid_snap,grid_snap_mode,grid_size,grid_color,grid_opacity,grid_unit_m,grid_unit_label,fog_enabled,dynamic_lighting,master_volume,current_scenario_id,active_page_id")
-        .eq("id", gameId)
-        .single();
-      if (error) throw error;
+      const data = await fetchGameRoom(gameId);
+      const savedAt = Date.now();
+      qc.setQueryData(gameLocalQueryKey, { key: gameCacheKey, savedAt, data });
+      void writeLocalGameSnapshot(gameCacheKey, data);
       return data;
     },
     retry: false,
   });
+  const game = gameQuery.data ?? cachedGameSnapshot?.data;
+  const gameError = game ? null : gameQuery.error;
+  const gameLoading = gameQuery.isLoading && !cachedGameSnapshot;
 
   // Character list lives in <FilesPanel>.
 
@@ -400,14 +433,18 @@ function GameRoom() {
 
   if (gameSystem === "lancer") {
     return (
-      <LancerCampaignWorkspace
-        gameId={gameId}
-        gameName={game.name}
-        userId={user.id}
-        isNarrator={isNarrator}
-        aiNarrator={game.narrator_type === "ai"}
-        inviteUrl={inviteUrl}
-      />
+      <PanelErrorBoundary scope="lancer-workspace" resetKey={gameId}>
+        <Suspense fallback={<PanelLoading label="Carregando campanha LANCER..." />}>
+          <LancerCampaignWorkspace
+            gameId={gameId}
+            gameName={game.name}
+            userId={user.id}
+            isNarrator={isNarrator}
+            aiNarrator={game.narrator_type === "ai"}
+            inviteUrl={inviteUrl}
+          />
+        </Suspense>
+      </PanelErrorBoundary>
     );
   }
 
@@ -493,11 +530,15 @@ function GameRoom() {
           width={isMobile ? Math.min(window.innerWidth - 16, 480) : (w.kind === "trainer" ? 760 : 560)}
           height={isMobile ? Math.min(window.innerHeight - 80, 700) : 640}
         >
-          {w.kind === "pokemon"
-            ? <PokemonSheet pokemonId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(w.kind, w.id); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
-            : w.kind === "trainer"
-              ? <SheetTabs trainerId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(w.kind, w.id); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
-              : <T20CharacterSheet characterId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(w.kind, w.id); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />}
+          <PanelErrorBoundary scope={`sheet:${w.kind}`} resetKey={`${w.kind}:${w.id}`}>
+            <Suspense fallback={<PanelLoading label="Carregando ficha..." />}>
+              {w.kind === "pokemon"
+                ? <PokemonSheet pokemonId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(w.kind, w.id); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
+                : w.kind === "trainer"
+                  ? <SheetTabs trainerId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(w.kind, w.id); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
+                  : <T20CharacterSheet characterId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(w.kind, w.id); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />}
+            </Suspense>
+          </PanelErrorBoundary>
         </FloatingWindow>
       ))}
     </div>
@@ -516,13 +557,17 @@ function GameRoom() {
         minHeight={320}
         zIndexFloor={40}
       >
-        <GameEnginePanel
-          gameId={gameId}
-          userId={user.id}
-          isNarrator={isNarrator}
-          systemId={gameSystem}
-          activePageId={(game as never as { active_page_id?: string | null }).active_page_id ?? null}
-        />
+        <PanelErrorBoundary scope="game-engine" resetKey={gameId}>
+          <Suspense fallback={<PanelLoading label="Carregando motor..." />}>
+            <GameEnginePanel
+              gameId={gameId}
+              userId={user.id}
+              isNarrator={isNarrator}
+              systemId={gameSystem}
+              activePageId={(game as never as { active_page_id?: string | null }).active_page_id ?? null}
+            />
+          </Suspense>
+        </PanelErrorBoundary>
       </FloatingWindow>
     </div>
   ) : null;
@@ -594,37 +639,57 @@ function GameRoom() {
         </div>
         <div className="relative min-h-0 flex-1 overflow-hidden">
           <div className={`absolute inset-0 ${mobileTab === "map" ? "" : "hidden"}`}>
-            {mapBoard}
-            <MacroBar gameId={gameId} userId={user.id} />
+            <PanelErrorBoundary scope="mobile-map" resetKey={gameId}>{mapBoard}</PanelErrorBoundary>
+            <PanelErrorBoundary scope="mobile-macro-bar" resetKey={gameId}>
+              <MacroBar gameId={gameId} userId={user.id} />
+            </PanelErrorBoundary>
           </div>
           {mobileTab === "chat" && (
             <div className="h-full overflow-hidden">
               <div className="p-2"><OnlinePresence gameId={gameId} userId={user.id} isNarrator={isNarrator} /></div>
-              <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} isGameOwner={isGameOwner} />
+              <PanelErrorBoundary scope="mobile-chat" resetKey={gameId}>
+                <Suspense fallback={<PanelLoading label="Carregando chat..." />}>
+                  <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} isGameOwner={isGameOwner} />
+                </Suspense>
+              </PanelErrorBoundary>
             </div>
           )}
           {mobileTab === "files" && (
             <div className="h-full overflow-auto p-3">
-              <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindowMobile} isMobile system={gameSystem} />
+              <PanelErrorBoundary scope="mobile-files" resetKey={gameId}>
+                <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindowMobile} isMobile system={gameSystem} />
+              </PanelErrorBoundary>
             </div>
           )}
           {mobileTab === "decks" && (
             <div className="h-full overflow-hidden">
-              <DeckPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} />
+              <PanelErrorBoundary scope="mobile-decks" resetKey={gameId}>
+                <Suspense fallback={<PanelLoading label="Carregando baralhos..." />}>
+                  <DeckPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} />
+                </Suspense>
+              </PanelErrorBoundary>
             </div>
           )}
           {mobileTab === "music" && (
             <div className="h-full overflow-hidden">
-              <MusicPanel gameId={gameId} isNarrator={isNarrator} />
+              <PanelErrorBoundary scope="mobile-music" resetKey={gameId}>
+                <Suspense fallback={<PanelLoading label="Carregando músicas..." />}>
+                  <MusicPanel gameId={gameId} isNarrator={isNarrator} />
+                </Suspense>
+              </PanelErrorBoundary>
             </div>
           )}
           {activeSheet && (
             <div className="absolute inset-0 overflow-auto bg-background">
-              {activeSheet.kind === "pokemon"
-                ? <PokemonSheet pokemonId={activeSheet.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(activeSheet.kind, activeSheet.id); setMobileTab("map"); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
-                : activeSheet.kind === "trainer"
-                  ? <SheetTabs trainerId={activeSheet.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(activeSheet.kind, activeSheet.id); setMobileTab("map"); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
-                  : <T20CharacterSheet characterId={activeSheet.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(activeSheet.kind, activeSheet.id); setMobileTab("map"); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />}
+              <PanelErrorBoundary scope={`mobile-sheet:${activeSheet.kind}`} resetKey={`${activeSheet.kind}:${activeSheet.id}`}>
+                <Suspense fallback={<PanelLoading label="Carregando ficha..." />}>
+                  {activeSheet.kind === "pokemon"
+                    ? <PokemonSheet pokemonId={activeSheet.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(activeSheet.kind, activeSheet.id); setMobileTab("map"); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
+                    : activeSheet.kind === "trainer"
+                      ? <SheetTabs trainerId={activeSheet.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(activeSheet.kind, activeSheet.id); setMobileTab("map"); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
+                      : <T20CharacterSheet characterId={activeSheet.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(activeSheet.kind, activeSheet.id); setMobileTab("map"); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />}
+                </Suspense>
+              </PanelErrorBoundary>
             </div>
           )}
         </div>
@@ -641,8 +706,10 @@ function GameRoom() {
       <MusicPlayer gameId={gameId} />
       {/* Fullscreen map */}
       <div className="relative h-full w-full">
-        {mapBoard}
-        <MacroBar gameId={gameId} userId={user.id} />
+        <PanelErrorBoundary scope="map" resetKey={gameId}>{mapBoard}</PanelErrorBoundary>
+        <PanelErrorBoundary scope="macro-bar" resetKey={gameId}>
+          <MacroBar gameId={gameId} userId={user.id} />
+        </PanelErrorBoundary>
 
         {/* Right: floating chat/files/etc overlay */}
         <RightOverlayPanel>
@@ -660,16 +727,30 @@ function GameRoom() {
                 </TabsList>
               </TooltipProvider>
               <TabsContent value="chat" className="mt-0 min-h-0 flex-1 overflow-hidden">
-                <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} isGameOwner={isGameOwner} />
+                <PanelErrorBoundary scope="chat" resetKey={gameId}>
+                  <Suspense fallback={<PanelLoading label="Carregando chat..." />}>
+                    <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} isGameOwner={isGameOwner} />
+                  </Suspense>
+                </PanelErrorBoundary>
               </TabsContent>
               <TabsContent value="files" className="mt-0 min-h-0 flex-1 overflow-auto p-3">
-                <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindow} system={gameSystem} />
+                <PanelErrorBoundary scope="files" resetKey={gameId}>
+                  <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindow} system={gameSystem} />
+                </PanelErrorBoundary>
               </TabsContent>
               <TabsContent value="decks" className="mt-0 min-h-0 flex-1 overflow-hidden">
-                <DeckPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} />
+                <PanelErrorBoundary scope="decks" resetKey={gameId}>
+                  <Suspense fallback={<PanelLoading label="Carregando baralhos..." />}>
+                    <DeckPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} />
+                  </Suspense>
+                </PanelErrorBoundary>
               </TabsContent>
               <TabsContent value="music" className="mt-0 min-h-0 flex-1 overflow-hidden">
-                <MusicPanel gameId={gameId} isNarrator={isNarrator} />
+                <PanelErrorBoundary scope="music" resetKey={gameId}>
+                  <Suspense fallback={<PanelLoading label="Carregando músicas..." />}>
+                    <MusicPanel gameId={gameId} isNarrator={isNarrator} />
+                  </Suspense>
+                </PanelErrorBoundary>
               </TabsContent>
             </Tabs>
           </Card>
@@ -755,6 +836,31 @@ type CharRow =
   | { kind: "trainer"; id: string; label: string; owner_id: string; image_url: string | null; folder: string | null; sprite_url?: string | null }
   | { kind: "pokemon"; id: string; label: string; owner_id: string; image_url: string | null; folder: string | null; sprite_url: string | null; species_name: string; species_sprite_url: string | null; is_shiny: boolean }
   | { kind: "t20"; id: string; label: string; owner_id: string; image_url: string | null; folder: string | null; sprite_url?: string | null };
+
+type PokemonFileRecord = {
+  id: string;
+  nickname: string | null;
+  owner_id: string;
+  image_url: string | null;
+  folder: string | null;
+  is_shiny?: boolean | null;
+  species: { name: string; sprite_url: string | null };
+};
+
+type TrainerFileRecord = {
+  id: string;
+  name: string;
+  owner_id: string;
+  image_url: string | null;
+  folder: string | null;
+};
+
+type T20FileRecord = TrainerFileRecord;
+
+type CharacterFilesSnapshot = {
+  pokemon: PokemonFileRecord[];
+  trainers: TrainerFileRecord[];
+};
 
 const FOLDER_MIME = "application/x-pokerole-sheet";
 const FOLDER_PATH_MIME = "application/x-pokerole-folder-path";
@@ -856,6 +962,7 @@ function FilesPanel({
 
   const { data: routes, refetch: refetchRoutes } = useQuery({
     queryKey: ["routes", gameId],
+    enabled: system !== "t20" && (randomOpen || routeMgrOpen),
     queryFn: async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data } = await (supabase.from("routes" as any) as any)
@@ -883,6 +990,10 @@ function FilesPanel({
   } | null>(null);
   const suppressClickRef = useRef(false);
   const [dragPreview, setDragPreview] = useState<{ label: string; x: number; y: number } | null>(null);
+  const moveToFolderRef = useRef(moveToFolder);
+  moveToFolderRef.current = moveToFolder;
+  const dispatchTrainerSheetDropRef = useRef(dispatchTrainerSheetDrop);
+  dispatchTrainerSheetDropRef.current = dispatchTrainerSheetDrop;
 
   useEffect(() => {
     function updateDragAt(clientX: number, clientY: number) {
@@ -911,10 +1022,10 @@ function FilesPanel({
       suppressClickRef.current = true;
       const folder = folderTargetFromPoint(clientX, clientY);
       if (folder !== undefined) {
-        void moveToFolder(drag.row, folder);
+        void moveToFolderRef.current(drag.row, folder);
         return true;
       }
-      if (dispatchTrainerSheetDrop(drag.payload, clientX, clientY)) {
+      if (dispatchTrainerSheetDropRef.current(drag.payload, clientX, clientY)) {
         return true;
       }
       window.dispatchEvent(new CustomEvent(CHARACTER_POINTER_DROP_EVENT, {
@@ -968,7 +1079,7 @@ function FilesPanel({
       window.removeEventListener("mousemove", updateFromMouse);
       window.removeEventListener("mouseup", finishFromMouse);
     };
-  }, [gameId]);
+  }, []);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
     if (typeof window === "undefined") return {};
     try { return JSON.parse(localStorage.getItem(`folders:${gameId}`) ?? "{}"); } catch { return {}; }
@@ -1000,41 +1111,79 @@ function FilesPanel({
     }
     if (pkmIds.length) await supabase.from("pokemon").delete().in("id", pkmIds);
     if (trIds.length) await supabase.from("trainers").delete().in("id", trIds);
-    if (t20Ids.length) await (supabase.from("t20_characters" as never) as any).delete().in("id", t20Ids);
+    if (t20Ids.length) await supabase.from("t20_characters").delete().in("id", t20Ids);
     setSelected(new Set()); setSelectMode(false);
     qc.invalidateQueries({ queryKey: ["characters", gameId] });
     toast.success("Deleted");
   }
 
-  const { data: characters } = useQuery({
+  const charactersCacheKey = `files:${userId}:${gameId}:pokerole`;
+  const charactersLocalQueryKey = ["local-files", userId, gameId, "pokerole"] as const;
+  const { data: cachedCharactersSnapshot } = useQuery({
+    queryKey: charactersLocalQueryKey,
+    queryFn: () => readLocalGameSnapshot<CharacterFilesSnapshot>(charactersCacheKey),
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: Number.POSITIVE_INFINITY,
+  });
+  const charactersQuery = useQuery({
     queryKey: ["characters", gameId],
     queryFn: async () => {
       const [pkm, tr] = await Promise.all([
         supabase.from("pokemon").select("id,nickname,owner_id,image_url,folder,is_shiny,species:species_id(name,sprite_url)").eq("game_id", gameId).eq("ai_spawned", false),
         supabase.from("trainers").select("id,name,owner_id,image_url,folder").eq("game_id", gameId),
       ]);
-      return {
-        pokemon: (pkm.data ?? []) as { id: string; nickname: string | null; owner_id: string; image_url: string | null; folder: string | null; is_shiny?: boolean | null; species: { name: string; sprite_url: string | null } }[],
-        trainers: (tr.data ?? []) as { id: string; name: string; owner_id: string; image_url: string | null; folder: string | null }[],
+      if (pkm.error) throw new Error(`Pokémon: ${pkm.error.message}`);
+      if (tr.error) throw new Error(`Treinadores: ${tr.error.message}`);
+      const snapshot: CharacterFilesSnapshot = {
+        pokemon: (pkm.data ?? []) as PokemonFileRecord[],
+        trainers: (tr.data ?? []) as TrainerFileRecord[],
       };
+      const savedAt = Date.now();
+      qc.setQueryData(charactersLocalQueryKey, { key: charactersCacheKey, savedAt, data: snapshot });
+      void writeLocalGameSnapshot(charactersCacheKey, snapshot);
+      return snapshot;
     },
   });
+  const characters = charactersQuery.data ?? cachedCharactersSnapshot?.data;
 
-  const { data: t20Characters } = useQuery({
+  const t20CacheKey = `files:${userId}:${gameId}:t20`;
+  const t20LocalQueryKey = ["local-files", userId, gameId, "t20"] as const;
+  const { data: cachedT20Snapshot } = useQuery({
+    queryKey: t20LocalQueryKey,
+    enabled: system === "t20",
+    queryFn: () => readLocalGameSnapshot<T20FileRecord[]>(t20CacheKey),
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: Number.POSITIVE_INFINITY,
+  });
+  const t20CharactersQuery = useQuery({
     queryKey: ["t20-characters", gameId],
     enabled: system === "t20",
     queryFn: async () => {
-      const { data, error } = await (supabase.from("t20_characters" as never) as any)
+      const { data, error } = await supabase.from("t20_characters")
         .select("id,name,owner_id,image_url,folder")
         .eq("game_id", gameId)
         .order("created_at");
       if (error) throw error;
-      return (data ?? []) as { id: string; name: string; owner_id: string; image_url: string | null; folder: string | null }[];
+      const snapshot = (data ?? []) as T20FileRecord[];
+      const savedAt = Date.now();
+      qc.setQueryData(t20LocalQueryKey, { key: t20CacheKey, savedAt, data: snapshot });
+      void writeLocalGameSnapshot(t20CacheKey, snapshot);
+      return snapshot;
     },
   });
+  const t20Characters = t20CharactersQuery.data ?? cachedT20Snapshot?.data;
+  const filesError = system === "t20" ? t20CharactersQuery.error : charactersQuery.error;
+  const filesFetching = system === "t20" ? t20CharactersQuery.isFetching : charactersQuery.isFetching;
+  const filesPending = system === "t20" ? t20CharactersQuery.isPending : charactersQuery.isPending;
+  const filesHaveSnapshot = system === "t20" ? !!cachedT20Snapshot : !!cachedCharactersSnapshot;
+  const refetchFiles = () => {
+    if (system === "t20") void t20CharactersQuery.refetch();
+    else void charactersQuery.refetch();
+  };
 
   const { data: speciesList } = useQuery({
     queryKey: ["species-list-full"],
+    enabled: system !== "t20" && (pkmDialogOpen || randomOpen || routeMgrOpen),
     queryFn: async () => {
       return await fetchAllPaged<{
         id: string; name: string; evolutions: string[];
@@ -1142,7 +1291,7 @@ function FilesPanel({
 
   const createT20Character = useMutation({
     mutationFn: async () => {
-      const { data, error } = await (supabase.from("t20_characters" as never) as any)
+      const { data, error } = await supabase.from("t20_characters")
         .insert({
           game_id: gameId,
           owner_id: userId,
@@ -1225,14 +1374,17 @@ function FilesPanel({
 
   async function moveToFolder(row: CharRow, folder: string | null) {
     if (row.folder === folder) return;
-    const { error } = await (supabase.rpc("set_character_folder" as never, {
+    const { error } = await supabase.rpc("set_character_folder", {
       p_kind: row.kind,
       p_character_id: row.id,
       p_folder: folder,
-    } as never) as unknown as Promise<{ error: { message: string } | null }>);
+    });
     if (error) {
-      const table = row.kind === "trainer" ? "trainers" : row.kind === "pokemon" ? "pokemon" : "t20_characters";
-      const fallback = await ((supabase.from(table as never) as any).update({ folder }).eq("id", row.id) as Promise<{ error: { message: string } | null }>);
+      const fallback = row.kind === "trainer"
+        ? await supabase.from("trainers").update({ folder }).eq("id", row.id)
+        : row.kind === "pokemon"
+          ? await supabase.from("pokemon").update({ folder }).eq("id", row.id)
+          : await supabase.from("t20_characters").update({ folder }).eq("id", row.id);
       if (fallback.error) {
         toast.error(`${error.message}. ${fallback.error.message}`);
         return;
@@ -1264,11 +1416,11 @@ function FilesPanel({
       if (r.folder === oldPath || r.folder.startsWith(prefix)) {
         const remainder = r.folder === oldPath ? "" : r.folder.slice(oldPath.length);
         const newFolderPath = newPath + remainder;
-        updates.push(Promise.resolve(supabase.rpc("set_character_folder" as never, {
+        updates.push(Promise.resolve(supabase.rpc("set_character_folder", {
           p_kind: r.kind,
           p_character_id: r.id,
           p_folder: newFolderPath,
-        } as never)));
+        })));
       }
     }
     const results = await Promise.all(updates);
@@ -1315,11 +1467,11 @@ function FilesPanel({
     if (!confirm(msg)) return;
     const updates: Promise<unknown>[] = [];
     for (const r of inFolder) {
-      updates.push(Promise.resolve(supabase.rpc("set_character_folder" as never, {
+      updates.push(Promise.resolve(supabase.rpc("set_character_folder", {
         p_kind: r.kind,
         p_character_id: r.id,
         p_folder: null,
-      } as never)));
+      })));
     }
     await Promise.all(updates);
     setExtraFolders((prev) => prev.filter((p) => p !== path && !p.startsWith(prefix)));
@@ -1452,7 +1604,11 @@ function FilesPanel({
         key={key}
         className="flex items-center gap-1.5"
         draggable={false}
-        style={{ userSelect: "none" }}
+        style={{
+          userSelect: "none",
+          contentVisibility: "auto",
+          containIntrinsicSize: "42px",
+        }}
       >
         {selectMode && (
           <Checkbox checked={selected.has(key)} onCheckedChange={() => toggleSelected(key)} />
@@ -1498,14 +1654,16 @@ function FilesPanel({
               suppressClickRef.current = false;
               return;
             }
-            selectMode ? toggleSelected(key) : onOpen({ kind: r.kind, id: r.id, title: r.label });
+            if (selectMode) toggleSelected(key);
+            else onOpen({ kind: r.kind, id: r.id, title: r.label });
           }}
           className={`flex w-full items-center gap-2 rounded-md border ${selected.has(key) ? "border-primary bg-primary/5" : "border-border bg-card"} px-3 py-2 text-left text-sm hover:border-primary`}
           style={{ touchAction: "none" }}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
-              selectMode ? toggleSelected(key) : onOpen({ kind: r.kind, id: r.id, title: r.label });
+              if (selectMode) toggleSelected(key);
+              else onOpen({ kind: r.kind, id: r.id, title: r.label });
             }
           }}
         >
@@ -1535,7 +1693,7 @@ function FilesPanel({
       .from("games").select("active_page_id").eq("id", gameId).maybeSingle();
     const pageId = (g as { active_page_id?: string | null } | null)?.active_page_id ?? null;
     if (!pageId) { toast.error("Nenhuma página ativa"); return; }
-    const { error } = await (supabase.rpc("create_token_from_character" as never, {
+    const { error } = await supabase.rpc("create_token_from_character", {
       p_game_id: gameId,
       p_page_id: pageId,
       p_character_kind: r.kind,
@@ -1544,7 +1702,7 @@ function FilesPanel({
       p_image_url: r.image_url ?? (r.kind === "pokemon" ? r.sprite_url : null),
       p_x: 0.5,
       p_y: 0.5,
-    } as never) as unknown as Promise<{ error: { message: string } | null }>);
+    });
     if (error) {
       const fallback = await supabase.from("tokens").insert({
       game_id: gameId,
@@ -1562,8 +1720,12 @@ function FilesPanel({
   }
   async function deleteRow(r: CharRow) {
     if (!confirm(`Deletar "${r.label}"?`)) return;
-    const table = r.kind === "trainer" ? "trainers" : r.kind === "pokemon" ? "pokemon" : "t20_characters";
-    const { error } = await (supabase.from(table as never) as any).delete().eq("id", r.id);
+    const result = r.kind === "trainer"
+      ? await supabase.from("trainers").delete().eq("id", r.id)
+      : r.kind === "pokemon"
+        ? await supabase.from("pokemon").delete().eq("id", r.id)
+        : await supabase.from("t20_characters").delete().eq("id", r.id);
+    const { error } = result;
     if (error) { toast.error(error.message); return; }
     qc.invalidateQueries({ queryKey: ["characters", gameId] });
     toast.success("Deletado");
@@ -1737,7 +1899,22 @@ function FilesPanel({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold">{system === "t20" ? "Personagens" : "Characters"}</h3>
+        <div className="flex min-w-0 items-center gap-2">
+          <h3 className="text-sm font-bold">{system === "t20" ? "Personagens" : "Characters"}</h3>
+          {filesFetching && !filesError && (
+            <span className="text-[10px] text-muted-foreground">Sincronizando...</span>
+          )}
+          {filesError && filesHaveSnapshot && (
+            <button
+              type="button"
+              onClick={refetchFiles}
+              className="text-[10px] font-semibold text-amber-500 hover:underline"
+              title={`${filesError.message}. Clique para tentar novamente.`}
+            >
+              Offline - exibindo cache local
+            </button>
+          )}
+        </div>
         <div className="flex flex-wrap gap-1.5">
           {system === "t20" ? (
             <Button size="sm" onClick={() => createT20Character.mutate()} disabled={createT20Character.isPending}>
@@ -2155,7 +2332,16 @@ function FilesPanel({
       <div className="space-y-2">
         {tree.map((node) => <FolderNodeView key={node.path} node={node} depth={0} />)}
         <UnfiledGroup />
-        {rows.length === 0 && (
+        {rows.length === 0 && filesPending && !filesHaveSnapshot && (
+          <p className="text-xs text-muted-foreground">Carregando fichas...</p>
+        )}
+        {rows.length === 0 && filesError && !filesHaveSnapshot && (
+          <div className="flex items-center justify-between gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-2">
+            <p className="text-xs text-destructive">Não foi possível carregar as fichas.</p>
+            <Button size="sm" variant="outline" onClick={refetchFiles}>Tentar novamente</Button>
+          </div>
+        )}
+        {rows.length === 0 && !filesPending && !filesError && (
           <p className="text-xs text-muted-foreground">No characters yet. Create one to get started.</p>
         )}
       </div>

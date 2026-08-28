@@ -50,9 +50,14 @@ type Props = {
 };
 
 type RpcResult<T> = { data: T | null; error: { message: string; code?: string } | null };
+type LancerGameTable =
+  | "lancer_npc_blueprints"
+  | "lancer_encounters"
+  | "lancer_encounter_instances"
+  | "lancer_maps";
 
-async function listByGame<T>(table: string, gameId: string, order = "created_at", ascending = false): Promise<T[]> {
-  const response = await (supabase.from(table as never) as any)
+async function listByGame<T>(table: LancerGameTable, gameId: string, order = "created_at", ascending = false): Promise<T[]> {
+  const response = await supabase.from(table)
     .select("*")
     .eq("game_id", gameId)
     .order(order, { ascending });
@@ -118,7 +123,7 @@ export function LancerGmWorkspace({ gameId, userId, isNarrator, entities, items 
   const transactionsQuery = useQuery({
     queryKey: ["lancer-transactions", gameId],
     queryFn: async () => {
-      const response = await (supabase.from("lancer_combat_transactions" as never) as any)
+      const response = await supabase.from("lancer_combat_transactions")
         .select("*")
         .eq("game_id", gameId)
         .order("created_at", { ascending: false })
@@ -131,7 +136,7 @@ export function LancerGmWorkspace({ gameId, userId, isNarrator, entities, items 
   const combatQuery = useQuery({
     queryKey: ["lancer-gm-active-combat", gameId],
     queryFn: async () => {
-      const response = await (supabase.from("lancer_combat_sessions" as never) as any)
+      const response = await supabase.from("lancer_combat_sessions")
         .select("*")
         .eq("game_id", gameId)
         .eq("status", "active")
@@ -253,7 +258,7 @@ function NpcBuilder({
   const saveBlueprint = useMutation({
     mutationFn: async () => {
       if (!composition || !classId) throw new Error("Complete a composição do NPC.");
-      const response = await (supabase.from("lancer_npc_blueprints" as never) as any)
+      const response = await supabase.from("lancer_npc_blueprints")
         .insert({
           game_id: gameId,
           name: name.trim(),
@@ -410,7 +415,7 @@ function EncounterBuilder({
   const saveEncounter = useMutation({
     mutationFn: async () => {
       if (validation.length) throw new Error(validation[0]);
-      const response = await (supabase.from("lancer_encounters" as never) as any)
+      const response = await supabase.from("lancer_encounters")
         .insert({
           game_id: gameId,
           name: name.trim(),
