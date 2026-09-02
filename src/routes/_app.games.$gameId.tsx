@@ -42,6 +42,7 @@ import {
   emitEngineActionRolled,
   type EngineReactionResolution,
 } from "@/lib/game-engine/action-events";
+import { engineParticipantControllerIds } from "@/lib/game-engine/core";
 import type { EngineParticipant, EngineSession } from "@/lib/game-engine/types";
 import { TrainerAppearanceImage } from "@/components/TrainerAppearance";
 import { toast } from "sonner";
@@ -49,6 +50,7 @@ import { ArrowLeft, Copy, Sparkles, User, FolderPlus, Folder, FolderOpen, Image 
 import { rollD6, rollShiny, preferredPokemonSprite, POKEMON_ATTRS, SOCIAL_ATTRS, POKEMON_TYPES, RANKS, RANK_LABELS, TYPE_COLORS, type PokemonType, type Rank } from "@/lib/pokerole";
 import type { PokemonSpriteStyle } from "@/lib/pokerole";
 import { T20_MECHANICS, T20_MECHANICS_CATEGORY_ORDER, defaultT20Attributes, defaultT20Skills, rollD20 } from "@/lib/tormenta20";
+import { rollDigiRole } from "@/lib/digirole";
 import { rollPokemonAutofill } from "@/lib/pokemon-autofill";
 import { applyPaldeaHisuiSpeciesBalance } from "@/lib/paldea-hisui-balance";
 import { REACTION_DECK } from "@/lib/contest";
@@ -56,6 +58,8 @@ import { REACTION_DECK } from "@/lib/contest";
 const PokemonSheet = lazy(() => import("@/components/PokemonSheet").then((module) => ({ default: module.PokemonSheet })));
 const SheetTabs = lazy(() => import("@/components/SheetTabs").then((module) => ({ default: module.SheetTabs })));
 const T20CharacterSheet = lazy(() => import("@/components/T20CharacterSheet").then((module) => ({ default: module.T20CharacterSheet })));
+const DigiRoleSheet = lazy(() => import("@/components/digirole/DigiRoleSheet").then((module) => ({ default: module.DigiRoleSheet })));
+const DigiRoleFilesPanel = lazy(() => import("@/components/digirole/DigiRoleFilesPanel").then((module) => ({ default: module.DigiRoleFilesPanel })));
 const GameEnginePanel = lazy(() => import("@/components/GameEnginePanel").then((module) => ({ default: module.GameEnginePanel })));
 const LancerCampaignWorkspace = lazy(() => import("@/components/lancer/LancerCampaignWorkspace").then((module) => ({ default: module.LancerCampaignWorkspace })));
 const ChatPanel = lazy(() => import("@/components/ChatPanel").then((module) => ({ default: module.ChatPanel })));
@@ -82,7 +86,9 @@ export const Route = createFileRoute("/_app/games/$gameId")({
 type OpenWindow =
   | { kind: "pokemon"; id: string; title: string }
   | { kind: "trainer"; id: string; title: string }
-  | { kind: "t20"; id: string; title: string };
+  | { kind: "t20"; id: string; title: string }
+  | { kind: "digirole_tamer"; id: string; title: string }
+  | { kind: "digirole_digimon"; id: string; title: string };
 
 function PanelLoading({ label = "Carregando..." }: { label?: string }) {
   return (
@@ -129,7 +135,7 @@ function MainPanelTabTrigger({ tab }: { tab: Exclude<MainPanelTab, "map"> }) {
 type InlineDiceRequest = { label: string; expression: string };
 
 type SheetRollMeta = {
-  characterKind: "trainer" | "pokemon" | "t20";
+  characterKind: "trainer" | "pokemon" | "t20" | "digirole_tamer" | "digirole_digimon";
   characterId: string;
   imageUrl?: string | null;
   tokenId?: string | null;
@@ -252,8 +258,8 @@ function GameRoom() {
     const raw = params.get("sheet");
     if (!raw) return;
     const [kind, id, ...labelParts] = raw.split(":");
-    if ((kind === "trainer" || kind === "pokemon" || kind === "t20") && id) {
-      openWindow({ kind, id, title: decodeURIComponent(labelParts.join(":") || id) });
+    if ((kind === "trainer" || kind === "pokemon" || kind === "t20" || kind === "digirole_tamer" || kind === "digirole_digimon") && id) {
+      openWindow({ kind: kind as OpenWindow["kind"], id, title: decodeURIComponent(labelParts.join(":") || id) });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -281,7 +287,7 @@ function GameRoom() {
     return (
       matching.find((participant) => meta.tokenId && participant.tokenId === meta.tokenId) ??
       matching.find((participant) => participant.id === current?.id) ??
-      matching.find((participant) => participant.ownerId === user?.id) ??
+      matching.find((participant) => !!user?.id && engineParticipantControllerIds(participant).includes(user.id)) ??
       null
     );
   }
@@ -365,6 +371,47 @@ function GameRoom() {
       }
       return;
     }
+    if (
+      meta?.characterKind === "digirole_tamer" ||
+      meta?.characterKind === "digirole_digimon" ||
+      game?.system === "digirole"
+    ) {
+      const finalPool = Math.max(0, n - (penalty || 0));
+      const result = rollDigiRole(finalPool, finalPool <= 0 ? 1 : 0);
+      const finalLabel = penalty > 0 ? `${label} (pool ${n}−${penalty})` : label;
+      const engineReaction = resolveEngineReaction(label, result.successes, meta);
+      const { error: chatError } = await supabase.from("chat_messages").insert({
+        game_id: gameId,
+        user_id: user.id,
+        kind: "roll",
+        body: finalLabel,
+        roll_data: {
+          ...result,
+          label: finalLabel,
+          system: "digirole",
+          originalPool: n,
+          penalty,
+          ...(engineReaction ? { engineReaction } : {}),
+        },
+      });
+      if (chatError) {
+        toast.error(`Não foi possível enviar a rolagem: ${chatError.message}`);
+        return;
+      }
+      registerRolledReaction(label, result.successes, meta);
+      if (meta && /iniciativa|initiative/i.test(label)) {
+        emitEngineActionRolled({
+          gameId,
+          tokenId: meta.tokenId,
+          characterId: meta.characterId,
+          characterKind: meta.characterKind,
+          actionType: "initiative",
+          label,
+          resultSuccesses: result.successes,
+        });
+      }
+      return;
+    }
     // Pain penalty reduces the dice pool, NOT successes.
     const finalPool = Math.max(0, n - (penalty || 0));
     const result = rollD6(finalPool);
@@ -387,7 +434,7 @@ function GameRoom() {
       return;
     }
     registerRolledReaction(label, result.successes, meta);
-    if (meta && /initiative/i.test(label)) {
+    if (meta && /iniciativa|initiative/i.test(label)) {
       emitEngineActionRolled({
         gameId,
         tokenId: meta.tokenId,
@@ -527,7 +574,7 @@ function GameRoom() {
           }}
           initialX={isMobile ? 8 : 120 + i * 30}
           initialY={isMobile ? 56 : 80 + i * 30}
-          width={isMobile ? Math.min(window.innerWidth - 16, 480) : (w.kind === "trainer" ? 760 : 560)}
+          width={isMobile ? Math.min(window.innerWidth - 16, 480) : (w.kind === "trainer" || w.kind.startsWith("digirole_") ? 760 : 560)}
           height={isMobile ? Math.min(window.innerHeight - 80, 700) : 640}
         >
           <PanelErrorBoundary scope={`sheet:${w.kind}`} resetKey={`${w.kind}:${w.id}`}>
@@ -536,7 +583,9 @@ function GameRoom() {
                 ? <PokemonSheet pokemonId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(w.kind, w.id); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
                 : w.kind === "trainer"
                   ? <SheetTabs trainerId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(w.kind, w.id); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
-                  : <T20CharacterSheet characterId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(w.kind, w.id); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />}
+                  : w.kind === "t20"
+                    ? <T20CharacterSheet characterId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(w.kind, w.id); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
+                    : <DigiRoleSheet kind={w.kind} characterId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onDeleted={() => { closeWindow(w.kind, w.id); qc.invalidateQueries({ queryKey: ["digirole-files", gameId] }); }} />}
             </Suspense>
           </PanelErrorBoundary>
         </FloatingWindow>
@@ -657,7 +706,9 @@ function GameRoom() {
           {mobileTab === "files" && (
             <div className="h-full overflow-auto p-3">
               <PanelErrorBoundary scope="mobile-files" resetKey={gameId}>
-                <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindowMobile} isMobile system={gameSystem} />
+                {gameSystem === "digirole"
+                  ? <DigiRoleFilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindowMobile} />
+                  : <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindowMobile} isMobile system={gameSystem} />}
               </PanelErrorBoundary>
             </div>
           )}
@@ -687,7 +738,9 @@ function GameRoom() {
                     ? <PokemonSheet pokemonId={activeSheet.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(activeSheet.kind, activeSheet.id); setMobileTab("map"); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
                     : activeSheet.kind === "trainer"
                       ? <SheetTabs trainerId={activeSheet.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(activeSheet.kind, activeSheet.id); setMobileTab("map"); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
-                      : <T20CharacterSheet characterId={activeSheet.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(activeSheet.kind, activeSheet.id); setMobileTab("map"); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />}
+                      : activeSheet.kind === "t20"
+                        ? <T20CharacterSheet characterId={activeSheet.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(activeSheet.kind, activeSheet.id); setMobileTab("map"); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
+                        : <DigiRoleSheet kind={activeSheet.kind} characterId={activeSheet.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onDeleted={() => { closeWindow(activeSheet.kind, activeSheet.id); setMobileTab("map"); qc.invalidateQueries({ queryKey: ["digirole-files", gameId] }); }} />}
                 </Suspense>
               </PanelErrorBoundary>
             </div>
@@ -735,7 +788,9 @@ function GameRoom() {
               </TabsContent>
               <TabsContent value="files" className="mt-0 min-h-0 flex-1 overflow-auto p-3">
                 <PanelErrorBoundary scope="files" resetKey={gameId}>
-                  <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindow} system={gameSystem} />
+                  {gameSystem === "digirole"
+                    ? <DigiRoleFilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindow} />
+                    : <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindow} system={gameSystem} />}
                 </PanelErrorBoundary>
               </TabsContent>
               <TabsContent value="decks" className="mt-0 min-h-0 flex-1 overflow-hidden">

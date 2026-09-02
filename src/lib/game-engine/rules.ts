@@ -1,4 +1,5 @@
 import { rollD6 } from "@/lib/pokerole";
+import { rollDigiRole } from "@/lib/digirole";
 import type { EngineRulePack, EngineSystemId } from "@/lib/game-engine/types";
 
 const pokeroleRules: EngineRulePack = {
@@ -77,6 +78,31 @@ const lancerRules: EngineRulePack = {
   },
 };
 
+const digiroleRules: EngineRulePack = {
+  id: "digirole",
+  label: "DigiRole",
+  initiativeLabel: "DEX + Alert",
+  actionTypes: [
+    { id: "move", label: "Técnica" },
+    { id: "basic", label: "Ataque básico" },
+    { id: "item", label: "Item" },
+    { id: "reaction", label: "Reação" },
+    { id: "other", label: "Outra" },
+  ],
+  rollInitiative(participant) {
+    const pool = Math.max(0, participant.initiativePool);
+    const result = rollDigiRole(pool, pool <= 0 ? 1 : 0);
+    return {
+      value: result.successes,
+      label: `${pool > 0 ? `${pool}d6` : "Chance Dice"} · ${result.successes} sucesso(s)`,
+      detail: result,
+    };
+  },
+  actionHint(participant) {
+    return `Próxima ação: ${participant.actionsUsed + 1} sucesso(s) necessário(s).`;
+  },
+};
+
 const genericRules: EngineRulePack = {
   ...t20Rules,
   id: "generic",
@@ -87,5 +113,6 @@ export function getEngineRulePack(systemId: EngineSystemId): EngineRulePack {
   if (systemId === "pokerole") return pokeroleRules;
   if (systemId === "t20") return t20Rules;
   if (systemId === "lancer") return lancerRules;
+  if (systemId === "digirole") return digiroleRules;
   return { ...genericRules, id: systemId };
 }

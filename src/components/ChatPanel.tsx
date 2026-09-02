@@ -443,6 +443,11 @@ function MessageBubble({
     system?: string;
     die?: number;
     total?: number;
+    chance?: number[];
+    chanceDice?: number;
+    required?: number;
+    isHit?: boolean;
+    rawSuccesses?: number;
     engineReaction?: EngineReactionResolution;
   } | null;
   if (msg.kind === "roll" && rd) {
@@ -473,6 +478,7 @@ function MessageBubble({
     const mod = rd.modifier ?? 0;
     const mode = rd.mode ?? (isD6 ? "success" : "sum");
     const dice = rd.dice ?? [];
+    const chance = rd.chance ?? [];
     const sum = dice.reduce((a, b) => a + b, 0);
     const total = sum + mod;
 
@@ -498,6 +504,18 @@ function MessageBubble({
               {d}
             </span>
           ))}
+          {chance.map((d, i) => (
+            <span
+              key={`chance-${i}`}
+              title="Chance Die: somente 6 conta como sucesso"
+              className={cn(
+                "inline-flex h-7 min-w-7 items-center justify-center rounded-md border border-dashed px-1.5 text-sm font-bold tabular-nums",
+                d === 6 ? "border-success bg-success/15 text-success" : "border-border bg-muted text-muted-foreground",
+              )}
+            >
+              {d}
+            </span>
+          ))}
           {mode === "success" ? (
             <>
               <span className="ml-2 rounded-full bg-success/15 px-2.5 py-0.5 text-xs font-bold text-success">
@@ -507,6 +525,14 @@ function MessageBubble({
                 <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive">
                   {rd.ones} × 1
                 </span>
+              )}
+              {typeof rd.required === "number" && (
+                <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold", rd.isHit ? "bg-success/15 text-success" : "bg-destructive/10 text-destructive")}>
+                  {rd.isHit ? "acertou" : "falhou"} · precisava {rd.required}
+                </span>
+              )}
+              {typeof rd.rawSuccesses === "number" && rd.rawSuccesses !== rd.successes && (
+                <span className="text-[10px] text-muted-foreground">mínimo aplicado sobre {rd.rawSuccesses}</span>
               )}
             </>
           ) : (

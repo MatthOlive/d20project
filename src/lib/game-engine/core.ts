@@ -46,11 +46,28 @@ export function currentEngineParticipant(state: EngineState): EngineParticipant 
   return state.participants[state.turnIndex] ?? null;
 }
 
-function mayControlParticipant(participant: EngineParticipant | null, actor: EngineActor): boolean {
-  return !!participant && (actor.isNarrator || participant.ownerId === actor.userId);
+export function engineParticipantControllerIds(participant: EngineParticipant): string[] {
+  const stored = participant.metadata.controllerIds;
+  const controllerIds = Array.isArray(stored)
+    ? stored.filter((entry): entry is string => typeof entry === "string" && entry.length > 0)
+    : [];
+  return [...new Set([participant.ownerId, ...controllerIds].filter((entry): entry is string => !!entry))];
 }
 
-function initiativeGroup(participant: EngineParticipant): number {
+export function mayControlEngineParticipant(
+  participant: EngineParticipant | null,
+  actor: EngineActor,
+): boolean {
+  return !!participant && (
+    actor.isNarrator || engineParticipantControllerIds(participant).includes(actor.userId)
+  );
+}
+
+function initiativeGroup(participant: EngineParticipant, systemId: EngineSystemId): number {
+  if (systemId === "digirole") {
+    if (participant.kind === "digirole_digimon") return 0;
+    if (participant.kind === "digirole_tamer") return 1;
+  }
   if (participant.kind === "pokemon") return 0;
   if (participant.kind === "trainer") return 1;
   return 0;
@@ -68,7 +85,7 @@ export function applyEngineCommand(
       throw new Error("A iniciativa deste encontro já foi encerrada.");
     const participant = next.participants.find((entry) => entry.id === command.participantId);
     if (!participant) throw new Error("Participante não encontrado no encontro.");
-    if (!mayControlParticipant(participant, actor))
+    if (!mayControlEngineParticipant(participant, actor))
       throw new Error("Você não controla este participante.");
     participant.initiative = Math.trunc(command.value);
     return next;
@@ -78,7 +95,7 @@ export function applyEngineCommand(
     if (!actor.isNarrator) throw new Error("Somente o narrador pode iniciar os turnos.");
     if (next.participants.length === 0) throw new Error("Adicione participantes antes de iniciar.");
     next.participants.sort((left, right) => {
-      const groupDifference = initiativeGroup(left) - initiativeGroup(right);
+      const groupDifference = initiativeGroup(left, next.systemId) - initiativeGroup(right, next.systemId);
       if (groupDifference) return groupDifference;
       const initiativeDifference = (right.initiative ?? -9999) - (left.initiative ?? -9999);
       return initiativeDifference || left.name.localeCompare(right.name, "pt-BR");
@@ -100,7 +117,7 @@ export function applyEngineCommand(
     if (next.status !== "running") throw new Error("O encontro precisa estar em andamento.");
     const participant = next.participants.find((entry) => entry.id === command.participantId);
     if (!participant) throw new Error("Participante não encontrado no encontro.");
-    if (!mayControlParticipant(participant, actor))
+    if (!mayControlEngineParticipant(participant, actor))
       throw new Error("Você não controla este participante.");
     const label = command.label?.trim() || null;
     const previousActions = Array.isArray(participant.metadata.actions)
@@ -134,18 +151,20 @@ export function applyEngineCommand(
   if (command.type === "advance_turn") {
     if (next.status !== "running") throw new Error("O encontro precisa estar em andamento.");
     const current = currentEngineParticipant(next);
-    if (!mayControlParticipant(current, actor))
+    if (!mayControlEngineParticipant(current, actor))
       throw new Error("Somente o participante atual ou o narrador pode passar o turno.");
     if (next.participants.length === 0) return next;
     const wrapped = next.turnIndex >= next.participants.length - 1;
     next.turnIndex = wrapped ? 0 : next.turnIndex + 1;
     if (wrapped) next.round += 1;
     const nextParticipant = next.participants[next.turnIndex];
-    const hasTrainer = next.participants.some((participant) => participant.kind === "trainer");
-    const completedTrainerPhase = current?.kind === "trainer" && nextParticipant.kind !== "trainer";
-    const resetPokeroleActions =
-      next.systemId === "pokerole" && (completedTrainerPhase || (!hasTrainer && wrapped));
-    if (resetPokeroleActions) {
+    const trainerKind = next.systemId === "digirole" ? "digirole_tamer" : "trainer";
+    const hasTrainer = next.participants.some((participant) => participant.kind === trainerKind);
+    const completedTrainerPhase = current?.kind === trainerKind && nextParticipant.kind !== trainerKind;
+    const resetSharedActions =
+      (next.systemId === "pokerole" || next.systemId === "digirole") &&
+      (completedTrainerPhase || (!hasTrainer && wrapped));
+    if (resetSharedActions) {
       next.participants.forEach((participant) => {
         participant.actionsUsed = 0;
         participant.metadata.actions = [];
@@ -154,7 +173,7 @@ export function applyEngineCommand(
         participant.metadata.lastActionSuccesses = null;
       });
       next.lastMove = null;
-    } else if (next.systemId !== "pokerole") {
+    } else if (next.systemId !== "pokerole" && next.systemId !== "digirole") {
       nextParticipant.actionsUsed = 0;
       nextParticipant.metadata.actions = [];
       nextParticipant.metadata.lastActionType = null;

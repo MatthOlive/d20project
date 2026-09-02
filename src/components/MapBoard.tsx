@@ -19,7 +19,7 @@ import { PageSwitcher } from "@/components/PageSwitcher";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export type DragCharacterPayload = {
-  kind: "pokemon" | "trainer" | "t20";
+  kind: "pokemon" | "trainer" | "t20" | "digirole_tamer" | "digirole_digimon";
   id: string;
   label: string;
   imageUrl?: string | null;
@@ -33,7 +33,7 @@ type Token = {
   id: string;
   game_id: string;
   page_id?: string;
-  character_kind: "pokemon" | "trainer" | "t20";
+  character_kind: "pokemon" | "trainer" | "t20" | "digirole_tamer" | "digirole_digimon";
   character_id: string;
   label: string;
   image_url: string | null;
@@ -173,8 +173,8 @@ export function MapBoard({
   topLeftSlot?: React.ReactNode;
   toolbarSlot?: React.ReactNode;
   collapsedToolbarSlot?: React.ReactNode;
-  onRoll?: (label: string, n: number, penalty?: number, meta?: { characterKind: "trainer" | "pokemon" | "t20"; characterId: string; imageUrl?: string | null; tokenId?: string | null }) => void;
-  onOpenSheet?: (kind: "trainer" | "pokemon" | "t20", id: string, label: string) => void;
+  onRoll?: (label: string, n: number, penalty?: number, meta?: { characterKind: Token["character_kind"]; characterId: string; imageUrl?: string | null; tokenId?: string | null }) => void;
+  onOpenSheet?: (kind: Token["character_kind"], id: string, label: string) => void;
   gridSettings?: GridSettings;
   visibility?: Visibility;
 }) {
@@ -495,15 +495,22 @@ export function MapBoard({
   const { data: editableCharIds } = useQuery({
     queryKey: ["editable-char-ids", gameId, userId],
     queryFn: async () => {
-      const [pkm, trs] = await Promise.all([
+      const [pkm, trs, digiTamers, digimons] = await Promise.all([
         supabase.from("pokemon").select("id, owner_id, allowed_editors").eq("game_id", gameId),
         supabase.from("trainers").select("id, owner_id, allowed_editors").eq("game_id", gameId),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase.from("digirole_tamers" as never) as any).select("id, owner_id, allowed_editors").eq("game_id", gameId),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase.from("digirole_digimons" as never) as any).select("id, owner_id, allowed_editors").eq("game_id", gameId),
       ]);
       const set = new Set<string>();
       for (const r of (pkm.data ?? []) as { id: string; owner_id: string; allowed_editors: string[] | null }[]) {
         if (r.owner_id === userId || (r.allowed_editors ?? []).includes(userId)) set.add(r.id);
       }
       for (const r of (trs.data ?? []) as { id: string; owner_id: string; allowed_editors: string[] | null }[]) {
+        if (r.owner_id === userId || (r.allowed_editors ?? []).includes(userId)) set.add(r.id);
+      }
+      for (const r of [...(digiTamers.data ?? []), ...(digimons.data ?? [])] as { id: string; owner_id: string; allowed_editors: string[] | null }[]) {
         if (r.owner_id === userId || (r.allowed_editors ?? []).includes(userId)) set.add(r.id);
       }
       return set;
@@ -559,7 +566,7 @@ export function MapBoard({
     };
   }, [gameId, pageId, qc]);
 
-  // Real-time updates from pokemon / trainers so token images, stats,
+  // Real-time updates from character sheets so token images, stats,
   // status conditions and attribute bonuses propagate live to every player.
   useEffect(() => {
     const pendingPokemonIds = new Set<string>();
@@ -652,6 +659,29 @@ export function MapBoard({
       if (flushTimer === null) flushTimer = window.setTimeout(flushCharacterUpdates, 300);
     };
 
+    const applyDigiRoleUpdate = (
+      kind: "digirole_tamer" | "digirole_digimon",
+      payload: { new: unknown; old: unknown },
+    ) => {
+      const row = payload.new as Record<string, unknown> | null;
+      const previous = payload.old as { id?: string } | null;
+      const id = (row?.id as string | undefined) ?? previous?.id;
+      if (!id) return;
+      if (row) {
+        const merge = (current: Record<string, unknown> | undefined) => current ? { ...current, ...row } : current;
+        qc.setQueriesData({ queryKey: ["token-digirole", kind, id] }, merge);
+        qc.setQueryData(["token-digirole-stats", kind, id], merge);
+        qc.setQueryData([`token-${kind}-status`, id], merge);
+        qc.setQueryData([kind === "digirole_tamer" ? "digirole-tamer" : "digirole-digimon", id], merge);
+      } else {
+        void qc.invalidateQueries({ queryKey: ["token-digirole", kind, id] });
+        void qc.invalidateQueries({ queryKey: ["token-digirole-stats", kind, id] });
+        void qc.invalidateQueries({ queryKey: [`token-${kind}-status`, id] });
+      }
+      void qc.invalidateQueries({ queryKey: ["digirole-target-info", gameId] });
+      void qc.invalidateQueries({ queryKey: ["digirole-files", gameId] });
+    };
+
     let wasSubscribed = false;
     let active = true;
     const ch = supabase
@@ -674,6 +704,16 @@ export function MapBoard({
           scheduleCharacterUpdate("trainer", id, payload.new as Record<string, unknown> | undefined);
         },
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "digirole_tamers", filter: `game_id=eq.${gameId}` },
+        (payload) => applyDigiRoleUpdate("digirole_tamer", payload),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "digirole_digimons", filter: `game_id=eq.${gameId}` },
+        (payload) => applyDigiRoleUpdate("digirole_digimon", payload),
+      )
       .subscribe((status) => {
         if (!active) return;
         reportRealtimeStatus(`characters:${gameId}`, status);
@@ -681,6 +721,8 @@ export function MapBoard({
         if (wasSubscribed) {
           for (const id of visiblePokemonIdsRef.current) scheduleCharacterUpdate("pokemon", id);
           for (const id of visibleTrainerIdsRef.current) scheduleCharacterUpdate("trainer", id);
+          void qc.invalidateQueries({ queryKey: ["token-digirole"] });
+          void qc.invalidateQueries({ queryKey: ["digirole-target-info", gameId] });
         }
         wasSubscribed = true;
       });
@@ -1925,7 +1967,7 @@ export function MapBoard({
         const showStats = isSelected || isHover;
         const onGmLayer = (t.layer ?? "tokens") === "gm";
         const isHandout = t.style === "handout";
-        const isPokemonSprite = t.character_kind === "pokemon" && !isHandout;
+        const isPokemonSprite = (t.character_kind === "pokemon" || t.character_kind === "digirole_digimon") && !isHandout;
         return (
           <div
             key={t.id}

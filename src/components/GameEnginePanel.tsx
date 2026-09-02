@@ -13,7 +13,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { createEngineState, currentEngineParticipant } from "@/lib/game-engine/core";
+import {
+  createEngineState,
+  currentEngineParticipant,
+  mayControlEngineParticipant,
+} from "@/lib/game-engine/core";
 import { getEngineRulePack } from "@/lib/game-engine/rules";
 import type {
   EngineEvent,
@@ -49,6 +53,7 @@ type CharacterData = {
   name: string;
   imageUrl: string | null;
   ownerId: string;
+  controllerIds: string[];
   initiativePool: number;
   initiativeModifier: number;
   currentHp: number | null;
@@ -239,19 +244,25 @@ export function GameEnginePanel({
             .map((ref) => ref.characterId),
         ),
       ];
-      const [pokemonResult, trainerResult, t20Result] = await Promise.all([
+      const digiTamerIds = [
+        ...new Set(characterRefs.filter((ref) => ref.kind === "digirole_tamer").map((ref) => ref.characterId)),
+      ];
+      const digimonIds = [
+        ...new Set(characterRefs.filter((ref) => ref.kind === "digirole_digimon").map((ref) => ref.characterId)),
+      ];
+      const [pokemonResult, trainerResult, t20Result, digiTamerResult, digimonResult] = await Promise.all([
         pokemonIds.length
           ? supabase
               .from("pokemon")
               .select(
-                "id,nickname,image_url,owner_id,current_attrs,skills,current_hp,hp,species:species_id(name,sprite_url)",
+                "id,nickname,image_url,owner_id,allowed_editors,current_attrs,skills,current_hp,hp,species:species_id(name,sprite_url)",
               )
               .in("id", pokemonIds)
           : Promise.resolve({ data: [], error: null }),
         trainerIds.length
           ? supabase
               .from("trainers")
-              .select("id,name,image_url,owner_id,attrs,skills,current_hp")
+              .select("id,name,image_url,owner_id,allowed_editors,attrs,skills,current_hp")
               .in("id", trainerIds)
           : Promise.resolve({ data: [], error: null }),
         t20Ids.length
@@ -265,11 +276,25 @@ export function GameEnginePanel({
                 };
               }
             )
-              .select("id,name,image_url,owner_id,skills,hp_current,hp_max")
+              .select("id,name,image_url,owner_id,allowed_editors,skills,hp_current,hp_max")
               .in("id", t20Ids)
           : Promise.resolve({ data: [], error: null }),
+        digiTamerIds.length
+          ? (
+              supabase.from("digirole_tamers" as never) as never as {
+                select: (columns: string) => { in: (column: string, values: string[]) => Promise<{ data: unknown[] | null; error: { message: string } | null }> };
+              }
+            ).select("id,name,image_url,owner_id,allowed_editors,attrs,skills,hp_current,ds_current,condensed_count").in("id", digiTamerIds)
+          : Promise.resolve({ data: [], error: null }),
+        digimonIds.length
+          ? (
+              supabase.from("digirole_digimons" as never) as never as {
+                select: (columns: string) => { in: (column: string, values: string[]) => Promise<{ data: unknown[] | null; error: { message: string } | null }> };
+              }
+            ).select("id,nickname,image_url,owner_id,allowed_editors,attrs,skills,hp_current,ds_current,species:species_id(name,image_url,hp_base)").in("id", digimonIds)
+          : Promise.resolve({ data: [], error: null }),
       ]);
-      const firstError = pokemonResult.error || trainerResult.error || t20Result.error;
+      const firstError = pokemonResult.error || trainerResult.error || t20Result.error || digiTamerResult.error || digimonResult.error;
       if (firstError) throw firstError;
 
       const result = new Map<string, CharacterData>();
@@ -287,6 +312,12 @@ export function GameEnginePanel({
               ? String(species.sprite_url)
               : null,
           ownerId: String(row.owner_id),
+          controllerIds: [
+            String(row.owner_id),
+            ...(Array.isArray(row.allowed_editors)
+              ? row.allowed_editors.filter((entry): entry is string => typeof entry === "string")
+              : []),
+          ],
           initiativePool: numberAt(attrs, "dexterity", 1) + numberAt(skills, "Alert", 0),
           initiativeModifier: 0,
           currentHp: typeof row.current_hp === "number" ? row.current_hp : null,
@@ -300,6 +331,12 @@ export function GameEnginePanel({
           name: String(row.name || "Treinador"),
           imageUrl: row.image_url ? String(row.image_url) : null,
           ownerId: String(row.owner_id),
+          controllerIds: [
+            String(row.owner_id),
+            ...(Array.isArray(row.allowed_editors)
+              ? row.allowed_editors.filter((entry): entry is string => typeof entry === "string")
+              : []),
+          ],
           initiativePool: numberAt(row.attrs, "dexterity", 1) + numberAt(row.skills, "Alert", 0),
           initiativeModifier: 0,
           currentHp: typeof row.current_hp === "number" ? row.current_hp : null,
@@ -313,10 +350,55 @@ export function GameEnginePanel({
           name: String(row.name || "Personagem"),
           imageUrl: row.image_url ? String(row.image_url) : null,
           ownerId: String(row.owner_id),
+          controllerIds: [
+            String(row.owner_id),
+            ...(Array.isArray(row.allowed_editors)
+              ? row.allowed_editors.filter((entry): entry is string => typeof entry === "string")
+              : []),
+          ],
           initiativePool: 0,
           initiativeModifier: numberAt(row.skills, "Iniciativa", 0),
           currentHp: typeof row.hp_current === "number" ? row.hp_current : null,
           maxHp: typeof row.hp_max === "number" ? row.hp_max : null,
+        });
+      }
+      for (const raw of digiTamerResult.data ?? []) {
+        const row = asRecord(raw);
+        const attrs = asRecord(row.attrs);
+        const skills = asRecord(row.skills);
+        result.set(`digirole_tamer:${row.id}`, {
+          id: String(row.id),
+          name: String(row.name || "Tamer"),
+          imageUrl: row.image_url ? String(row.image_url) : null,
+          ownerId: String(row.owner_id),
+          controllerIds: [
+            String(row.owner_id),
+            ...(Array.isArray(row.allowed_editors) ? row.allowed_editors.filter((entry): entry is string => typeof entry === "string") : []),
+          ],
+          initiativePool: numberAt(attrs, "dexterity", 1) + numberAt(skills, "Alert", 0),
+          initiativeModifier: 0,
+          currentHp: typeof row.hp_current === "number" ? row.hp_current : null,
+          maxHp: 3 + numberAt(attrs, "vitality", 1),
+        });
+      }
+      for (const raw of digimonResult.data ?? []) {
+        const row = asRecord(raw);
+        const species = relationObject(row.species);
+        const attrs = asRecord(row.attrs);
+        const skills = asRecord(row.skills);
+        result.set(`digirole_digimon:${row.id}`, {
+          id: String(row.id),
+          name: String(row.nickname || species.name || "Digimon"),
+          imageUrl: row.image_url ? String(row.image_url) : species.image_url ? String(species.image_url) : null,
+          ownerId: String(row.owner_id),
+          controllerIds: [
+            String(row.owner_id),
+            ...(Array.isArray(row.allowed_editors) ? row.allowed_editors.filter((entry): entry is string => typeof entry === "string") : []),
+          ],
+          initiativePool: numberAt(attrs, "dexterity", 1) + numberAt(skills, "Alert", 0),
+          initiativeModifier: 0,
+          currentHp: typeof row.hp_current === "number" ? row.hp_current : null,
+          maxHp: numberAt(species, "hp_base", 3) + numberAt(attrs, "vitality", 1),
         });
       }
       return result;
@@ -333,7 +415,12 @@ export function GameEnginePanel({
           tokenId: token.id,
           characterId: token.character_id,
           kind: token.character_kind,
-          ownerId: character?.ownerId ?? token.owner_id,
+          ownerId:
+            (isNarrator
+              ? character?.controllerIds.find((controllerId) => controllerId !== userId)
+              : null) ??
+            character?.ownerId ??
+            token.owner_id,
           name: character?.name || token.label || "Participante",
           imageUrl: token.image_url || character?.imageUrl || null,
           initiative: null,
@@ -344,10 +431,14 @@ export function GameEnginePanel({
             ...(character?.currentHp != null ? { hp: character.currentHp } : {}),
             ...(character?.maxHp != null ? { hpMax: character.maxHp } : {}),
           },
-          metadata: {},
+          metadata: {
+            controllerIds: [
+              ...new Set([...(character?.controllerIds ?? []), token.owner_id]),
+            ],
+          },
         };
       }),
-    [characters, tokens],
+    [characters, isNarrator, tokens, userId],
   );
 
   useEffect(() => {
@@ -432,7 +523,7 @@ export function GameEnginePanel({
       ? characters.get(`${participant.kind}:${participant.characterId}`)?.imageUrl
       : null) ||
     null;
-  const mayControlCurrent = !!current && (isNarrator || current.ownerId === userId);
+  const mayControlCurrent = mayControlEngineParticipant(current, { userId, isNarrator });
   const allInitiativesReady =
     !!session && session.state.participants.every((participant) => participant.initiative != null);
 
@@ -510,7 +601,7 @@ export function GameEnginePanel({
                     </div>
                   </div>
                   <span className="text-[10px] text-muted-foreground">
-                    {systemId === "pokerole"
+                    {systemId === "pokerole" || systemId === "digirole"
                       ? `${participant.initiativePool}d6`
                       : `${participant.initiativeModifier >= 0 ? "+" : ""}${participant.initiativeModifier}`}
                   </span>
@@ -591,7 +682,7 @@ export function GameEnginePanel({
             </div>
             <div className="space-y-1.5">
               {session.state.participants.map((participant) => {
-                const mayRoll = participant.ownerId === userId;
+                const mayRoll = mayControlEngineParticipant(participant, { userId, isNarrator: false });
                 const imageUrl = participantImageUrl(participant);
                 return (
                   <div

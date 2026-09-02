@@ -16,6 +16,7 @@ export const RPG_SYSTEMS: RpgSystem[] = [
   { id: "pokerole", label: "Pokérole 2.0", available: true },
   { id: "t20", label: "Tormenta 20", available: true },
   { id: "lancer", label: "LANCER", available: true },
+  { id: "digirole", label: "DigiRole", available: true },
   { id: "dnd", label: "D&D", available: false },
 ];
 

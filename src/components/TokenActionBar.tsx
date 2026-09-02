@@ -15,15 +15,18 @@ import { MoveCard } from "@/components/MoveCard";
 import { MoveRollDialog, computeMoveStats, type MoveData } from "@/components/MoveRollDialog";
 import { T20_QUICK_ROLLS } from "@/lib/tormenta20";
 import { useGameSpriteStyle } from "@/hooks/use-game-sprite-style";
+import { DIGIROLE_ATTRS, DIGIROLE_SKILL_GROUPS } from "@/lib/digirole";
+
+type TokenKind = "trainer" | "pokemon" | "t20" | "digirole_tamer" | "digirole_digimon";
 
 type Props = {
-  kind: "trainer" | "pokemon" | "t20";
+  kind: TokenKind;
   id: string;
   tokenId?: string | null;
   label: string;
   gameId: string;
   userId: string;
-  onRoll: (label: string, n: number, penalty?: number, meta?: { characterKind: "trainer" | "pokemon" | "t20"; characterId: string; imageUrl?: string | null; tokenId?: string | null }) => void;
+  onRoll: (label: string, n: number, penalty?: number, meta?: { characterKind: TokenKind; characterId: string; imageUrl?: string | null; tokenId?: string | null }) => void;
   onClose: () => void;
   onOpenSheet: () => void;
   extra?: React.ReactNode;
@@ -31,8 +34,48 @@ type Props = {
 
 export function TokenActionBar(p: Props) {
   if (p.kind === "t20") return <T20Bar {...p} />;
+  if (p.kind === "digirole_tamer" || p.kind === "digirole_digimon") return <DigiRoleBar {...p} />;
   if (p.kind === "trainer") return <TrainerBar {...p} />;
   return <PokemonBar {...p} />;
+}
+
+function DigiRoleBar({ kind, id, tokenId, label, onRoll, onClose, onOpenSheet, extra }: Props) {
+  const isDigimon = kind === "digirole_digimon";
+  const { data } = useQuery({
+    queryKey: ["token-digirole", kind, id],
+    queryFn: async () => {
+      const table = isDigimon ? "digirole_digimons" : "digirole_tamers";
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase.from(table as never) as any)
+        .select("attrs,skills,image_url")
+        .eq("id", id)
+        .single();
+      if (error) throw error;
+      return data as { attrs: Record<string, number>; skills: Record<string, number>; image_url: string | null };
+    },
+  });
+  if (!data) return <Shell onClose={onClose} title={label} loading />;
+  const dex = data.attrs?.dexterity ?? 1;
+  const str = data.attrs?.strength ?? 1;
+  const spr = data.attrs?.spirit ?? 1;
+  const alert = data.skills?.Alert ?? 0;
+  const evasion = data.skills?.Evasion ?? 0;
+  const clash = data.skills?.Clash ?? 0;
+  const meta = { characterKind: kind, characterId: id, imageUrl: data.image_url, tokenId };
+  const attrs = DIGIROLE_ATTRS.map((attr) => ({ name: `${attr.short} · ${attr.label}`, value: data.attrs?.[attr.id] ?? 1 }));
+  const skills = Object.values(DIGIROLE_SKILL_GROUPS).flat().map((skill) => ({ name: skill, value: data.skills?.[skill] ?? 0 }));
+  return (
+    <Shell onClose={onClose} title={label} onOpenSheet={onOpenSheet}>
+      <ActionBtn icon={<Zap className="h-3.5 w-3.5" />} label="Iniciativa"
+        onClick={() => onRoll(`${label} · Iniciativa (DEX+Alert)`, dex + alert, 0, meta)} />
+      <ActionBtn icon={<Swords className="h-3.5 w-3.5" />} label="Evasion"
+        onClick={() => onRoll(`${label} · Evasion (DEX+Evasion)`, dex + evasion, 0, meta)} />
+      <ActionBtn icon={<Swords className="h-3.5 w-3.5" />} label="Clash"
+        onClick={() => onRoll(`${label} · Clash (${isDigimon ? "melhor de STR/SPR" : "STR"}+Clash)`, Math.max(str, isDigimon ? spr : str) + clash, 0, meta)} />
+      <GenericRollButton characterName={label} attrs={attrs} skills={skills} painPenalty={0} onRoll={onRoll} />
+      {extra}
+    </Shell>
+  );
 }
 
 function T20Bar({ id, label, onRoll, onClose, onOpenSheet, extra }: Props) {

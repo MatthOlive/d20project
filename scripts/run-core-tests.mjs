@@ -40,6 +40,20 @@ function participant(id, kind, ownerId, initiative) {
 const resolution = await importTypeScript("src/lib/move-resolution.ts");
 const engine = await importTypeScript("src/lib/game-engine/core.ts");
 const pokerole = await importTypeScript("src/lib/pokerole.ts");
+const digirole = await importTypeScript("src/lib/digirole.ts");
+
+{
+  const attrs = { strength: 3, dexterity: 4, vitality: 2, wisdom: 2, spirit: 5, charisma: 1 };
+  const skills = { Clash: 2, Alert: 1, Athletic: 3 };
+  assert.equal(digirole.digiRoleFormulaPool("STR + Clash + 1", attrs, skills), 6);
+  assert.equal(digirole.digiRoleFormulaPool("DEX + alert", attrs, skills), 5);
+  assert.equal(digirole.digiRoleAttributeModifier("Vaccine", "Virus"), 1);
+  assert.equal(digirole.digiRoleAttributeModifier("Virus", "Vaccine"), -1);
+  assert.equal(digirole.digiRoleFieldAccuracyModifier("VB", ["NSo", "NSp"]), 0);
+  assert.equal(digirole.digiRoleDamageAfterDefense(0, 0), 1);
+  assert.equal(digirole.digiRoleDamageAfterDefense(8, 2, -1), 5);
+  assert.equal(digirole.digiRoleDamageAfterDefense(8, 2, 1, true), 0);
+}
 
 {
   const skills = { Athletic: 4, Brawl: 2 };
@@ -146,6 +160,129 @@ const pokerole = await importTypeScript("src/lib/pokerole.ts");
     /não controla/i,
   );
   assert.equal(initial.status, "setup", "commands must not mutate their input state");
+}
+
+{
+  const shared = participant("shared-pokemon", "pokemon", "owner", null);
+  shared.metadata.controllerIds = ["owner", "invited-player"];
+  const initial = engine.createEngineState({
+    systemId: "pokerole",
+    pageId: "page",
+    participants: [shared],
+  });
+  const withPlayerInitiative = engine.applyEngineCommand(
+    initial,
+    { type: "set_initiative", participantId: shared.id, value: 4 },
+    { userId: "invited-player", isNarrator: false },
+  );
+  assert.equal(withPlayerInitiative.participants[0].initiative, 4);
+}
+
+{
+  const narrator = { userId: "gm", isNarrator: true };
+  const initial = engine.createEngineState({
+    systemId: "digirole",
+    pageId: "page",
+    participants: [
+      participant("digimon-high", "digirole_digimon", "player", 20),
+      participant("tamer-low", "digirole_tamer", "player", 1),
+      participant("digimon-low", "digirole_digimon", "player", 2),
+      participant("tamer-high", "digirole_tamer", "player", 10),
+    ],
+  });
+  const running = engine.applyEngineCommand(initial, { type: "start_turns" }, narrator);
+  assert.deepEqual(
+    running.participants.map((entry) => entry.id),
+    ["digimon-high", "digimon-low", "tamer-high", "tamer-low"],
+  );
+
+  const firstTamerAction = engine.applyEngineCommand(
+    running,
+    {
+      type: "record_action",
+      participantId: "tamer-high",
+      actionType: "item",
+    },
+    { userId: "player", isNarrator: false },
+  );
+  const secondTamerAction = engine.applyEngineCommand(
+    firstTamerAction,
+    {
+      type: "record_action",
+      participantId: "tamer-high",
+      actionType: "other",
+    },
+    { userId: "player", isNarrator: false },
+  );
+  const tamerReaction = engine.applyEngineCommand(
+    secondTamerAction,
+    {
+      type: "record_action",
+      participantId: "tamer-high",
+      actionType: "reaction",
+    },
+    { userId: "player", isNarrator: false },
+  );
+  assert.equal(
+    tamerReaction.participants.find((entry) => entry.id === "tamer-high").actionsUsed,
+    3,
+  );
+
+  const digimonReaction = engine.applyEngineCommand(
+    tamerReaction,
+    {
+      type: "record_action",
+      participantId: "digimon-high",
+      actionType: "reaction",
+    },
+    { userId: "player", isNarrator: false },
+  );
+  const afterDigimonHigh = engine.applyEngineCommand(
+    digimonReaction,
+    { type: "advance_turn" },
+    narrator,
+  );
+  const afterDigimonLow = engine.applyEngineCommand(
+    afterDigimonHigh,
+    { type: "advance_turn" },
+    narrator,
+  );
+  const afterTamerHigh = engine.applyEngineCommand(
+    afterDigimonLow,
+    { type: "advance_turn" },
+    narrator,
+  );
+  assert.equal(
+    afterTamerHigh.participants.find((entry) => entry.id === "digimon-high").actionsUsed,
+    1,
+  );
+  const afterTamerLow = engine.applyEngineCommand(
+    afterTamerHigh,
+    { type: "advance_turn" },
+    narrator,
+  );
+  assert.equal(
+    afterTamerLow.participants.find((entry) => entry.id === "digimon-high").actionsUsed,
+    0,
+  );
+  assert.equal(
+    afterTamerLow.participants.find((entry) => entry.id === "tamer-high").actionsUsed,
+    0,
+  );
+
+  const sharedDigimon = participant("shared-digimon", "digirole_digimon", "owner", null);
+  sharedDigimon.metadata.controllerIds = ["owner", "partner"];
+  const sharedEncounter = engine.createEngineState({
+    systemId: "digirole",
+    pageId: "page",
+    participants: [sharedDigimon],
+  });
+  const withPartnerInitiative = engine.applyEngineCommand(
+    sharedEncounter,
+    { type: "set_initiative", participantId: sharedDigimon.id, value: 3 },
+    { userId: "partner", isNarrator: false },
+  );
+  assert.equal(withPartnerInitiative.participants[0].initiative, 3);
 }
 
 console.log("Core tests passed: skill aliases, move resolution and game engine.");

@@ -17,15 +17,89 @@ type Defenses = { def: number; spDef: number; spDefUsesInsight: boolean };
 export function TokenStatsBar({
   kind, id, gameId, editable, expanded,
 }: {
-  kind: "trainer" | "pokemon" | "t20";
+  kind: "trainer" | "pokemon" | "t20" | "digirole_tamer" | "digirole_digimon";
   id: string;
   gameId?: string;
   editable: boolean;
   expanded: boolean;
 }) {
   if (kind === "t20") return <T20Stats id={id} editable={editable} expanded={expanded} />;
+  if (kind === "digirole_tamer" || kind === "digirole_digimon") {
+    return <DigiRoleStats kind={kind} id={id} editable={editable} expanded={expanded} />;
+  }
   if (kind === "trainer") return <TrainerStats id={id} gameId={gameId} editable={editable} expanded={expanded} />;
   return <PokemonStats id={id} gameId={gameId} editable={editable} expanded={expanded} />;
+}
+
+function DigiRoleStats({
+  kind,
+  id,
+  editable,
+  expanded,
+}: {
+  kind: "digirole_tamer" | "digirole_digimon";
+  id: string;
+  editable: boolean;
+  expanded: boolean;
+}) {
+  const qc = useQueryClient();
+  const table = kind === "digirole_tamer" ? "digirole_tamers" : "digirole_digimons";
+  const { data } = useQuery({
+    queryKey: ["token-digirole-stats", kind, id],
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase.from(table as never) as any)
+        .select(kind === "digirole_tamer"
+          ? "attrs,hp_current,ds_current,condensed_count"
+          : "attrs,hp_current,ds_current,stabilized_forms,species:species_id(hp_base)")
+        .eq("id", id)
+        .single();
+      if (error) throw error;
+      return data as {
+        attrs: Record<string, number>;
+        hp_current: number;
+        ds_current: number;
+        condensed_count?: number;
+        stabilized_forms?: number;
+        species?: { hp_base: number } | null;
+      };
+    },
+  });
+  if (!data) return null;
+  const currentData = data;
+  const vit = currentData.attrs?.vitality ?? 1;
+  const wis = currentData.attrs?.wisdom ?? 1;
+  const spr = currentData.attrs?.spirit ?? 1;
+  const hpMax = kind === "digirole_tamer" ? 3 + vit : (currentData.species?.hp_base ?? 3) + vit;
+  const dsMax = kind === "digirole_tamer"
+    ? (currentData.condensed_count ?? 0) + 2 + spr
+    : 2 + spr + (currentData.stabilized_forms ?? 1);
+
+  async function patch(field: "hp_current" | "ds_current", value: number) {
+    const key = ["token-digirole-stats", kind, id] as const;
+    const previous = currentData[field];
+    qc.setQueryData(key, (old: typeof currentData | undefined) => old ? { ...old, [field]: value } : old);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = await (supabase.from(table as never) as any).update({ [field]: value }).eq("id", id).select("id").maybeSingle();
+      if (result.error) throw result.error;
+      if (!result.data) throw new Error("Você não tem permissão para alterar esta ficha.");
+      qc.setQueryData([kind === "digirole_tamer" ? "digirole-tamer" : "digirole-digimon", id], (old: Record<string, unknown> | undefined) => old ? { ...old, [field]: value } : old);
+    } catch (error) {
+      qc.setQueryData(key, (old: typeof currentData | undefined) => old ? { ...old, [field]: previous } : old);
+      toast.error(error instanceof Error ? error.message : "Não foi possível salvar o valor.");
+    }
+  }
+  return (
+    <StatsRow
+      stats={[
+        { label: "HP", cur: data.hp_current, max: hpMax, color: "#22c55e", onChange: (value) => void patch("hp_current", value) },
+        { label: "DS", cur: data.ds_current, max: dsMax, color: "#06b6d4", onChange: (value) => void patch("ds_current", value) },
+      ]}
+      defenses={{ def: vit, spDef: wis, spDefUsesInsight: true }}
+      editable={editable && expanded}
+    />
+  );
 }
 
 function T20Stats({ id, editable, expanded }: { id: string; editable: boolean; expanded: boolean }) {

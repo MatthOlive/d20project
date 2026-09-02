@@ -17,10 +17,28 @@ export type TokenCharacterVisual = {
   is_shiny: boolean;
 };
 
-function useCharacter(kind: "trainer" | "pokemon" | "t20", id: string, enabled: boolean) {
+type TokenCharacterKind = "trainer" | "pokemon" | "t20" | "digirole_tamer" | "digirole_digimon";
+
+function useCharacter(kind: TokenCharacterKind, id: string, enabled: boolean) {
   return useQuery({
-    queryKey: [kind === "trainer" ? "token-trainer-status" : kind === "pokemon" ? "token-pokemon-status" : "token-t20-status", id],
+    queryKey: [`token-${kind}-status`, id],
     queryFn: async () => {
+      if (kind === "digirole_tamer" || kind === "digirole_digimon") {
+        const table = kind === "digirole_tamer" ? "digirole_tamers" : "digirole_digimons";
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data, error } = await (supabase.from(table as never) as any)
+          .select(kind === "digirole_digimon" ? "image_url,conditions,species:species_id(image_url)" : "image_url,conditions")
+          .eq("id", id)
+          .maybeSingle();
+        if (error) throw error;
+        return {
+          image_url: data?.image_url ?? data?.species?.image_url ?? null,
+          status: data?.conditions ?? [],
+          species_name: null,
+          species_sprite_url: null,
+          is_shiny: false,
+        };
+      }
       if (kind === "t20") {
         const { data, error } = await supabase.from("t20_characters")
           .select("image_url")
@@ -90,7 +108,7 @@ const STATUS_ICONS: Record<string, { emoji: string; color: string; title: string
 export function TokenAvatar({
   kind, id, fallbackImage, label, variant = "token", gameId, character,
 }: {
-  kind: "trainer" | "pokemon" | "t20";
+  kind: TokenCharacterKind;
   id: string;
   fallbackImage: string | null;
   label: string;
@@ -136,13 +154,13 @@ export function TokenAvatar({
 export function TokenStatusBadges({
   kind, id, character,
 }: {
-  kind: "trainer" | "pokemon" | "t20";
+  kind: TokenCharacterKind;
   id: string;
   character?: TokenCharacterVisual;
 }) {
   const query = useCharacter(kind, id, !character);
   const data = character ?? query.data;
-  const list = data?.status ?? [];
+  const list: string[] = data?.status ?? [];
   if (list.length === 0) return null;
   return (
     <div className="pointer-events-none absolute -right-2 -top-2 flex flex-wrap items-center justify-end gap-0.5">

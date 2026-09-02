@@ -35,7 +35,7 @@ export type MoveReactionTarget = {
   requestId: string;
   tokenId: string;
   characterId: string;
-  characterKind: "trainer" | "pokemon";
+  characterKind: "trainer" | "pokemon" | "digirole_tamer" | "digirole_digimon";
   name: string;
   controllerIds: string[];
   clashPool: number;
@@ -49,7 +49,7 @@ export type MoveReactionResponse = {
   requestId: string;
   targetTokenId: string;
   targetCharacterId: string;
-  targetCharacterKind: "trainer" | "pokemon";
+  targetCharacterKind: "trainer" | "pokemon" | "digirole_tamer" | "digirole_digimon";
   targetName: string;
   choice: "none" | "clash" | "evade";
   pool: number;
@@ -69,7 +69,7 @@ export type MoveRollMessage = {
   resolutionId?: string;
   attacker?: {
     characterId?: string;
-    characterKind?: "trainer" | "pokemon" | "t20";
+    characterKind?: "trainer" | "pokemon" | "t20" | "digirole_tamer" | "digirole_digimon";
     tokenId?: string | null;
   };
   reactionTargets?: MoveReactionTarget[];
@@ -81,6 +81,7 @@ export type MoveRollMessage = {
   accuracy: {
     pool: number;
     dice: number[];
+    chance?: number[];
     successes: number;
     penalty: number;
     isHit?: boolean;
@@ -109,6 +110,7 @@ export type MoveRollMessage = {
     preventedMoveDamage: boolean;
   };
   chance?: { label: string; dice: number[]; successes: number }[];
+  system?: "pokerole" | "digirole";
 };
 
 export function MoveCard({
@@ -258,6 +260,7 @@ export function MoveRollResultCard({
             label="Success"
             value={message.accuracy.successes}
             dice={message.accuracy.dice}
+            chanceDice={message.accuracy.chance}
             accent={tcol.bg}
             foreground={tcol.fg}
           />
@@ -583,6 +586,7 @@ function ResultCircle({
   label,
   value,
   dice,
+  chanceDice,
   highlight,
   accent,
   foreground,
@@ -590,6 +594,7 @@ function ResultCircle({
   label: string;
   value: number;
   dice: number[];
+  chanceDice?: number[];
   highlight?: (die: number) => boolean;
   accent?: string;
   foreground?: string;
@@ -607,7 +612,7 @@ function ResultCircle({
           </span>
         </span>
       </HoverCardTrigger>
-      <DiceHoverContent dice={dice} highlight={highlight} />
+      <DiceHoverContent dice={dice} chanceDice={chanceDice} highlight={highlight} />
     </HoverCard>
   );
 }
@@ -640,13 +645,32 @@ function ResultBadge({
   );
 }
 
-function DiceHoverContent({ dice, highlight }: { dice: number[]; highlight?: (die: number) => boolean }) {
+function DiceHoverContent({
+  dice,
+  chanceDice = [],
+  highlight,
+}: {
+  dice: number[];
+  chanceDice?: number[];
+  highlight?: (die: number) => boolean;
+}) {
   const isHit = highlight ?? ((die: number) => die >= 4);
   return (
     <HoverCardContent side="top" align="center" className="w-auto max-w-[280px] p-2">
-      <span className="mb-1 block border-b pb-0.5 text-[11px] font-semibold text-muted-foreground">
-        Dados rolados:
-      </span>
+      <DiceGroup label={chanceDice.length > 0 ? "Dados normais" : "Dados rolados"} dice={dice} highlight={isHit} />
+      {chanceDice.length > 0 && (
+        <div className="mt-2 border-t pt-2">
+          <DiceGroup label="Chance Dice (somente 6)" dice={chanceDice} highlight={(die) => die === 6} />
+        </div>
+      )}
+    </HoverCardContent>
+  );
+}
+
+function DiceGroup({ label, dice, highlight }: { label: string; dice: number[]; highlight: (die: number) => boolean }) {
+  return (
+    <>
+      <span className="mb-1 block text-[11px] font-semibold text-muted-foreground">{label}:</span>
       {dice.length === 0 ? (
         <span className="text-[11px] italic text-muted-foreground">Nenhum dado.</span>
       ) : (
@@ -656,7 +680,7 @@ function DiceHoverContent({ dice, highlight }: { dice: number[]; highlight?: (di
               key={index}
               className={cn(
                 "inline-flex h-5 min-w-5 items-center justify-center rounded border px-1 text-[10px] font-bold",
-                isHit(die)
+                highlight(die)
                   ? "border-success bg-success text-success-foreground"
                   : die === 1
                     ? "border-destructive/40 bg-destructive/10 text-destructive"
@@ -668,7 +692,7 @@ function DiceHoverContent({ dice, highlight }: { dice: number[]; highlight?: (di
           ))}
         </span>
       )}
-    </HoverCardContent>
+    </>
   );
 }
 

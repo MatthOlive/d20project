@@ -83,7 +83,7 @@ async function applyDamageToTarget(
     queryClient.setQueriesData({ queryKey: ["token-pokemon", target.characterId] }, mergeHp);
     queryClient.setQueryData(["token-pokemon-stats", target.characterId], mergeHp);
     queryClient.setQueryData(["pokemon", target.characterId], mergeHp);
-  } else {
+  } else if (target.characterKind === "trainer") {
     const { data: current, error: readError } = await supabase
       .from("trainers")
       .select("current_hp,attr_points,attr_bonus")
@@ -107,9 +107,25 @@ async function applyDamageToTarget(
     queryClient.setQueriesData({ queryKey: ["token-trainer", target.characterId] }, mergeHp);
     queryClient.setQueryData(["token-trainer-stats", target.characterId], mergeHp);
     queryClient.setQueryData(["trainer", target.characterId], mergeHp);
+  } else {
+    const tableName = target.characterKind === "digirole_tamer" ? "digirole_tamers" : "digirole_digimons";
+    // DigiRole tables are introduced by the local system migration.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const source = supabase.from(tableName as never) as any;
+    const currentResult = await source.select("hp_current").eq("id", target.characterId).single();
+    if (currentResult.error) throw currentResult.error;
+    const currentHp = Math.max(0, Number(currentResult.data?.hp_current ?? 0));
+    const nextHp = Math.max(0, currentHp - amount);
+    const saved = await source.update({ hp_current: nextHp }).eq("id", target.characterId).select("hp_current").maybeSingle();
+    if (saved.error) throw saved.error;
+    if (!saved.data) throw new Error("Você não tem permissão para aplicar dano a esta ficha.");
+    const mergeHp = (old: Record<string, unknown> | undefined) => old ? { ...old, hp_current: nextHp } : old;
+    queryClient.setQueryData([target.characterKind === "digirole_tamer" ? "digirole-tamer" : "digirole-digimon", target.characterId], mergeHp);
+    queryClient.setQueryData(["token-digirole-stats", target.characterKind, target.characterId], mergeHp);
   }
 
   void queryClient.invalidateQueries({ queryKey: ["mrd-target-info", gameId] });
+  void queryClient.invalidateQueries({ queryKey: ["digirole-target-info", gameId] });
 }
 
 export function MoveReactionCoordinator({
@@ -192,15 +208,16 @@ export function MoveReactionCoordinator({
         0,
       );
       void (async () => {
-        const atomicResolution = await finalizeAtomicMove(gameId, source.id);
-        if (!atomicResolution.error) {
+        const isDigiRole = move.system === "digirole";
+        const atomicResolution = isDigiRole ? null : await finalizeAtomicMove(gameId, source.id);
+        if (atomicResolution && !atomicResolution.error) {
           void queryClient.invalidateQueries({ queryKey: ["mrd-target-info", gameId] });
           if (move.attacker?.characterId) {
             void queryClient.invalidateQueries({ queryKey: [move.attacker.characterKind, move.attacker.characterId] });
           }
           return;
         }
-        if (!isAtomicCombatRpcUnavailable(atomicResolution.error)) {
+        if (atomicResolution?.error && !isAtomicCombatRpcUnavailable(atomicResolution.error)) {
           finalizingRef.current.delete(resolutionId);
           toast.error(`As reações terminaram, mas o dano não pôde ser publicado: ${atomicResolution.error.message}`);
           return;
@@ -228,7 +245,7 @@ export function MoveReactionCoordinator({
         if (
           attackerDamage > 0 &&
           attacker?.characterId &&
-          (attacker.characterKind === "pokemon" || attacker.characterKind === "trainer")
+          (attacker.characterKind === "pokemon" || attacker.characterKind === "trainer" || attacker.characterKind === "digirole_tamer" || attacker.characterKind === "digirole_digimon")
         ) {
           try {
             await applyDamageToTarget(queryClient, gameId, {
@@ -286,12 +303,14 @@ export function MoveReactionCoordinator({
         : null;
       response.appliedDamage = Math.max(0, resolvedDamageTarget?.finalDamage ?? 0);
       response.attackerDamage = choice === "clash" && response.succeeded ? 1 : 0;
-      const atomicReaction = await submitAtomicMoveReaction(
-        gameId,
-        pendingReaction.source.id,
-        response as unknown as Record<string, unknown>,
-      );
-      if (atomicReaction.error && isAtomicCombatRpcUnavailable(atomicReaction.error)) {
+      const atomicReaction = move.system === "digirole"
+        ? null
+        : await submitAtomicMoveReaction(
+            gameId,
+            pendingReaction.source.id,
+            response as unknown as Record<string, unknown>,
+          );
+      if (!atomicReaction || (atomicReaction.error && isAtomicCombatRpcUnavailable(atomicReaction.error))) {
         const { error } = await supabase.from("chat_messages").insert({
           game_id: gameId,
           user_id: userId,

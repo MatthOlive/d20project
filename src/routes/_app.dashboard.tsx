@@ -223,7 +223,7 @@ function Dashboard() {
           games.map((g) => {
             const isOwner = g.narrator_id === user?.id;
             const memberCount = g.game_members?.length ?? 0;
-            const systemLabel = RPG_SYSTEMS.find((s) => s.id === (g as { system?: string }).system)?.label ?? "PokÃ©role 2.0";
+            const systemLabel = RPG_SYSTEMS.find((s) => s.id === (g as { system?: string }).system)?.label ?? "PokéRole 2.0";
             const card = (
               <div className="relative">
                 {selectMode && isOwner && (

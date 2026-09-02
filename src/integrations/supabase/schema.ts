@@ -108,6 +108,127 @@ type T20CharacterSpellRow = {
   created_at: string;
 };
 
+type DigiRoleSpeciesRow = {
+  id: string;
+  name: string;
+  stage: string;
+  digi_attribute: string;
+  species_type: string | null;
+  fields: string[];
+  available_fields: string[];
+  hp_base: number;
+  suggested_hp: number | null;
+  stabilization_text: string | null;
+  stabilization_victories: number;
+  base_attrs: Json;
+  signature_technique: string | null;
+  evolution_text: string | null;
+  image_url: string | null;
+  source_page: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type DigiRoleTechniqueRow = {
+  id: string;
+  name: string;
+  origin: string;
+  grade: string;
+  ds_cost: number;
+  field: string;
+  category: string;
+  target: string;
+  accuracy_formula: string;
+  damage_formula: string | null;
+  description: string;
+  source_page: number | null;
+};
+
+type DigiRoleTamerRow = {
+  id: string;
+  game_id: string;
+  owner_id: string;
+  name: string;
+  image_url: string | null;
+  folder: string | null;
+  age: number;
+  rank: string;
+  attrs: Json;
+  skills: Json;
+  notoriety: Json;
+  hp_current: number;
+  ds_current: number;
+  condensed_count: number;
+  conditions: string[];
+  inventory: Json;
+  achievements: Json;
+  notes: string | null;
+  allowed_viewers: string[];
+  allowed_editors: string[];
+  created_at: string;
+  updated_at: string;
+};
+
+type DigiRoleDigimonRow = {
+  id: string;
+  game_id: string;
+  owner_id: string;
+  tamer_id: string | null;
+  species_id: string | null;
+  nickname: string | null;
+  image_url: string | null;
+  folder: string | null;
+  rank: string;
+  attrs: Json;
+  skills: Json;
+  hp_current: number;
+  ds_current: number;
+  bond: number;
+  pe: number;
+  battles: number;
+  victories: number;
+  training_successes: number;
+  stabilized_forms: number;
+  conditions: string[];
+  evolution_state: Json;
+  notes: string | null;
+  allowed_viewers: string[];
+  allowed_editors: string[];
+  last_training_on: string | null;
+  retraining_successes: number;
+  unspent_attr_points: number;
+  unspent_skill_points: number;
+  condensation_bonus: number;
+  created_at: string;
+  updated_at: string;
+};
+
+type DigiRoleDigimonTechniqueRow = {
+  digimon_id: string;
+  technique_id: string;
+  source: string;
+  created_at: string;
+};
+
+type DigiRoleScanDataRow = {
+  tamer_id: string;
+  species_id: string;
+  percentage: number;
+  scanned_subject_ids: string[];
+  updated_at: string;
+};
+
+type DigiRoleFormRow = {
+  digimon_id: string;
+  species_id: string;
+  stabilized: boolean;
+  victories: number;
+  requirements_confirmed: boolean;
+  unlocked_at: string;
+  stabilized_at: string | null;
+  notes: string | null;
+};
+
 type LancerEntityPermissionRow = {
   entity_id: string;
   user_id: string;
@@ -195,6 +316,13 @@ type AdditionalTables = {
       },
     ]
   >;
+  digirole_species: Table<DigiRoleSpeciesRow>;
+  digirole_techniques: Table<DigiRoleTechniqueRow>;
+  digirole_tamers: Table<DigiRoleTamerRow>;
+  digirole_digimons: Table<DigiRoleDigimonRow>;
+  digirole_digimon_techniques: Table<DigiRoleDigimonTechniqueRow>;
+  digirole_scan_data: Table<DigiRoleScanDataRow>;
+  digirole_forms: Table<DigiRoleFormRow>;
   lancer_campaigns: Table<LancerCampaign>;
   lancer_entities: Table<LancerEntity>;
   lancer_entity_permissions: Table<LancerEntityPermissionRow>;
@@ -270,6 +398,13 @@ type AdditionalFunctions = {
     Args: { p_game_id: string; p_source_message_id: string };
     Returns: ChatMessageRow;
   };
+  record_digirole_scan: { Args: UnknownArgs; Returns: Json };
+  condense_digirole: { Args: UnknownArgs; Returns: Json };
+  record_digirole_training: { Args: UnknownArgs; Returns: Json };
+  use_digirole_technique: { Args: UnknownArgs; Returns: Json };
+  unlock_digirole_form: { Args: UnknownArgs; Returns: Json };
+  transform_digirole_form: { Args: UnknownArgs; Returns: Json };
+  record_digirole_form_victory: { Args: UnknownArgs; Returns: Json };
   start_game_engine_session: {
     Args: {
       p_game_id: string;

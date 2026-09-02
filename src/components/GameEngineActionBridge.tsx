@@ -5,6 +5,7 @@ import {
   ENGINE_ACTION_ROLLED_EVENT,
   type EngineActionRolledDetail,
 } from "@/lib/game-engine/action-events";
+import { engineParticipantControllerIds } from "@/lib/game-engine/core";
 import type { EngineSession } from "@/lib/game-engine/types";
 
 function messageOf(error: unknown): string {
@@ -57,11 +58,10 @@ export function GameEngineActionBridge({
       const participant =
         matching.find((entry) => detail.tokenId && entry.tokenId === detail.tokenId) ??
         matching.find((entry) => entry.id === current?.id) ??
-        matching.find((entry) => entry.ownerId === userId) ??
+        matching.find((entry) => engineParticipantControllerIds(entry).includes(userId)) ??
         null;
 
-      // The narrator must not consume actions on tokens assigned to a player.
-      if (!participant || participant.ownerId !== userId) return;
+      if (!participant || !engineParticipantControllerIds(participant).includes(userId)) return;
 
       const command = detail.actionType === "initiative"
         ? {
