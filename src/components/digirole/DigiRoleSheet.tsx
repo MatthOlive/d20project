@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Activity,
   Cloud,
+  Copy,
   Crosshair,
   Dices,
   Heart,
@@ -40,6 +41,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { ImageSourceDialog } from "@/components/ImageSourceDialog";
+import { SheetPermissionsDialog } from "@/components/SheetPermissionsDialog";
 import {
   CHARACTER_POINTER_DROP_EVENT,
   DRAG_MIME,
@@ -113,6 +115,7 @@ type BaseSheet = {
   conditions: string[];
   notes: string | null;
   allowed_editors: string[];
+  allowed_viewers: string[];
   bonuses: DigiRoleNumbers;
   equipment: Record<string, { name?: string; effects?: string; damagePool?: string }>;
 };
@@ -294,35 +297,6 @@ function techniqueIsAvailable(
 
 function genericTechniqueLimit(wisdom: number) {
   return Math.max(0, 2 + Math.trunc(wisdom));
-}
-
-function techniqueGrade(technique: Technique) {
-  const gradeText = technique.grade.trim().toUpperCase();
-  const parsed = ROMAN_GRADE[gradeText] ?? Number.parseInt(gradeText, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-}
-
-function canonicalSignatureTechnique(
-  techniques: Technique[],
-  speciesLinks: Map<string, DigiRoleSpeciesTechniqueLink>,
-  stage: string,
-) {
-  const expectedGrade = MAX_TECHNIQUE_GRADE_BY_STAGE[stage] ?? 1;
-  return [...techniques]
-    .filter((technique) => speciesLinks.get(technique.id)?.is_signature === true)
-    .sort((left, right) => {
-      const leftGrade = techniqueGrade(left);
-      const rightGrade = techniqueGrade(right);
-      const leftScore =
-        (leftGrade !== null ? 10_000 : 0) +
-        (leftGrade === expectedGrade ? 1_000 : 0) +
-        left.description.length;
-      const rightScore =
-        (rightGrade !== null ? 10_000 : 0) +
-        (rightGrade === expectedGrade ? 1_000 : 0) +
-        right.description.length;
-      return rightScore - leftScore || left.id.localeCompare(right.id);
-    })[0];
 }
 
 function table(name: string) {
@@ -963,7 +937,7 @@ function TechniqueSection({
           </Button>
         )}
       </div>
-      <div className="grid max-h-[34rem] gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+      <div className="grid max-h-[34rem] gap-2 overflow-y-auto pr-2 [scrollbar-gutter:stable] sm:grid-cols-2">
         {techniques.map((technique) => {
           const accuracy = digiRoleFormulaPool(technique.accuracy_formula, attrs, skills);
           const damage = technique.damage_formula
@@ -1460,7 +1434,8 @@ function DigiRoleTamerSheet({
   if (query.error)
     return <div className="p-5 text-sm text-destructive">{messageOf(query.error)}</div>;
   const tamer = draft;
-  const canEdit = isNarrator || draft.owner_id === userId;
+  const canEdit =
+    isNarrator || draft.owner_id === userId || (draft.allowed_editors ?? []).includes(userId);
   const combatAttrs = hybridSpecies?.base_attrs ?? draft.attrs;
   const effectiveAttrs = attrsWithBonuses(
     combatAttrs,
@@ -1523,6 +1498,35 @@ function DigiRoleTamerSheet({
     if (result.error) return toast.error(messageOf(result.error));
     void queryClient.invalidateQueries({ queryKey: ["digirole-files", gameId] });
     onDeleted();
+  }
+  async function duplicate() {
+    const result = await table("digirole_tamers").select("*").eq("id", id).single();
+    if (result.error || !result.data) {
+      toast.error(messageOf(result.error ?? "Falha ao duplicar a ficha."));
+      return;
+    }
+    const {
+      id: _id,
+      created_at: _createdAt,
+      updated_at: _updatedAt,
+      ...source
+    } = result.data as Record<string, unknown>;
+    void _id;
+    void _createdAt;
+    void _updatedAt;
+    const inserted = await table("digirole_tamers").insert({
+      ...source,
+      owner_id: userId,
+      name: `${(result.data as unknown as { name?: string }).name || "Tamer"} (cópia)`,
+      allowed_editors: [],
+      allowed_viewers: [],
+    });
+    if (inserted.error) {
+      toast.error(messageOf(inserted.error));
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["digirole-files", gameId] });
+    toast.success("Ficha de Tamer duplicada.");
   }
   function addShopItem(item: { name: string; description: string; price: number }) {
     if ((draft?.bits ?? 0) < item.price) {
@@ -1847,12 +1851,32 @@ function DigiRoleTamerSheet({
                         value={draft.name}
                         readOnly={!canEdit}
                         onChange={(event) => void patch({ name: event.target.value })}
-                        className="h-9 text-base font-bold"
+                        className="h-9 min-w-0 flex-1 text-base font-bold"
                       />
+                      {isNarrator && (
+                        <SheetPermissionsDialog
+                          kind="digirole_tamer"
+                          entityId={id}
+                          gameId={gameId}
+                          isNarrator={isNarrator}
+                        />
+                      )}
                       {canEdit && (
                         <Button
                           size="icon"
                           variant="ghost"
+                          className="shrink-0"
+                          title="Duplicar ficha"
+                          onClick={() => void duplicate()}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canEdit && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="shrink-0"
                           title="Excluir ficha"
                           onClick={() => void remove()}
                         >
@@ -2371,7 +2395,8 @@ function DigiRoleDigimonSheet({
     return <div className="p-5 text-sm text-muted-foreground">Carregando Digimon...</div>;
   if (query.error)
     return <div className="p-5 text-sm text-destructive">{messageOf(query.error)}</div>;
-  const canEdit = isNarrator || draft.owner_id === userId;
+  const canEdit =
+    isNarrator || draft.owner_id === userId || (draft.allowed_editors ?? []).includes(userId);
   const species = draft.species;
   const name = draft.nickname || species?.name || "Digimon";
   const sheetColor = digiRoleSheetColor(species?.fields, species?.digi_attribute);
@@ -2410,20 +2435,7 @@ function DigiRoleDigimonSheet({
     (speciesTechniqueQuery.data ?? []).map((link) => [link.technique_id, link]),
   );
   const signatureTechniqueIds = new Set(signatureTechniquesQuery.data ?? []);
-  const canonicalSignature = canonicalSignatureTechnique(
-    techniqueQuery.data ?? [],
-    speciesTechniqueLinks,
-    species?.stage ?? draft.rank,
-  );
-  const displayedTechniques = dedupeDigiRoleTechniques(
-    (techniqueQuery.data ?? []).filter(
-      (technique) =>
-        technique.learnedSource !== "signature" ||
-        speciesTechniqueQuery.isLoading ||
-        !canonicalSignature ||
-        technique.id === canonicalSignature.id,
-    ),
-  );
+  const displayedTechniques = dedupeDigiRoleTechniques(techniqueQuery.data ?? []);
   const genericLimit = genericTechniqueLimit(effectiveAttrs.wisdom ?? 0);
   const genericTechniqueCount = displayedTechniques.filter(
     (technique) => technique.learnedSource !== "signature",
@@ -2522,8 +2534,9 @@ function DigiRoleDigimonSheet({
       const allowed = ((catalogResult.data ?? []) as Technique[]).filter((technique) =>
         techniqueIsAvailable(technique, species, draft.rank, linkMap, signatureSet),
       );
-      const canonicalSignature = canonicalSignatureTechnique(allowed, linkMap, species.stage);
-      const signatures = canonicalSignature ? [canonicalSignature] : [];
+      const signatures = allowed.filter(
+        (technique) => linkMap.get(technique.id)?.is_signature === true,
+      );
       const signatureChosen = new Set(signatures.map((technique) => technique.id));
       const generic = shuffled(
         allowed.filter(
@@ -2584,6 +2597,83 @@ function DigiRoleDigimonSheet({
     if (result.error) return toast.error(messageOf(result.error));
     void queryClient.invalidateQueries({ queryKey: ["digirole-files", gameId] });
     onDeleted();
+  }
+  async function duplicate() {
+    const [sheetResult, techniquesResult, formsResult] = await Promise.all([
+      table("digirole_digimons").select("*").eq("id", id).single(),
+      table("digirole_digimon_techniques")
+        .select("technique_id,source,created_at")
+        .eq("digimon_id", id),
+      table("digirole_forms").select("*").eq("digimon_id", id),
+    ]);
+    if (sheetResult.error || !sheetResult.data) {
+      toast.error(messageOf(sheetResult.error ?? "Falha ao duplicar a ficha."));
+      return;
+    }
+    if (techniquesResult.error || formsResult.error) {
+      toast.error(messageOf(techniquesResult.error || formsResult.error));
+      return;
+    }
+
+    const {
+      id: _id,
+      created_at: _createdAt,
+      updated_at: _updatedAt,
+      ...source
+    } = sheetResult.data as Record<string, unknown>;
+    void _id;
+    void _createdAt;
+    void _updatedAt;
+    const inserted = await table("digirole_digimons")
+      .insert({
+        ...source,
+        owner_id: userId,
+        nickname: `${name} (cópia)`,
+        tamer_id: null,
+        team_slot: null,
+        allowed_editors: [],
+        allowed_viewers: [],
+      })
+      .select("id")
+      .single();
+    if (inserted.error || !inserted.data) {
+      toast.error(messageOf(inserted.error ?? "Falha ao duplicar a ficha."));
+      return;
+    }
+
+    const copyId = (inserted.data as unknown as { id: string }).id;
+    try {
+      const techniques = (techniquesResult.data ?? []) as unknown as Array<{
+        technique_id: string;
+        source: string;
+        created_at: string;
+      }>;
+      const forms = (formsResult.data ?? []) as unknown as Array<Record<string, unknown>>;
+      if (techniques.length > 0) {
+        const copiedTechniques = await table("digirole_digimon_techniques").upsert(
+          techniques.map((technique) => ({ ...technique, digimon_id: copyId })),
+          { onConflict: "digimon_id,technique_id" },
+        );
+        if (copiedTechniques.error) throw copiedTechniques.error;
+      }
+      if (forms.length > 0) {
+        const copiedForms = await table("digirole_forms").upsert(
+          forms.map(({ digimon_id: _digimonId, ...form }) => ({ ...form, digimon_id: copyId })),
+          { onConflict: "digimon_id,species_id" },
+        );
+        if (copiedForms.error) throw copiedForms.error;
+      }
+    } catch (error) {
+      await table("digirole_digimons").delete().eq("id", copyId);
+      toast.error(messageOf(error));
+      return;
+    }
+
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["digirole-files", gameId] }),
+      queryClient.invalidateQueries({ queryKey: ["digirole-roster"] }),
+    ]);
+    toast.success("Ficha de Digimon duplicada.");
   }
   async function roll(
     label: string,
@@ -2730,13 +2820,32 @@ function DigiRoleDigimonSheet({
                 placeholder={species?.name || "Nome do Digimon"}
                 readOnly={!canEdit}
                 onChange={(event) => void patch({ nickname: event.target.value || null })}
-                className="h-9 text-base font-bold"
+                className="h-9 min-w-0 flex-1 text-base font-bold"
               />
+              {isNarrator && (
+                <SheetPermissionsDialog
+                  kind="digirole_digimon"
+                  entityId={id}
+                  gameId={gameId}
+                  isNarrator={isNarrator}
+                />
+              )}
               {canEdit && (
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="h-9 w-9"
+                  className="h-9 w-9 shrink-0"
+                  title="Duplicar ficha"
+                  onClick={() => void duplicate()}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              )}
+              {canEdit && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-9 w-9 shrink-0"
                   title="Excluir ficha"
                   onClick={() => void remove()}
                 >
@@ -2891,7 +3000,7 @@ function DigiRoleDigimonSheet({
             </Button>
           )}
         </div>
-        <div className="grid max-h-[38rem] gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+        <div className="grid max-h-[38rem] gap-2 overflow-y-auto pr-2 [scrollbar-gutter:stable] sm:grid-cols-2">
           {displayedTechniques.map((technique: Technique) => {
             const accuracy = digiRoleFormulaPool(
               technique.accuracy_formula,
@@ -3044,7 +3153,7 @@ function DigiRoleDigimonSheet({
       </section>
 
       <Dialog open={catalogOpen} onOpenChange={setCatalogOpen}>
-        <DialogContent className="max-h-[85vh] max-w-2xl overflow-hidden">
+        <DialogContent className="grid h-[min(85vh,46rem)] max-w-2xl grid-rows-[auto_auto_minmax(0,1fr)_auto] overflow-hidden">
           <DialogHeader>
             <DialogTitle>Adicionar técnica</DialogTitle>
           </DialogHeader>
@@ -3054,7 +3163,7 @@ function DigiRoleDigimonSheet({
             placeholder="Procurar técnicas..."
             autoFocus
           />
-          <div className="min-h-0 space-y-1 overflow-y-auto">
+          <div className="min-h-0 space-y-1 overflow-y-scroll pr-2 [scrollbar-gutter:stable]">
             {!techniqueCatalogReady && (
               <p className="py-4 text-center text-xs text-muted-foreground">
                 Conferindo graus e assinaturas...

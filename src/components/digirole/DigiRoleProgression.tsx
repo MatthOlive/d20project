@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchDigiApiImage } from "@/lib/digi-api";
-import { fetchDigiRoleSignatureTechniqueId } from "@/lib/digirole-techniques";
+import { syncDigiRoleSignatureTechniques } from "@/lib/digirole-techniques";
 import {
   DIGIROLE_SKILL_GROUPS,
   DIGIROLE_TRAINING_REQUIRED,
@@ -566,6 +566,19 @@ function gradeNumber(value: string) {
   );
 }
 
+const EVOLUTION_REQUIREMENTS_BY_STAGE: Record<string, number> = {
+  "In-Training II": 2,
+  Rookie: 3,
+  Champion: 4,
+  Ultimate: 5,
+  Mega: 9,
+};
+
+function requiredEvolutionRequirements(stage: string, available: number) {
+  const required = EVOLUTION_REQUIREMENTS_BY_STAGE[stage];
+  return Math.min(required ?? available, available);
+}
+
 function evaluateEvolutionRequirement(
   text: string,
   target: SpeciesSummary,
@@ -647,18 +660,28 @@ function evaluateEvolutionRequirement(
     });
   }
 
-  const thresholdMatch = normalized.match(/CUMPRA\s*(\d+)\s*(?:\/|1)\s*(\d+)/);
-  const required = thresholdMatch
-    ? Math.min(Number(thresholdMatch[1]), requirements.length)
-    : requirements.length;
-  const metRequirements = requirements.filter((check) => check.met).length;
+  const required = requiredEvolutionRequirements(target.stage, requirements.length);
+  const [principal, ...secondary] = requirements;
+  const requiredSecondary = Math.max(0, required - (principal ? 1 : 0));
+  const metSecondary = secondary.filter((check) => check.met).length;
   const routeMet =
     requirements.length === 0
       ? !/MISSAO|ITEM.CHAVE|CONDICAO NARRATIVA|TRANSFORMACAO ESPECIAL/.test(normalized)
-      : metRequirements >= required;
+      : Boolean(principal?.met) && metSecondary >= requiredSecondary;
+  const checks = [
+    rankCheck,
+    peCheck,
+    ...(principal
+      ? [{ ...principal, label: `Principal: ${principal.label}` }]
+      : []),
+    ...secondary.map((check, index) => ({
+      ...check,
+      label: `${check.label} · secundário ${index + 1}/8`,
+    })),
+  ];
   return {
     cost,
-    checks: [rankCheck, peCheck, ...requirements],
+    checks,
     met: rankCheck.met && peCheck.met && routeMet,
   };
 }
@@ -929,26 +952,13 @@ export function DigiRoleEvolutionPanel({
         .update(transformedValues)
         .eq("id", digimonId);
       if (updated.error) throw updated.error;
-      const cleared = await table("digirole_digimon_techniques")
-        .delete()
-        .eq("digimon_id", digimonId)
-        .eq("source", "signature");
-      if (cleared.error) throw cleared.error;
       const signature = targetResult.data?.signature_technique as string | null | undefined;
-      if (signature) {
-        const techniqueId = await fetchDigiRoleSignatureTechniqueId({
-          speciesId: targetResult.data.id as string,
-          signatureName: signature,
-          speciesName: targetResult.data.name as string,
-        });
-        if (techniqueId) {
-          const learned = await table("digirole_digimon_techniques").upsert(
-            { digimon_id: digimonId, technique_id: techniqueId, source: "signature" },
-            { onConflict: "digimon_id,technique_id" },
-          );
-          if (learned.error) throw learned.error;
-        }
-      }
+      await syncDigiRoleSignatureTechniques({
+        digimonId,
+        speciesId: targetResult.data.id as string,
+        signatureName: signature ?? null,
+        speciesName: targetResult.data.name as string,
+      });
       const data = result.data as {
         digimonDsCost?: number;
         tamerDsCost?: number;

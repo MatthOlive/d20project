@@ -58,7 +58,7 @@ for row in forms:
         "source_name": name,
         "name": canonical_name(name, stage),
         "stage": stage,
-        "fields": [part.strip() for part in text(row[10]).split(",") if part.strip()],
+        "available_fields": [part.strip() for part in text(row[10]).split(",") if part.strip()],
         "hp_base": int(row[8] or 3),
         "suggested_hp": int(row[9] or 0) or None,
         "stabilization_victories": int(row[13] or 0),
@@ -126,7 +126,7 @@ for row in sheet_rows["Técnicas RPG"]:
 
 # Flavor-only differences do not create duplicate signature techniques.
 mechanical = {}
-species_technique_keys = defaultdict(set)
+species_technique_keys = defaultdict(list)
 for technique in technique_candidates:
     mechanical_key = "|".join(
         key(technique[field])
@@ -137,7 +137,8 @@ for technique in technique_candidates:
     current = mechanical.get(mechanical_key)
     if not current or len(technique["description"]) > len(current["description"]):
         mechanical[mechanical_key] = technique
-    species_technique_keys[technique["species"]].add(mechanical_key)
+    if mechanical_key not in species_technique_keys[technique["species"]]:
+        species_technique_keys[technique["species"]].append(mechanical_key)
 
 variant_counts = Counter((key(value["name"]), value["grade"]) for value in mechanical.values())
 techniques = []
@@ -171,12 +172,18 @@ for mechanical_key, technique in mechanical.items():
 species = []
 links = []
 for item in species_by_identity.values():
-    technique_keys = sorted(species_technique_keys[item["name"]])
+    technique_keys = species_technique_keys[item["name"]]
     signature_names = [technique_identity[value][0] for value in technique_keys]
+    signature_fields = []
+    for mechanical_key in technique_keys:
+        field = mechanical[mechanical_key]["field"]
+        if field and field not in signature_fields:
+            signature_fields.append(field)
+    primary_fields = signature_fields[:2] or item["available_fields"][:1] or ["Neutra"]
     species.append(
         {
             **item,
-            "available_fields": item["fields"],
+            "fields": primary_fields,
             "signature_technique": signature_names[0] if signature_names else None,
             "evolution_text": " ; ".join(routes_by_source[item["name"]]),
         }

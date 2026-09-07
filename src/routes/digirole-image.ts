@@ -3,6 +3,8 @@ import type {} from "@tanstack/react-start";
 import sharp from "sharp";
 
 const ALLOWED_IMAGE_HOSTS = new Set([
+  "digimon.net",
+  "www.digimon.net",
   "digi-api.com",
   "www.digi-api.com",
   "digimon.shadowsmith.com",
@@ -93,7 +95,11 @@ export const Route = createFileRoute("/digirole-image")({
           }
 
           const upstream = await fetch(sourceUrl, {
-            headers: { Accept: "image/png,image/jpeg,image/webp,image/*" },
+            headers: {
+              Accept: "image/png,image/jpeg,image/webp,image/*",
+              Referer: "https://digimon.net/",
+              "User-Agent": "D20Project/1.0",
+            },
             signal: AbortSignal.timeout(10_000),
           });
           if (!upstream.ok) return Response.redirect(sourceUrl.href, 307);

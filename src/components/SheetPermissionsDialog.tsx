@@ -4,15 +4,36 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Settings } from "lucide-react";
 import { toast } from "sonner";
 
-type Kind = "pokemon" | "trainer";
+type Kind = "pokemon" | "trainer" | "digirole_tamer" | "digirole_digimon";
+
+function tableForKind(kind: Kind) {
+  if (kind === "pokemon") return "pokemon";
+  if (kind === "trainer") return "trainers";
+  if (kind === "digirole_tamer") return "digirole_tamers";
+  return "digirole_digimons";
+}
+
+function sheetQueryKey(kind: Kind, entityId: string) {
+  if (kind === "digirole_tamer") return ["digirole-tamer", entityId];
+  if (kind === "digirole_digimon") return ["digirole-digimon", entityId];
+  return [tableForKind(kind), entityId];
+}
 
 export function SheetPermissionsDialog({
-  kind, entityId, gameId, isNarrator,
+  kind,
+  entityId,
+  gameId,
+  isNarrator,
 }: {
   kind: Kind;
   entityId: string;
@@ -21,14 +42,15 @@ export function SheetPermissionsDialog({
 }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
-  const table = kind === "pokemon" ? "pokemon" : "trainers";
+  const table = tableForKind(kind);
+  const isDigiRole = kind.startsWith("digirole_");
 
   const { data: row } = useQuery({
     queryKey: [table, entityId, "perms"],
     enabled: open,
     queryFn: async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const q: any = kind === "pokemon" ? supabase.from("pokemon") : supabase.from("trainers");
+      const q: any = supabase.from(table as never);
       const { data, error } = await q
         .select("owner_id, allowed_editors, allowed_viewers")
         .eq("id", entityId)
@@ -77,34 +99,46 @@ export function SheetPermissionsDialog({
 
   async function save() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const q: any = kind === "pokemon" ? supabase.from("pokemon") : supabase.from("trainers");
+    const q: any = supabase.from(table as never);
     const { error } = await q
       .update({ allowed_editors: editors, allowed_viewers: viewers })
       .eq("id", entityId);
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success("Permissões salvas");
-    qc.invalidateQueries({ queryKey: [table, entityId] });
+    qc.invalidateQueries({ queryKey: sheetQueryKey(kind, entityId) });
     qc.invalidateQueries({ queryKey: [table, entityId, "perms"] });
+    if (isDigiRole) qc.invalidateQueries({ queryKey: ["digirole-files", gameId] });
     setOpen(false);
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="icon" variant="ghost" className="h-8 w-8" title="Permissões da ficha">
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8 shrink-0"
+          title="Permissões da ficha"
+        >
           <Settings className="h-4 w-4" />
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogHeader><DialogTitle>Permissões da ficha</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Permissões da ficha</DialogTitle>
+        </DialogHeader>
         {!isNarrator && (
           <p className="text-xs text-muted-foreground">
             Apenas o mestre pode editar essas configurações.
           </p>
         )}
         <p className="text-xs text-muted-foreground">
-          Dono e mestre sempre têm acesso. Se nenhum visualizador for selecionado, todos os
-          membros da mesa podem ver. Editores adicionais podem alterar a ficha.
+          {isDigiRole
+            ? "Dono e mestre sempre têm acesso. Marque abaixo os jogadores que também podem ver ou editar a ficha."
+            : "Dono e mestre sempre têm acesso. Se nenhum visualizador for selecionado, todos os membros da mesa podem ver. Editores adicionais podem alterar a ficha."}
         </p>
         <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2 text-sm">
           <div className="text-[10px] font-bold uppercase text-muted-foreground">Membro</div>
@@ -117,7 +151,9 @@ export function SheetPermissionsDialog({
               <div key={m.user_id} className="contents">
                 <div className="truncate">
                   {m.name}
-                  {isOwner && <span className="ml-1 text-[10px] text-muted-foreground">(dono)</span>}
+                  {isOwner && (
+                    <span className="ml-1 text-[10px] text-muted-foreground">(dono)</span>
+                  )}
                   {isNar && <span className="ml-1 text-[10px] text-amber-500">(mestre)</span>}
                 </div>
                 <Checkbox
@@ -135,7 +171,9 @@ export function SheetPermissionsDialog({
           })}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>Fechar</Button>
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            Fechar
+          </Button>
           {isNarrator && <Button onClick={save}>Salvar</Button>}
         </DialogFooter>
       </DialogContent>

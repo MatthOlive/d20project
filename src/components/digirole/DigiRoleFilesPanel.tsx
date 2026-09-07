@@ -50,7 +50,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { CharacterDragPreview, useCharacterPointerDrag } from "@/hooks/use-character-pointer-drag";
 import { fetchDigiApiImage } from "@/lib/digi-api";
-import { fetchDigiRoleSignatureTechniqueId } from "@/lib/digirole-techniques";
+import { syncDigiRoleSignatureTechniques } from "@/lib/digirole-techniques";
 import {
   DIGIROLE_STAGES,
   defaultDigiRoleAttrs,
@@ -73,6 +73,8 @@ type TamerRow = {
   image_url: string | null;
   rank: string;
   folder: string | null;
+  allowed_editors: string[];
+  allowed_viewers: string[];
 };
 
 type SpeciesRow = {
@@ -95,6 +97,8 @@ type DigimonRow = {
   rank: string;
   image_hidden: boolean;
   folder: string | null;
+  allowed_editors: string[];
+  allowed_viewers: string[];
   species: SpeciesRow | null;
 };
 
@@ -175,12 +179,12 @@ export function DigiRoleFilesPanel({
     queryFn: async () => {
       const [tamers, digimons] = await Promise.all([
         table("digirole_tamers")
-          .select("id,name,owner_id,image_url,rank,folder")
+          .select("id,name,owner_id,image_url,rank,folder,allowed_editors,allowed_viewers")
           .eq("game_id", gameId)
           .order("created_at"),
         table("digirole_digimons")
           .select(
-            "id,nickname,owner_id,image_url,image_hidden,rank,folder,species:species_id(id,name,stage,digi_attribute,fields,hp_base,base_attrs,signature_technique,image_url)",
+            "id,nickname,owner_id,image_url,image_hidden,rank,folder,allowed_editors,allowed_viewers,species:species_id(id,name,stage,digi_attribute,fields,hp_base,base_attrs,signature_technique,image_url)",
           )
           .eq("game_id", gameId)
           .order("created_at"),
@@ -189,10 +193,18 @@ export function DigiRoleFilesPanel({
       if (digimons.error) throw digimons.error;
       return {
         tamers: ((tamers.data ?? []) as unknown as TamerRow[]).filter(
-          (row) => isNarrator || row.owner_id === userId,
+          (row) =>
+            isNarrator ||
+            row.owner_id === userId ||
+            row.allowed_viewers?.includes(userId) ||
+            row.allowed_editors?.includes(userId),
         ),
         digimons: ((digimons.data ?? []) as unknown as DigimonRow[]).filter(
-          (row) => isNarrator || row.owner_id === userId,
+          (row) =>
+            isNarrator ||
+            row.owner_id === userId ||
+            row.allowed_viewers?.includes(userId) ||
+            row.allowed_editors?.includes(userId),
         ),
       };
     },
@@ -425,20 +437,12 @@ export function DigiRoleFilesPanel({
         .single();
       if (result.error) throw result.error;
       const digimon = result.data as unknown as { id: string; nickname: string | null };
-      if (selectedSpecies.signature_technique) {
-        const techniqueId = await fetchDigiRoleSignatureTechniqueId({
-          speciesId: selectedSpecies.id,
-          signatureName: selectedSpecies.signature_technique,
-          speciesName: selectedSpecies.name,
-        });
-        if (techniqueId) {
-          await table("digirole_digimon_techniques").insert({
-            digimon_id: digimon.id,
-            technique_id: techniqueId,
-            source: "signature",
-          });
-        }
-      }
+      await syncDigiRoleSignatureTechniques({
+        digimonId: digimon.id,
+        speciesId: selectedSpecies.id,
+        signatureName: selectedSpecies.signature_technique,
+        speciesName: selectedSpecies.name,
+      });
       return digimon;
     },
     onSuccess: (digimon) => {

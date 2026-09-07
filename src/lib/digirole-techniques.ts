@@ -121,6 +121,13 @@ export async function fetchDigiRoleSignatureTechniqueIds(): Promise<string[]> {
   ];
 }
 
+export async function fetchDigiRoleSpeciesSignatureTechniqueIds(
+  speciesId: string,
+): Promise<string[]> {
+  const links = await fetchDigiRoleSpeciesTechniqueLinks(speciesId);
+  return [...new Set(links.filter((link) => link.is_signature).map((link) => link.technique_id))];
+}
+
 export async function fetchDigiRoleSignatureTechniqueId({
   speciesId,
   signatureName,
@@ -130,14 +137,8 @@ export async function fetchDigiRoleSignatureTechniqueId({
   signatureName: string | null;
   speciesName: string;
 }): Promise<string | null> {
-  const linked = await table("digirole_species_techniques")
-    .select("technique_id")
-    .eq("species_id", speciesId)
-    .eq("is_signature", true)
-    .limit(1)
-    .maybeSingle();
-  if (!linked.error && linked.data?.technique_id) return linked.data.technique_id as string;
-  if (linked.error && !missingSpeciesTechniqueTable(linked.error)) throw linked.error;
+  const linkedIds = await fetchDigiRoleSpeciesSignatureTechniqueIds(speciesId);
+  if (linkedIds.length > 0) return linkedIds[0];
   if (!signatureName) return null;
 
   const fallback = await table("digirole_techniques")
@@ -156,6 +157,47 @@ export async function fetchDigiRoleSignatureTechniqueId({
       technique.origin.toLocaleLowerCase("pt-BR") === speciesName.toLocaleLowerCase("pt-BR"),
   );
   return exactOrigin?.id ?? candidates[0]?.id ?? null;
+}
+
+export async function syncDigiRoleSignatureTechniques({
+  digimonId,
+  speciesId,
+  signatureName,
+  speciesName,
+}: {
+  digimonId: string;
+  speciesId: string;
+  signatureName: string | null;
+  speciesName: string;
+}): Promise<string[]> {
+  let techniqueIds = await fetchDigiRoleSpeciesSignatureTechniqueIds(speciesId);
+  if (techniqueIds.length === 0) {
+    const fallbackId = await fetchDigiRoleSignatureTechniqueId({
+      speciesId,
+      signatureName,
+      speciesName,
+    });
+    if (fallbackId) techniqueIds = [fallbackId];
+  }
+
+  const cleared = await table("digirole_digimon_techniques")
+    .delete()
+    .eq("digimon_id", digimonId)
+    .eq("source", "signature");
+  if (cleared.error) throw cleared.error;
+
+  if (techniqueIds.length > 0) {
+    const inserted = await table("digirole_digimon_techniques").upsert(
+      techniqueIds.map((techniqueId) => ({
+        digimon_id: digimonId,
+        technique_id: techniqueId,
+        source: "signature",
+      })),
+      { onConflict: "digimon_id,technique_id" },
+    );
+    if (inserted.error) throw inserted.error;
+  }
+  return techniqueIds;
 }
 
 export async function fetchDigiRoleSpeciesTechniques({
