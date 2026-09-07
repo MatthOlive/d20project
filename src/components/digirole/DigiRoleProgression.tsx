@@ -739,13 +739,17 @@ export function DigiRoleEvolutionPanel({
     queryKey: ["digirole-evolution-catalog"],
     enabled: open,
     queryFn: async (): Promise<SpeciesSummary[]> => {
-      const builder = table("digirole_species")
-        .select("id,name,stage,image_url,evolution_text")
-        .order("name")
-        .limit(600);
-      const result = await builder;
-      if (result.error) throw result.error;
-      return (result.data ?? []) as SpeciesSummary[];
+      const pages = await Promise.all(
+        [0, 1000].map((from) =>
+          table("digirole_species")
+            .select("id,name,stage,image_url,evolution_text")
+            .order("name")
+            .range(from, from + 999),
+        ),
+      );
+      const error = pages.find((page) => page.error)?.error;
+      if (error) throw error;
+      return pages.flatMap((page) => page.data ?? []) as SpeciesSummary[];
     },
   });
   const techniquesQuery = useQuery({

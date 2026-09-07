@@ -229,13 +229,19 @@ export function DigiRoleFilesPanel({
   const speciesQuery = useQuery({
     queryKey: ["digirole-species-list"],
     queryFn: async () => {
-      const result = await table("digirole_species")
-        .select(
-          "id,name,stage,digi_attribute,fields,hp_base,base_attrs,signature_technique,image_url",
-        )
-        .limit(1000);
-      if (result.error) throw result.error;
-      return (result.data ?? []) as unknown as SpeciesRow[];
+      const pages = await Promise.all(
+        [0, 1000].map((from) =>
+          table("digirole_species")
+            .select(
+              "id,name,stage,digi_attribute,fields,hp_base,base_attrs,signature_technique,image_url",
+            )
+            .order("name")
+            .range(from, from + 999),
+        ),
+      );
+      const error = pages.find((page) => page.error)?.error;
+      if (error) throw error;
+      return pages.flatMap((page) => page.data ?? []) as unknown as SpeciesRow[];
     },
     enabled: digimonOpen,
     staleTime: Number.POSITIVE_INFINITY,
