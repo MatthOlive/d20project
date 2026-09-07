@@ -13,27 +13,38 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ImageSourceDialog } from "@/components/ImageSourceDialog";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { useGameSpdefUsesInsight } from "@/hooks/use-game-spdef-uses-insight";
 import { saveGameSpriteStyle, useGameSpriteStyle } from "@/hooks/use-game-sprite-style";
-import {
-  gameRuntimeSettingsKey,
-  useGameRuntimeSettings,
-} from "@/hooks/use-game-runtime-settings";
+import { gameRuntimeSettingsKey, useGameRuntimeSettings } from "@/hooks/use-game-runtime-settings";
 
 import { FloatingWindow } from "@/components/FloatingWindow";
 import { OnlinePresence } from "@/components/OnlinePresence";
 import { PanelErrorBoundary } from "@/components/PanelErrorBoundary";
 
 import { TRAINER_SHEET_POINTER_DROP_EVENT } from "@/lib/sheet-events";
-import { MapBoard, DRAG_MIME, CHARACTER_POINTER_DROP_EVENT, type DragCharacterPayload } from "@/components/MapBoard";
+import {
+  MapBoard,
+  DRAG_MIME,
+  CHARACTER_POINTER_DROP_EVENT,
+  type DragCharacterPayload,
+} from "@/components/MapBoard";
 import { MacroBar } from "@/components/MacroBar";
 import { MusicPlayer } from "@/components/MusicPlayer";
 import { GameEngineActionBridge } from "@/components/GameEngineActionBridge";
@@ -46,25 +57,91 @@ import { engineParticipantControllerIds } from "@/lib/game-engine/core";
 import type { EngineParticipant, EngineSession } from "@/lib/game-engine/types";
 import { TrainerAppearanceImage } from "@/components/TrainerAppearance";
 import { toast } from "sonner";
-import { ArrowLeft, Copy, Sparkles, User, FolderPlus, Folder, FolderOpen, Image as ImageIcon, Plus, Trash2, ChevronDown, ChevronUp, ChevronRight, Dices, MessageSquare, Map as MapIcon, Cpu, Layers3, Music2 } from "lucide-react";
-import { rollD6, rollShiny, preferredPokemonSprite, POKEMON_ATTRS, SOCIAL_ATTRS, POKEMON_TYPES, RANKS, RANK_LABELS, TYPE_COLORS, type PokemonType, type Rank } from "@/lib/pokerole";
+import {
+  ArrowLeft,
+  Copy,
+  Sparkles,
+  User,
+  FolderPlus,
+  Folder,
+  FolderOpen,
+  Image as ImageIcon,
+  Plus,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+  ChevronRight,
+  Dices,
+  MessageSquare,
+  Map as MapIcon,
+  Cpu,
+  Layers3,
+  Music2,
+} from "lucide-react";
+import {
+  rollD6,
+  rollShiny,
+  preferredPokemonSprite,
+  POKEMON_ATTRS,
+  SOCIAL_ATTRS,
+  POKEMON_TYPES,
+  RANKS,
+  RANK_LABELS,
+  TYPE_COLORS,
+  type PokemonType,
+  type Rank,
+} from "@/lib/pokerole";
 import type { PokemonSpriteStyle } from "@/lib/pokerole";
-import { T20_MECHANICS, T20_MECHANICS_CATEGORY_ORDER, defaultT20Attributes, defaultT20Skills, rollD20 } from "@/lib/tormenta20";
+import {
+  T20_MECHANICS,
+  T20_MECHANICS_CATEGORY_ORDER,
+  defaultT20Attributes,
+  defaultT20Skills,
+  rollD20,
+} from "@/lib/tormenta20";
 import { rollDigiRole } from "@/lib/digirole";
 import { rollPokemonAutofill } from "@/lib/pokemon-autofill";
 import { applyPaldeaHisuiSpeciesBalance } from "@/lib/paldea-hisui-balance";
 import { REACTION_DECK } from "@/lib/contest";
 
-const PokemonSheet = lazy(() => import("@/components/PokemonSheet").then((module) => ({ default: module.PokemonSheet })));
-const SheetTabs = lazy(() => import("@/components/SheetTabs").then((module) => ({ default: module.SheetTabs })));
-const T20CharacterSheet = lazy(() => import("@/components/T20CharacterSheet").then((module) => ({ default: module.T20CharacterSheet })));
-const DigiRoleSheet = lazy(() => import("@/components/digirole/DigiRoleSheet").then((module) => ({ default: module.DigiRoleSheet })));
-const DigiRoleFilesPanel = lazy(() => import("@/components/digirole/DigiRoleFilesPanel").then((module) => ({ default: module.DigiRoleFilesPanel })));
-const GameEnginePanel = lazy(() => import("@/components/GameEnginePanel").then((module) => ({ default: module.GameEnginePanel })));
-const LancerCampaignWorkspace = lazy(() => import("@/components/lancer/LancerCampaignWorkspace").then((module) => ({ default: module.LancerCampaignWorkspace })));
-const ChatPanel = lazy(() => import("@/components/ChatPanel").then((module) => ({ default: module.ChatPanel })));
-const DeckPanel = lazy(() => import("@/components/DeckPanel").then((module) => ({ default: module.DeckPanel })));
-const MusicPanel = lazy(() => import("@/components/MusicPanel").then((module) => ({ default: module.MusicPanel })));
+const PokemonSheet = lazy(() =>
+  import("@/components/PokemonSheet").then((module) => ({ default: module.PokemonSheet })),
+);
+const SheetTabs = lazy(() =>
+  import("@/components/SheetTabs").then((module) => ({ default: module.SheetTabs })),
+);
+const T20CharacterSheet = lazy(() =>
+  import("@/components/T20CharacterSheet").then((module) => ({
+    default: module.T20CharacterSheet,
+  })),
+);
+const DigiRoleSheet = lazy(() =>
+  import("@/components/digirole/DigiRoleSheet").then((module) => ({
+    default: module.DigiRoleSheet,
+  })),
+);
+const DigiRoleFilesPanel = lazy(() =>
+  import("@/components/digirole/DigiRoleFilesPanel").then((module) => ({
+    default: module.DigiRoleFilesPanel,
+  })),
+);
+const GameEnginePanel = lazy(() =>
+  import("@/components/GameEnginePanel").then((module) => ({ default: module.GameEnginePanel })),
+);
+const LancerCampaignWorkspace = lazy(() =>
+  import("@/components/lancer/LancerCampaignWorkspace").then((module) => ({
+    default: module.LancerCampaignWorkspace,
+  })),
+);
+const ChatPanel = lazy(() =>
+  import("@/components/ChatPanel").then((module) => ({ default: module.ChatPanel })),
+);
+const DeckPanel = lazy(() =>
+  import("@/components/DeckPanel").then((module) => ({ default: module.DeckPanel })),
+);
+const MusicPanel = lazy(() =>
+  import("@/components/MusicPanel").then((module) => ({ default: module.MusicPanel })),
+);
 
 const BIOME_LABELS: Record<string, string> = {
   cave: "Caverna",
@@ -194,7 +271,9 @@ function parseInlineDiceExpression(expression: string) {
 async function fetchGameRoom(gameId: string) {
   const { data, error } = await supabase
     .from("games")
-    .select("id,narrator_id,name,background_url,created_at,system,language,narrator_type,shiny_chance,overgrown_chance,contest_weights,grid_enabled,grid_snap,grid_snap_mode,grid_size,grid_color,grid_opacity,grid_unit_m,grid_unit_label,fog_enabled,dynamic_lighting,master_volume,current_scenario_id,active_page_id")
+    .select(
+      "id,narrator_id,name,background_url,created_at,system,language,narrator_type,shiny_chance,overgrown_chance,contest_weights,grid_enabled,grid_snap,grid_snap_mode,grid_size,grid_color,grid_opacity,grid_unit_m,grid_unit_label,fog_enabled,dynamic_lighting,master_volume,current_scenario_id,active_page_id",
+    )
     .eq("id", gameId)
     .single();
   if (error) throw error;
@@ -258,8 +337,19 @@ function GameRoom() {
     const raw = params.get("sheet");
     if (!raw) return;
     const [kind, id, ...labelParts] = raw.split(":");
-    if ((kind === "trainer" || kind === "pokemon" || kind === "t20" || kind === "digirole_tamer" || kind === "digirole_digimon") && id) {
-      openWindow({ kind: kind as OpenWindow["kind"], id, title: decodeURIComponent(labelParts.join(":") || id) });
+    if (
+      (kind === "trainer" ||
+        kind === "pokemon" ||
+        kind === "t20" ||
+        kind === "digirole_tamer" ||
+        kind === "digirole_digimon") &&
+      id
+    ) {
+      openWindow({
+        kind: kind as OpenWindow["kind"],
+        id,
+        title: decodeURIComponent(labelParts.join(":") || id),
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -287,7 +377,10 @@ function GameRoom() {
     return (
       matching.find((participant) => meta.tokenId && participant.tokenId === meta.tokenId) ??
       matching.find((participant) => participant.id === current?.id) ??
-      matching.find((participant) => !!user?.id && engineParticipantControllerIds(participant).includes(user.id)) ??
+      matching.find(
+        (participant) =>
+          !!user?.id && engineParticipantControllerIds(participant).includes(user.id),
+      ) ??
       null
     );
   }
@@ -318,11 +411,7 @@ function GameRoom() {
     };
   }
 
-  function registerRolledReaction(
-    label: string,
-    resultSuccesses: number,
-    meta?: SheetRollMeta,
-  ) {
+  function registerRolledReaction(label: string, resultSuccesses: number, meta?: SheetRollMeta) {
     if (!meta) return;
     const reaction = reactionFromLabel(label);
     if (!reaction) return;
@@ -337,21 +426,20 @@ function GameRoom() {
     });
   }
 
-  async function rollFromSheet(
-    label: string,
-    n: number,
-    penalty = 0,
-    meta?: SheetRollMeta,
-  ) {
+  async function rollFromSheet(label: string, n: number, penalty = 0, meta?: SheetRollMeta) {
     if (!user) return;
     if (meta?.characterKind === "t20" || game?.system === "t20") {
       const modifier = n - (penalty || 0);
       const result = rollD20(modifier);
-      const finalLabel = modifier === 0 ? label : `${label} (${modifier >= 0 ? "+" : ""}${modifier})`;
+      const finalLabel =
+        modifier === 0 ? label : `${label} (${modifier >= 0 ? "+" : ""}${modifier})`;
       const extraDice = rollInlineDice(meta?.diceExpressions);
       const { error: chatError } = await supabase.from("chat_messages").insert({
-        game_id: gameId, user_id: user.id, kind: "roll",
-        body: finalLabel, roll_data: { ...result, label: finalLabel, extraDice },
+        game_id: gameId,
+        user_id: user.id,
+        kind: "roll",
+        body: finalLabel,
+        roll_data: { ...result, label: finalLabel, extraDice },
       });
       if (chatError) {
         toast.error(`Não foi possível enviar a rolagem: ${chatError.message}`);
@@ -418,7 +506,9 @@ function GameRoom() {
     const finalLabel = penalty > 0 ? `${label} (pool ${n}−${penalty} pain)` : label;
     const engineReaction = resolveEngineReaction(label, result.successes, meta);
     const { error: chatError } = await supabase.from("chat_messages").insert({
-      game_id: gameId, user_id: user.id, kind: "roll",
+      game_id: gameId,
+      user_id: user.id,
+      kind: "roll",
       body: finalLabel,
       roll_data: {
         ...result,
@@ -449,7 +539,10 @@ function GameRoom() {
   async function sendChatFromSheet(body: string) {
     if (!user || !body.trim()) return;
     const { error } = await supabase.from("chat_messages").insert({
-      game_id: gameId, user_id: user.id, kind: "chat", body,
+      game_id: gameId,
+      user_id: user.id,
+      kind: "chat",
+      body,
     });
     if (error) toast.error(`Não foi possível enviar a mensagem: ${error.message}`);
   }
@@ -463,19 +556,28 @@ function GameRoom() {
     },
     enabled: !!isGameOwner,
   });
-  const inviteUrl = typeof window !== "undefined" && inviteCode
-    ? `${window.location.origin}/join/${inviteCode}` : "";
+  const inviteUrl =
+    typeof window !== "undefined" && inviteCode
+      ? `${window.location.origin}/join/${inviteCode}`
+      : "";
 
   // Character creation lives in <FilesPanel>.
 
-  if (gameError) return (
-    <div className="p-8 max-w-2xl mx-auto">
-      <h2 className="text-lg font-bold text-destructive mb-2">Erro ao carregar o jogo</h2>
-      <pre className="text-xs bg-muted p-3 rounded whitespace-pre-wrap break-words">{(gameError as Error)?.message || String(gameError)}</pre>
-      <p className="text-sm text-muted-foreground mt-3">Causa provável: você não é membro deste jogo, ou uma coluna foi removida. Volte ao dashboard e tente novamente.</p>
-    </div>
-  );
-  if (gameLoading || !game || !user) return <div className="p-8 text-sm text-muted-foreground">Carregando jogo…</div>;
+  if (gameError)
+    return (
+      <div className="p-8 max-w-2xl mx-auto">
+        <h2 className="text-lg font-bold text-destructive mb-2">Erro ao carregar o jogo</h2>
+        <pre className="text-xs bg-muted p-3 rounded whitespace-pre-wrap break-words">
+          {(gameError as Error)?.message || String(gameError)}
+        </pre>
+        <p className="text-sm text-muted-foreground mt-3">
+          Causa provável: você não é membro deste jogo, ou uma coluna foi removida. Volte ao
+          dashboard e tente novamente.
+        </p>
+      </div>
+    );
+  if (gameLoading || !game || !user)
+    return <div className="p-8 text-sm text-muted-foreground">Carregando jogo…</div>;
   const gameSystem = (game as { system?: string | null }).system ?? "pokerole";
 
   if (gameSystem === "lancer") {
@@ -522,6 +624,8 @@ function GameRoom() {
   const mapBoard = (
     <MapBoard
       gameId={gameId}
+      systemId={gameSystem}
+      narratorId={game.narrator_id}
       backgroundUrl={game.background_url}
       userId={user.id}
       isNarrator={isNarrator}
@@ -531,7 +635,9 @@ function GameRoom() {
       gridSettings={{
         enabled: (game as never as { grid_enabled?: boolean }).grid_enabled ?? true,
         snap: (game as never as { grid_snap?: boolean }).grid_snap ?? true,
-        snapMode: ((game as never as { grid_snap_mode?: string }).grid_snap_mode as "center" | "line" | "free" | undefined) ?? "center",
+        snapMode:
+          ((game as never as { grid_snap_mode?: string }).grid_snap_mode as
+            "center" | "line" | "free" | undefined) ?? "center",
         size: (game as never as { grid_size?: number }).grid_size ?? 56,
         color: (game as never as { grid_color?: string }).grid_color ?? "#000000",
         opacity: (game as never as { grid_opacity?: number }).grid_opacity ?? 30,
@@ -540,22 +646,25 @@ function GameRoom() {
       }}
       visibility={{
         fogEnabled: (game as never as { fog_enabled?: boolean }).fog_enabled ?? false,
-        dynamicLighting: (game as never as { dynamic_lighting?: boolean }).dynamic_lighting ?? false,
+        dynamicLighting:
+          (game as never as { dynamic_lighting?: boolean }).dynamic_lighting ?? false,
       }}
       toolbarSlot={mapToolbar}
-      collapsedToolbarSlot={(
+      collapsedToolbarSlot={
         <button
           type="button"
           onClick={() => setEngineOpen(true)}
           title="Abrir Motor"
           aria-label="Abrir Motor"
           className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
-            engineOpen ? "bg-primary text-primary-foreground" : "bg-background text-foreground hover:bg-accent"
+            engineOpen
+              ? "bg-primary text-primary-foreground"
+              : "bg-background text-foreground hover:bg-accent"
           }`}
         >
           <Cpu className="h-4 w-4" />
         </button>
-      )}
+      }
     />
   );
 
@@ -574,18 +683,72 @@ function GameRoom() {
           }}
           initialX={isMobile ? 8 : 120 + i * 30}
           initialY={isMobile ? 56 : 80 + i * 30}
-          width={isMobile ? Math.min(window.innerWidth - 16, 480) : (w.kind === "trainer" || w.kind.startsWith("digirole_") ? 760 : 560)}
+          width={
+            isMobile
+              ? Math.min(window.innerWidth - 16, 480)
+              : w.kind === "trainer" || w.kind.startsWith("digirole_")
+                ? 760
+                : 560
+          }
           height={isMobile ? Math.min(window.innerHeight - 80, 700) : 640}
         >
           <PanelErrorBoundary scope={`sheet:${w.kind}`} resetKey={`${w.kind}:${w.id}`}>
             <Suspense fallback={<PanelLoading label="Carregando ficha..." />}>
-              {w.kind === "pokemon"
-                ? <PokemonSheet pokemonId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(w.kind, w.id); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
-                : w.kind === "trainer"
-                  ? <SheetTabs trainerId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(w.kind, w.id); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
-                  : w.kind === "t20"
-                    ? <T20CharacterSheet characterId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(w.kind, w.id); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
-                    : <DigiRoleSheet kind={w.kind} characterId={w.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onDeleted={() => { closeWindow(w.kind, w.id); qc.invalidateQueries({ queryKey: ["digirole-files", gameId] }); }} />}
+              {w.kind === "pokemon" ? (
+                <PokemonSheet
+                  pokemonId={w.id}
+                  gameId={gameId}
+                  userId={user.id}
+                  isNarrator={isNarrator}
+                  onRoll={rollFromSheet}
+                  onChat={sendChatFromSheet}
+                  onDeleted={() => {
+                    closeWindow(w.kind, w.id);
+                    qc.invalidateQueries({ queryKey: ["characters", gameId] });
+                  }}
+                />
+              ) : w.kind === "trainer" ? (
+                <SheetTabs
+                  trainerId={w.id}
+                  gameId={gameId}
+                  userId={user.id}
+                  isNarrator={isNarrator}
+                  onRoll={rollFromSheet}
+                  onChat={sendChatFromSheet}
+                  onDeleted={() => {
+                    closeWindow(w.kind, w.id);
+                    qc.invalidateQueries({ queryKey: ["characters", gameId] });
+                  }}
+                />
+              ) : w.kind === "t20" ? (
+                <T20CharacterSheet
+                  characterId={w.id}
+                  gameId={gameId}
+                  userId={user.id}
+                  isNarrator={isNarrator}
+                  onRoll={rollFromSheet}
+                  onChat={sendChatFromSheet}
+                  onDeleted={() => {
+                    closeWindow(w.kind, w.id);
+                    qc.invalidateQueries({ queryKey: ["characters", gameId] });
+                  }}
+                />
+              ) : (
+                <DigiRoleSheet
+                  kind={w.kind}
+                  characterId={w.id}
+                  gameId={gameId}
+                  userId={user.id}
+                  isNarrator={isNarrator}
+                  activePageId={
+                    (game as never as { active_page_id?: string | null }).active_page_id ?? null
+                  }
+                  onDeleted={() => {
+                    closeWindow(w.kind, w.id);
+                    qc.invalidateQueries({ queryKey: ["digirole-files", gameId] });
+                  }}
+                />
+              )}
             </Suspense>
           </PanelErrorBoundary>
         </FloatingWindow>
@@ -613,7 +776,9 @@ function GameRoom() {
               userId={user.id}
               isNarrator={isNarrator}
               systemId={gameSystem}
-              activePageId={(game as never as { active_page_id?: string | null }).active_page_id ?? null}
+              activePageId={
+                (game as never as { active_page_id?: string | null }).active_page_id ?? null
+              }
             />
           </Suspense>
         </PanelErrorBoundary>
@@ -625,7 +790,9 @@ function GameRoom() {
     const baseTabs: MainPanelTab[] = ["map", "chat", "files", "decks", "music"];
     const sheetTabKey = (w: OpenWindow) => `sheet:${w.kind}:${w.id}`;
     const isSheetTab = mobileTab.startsWith("sheet:");
-    const activeSheet = isSheetTab ? windows.find((w) => sheetTabKey(w) === mobileTab) ?? null : null;
+    const activeSheet = isSheetTab
+      ? (windows.find((w) => sheetTabKey(w) === mobileTab) ?? null)
+      : null;
 
     // If user opened a sheet from another tab, auto-switch to its tab.
     // If the active sheet was closed, fall back to map.
@@ -640,7 +807,9 @@ function GameRoom() {
 
     return (
       <div className="relative flex h-screen w-full flex-col">
-        <h1 className="sr-only">{game.name ? `${game.name} — D20 Project game room` : "D20 Project game room"}</h1>
+        <h1 className="sr-only">
+          {game.name ? `${game.name} — D20 Project game room` : "D20 Project game room"}
+        </h1>
         <GameEngineActionBridge gameId={gameId} userId={user.id} isNarrator={isNarrator} />
         <MoveReactionCoordinator gameId={gameId} userId={user.id} />
         <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border bg-card p-1">
@@ -681,24 +850,35 @@ function GameRoom() {
                     closeWindow(w.kind, w.id);
                     if (mobileTab === key) setMobileTab("map");
                   }}
-                >×</span>
+                >
+                  ×
+                </span>
               </button>
             );
           })}
         </div>
         <div className="relative min-h-0 flex-1 overflow-hidden">
           <div className={`absolute inset-0 ${mobileTab === "map" ? "" : "hidden"}`}>
-            <PanelErrorBoundary scope="mobile-map" resetKey={gameId}>{mapBoard}</PanelErrorBoundary>
+            <PanelErrorBoundary scope="mobile-map" resetKey={gameId}>
+              {mapBoard}
+            </PanelErrorBoundary>
             <PanelErrorBoundary scope="mobile-macro-bar" resetKey={gameId}>
               <MacroBar gameId={gameId} userId={user.id} />
             </PanelErrorBoundary>
           </div>
           {mobileTab === "chat" && (
             <div className="h-full overflow-hidden">
-              <div className="p-2"><OnlinePresence gameId={gameId} userId={user.id} isNarrator={isNarrator} /></div>
+              <div className="p-2">
+                <OnlinePresence gameId={gameId} userId={user.id} isNarrator={isNarrator} />
+              </div>
               <PanelErrorBoundary scope="mobile-chat" resetKey={gameId}>
                 <Suspense fallback={<PanelLoading label="Carregando chat..." />}>
-                  <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} isGameOwner={isGameOwner} />
+                  <ChatPanel
+                    gameId={gameId}
+                    userId={user.id}
+                    aiNarrator={game.narrator_type === "ai"}
+                    isGameOwner={isGameOwner}
+                  />
                 </Suspense>
               </PanelErrorBoundary>
             </div>
@@ -706,9 +886,23 @@ function GameRoom() {
           {mobileTab === "files" && (
             <div className="h-full overflow-auto p-3">
               <PanelErrorBoundary scope="mobile-files" resetKey={gameId}>
-                {gameSystem === "digirole"
-                  ? <DigiRoleFilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindowMobile} />
-                  : <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindowMobile} isMobile system={gameSystem} />}
+                {gameSystem === "digirole" ? (
+                  <DigiRoleFilesPanel
+                    gameId={gameId}
+                    userId={user.id}
+                    isNarrator={isNarrator}
+                    onOpen={openWindowMobile}
+                  />
+                ) : (
+                  <FilesPanel
+                    gameId={gameId}
+                    userId={user.id}
+                    isNarrator={isNarrator}
+                    onOpen={openWindowMobile}
+                    isMobile
+                    system={gameSystem}
+                  />
+                )}
               </PanelErrorBoundary>
             </div>
           )}
@@ -732,15 +926,70 @@ function GameRoom() {
           )}
           {activeSheet && (
             <div className="absolute inset-0 overflow-auto bg-background">
-              <PanelErrorBoundary scope={`mobile-sheet:${activeSheet.kind}`} resetKey={`${activeSheet.kind}:${activeSheet.id}`}>
+              <PanelErrorBoundary
+                scope={`mobile-sheet:${activeSheet.kind}`}
+                resetKey={`${activeSheet.kind}:${activeSheet.id}`}
+              >
                 <Suspense fallback={<PanelLoading label="Carregando ficha..." />}>
-                  {activeSheet.kind === "pokemon"
-                    ? <PokemonSheet pokemonId={activeSheet.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(activeSheet.kind, activeSheet.id); setMobileTab("map"); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
-                    : activeSheet.kind === "trainer"
-                      ? <SheetTabs trainerId={activeSheet.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(activeSheet.kind, activeSheet.id); setMobileTab("map"); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
-                      : activeSheet.kind === "t20"
-                        ? <T20CharacterSheet characterId={activeSheet.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onRoll={rollFromSheet} onChat={sendChatFromSheet} onDeleted={() => { closeWindow(activeSheet.kind, activeSheet.id); setMobileTab("map"); qc.invalidateQueries({ queryKey: ["characters", gameId] }); }} />
-                        : <DigiRoleSheet kind={activeSheet.kind} characterId={activeSheet.id} gameId={gameId} userId={user.id} isNarrator={isNarrator} onDeleted={() => { closeWindow(activeSheet.kind, activeSheet.id); setMobileTab("map"); qc.invalidateQueries({ queryKey: ["digirole-files", gameId] }); }} />}
+                  {activeSheet.kind === "pokemon" ? (
+                    <PokemonSheet
+                      pokemonId={activeSheet.id}
+                      gameId={gameId}
+                      userId={user.id}
+                      isNarrator={isNarrator}
+                      onRoll={rollFromSheet}
+                      onChat={sendChatFromSheet}
+                      onDeleted={() => {
+                        closeWindow(activeSheet.kind, activeSheet.id);
+                        setMobileTab("map");
+                        qc.invalidateQueries({ queryKey: ["characters", gameId] });
+                      }}
+                    />
+                  ) : activeSheet.kind === "trainer" ? (
+                    <SheetTabs
+                      trainerId={activeSheet.id}
+                      gameId={gameId}
+                      userId={user.id}
+                      isNarrator={isNarrator}
+                      onRoll={rollFromSheet}
+                      onChat={sendChatFromSheet}
+                      onDeleted={() => {
+                        closeWindow(activeSheet.kind, activeSheet.id);
+                        setMobileTab("map");
+                        qc.invalidateQueries({ queryKey: ["characters", gameId] });
+                      }}
+                    />
+                  ) : activeSheet.kind === "t20" ? (
+                    <T20CharacterSheet
+                      characterId={activeSheet.id}
+                      gameId={gameId}
+                      userId={user.id}
+                      isNarrator={isNarrator}
+                      onRoll={rollFromSheet}
+                      onChat={sendChatFromSheet}
+                      onDeleted={() => {
+                        closeWindow(activeSheet.kind, activeSheet.id);
+                        setMobileTab("map");
+                        qc.invalidateQueries({ queryKey: ["characters", gameId] });
+                      }}
+                    />
+                  ) : (
+                    <DigiRoleSheet
+                      kind={activeSheet.kind}
+                      characterId={activeSheet.id}
+                      gameId={gameId}
+                      userId={user.id}
+                      isNarrator={isNarrator}
+                      activePageId={
+                        (game as never as { active_page_id?: string | null }).active_page_id ?? null
+                      }
+                      onDeleted={() => {
+                        closeWindow(activeSheet.kind, activeSheet.id);
+                        setMobileTab("map");
+                        qc.invalidateQueries({ queryKey: ["digirole-files", gameId] });
+                      }}
+                    />
+                  )}
                 </Suspense>
               </PanelErrorBoundary>
             </div>
@@ -753,13 +1002,17 @@ function GameRoom() {
   }
   return (
     <div className="relative h-screen w-full px-3 py-3">
-      <h1 className="sr-only">{game.name ? `${game.name} — D20 Project game room` : "D20 Project game room"}</h1>
+      <h1 className="sr-only">
+        {game.name ? `${game.name} — D20 Project game room` : "D20 Project game room"}
+      </h1>
       <GameEngineActionBridge gameId={gameId} userId={user.id} isNarrator={isNarrator} />
       <MoveReactionCoordinator gameId={gameId} userId={user.id} />
       <MusicPlayer gameId={gameId} />
       {/* Fullscreen map */}
       <div className="relative h-full w-full">
-        <PanelErrorBoundary scope="map" resetKey={gameId}>{mapBoard}</PanelErrorBoundary>
+        <PanelErrorBoundary scope="map" resetKey={gameId}>
+          {mapBoard}
+        </PanelErrorBoundary>
         <PanelErrorBoundary scope="macro-bar" resetKey={gameId}>
           <MacroBar gameId={gameId} userId={user.id} />
         </PanelErrorBoundary>
@@ -782,15 +1035,33 @@ function GameRoom() {
               <TabsContent value="chat" className="mt-0 min-h-0 flex-1 overflow-hidden">
                 <PanelErrorBoundary scope="chat" resetKey={gameId}>
                   <Suspense fallback={<PanelLoading label="Carregando chat..." />}>
-                    <ChatPanel gameId={gameId} userId={user.id} aiNarrator={game.narrator_type === "ai"} isGameOwner={isGameOwner} />
+                    <ChatPanel
+                      gameId={gameId}
+                      userId={user.id}
+                      aiNarrator={game.narrator_type === "ai"}
+                      isGameOwner={isGameOwner}
+                    />
                   </Suspense>
                 </PanelErrorBoundary>
               </TabsContent>
               <TabsContent value="files" className="mt-0 min-h-0 flex-1 overflow-auto p-3">
                 <PanelErrorBoundary scope="files" resetKey={gameId}>
-                  {gameSystem === "digirole"
-                    ? <DigiRoleFilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindow} />
-                    : <FilesPanel gameId={gameId} userId={user.id} isNarrator={isNarrator} onOpen={openWindow} system={gameSystem} />}
+                  {gameSystem === "digirole" ? (
+                    <DigiRoleFilesPanel
+                      gameId={gameId}
+                      userId={user.id}
+                      isNarrator={isNarrator}
+                      onOpen={openWindow}
+                    />
+                  ) : (
+                    <FilesPanel
+                      gameId={gameId}
+                      userId={user.id}
+                      isNarrator={isNarrator}
+                      onOpen={openWindow}
+                      system={gameSystem}
+                    />
+                  )}
                 </PanelErrorBoundary>
               </TabsContent>
               <TabsContent value="decks" className="mt-0 min-h-0 flex-1 overflow-hidden">
@@ -829,21 +1100,26 @@ function RightOverlayPanel({ children }: { children: React.ReactNode }) {
         setWidth(Math.max(280, Math.min(640, next)));
       }
     }
-    function up() { dragRef.current = null; }
+    function up() {
+      dragRef.current = null;
+    }
     window.addEventListener("mousemove", move);
     window.addEventListener("mouseup", up);
-    return () => { window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); };
+    return () => {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+    };
   }, []);
   return (
     <div className="pointer-events-none absolute right-3 top-3 bottom-3 z-30 flex items-start gap-1">
       {open && (
-        <div
-          className="pointer-events-auto relative h-full"
-          style={{ width }}
-        >
+        <div className="pointer-events-auto relative h-full" style={{ width }}>
           <div
             className="absolute -left-1 top-0 bottom-0 z-10 w-1.5 cursor-ew-resize bg-transparent hover:bg-primary/40"
-            onMouseDown={(e) => { dragRef.current = { mx: e.clientX, ow: width }; e.preventDefault(); }}
+            onMouseDown={(e) => {
+              dragRef.current = { mx: e.clientX, ow: width };
+              e.preventDefault();
+            }}
             title="Drag to resize"
           />
           <div className="h-full opacity-95">{children}</div>
@@ -854,22 +1130,29 @@ function RightOverlayPanel({ children }: { children: React.ReactNode }) {
         onClick={() => setOpen((v) => !v)}
         title={open ? "Hide panel" : "Show panel"}
       >
-        {open ? <ChevronRight className="h-3.5 w-3.5" /> : <MessageSquare className="h-3.5 w-3.5" />}
+        {open ? (
+          <ChevronRight className="h-3.5 w-3.5" />
+        ) : (
+          <MessageSquare className="h-3.5 w-3.5" />
+        )}
       </button>
     </div>
   );
 }
-
 
 function InviteButton({ url }: { url: string }) {
   const [open, setOpen] = useState(false);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="secondary">Invite</Button>
+        <Button size="sm" variant="secondary">
+          Invite
+        </Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogHeader><DialogTitle>Invite players</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Invite players</DialogTitle>
+        </DialogHeader>
         <p className="text-sm text-muted-foreground">Share this link. Anyone signed in can join.</p>
         <div className="flex gap-2">
           <Input value={url} readOnly />
@@ -880,7 +1163,9 @@ function InviteButton({ url }: { url: string }) {
               navigator.clipboard.writeText(url);
               toast.success("Invite link copied");
             }}
-          ><Copy className="h-4 w-4" /></Button>
+          >
+            <Copy className="h-4 w-4" />
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -888,9 +1173,36 @@ function InviteButton({ url }: { url: string }) {
 }
 
 type CharRow =
-  | { kind: "trainer"; id: string; label: string; owner_id: string; image_url: string | null; folder: string | null; sprite_url?: string | null }
-  | { kind: "pokemon"; id: string; label: string; owner_id: string; image_url: string | null; folder: string | null; sprite_url: string | null; species_name: string; species_sprite_url: string | null; is_shiny: boolean }
-  | { kind: "t20"; id: string; label: string; owner_id: string; image_url: string | null; folder: string | null; sprite_url?: string | null };
+  | {
+      kind: "trainer";
+      id: string;
+      label: string;
+      owner_id: string;
+      image_url: string | null;
+      folder: string | null;
+      sprite_url?: string | null;
+    }
+  | {
+      kind: "pokemon";
+      id: string;
+      label: string;
+      owner_id: string;
+      image_url: string | null;
+      folder: string | null;
+      sprite_url: string | null;
+      species_name: string;
+      species_sprite_url: string | null;
+      is_shiny: boolean;
+    }
+  | {
+      kind: "t20";
+      id: string;
+      label: string;
+      owner_id: string;
+      image_url: string | null;
+      folder: string | null;
+      sprite_url?: string | null;
+    };
 
 type PokemonFileRecord = {
   id: string;
@@ -921,13 +1233,17 @@ const FOLDER_MIME = "application/x-pokerole-sheet";
 const FOLDER_PATH_MIME = "application/x-pokerole-folder-path";
 
 type FolderNode = {
-  path: string;      // full path, e.g. "Region/City"
-  name: string;      // last segment, e.g. "City"
+  path: string; // full path, e.g. "Region/City"
+  name: string; // last segment, e.g. "City"
   items: CharRow[];
   children: FolderNode[];
 };
 
-function buildFolderTree(paths: string[], rows: CharRow[], order: Record<string, number> = {}): FolderNode[] {
+function buildFolderTree(
+  paths: string[],
+  rows: CharRow[],
+  order: Record<string, number> = {},
+): FolderNode[] {
   // Ensure all ancestors exist
   const expanded = new Set<string>();
   for (const p of paths) {
@@ -987,7 +1303,6 @@ function FilesPanel({
   isMobile?: boolean;
   system?: string;
 }) {
-
   const qc = useQueryClient();
   const spriteStyle = useGameSpriteStyle(gameId);
   const [pkmDialogOpen, setPkmDialogOpen] = useState(false);
@@ -1024,7 +1339,12 @@ function FilesPanel({
         .select("id,name,species_ids,default_rank")
         .eq("game_id", gameId)
         .order("created_at");
-      return (data ?? []) as { id: string; name: string; species_ids: string[]; default_rank: Rank }[];
+      return (data ?? []) as {
+        id: string;
+        name: string;
+        species_ids: string[];
+        default_rank: Rank;
+      }[];
     },
   });
 
@@ -1033,8 +1353,17 @@ function FilesPanel({
   const [dropHover, setDropHover] = useState<string | null>(null);
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [ctxMenu, setCtxMenu] = useState<{ row: CharRow; x: number; y: number; mode: "main" | "move" } | null>(null);
-  const longPressRef = useRef<{ timer: ReturnType<typeof setTimeout> | null; sx: number; sy: number } | null>(null);
+  const [ctxMenu, setCtxMenu] = useState<{
+    row: CharRow;
+    x: number;
+    y: number;
+    mode: "main" | "move";
+  } | null>(null);
+  const longPressRef = useRef<{
+    timer: ReturnType<typeof setTimeout> | null;
+    sx: number;
+    sy: number;
+  } | null>(null);
   const pointerDragRef = useRef<{
     row: CharRow;
     payload: DragCharacterPayload;
@@ -1044,7 +1373,9 @@ function FilesPanel({
     active: boolean;
   } | null>(null);
   const suppressClickRef = useRef(false);
-  const [dragPreview, setDragPreview] = useState<{ label: string; x: number; y: number } | null>(null);
+  const [dragPreview, setDragPreview] = useState<{ label: string; x: number; y: number } | null>(
+    null,
+  );
   const moveToFolderRef = useRef(moveToFolder);
   moveToFolderRef.current = moveToFolder;
   const dispatchTrainerSheetDropRef = useRef(dispatchTrainerSheetDrop);
@@ -1083,10 +1414,12 @@ function FilesPanel({
       if (dispatchTrainerSheetDropRef.current(drag.payload, clientX, clientY)) {
         return true;
       }
-      window.dispatchEvent(new CustomEvent(CHARACTER_POINTER_DROP_EVENT, {
-        cancelable: true,
-        detail: { payload: drag.payload, clientX, clientY },
-      }));
+      window.dispatchEvent(
+        new CustomEvent(CHARACTER_POINTER_DROP_EVENT, {
+          cancelable: true,
+          detail: { payload: drag.payload, clientX, clientY },
+        }),
+      );
       return true;
     }
 
@@ -1137,37 +1470,56 @@ function FilesPanel({
   }, []);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
     if (typeof window === "undefined") return {};
-    try { return JSON.parse(localStorage.getItem(`folders:${gameId}`) ?? "{}"); } catch { return {}; }
+    try {
+      return JSON.parse(localStorage.getItem(`folders:${gameId}`) ?? "{}");
+    } catch {
+      return {};
+    }
   });
   useEffect(() => {
-    if (typeof window !== "undefined") localStorage.setItem(`folders:${gameId}`, JSON.stringify(collapsed));
+    if (typeof window !== "undefined")
+      localStorage.setItem(`folders:${gameId}`, JSON.stringify(collapsed));
   }, [collapsed, gameId]);
   const [folderOrder, setFolderOrder] = useState<Record<string, number>>(() => {
     if (typeof window === "undefined") return {};
-    try { return JSON.parse(localStorage.getItem(`folder-order:${gameId}`) ?? "{}"); } catch { return {}; }
+    try {
+      return JSON.parse(localStorage.getItem(`folder-order:${gameId}`) ?? "{}");
+    } catch {
+      return {};
+    }
   });
   useEffect(() => {
-    if (typeof window !== "undefined") localStorage.setItem(`folder-order:${gameId}`, JSON.stringify(folderOrder));
+    if (typeof window !== "undefined")
+      localStorage.setItem(`folder-order:${gameId}`, JSON.stringify(folderOrder));
   }, [folderOrder, gameId]);
   function toggleFolder(name: string) {
     setCollapsed((c) => ({ ...c, [name]: !c[name] }));
   }
   function toggleSelected(key: string) {
-    setSelected((p) => { const n = new Set(p); if (n.has(key)) n.delete(key); else n.add(key); return n; });
+    setSelected((p) => {
+      const n = new Set(p);
+      if (n.has(key)) n.delete(key);
+      else n.add(key);
+      return n;
+    });
   }
   async function bulkDelete() {
     if (selected.size === 0) return;
     if (!confirm(`Delete ${selected.size} selected sheet(s)? This cannot be undone.`)) return;
-    const pkmIds: string[] = [], trIds: string[] = [], t20Ids: string[] = [];
+    const pkmIds: string[] = [],
+      trIds: string[] = [],
+      t20Ids: string[] = [];
     for (const k of selected) {
       const [kind, id] = k.split(":");
-      if (kind === "pokemon") pkmIds.push(id); else if (kind === "trainer") trIds.push(id);
+      if (kind === "pokemon") pkmIds.push(id);
+      else if (kind === "trainer") trIds.push(id);
       else if (kind === "t20") t20Ids.push(id);
     }
     if (pkmIds.length) await supabase.from("pokemon").delete().in("id", pkmIds);
     if (trIds.length) await supabase.from("trainers").delete().in("id", trIds);
     if (t20Ids.length) await supabase.from("t20_characters").delete().in("id", t20Ids);
-    setSelected(new Set()); setSelectMode(false);
+    setSelected(new Set());
+    setSelectMode(false);
     qc.invalidateQueries({ queryKey: ["characters", gameId] });
     toast.success("Deleted");
   }
@@ -1184,7 +1536,13 @@ function FilesPanel({
     queryKey: ["characters", gameId],
     queryFn: async () => {
       const [pkm, tr] = await Promise.all([
-        supabase.from("pokemon").select("id,nickname,owner_id,image_url,folder,is_shiny,species:species_id(name,sprite_url)").eq("game_id", gameId).eq("ai_spawned", false),
+        supabase
+          .from("pokemon")
+          .select(
+            "id,nickname,owner_id,image_url,folder,is_shiny,species:species_id(name,sprite_url)",
+          )
+          .eq("game_id", gameId)
+          .eq("ai_spawned", false),
         supabase.from("trainers").select("id,name,owner_id,image_url,folder").eq("game_id", gameId),
       ]);
       if (pkm.error) throw new Error(`Pokémon: ${pkm.error.message}`);
@@ -1194,7 +1552,11 @@ function FilesPanel({
         trainers: (tr.data ?? []) as TrainerFileRecord[],
       };
       const savedAt = Date.now();
-      qc.setQueryData(charactersLocalQueryKey, { key: charactersCacheKey, savedAt, data: snapshot });
+      qc.setQueryData(charactersLocalQueryKey, {
+        key: charactersCacheKey,
+        savedAt,
+        data: snapshot,
+      });
       void writeLocalGameSnapshot(charactersCacheKey, snapshot);
       return snapshot;
     },
@@ -1214,7 +1576,8 @@ function FilesPanel({
     queryKey: ["t20-characters", gameId],
     enabled: system === "t20",
     queryFn: async () => {
-      const { data, error } = await supabase.from("t20_characters")
+      const { data, error } = await supabase
+        .from("t20_characters")
         .select("id,name,owner_id,image_url,folder")
         .eq("game_id", gameId)
         .order("created_at");
@@ -1228,7 +1591,8 @@ function FilesPanel({
   });
   const t20Characters = t20CharactersQuery.data ?? cachedT20Snapshot?.data;
   const filesError = system === "t20" ? t20CharactersQuery.error : charactersQuery.error;
-  const filesFetching = system === "t20" ? t20CharactersQuery.isFetching : charactersQuery.isFetching;
+  const filesFetching =
+    system === "t20" ? t20CharactersQuery.isFetching : charactersQuery.isFetching;
   const filesPending = system === "t20" ? t20CharactersQuery.isPending : charactersQuery.isPending;
   const filesHaveSnapshot = system === "t20" ? !!cachedT20Snapshot : !!cachedCharactersSnapshot;
   const refetchFiles = () => {
@@ -1241,14 +1605,17 @@ function FilesPanel({
     enabled: system !== "t20" && (pkmDialogOpen || randomOpen || routeMgrOpen),
     queryFn: async () => {
       return await fetchAllPaged<{
-        id: string; name: string; evolutions: string[];
-        suggested_rank: string | null; is_starter: boolean; is_legendary: boolean;
+        id: string;
+        name: string;
+        evolutions: string[];
+        suggested_rank: string | null;
+        is_starter: boolean;
+        is_legendary: boolean;
         biomes: string[];
-      }>(
-        "species",
-        "id,name,evolutions,suggested_rank,is_starter,is_legendary,biomes",
-        { orderBy: "dex_number", ascending: true },
-      );
+      }>("species", "id,name,evolutions,suggested_rank,is_starter,is_legendary,biomes", {
+        orderBy: "dex_number",
+        ascending: true,
+      });
     },
     staleTime: Number.POSITIVE_INFINITY,
     gcTime: 60 * 60 * 1_000,
@@ -1265,7 +1632,8 @@ function FilesPanel({
           owner_id: userId,
           name: cleanName,
         })
-        .select().single();
+        .select()
+        .single();
       if (error) throw error;
       return data;
     },
@@ -1280,7 +1648,7 @@ function FilesPanel({
 
   const createPokemon = useMutation({
     mutationFn: async (arg?: string | { speciesId: string; random?: { rank: Rank } }) => {
-      const speciesId = typeof arg === "string" ? arg : (arg?.speciesId || newPkmSpecies);
+      const speciesId = typeof arg === "string" ? arg : arg?.speciesId || newPkmSpecies;
       const random = typeof arg === "object" && arg ? arg.random : undefined;
       if (!speciesId) throw new Error("Pick a species");
       const { data: gameRow } = await supabase
@@ -1289,9 +1657,11 @@ function FilesPanel({
         .eq("id", gameId)
         .single();
       const shinyChance = (gameRow as { shiny_chance?: number } | null)?.shiny_chance ?? 10;
-      const overgrownChance = (gameRow as { overgrown_chance?: number } | null)?.overgrown_chance ?? 0;
+      const overgrownChance =
+        (gameRow as { overgrown_chance?: number } | null)?.overgrown_chance ?? 0;
       const isShiny = Math.floor(Math.random() * 100) + 1 <= shinyChance;
-      const rolledOver = overgrownChance > 0 && Math.floor(Math.random() * 100) + 1 <= overgrownChance;
+      const rolledOver =
+        overgrownChance > 0 && Math.floor(Math.random() * 100) + 1 <= overgrownChance;
       const finalOvergrown = newPkmOvergrown || rolledOver;
 
       const basePayload: Record<string, unknown> = {
@@ -1304,13 +1674,16 @@ function FilesPanel({
       };
 
       if (random) {
-        const { patch, moveIds } = await rollPokemonAutofill(speciesId, random.rank, { overgrown: finalOvergrown });
+        const { patch, moveIds } = await rollPokemonAutofill(speciesId, random.rank, {
+          overgrown: finalOvergrown,
+        });
         Object.assign(basePayload, patch);
 
         const { data, error } = await supabase
           .from("pokemon")
           .insert(basePayload as never)
-          .select().single();
+          .select()
+          .single();
         if (error) throw error;
         if (moveIds.length > 0) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1326,7 +1699,8 @@ function FilesPanel({
       const { data, error } = await supabase
         .from("pokemon")
         .insert(basePayload as never)
-        .select().single();
+        .select()
+        .single();
       if (error) throw error;
       if (isShiny) toast.success("✨ Shiny rolled!");
       if (rolledOver && !newPkmOvergrown) toast.success("🌿 Overgrown rolled!");
@@ -1346,7 +1720,8 @@ function FilesPanel({
 
   const createT20Character = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.from("t20_characters")
+      const { data, error } = await supabase
+        .from("t20_characters")
         .insert({
           game_id: gameId,
           owner_id: userId,
@@ -1369,24 +1744,45 @@ function FilesPanel({
     onError: (e: Error) => toast.error(e.message),
   });
 
-
-
-  const rows: CharRow[] = system === "t20"
-    ? (t20Characters ?? []).map<CharRow>((c) => ({
-      kind: "t20", id: c.id, label: c.name, owner_id: c.owner_id,
-      image_url: c.image_url, folder: c.folder, sprite_url: null,
-    }))
-    : [
-      ...(characters?.trainers ?? []).map<CharRow>((t) => ({
-        kind: "trainer", id: t.id, label: t.name, owner_id: t.owner_id,
-        image_url: t.image_url, folder: t.folder, sprite_url: null,
-      })),
-      ...(characters?.pokemon ?? []).map<CharRow>((p) => ({
-        kind: "pokemon", id: p.id, label: p.nickname ?? p.species.name, owner_id: p.owner_id,
-        image_url: p.image_url, folder: p.folder, sprite_url: preferredPokemonSprite(p.species.name, p.species.sprite_url, !!p.is_shiny, spriteStyle),
-        species_name: p.species.name, species_sprite_url: p.species.sprite_url, is_shiny: !!p.is_shiny,
-      })),
-    ];
+  const rows: CharRow[] =
+    system === "t20"
+      ? (t20Characters ?? []).map<CharRow>((c) => ({
+          kind: "t20",
+          id: c.id,
+          label: c.name,
+          owner_id: c.owner_id,
+          image_url: c.image_url,
+          folder: c.folder,
+          sprite_url: null,
+        }))
+      : [
+          ...(characters?.trainers ?? []).map<CharRow>((t) => ({
+            kind: "trainer",
+            id: t.id,
+            label: t.name,
+            owner_id: t.owner_id,
+            image_url: t.image_url,
+            folder: t.folder,
+            sprite_url: null,
+          })),
+          ...(characters?.pokemon ?? []).map<CharRow>((p) => ({
+            kind: "pokemon",
+            id: p.id,
+            label: p.nickname ?? p.species.name,
+            owner_id: p.owner_id,
+            image_url: p.image_url,
+            folder: p.folder,
+            sprite_url: preferredPokemonSprite(
+              p.species.name,
+              p.species.sprite_url,
+              !!p.is_shiny,
+              spriteStyle,
+            ),
+            species_name: p.species.name,
+            species_sprite_url: p.species.sprite_url,
+            is_shiny: !!p.is_shiny,
+          })),
+        ];
 
   const folderPaths = Array.from(
     new Set<string>([
@@ -1400,13 +1796,15 @@ function FilesPanel({
     const parts = path.split("/");
     const parentPath = parts.slice(0, -1).join("/");
     // Find sibling paths from current tree state
-    const allPaths = Array.from(new Set<string>([
-      ...folderPaths,
-      ...folderPaths.flatMap((p) => {
-        const segs = p.split("/");
-        return segs.map((_, i) => segs.slice(0, i + 1).join("/"));
-      }),
-    ]));
+    const allPaths = Array.from(
+      new Set<string>([
+        ...folderPaths,
+        ...folderPaths.flatMap((p) => {
+          const segs = p.split("/");
+          return segs.map((_, i) => segs.slice(0, i + 1).join("/"));
+        }),
+      ]),
+    );
     const siblings = allPaths.filter((p) => {
       const pp = p.split("/").slice(0, -1).join("/");
       return pp === parentPath;
@@ -1422,7 +1820,9 @@ function FilesPanel({
     if (idx < 0 || target < 0 || target >= siblings.length) return;
     [siblings[idx], siblings[target]] = [siblings[target], siblings[idx]];
     const next = { ...folderOrder };
-    siblings.forEach((p, i) => { next[p] = i; });
+    siblings.forEach((p, i) => {
+      next[p] = i;
+    });
     setFolderOrder(next);
   }
   const unfiled = rows.filter((r) => !r.folder);
@@ -1435,11 +1835,12 @@ function FilesPanel({
       p_folder: folder,
     });
     if (error) {
-      const fallback = row.kind === "trainer"
-        ? await supabase.from("trainers").update({ folder }).eq("id", row.id)
-        : row.kind === "pokemon"
-          ? await supabase.from("pokemon").update({ folder }).eq("id", row.id)
-          : await supabase.from("t20_characters").update({ folder }).eq("id", row.id);
+      const fallback =
+        row.kind === "trainer"
+          ? await supabase.from("trainers").update({ folder }).eq("id", row.id)
+          : row.kind === "pokemon"
+            ? await supabase.from("pokemon").update({ folder }).eq("id", row.id)
+            : await supabase.from("t20_characters").update({ folder }).eq("id", row.id);
       if (fallback.error) {
         toast.error(`${error.message}. ${fallback.error.message}`);
         return;
@@ -1471,23 +1872,36 @@ function FilesPanel({
       if (r.folder === oldPath || r.folder.startsWith(prefix)) {
         const remainder = r.folder === oldPath ? "" : r.folder.slice(oldPath.length);
         const newFolderPath = newPath + remainder;
-        updates.push(Promise.resolve(supabase.rpc("set_character_folder", {
-          p_kind: r.kind,
-          p_character_id: r.id,
-          p_folder: newFolderPath,
-        })));
+        updates.push(
+          Promise.resolve(
+            supabase.rpc("set_character_folder", {
+              p_kind: r.kind,
+              p_character_id: r.id,
+              p_folder: newFolderPath,
+            }),
+          ),
+        );
       }
     }
     const results = await Promise.all(updates);
     const err = (results as { error: unknown }[]).find((r) => r?.error);
-    if (err) { toast.error(String((err as { error: { message?: string } }).error?.message ?? "Failed to move folder")); return; }
+    if (err) {
+      toast.error(
+        String((err as { error: { message?: string } }).error?.message ?? "Failed to move folder"),
+      );
+      return;
+    }
     // Update extraFolders state to mirror rename
     setExtraFolders((prev) =>
-      Array.from(new Set(prev.map((p) => {
-        if (p === oldPath) return newPath;
-        if (p.startsWith(prefix)) return newPath + p.slice(oldPath.length);
-        return p;
-      }))),
+      Array.from(
+        new Set(
+          prev.map((p) => {
+            if (p === oldPath) return newPath;
+            if (p.startsWith(prefix)) return newPath + p.slice(oldPath.length);
+            return p;
+          }),
+        ),
+      ),
     );
     qc.invalidateQueries({ queryKey: ["characters", gameId] });
   }
@@ -1495,7 +1909,10 @@ function FilesPanel({
   function addFolder(parentPath?: string | null) {
     const name = newFolder.trim();
     if (!name) return;
-    if (name.includes("/")) { toast.error("Folder name cannot contain '/'"); return; }
+    if (name.includes("/")) {
+      toast.error("Folder name cannot contain '/'");
+      return;
+    }
     const full = parentPath ? `${parentPath}/${name}` : name;
     if (!extraFolders.includes(full) && !folderPaths.includes(full)) {
       setExtraFolders((p) => [...p, full]);
@@ -1506,7 +1923,10 @@ function FilesPanel({
   async function addSubfolder(parentPath: string) {
     const name = prompt(`New subfolder name under "${parentPath}":`)?.trim();
     if (!name) return;
-    if (name.includes("/")) { toast.error("Folder name cannot contain '/'"); return; }
+    if (name.includes("/")) {
+      toast.error("Folder name cannot contain '/'");
+      return;
+    }
     const full = `${parentPath}/${name}`;
     if (!extraFolders.includes(full) && !folderPaths.includes(full)) {
       setExtraFolders((p) => [...p, full]);
@@ -1515,18 +1935,25 @@ function FilesPanel({
 
   async function deleteFolder(path: string) {
     const prefix = path + "/";
-    const inFolder = rows.filter((r) => r.folder === path || (r.folder?.startsWith(prefix) ?? false));
-    const msg = inFolder.length > 0
-      ? `Apagar a pasta "${path}"? ${inFolder.length} ficha(s) serão movidas para "Unfiled".`
-      : `Apagar a pasta "${path}"?`;
+    const inFolder = rows.filter(
+      (r) => r.folder === path || (r.folder?.startsWith(prefix) ?? false),
+    );
+    const msg =
+      inFolder.length > 0
+        ? `Apagar a pasta "${path}"? ${inFolder.length} ficha(s) serão movidas para "Unfiled".`
+        : `Apagar a pasta "${path}"?`;
     if (!confirm(msg)) return;
     const updates: Promise<unknown>[] = [];
     for (const r of inFolder) {
-      updates.push(Promise.resolve(supabase.rpc("set_character_folder", {
-        p_kind: r.kind,
-        p_character_id: r.id,
-        p_folder: null,
-      })));
+      updates.push(
+        Promise.resolve(
+          supabase.rpc("set_character_folder", {
+            p_kind: r.kind,
+            p_character_id: r.id,
+            p_folder: null,
+          }),
+        ),
+      );
     }
     await Promise.all(updates);
     setExtraFolders((prev) => prev.filter((p) => p !== path && !p.startsWith(prefix)));
@@ -1543,13 +1970,23 @@ function FilesPanel({
   }
 
   function trainerSheetTargetFromPoint(clientX: number, clientY: number): HTMLElement | null {
-    return document
-      .elementsFromPoint(clientX, clientY)
-      .map((el) => el instanceof HTMLElement ? el.closest<HTMLElement>('[data-trainer-sheet-drop-target="true"]') : null)
-      .find(Boolean) ?? null;
+    return (
+      document
+        .elementsFromPoint(clientX, clientY)
+        .map((el) =>
+          el instanceof HTMLElement
+            ? el.closest<HTMLElement>('[data-trainer-sheet-drop-target="true"]')
+            : null,
+        )
+        .find(Boolean) ?? null
+    );
   }
 
-  function dispatchTrainerSheetDrop(payload: DragCharacterPayload, clientX: number, clientY: number) {
+  function dispatchTrainerSheetDrop(
+    payload: DragCharacterPayload,
+    clientX: number,
+    clientY: number,
+  ) {
     const target = trainerSheetTargetFromPoint(clientX, clientY);
     if (!target) return false;
     const event = new CustomEvent(TRAINER_SHEET_POINTER_DROP_EVENT, {
@@ -1621,21 +2058,27 @@ function FilesPanel({
     if (dispatchTrainerSheetDrop(drag.payload, e.clientX, e.clientY)) {
       return;
     }
-    window.dispatchEvent(new CustomEvent(CHARACTER_POINTER_DROP_EVENT, {
-      cancelable: true,
-      detail: { payload: drag.payload, clientX: e.clientX, clientY: e.clientY },
-    }));
+    window.dispatchEvent(
+      new CustomEvent(CHARACTER_POINTER_DROP_EVENT, {
+        cancelable: true,
+        detail: { payload: drag.payload, clientX: e.clientX, clientY: e.clientY },
+      }),
+    );
   }
 
   function renderItem(r: CharRow) {
     const key = `${r.kind}:${r.id}`;
     const mapPayload: DragCharacterPayload = {
-      kind: r.kind, id: r.id, label: r.label,
-      imageUrl: r.image_url ?? (r.kind === "pokemon" ? r.sprite_url : null), ownerId: r.owner_id,
+      kind: r.kind,
+      id: r.id,
+      label: r.label,
+      imageUrl: r.image_url ?? (r.kind === "pokemon" ? r.sprite_url : null),
+      ownerId: r.owner_id,
     };
     const startLongPress = (e: React.PointerEvent) => {
       if (e.pointerType === "mouse" || selectMode) return;
-      const sx = e.clientX, sy = e.clientY;
+      const sx = e.clientX,
+        sy = e.clientY;
       const timer = setTimeout(() => {
         setCtxMenu({ row: r, x: sx, y: sy, mode: "main" });
         if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(30);
@@ -1646,7 +2089,8 @@ function FilesPanel({
       const lp = longPressRef.current;
       if (!lp || !lp.timer) return;
       if (Math.hypot(e.clientX - lp.sx, e.clientY - lp.sy) > 8) {
-        clearTimeout(lp.timer); longPressRef.current = null;
+        clearTimeout(lp.timer);
+        longPressRef.current = null;
       }
     };
     const cancelLongPress = () => {
@@ -1722,21 +2166,27 @@ function FilesPanel({
             }
           }}
         >
-          {r.kind === "pokemon"
-            ? <PokemonSpriteImage
-                speciesName={r.species_name}
-                spriteUrl={r.species_sprite_url}
-                customUrl={r.image_url}
-                shiny={r.is_shiny}
-                spriteStyle={spriteStyle}
-                alt=""
-                draggable={false}
-                className="h-6 w-6 shrink-0 object-contain"
-                style={{ WebkitUserDrag: "none" } as CSSProperties}
-              />
-            : r.kind === "trainer" && r.image_url
-              ? <TrainerAppearanceImage value={r.image_url} alt="" className="h-8 w-8 shrink-0 bg-muted/40" />
-              : <User className="h-3.5 w-3.5 shrink-0" />}
+          {r.kind === "pokemon" ? (
+            <PokemonSpriteImage
+              speciesName={r.species_name}
+              spriteUrl={r.species_sprite_url}
+              customUrl={r.image_url}
+              shiny={r.is_shiny}
+              spriteStyle={spriteStyle}
+              alt=""
+              draggable={false}
+              className="h-6 w-6 shrink-0 object-contain"
+              style={{ WebkitUserDrag: "none" } as CSSProperties}
+            />
+          ) : r.kind === "trainer" && r.image_url ? (
+            <TrainerAppearanceImage
+              value={r.image_url}
+              alt=""
+              className="h-8 w-8 shrink-0 bg-muted/40"
+            />
+          ) : (
+            <User className="h-3.5 w-3.5 shrink-0" />
+          )}
           <span className="truncate">{r.label}</span>
         </div>
       </div>
@@ -1745,9 +2195,15 @@ function FilesPanel({
 
   async function sendRowToMap(r: CharRow) {
     const { data: g } = await supabase
-      .from("games").select("active_page_id").eq("id", gameId).maybeSingle();
+      .from("games")
+      .select("active_page_id")
+      .eq("id", gameId)
+      .maybeSingle();
     const pageId = (g as { active_page_id?: string | null } | null)?.active_page_id ?? null;
-    if (!pageId) { toast.error("Nenhuma página ativa"); return; }
+    if (!pageId) {
+      toast.error("Nenhuma página ativa");
+      return;
+    }
     const { error } = await supabase.rpc("create_token_from_character", {
       p_game_id: gameId,
       p_page_id: pageId,
@@ -1760,28 +2216,36 @@ function FilesPanel({
     });
     if (error) {
       const fallback = await supabase.from("tokens").insert({
-      game_id: gameId,
-      page_id: pageId,
-      character_kind: r.kind,
-      character_id: r.id,
-      label: r.label,
-      image_url: r.image_url ?? (r.kind === "pokemon" ? r.sprite_url : null),
-      owner_id: userId,
-      x: 0.5, y: 0.5,
+        game_id: gameId,
+        page_id: pageId,
+        character_kind: r.kind,
+        character_id: r.id,
+        label: r.label,
+        image_url: r.image_url ?? (r.kind === "pokemon" ? r.sprite_url : null),
+        owner_id: userId,
+        x: 0.5,
+        y: 0.5,
       });
-      if (fallback.error) { toast.error(`${error.message}. ${fallback.error.message}`); return; }
+      if (fallback.error) {
+        toast.error(`${error.message}. ${fallback.error.message}`);
+        return;
+      }
     }
     toast.success("Enviado para o mapa");
   }
   async function deleteRow(r: CharRow) {
     if (!confirm(`Deletar "${r.label}"?`)) return;
-    const result = r.kind === "trainer"
-      ? await supabase.from("trainers").delete().eq("id", r.id)
-      : r.kind === "pokemon"
-        ? await supabase.from("pokemon").delete().eq("id", r.id)
-        : await supabase.from("t20_characters").delete().eq("id", r.id);
+    const result =
+      r.kind === "trainer"
+        ? await supabase.from("trainers").delete().eq("id", r.id)
+        : r.kind === "pokemon"
+          ? await supabase.from("pokemon").delete().eq("id", r.id)
+          : await supabase.from("t20_characters").delete().eq("id", r.id);
     const { error } = result;
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     qc.invalidateQueries({ queryKey: ["characters", gameId] });
     toast.success("Deletado");
   }
@@ -1795,7 +2259,10 @@ function FilesPanel({
       <div
         data-file-folder-target={node.path}
         onDragOver={(e) => {
-          if (e.dataTransfer.types.includes(FOLDER_MIME) || e.dataTransfer.types.includes(FOLDER_PATH_MIME)) {
+          if (
+            e.dataTransfer.types.includes(FOLDER_MIME) ||
+            e.dataTransfer.types.includes(FOLDER_PATH_MIME)
+          ) {
             e.preventDefault();
             e.dataTransfer.dropEffect = "move";
             setDropHover(key);
@@ -1815,7 +2282,10 @@ function FilesPanel({
           if (!raw) return;
           e.preventDefault();
           e.stopPropagation();
-          const { kind, id } = JSON.parse(raw) as { kind: "trainer" | "pokemon" | "t20"; id: string };
+          const { kind, id } = JSON.parse(raw) as {
+            kind: "trainer" | "pokemon" | "t20";
+            id: string;
+          };
           const row = rows.find((r) => r.kind === kind && r.id === id);
           if (row) moveToFolder(row, node.path);
         }}
@@ -1874,10 +2344,14 @@ function FilesPanel({
         </div>
         {!isCollapsed && (
           <div className="space-y-1.5">
-            {node.children.map((c) => <FolderNodeView key={c.path} node={c} depth={depth + 1} />)}
+            {node.children.map((c) => (
+              <FolderNodeView key={c.path} node={c} depth={depth + 1} />
+            ))}
             {node.items.map(renderItem)}
             {node.items.length === 0 && node.children.length === 0 && (
-              <p className="px-2 py-1 text-[11px] text-muted-foreground">Drop a sheet or folder here.</p>
+              <p className="px-2 py-1 text-[11px] text-muted-foreground">
+                Drop a sheet or folder here.
+              </p>
             )}
           </div>
         )}
@@ -1897,7 +2371,10 @@ function FilesPanel({
       <div
         data-file-folder-target="__root__"
         onDragOver={(e) => {
-          if (e.dataTransfer.types.includes(FOLDER_MIME) || e.dataTransfer.types.includes(FOLDER_PATH_MIME)) {
+          if (
+            e.dataTransfer.types.includes(FOLDER_MIME) ||
+            e.dataTransfer.types.includes(FOLDER_PATH_MIME)
+          ) {
             e.preventDefault();
             e.dataTransfer.dropEffect = "move";
             setDropHover(key);
@@ -1915,7 +2392,10 @@ function FilesPanel({
           const raw = e.dataTransfer.getData(FOLDER_MIME);
           if (!raw) return;
           e.preventDefault();
-          const { kind, id } = JSON.parse(raw) as { kind: "trainer" | "pokemon" | "t20"; id: string };
+          const { kind, id } = JSON.parse(raw) as {
+            kind: "trainer" | "pokemon" | "t20";
+            id: string;
+          };
           const row = rows.find((r) => r.kind === kind && r.id === id);
           if (row) moveToFolder(row, null);
         }}
@@ -1972,7 +2452,11 @@ function FilesPanel({
         </div>
         <div className="flex flex-wrap gap-1.5">
           {system === "t20" ? (
-            <Button size="sm" onClick={() => createT20Character.mutate()} disabled={createT20Character.isPending}>
+            <Button
+              size="sm"
+              onClick={() => createT20Character.mutate()}
+              disabled={createT20Character.isPending}
+            >
               <User className="mr-1 h-3.5 w-3.5" /> Personagem
             </Button>
           ) : (
@@ -1988,7 +2472,9 @@ function FilesPanel({
                 }}
               >
                 <DialogContent className="max-w-lg">
-                  <DialogHeader><DialogTitle>Criar treinador</DialogTitle></DialogHeader>
+                  <DialogHeader>
+                    <DialogTitle>Criar treinador</DialogTitle>
+                  </DialogHeader>
                   <div className="space-y-2">
                     <Label htmlFor="new-trainer-name">Nome</Label>
                     <Input
@@ -1999,7 +2485,11 @@ function FilesPanel({
                       disabled={createTrainer.isPending}
                       autoFocus
                       onKeyDown={(event) => {
-                        if (event.key === "Enter" && newTrainerName.trim() && !createTrainer.isPending) {
+                        if (
+                          event.key === "Enter" &&
+                          newTrainerName.trim() &&
+                          !createTrainer.isPending
+                        ) {
                           createTrainer.mutate();
                         }
                       }}
@@ -2015,251 +2505,365 @@ function FilesPanel({
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
-              <MinimalSheetButton gameId={gameId} userId={userId} onCreated={(id: string, name: string) => { qc.invalidateQueries({ queryKey: ["characters", gameId] }); onOpen({ kind: "trainer", id, title: name }); }} />
+              <MinimalSheetButton
+                gameId={gameId}
+                userId={userId}
+                onCreated={(id: string, name: string) => {
+                  qc.invalidateQueries({ queryKey: ["characters", gameId] });
+                  onOpen({ kind: "trainer", id, title: name });
+                }}
+              />
             </>
           )}
-          {system !== "t20" && <Dialog
-            open={pkmDialogOpen}
-            onOpenChange={(open) => {
-              setPkmDialogOpen(open);
-              if (!open) {
-                setSpeciesPickerOpen(false);
-                setSpeciesSearch("");
-              }
-            }}
-          >
-            <DialogTrigger asChild>
-              <Button size="sm"><Sparkles className="mr-1 h-3.5 w-3.5" /> Pokémon</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>Create a Pokémon</DialogTitle></DialogHeader>
-              <div className="flex items-center justify-between">
-                <Label>Species</Label>
-                <Button size="sm" variant="outline" onClick={() => setRandomOpen((v) => !v)}>
-                  <Dices className="mr-1 h-3.5 w-3.5" /> Aleatório
+          {system !== "t20" && (
+            <Dialog
+              open={pkmDialogOpen}
+              onOpenChange={(open) => {
+                setPkmDialogOpen(open);
+                if (!open) {
+                  setSpeciesPickerOpen(false);
+                  setSpeciesSearch("");
+                }
+              }}
+            >
+              <DialogTrigger asChild>
+                <Button size="sm">
+                  <Sparkles className="mr-1 h-3.5 w-3.5" /> Pokémon
                 </Button>
-              </div>
-              <div className="relative">
-                <button
-                  type="button"
-                  aria-expanded={speciesPickerOpen}
-                  aria-controls="pokemon-species-picker"
-                  className="flex h-12 w-full items-center justify-between rounded-xl border border-input bg-background px-4 text-left text-sm font-semibold text-foreground shadow-sm transition hover:border-primary/60 focus:outline-none focus:ring-1 focus:ring-ring"
-                  onClick={() => setSpeciesPickerOpen((open) => !open)}
-                >
-                  <span className={selectedSpeciesName ? "" : "text-muted-foreground"}>
-                    {selectedSpeciesName || "Pick a species"}
-                  </span>
-                  <ChevronDown className={`h-4 w-4 opacity-60 transition-transform ${speciesPickerOpen ? "rotate-180" : ""}`} />
-                </button>
-                {speciesPickerOpen && (
-                  <div
-                    id="pokemon-species-picker"
-                    role="listbox"
-                    className="pokemon-species-picker-list mt-2 rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg"
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create a Pokémon</DialogTitle>
+                </DialogHeader>
+                <div className="flex items-center justify-between">
+                  <Label>Species</Label>
+                  <Button size="sm" variant="outline" onClick={() => setRandomOpen((v) => !v)}>
+                    <Dices className="mr-1 h-3.5 w-3.5" /> Aleatório
+                  </Button>
+                </div>
+                <div className="relative">
+                  <button
+                    type="button"
+                    aria-expanded={speciesPickerOpen}
+                    aria-controls="pokemon-species-picker"
+                    className="flex h-12 w-full items-center justify-between rounded-xl border border-input bg-background px-4 text-left text-sm font-semibold text-foreground shadow-sm transition hover:border-primary/60 focus:outline-none focus:ring-1 focus:ring-ring"
+                    onClick={() => setSpeciesPickerOpen((open) => !open)}
                   >
-                    <div className="sticky top-0 z-10 bg-popover p-1 pb-2">
-                      <Input
-                        autoFocus
-                        value={speciesSearch}
-                        onChange={(e) => setSpeciesSearch(e.target.value)}
-                        placeholder="Digite para procurar..."
-                        className="h-9 rounded-lg text-sm"
-                        onKeyDown={(e) => {
-                          if (e.key === "Escape") {
-                            setSpeciesPickerOpen(false);
-                            setSpeciesSearch("");
-                          }
-                        }}
-                      />
-                    </div>
-                    {filteredSpeciesList.map((s) => {
-                      const selected = s.id === newPkmSpecies;
-                      return (
-                        <button
-                          key={s.id}
-                          type="button"
-                          role="option"
-                          aria-selected={selected}
-                          className={`flex min-h-10 w-full items-center rounded-lg px-3 text-left text-sm font-semibold transition ${
-                            selected ? "bg-primary text-primary-foreground" : "hover:bg-accent hover:text-accent-foreground"
-                          }`}
-                          onClick={() => {
-                            setNewPkmSpecies(s.id);
-                            setSpeciesPickerOpen(false);
-                            setSpeciesSearch("");
+                    <span className={selectedSpeciesName ? "" : "text-muted-foreground"}>
+                      {selectedSpeciesName || "Pick a species"}
+                    </span>
+                    <ChevronDown
+                      className={`h-4 w-4 opacity-60 transition-transform ${speciesPickerOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                  {speciesPickerOpen && (
+                    <div
+                      id="pokemon-species-picker"
+                      role="listbox"
+                      className="pokemon-species-picker-list mt-2 rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg"
+                    >
+                      <div className="sticky top-0 z-10 bg-popover p-1 pb-2">
+                        <Input
+                          autoFocus
+                          value={speciesSearch}
+                          onChange={(e) => setSpeciesSearch(e.target.value)}
+                          placeholder="Digite para procurar..."
+                          className="h-9 rounded-lg text-sm"
+                          onKeyDown={(e) => {
+                            if (e.key === "Escape") {
+                              setSpeciesPickerOpen(false);
+                              setSpeciesSearch("");
+                            }
                           }}
-                        >
-                          {s.name}
-                        </button>
-                      );
-                    })}
-                    {!speciesList?.length && (
-                      <p className="px-3 py-4 text-center text-xs text-muted-foreground">Carregando especies...</p>
-                    )}
-                    {!!speciesList?.length && filteredSpeciesList.length === 0 && (
-                      <p className="px-3 py-4 text-center text-xs text-muted-foreground">Nenhum Pokemon encontrado.</p>
-                    )}
-                  </div>
-                )}
-              </div>
-              {randomOpen && (() => {
-                const list = speciesList ?? [];
-                const parentOf = new Map<string, string>();
-                for (const s of list) for (const ev of (s.evolutions ?? [])) parentOf.set(ev, s.name);
-                const isMegaName = (n: string) => /\bMega\b/.test(n);
-                const allMega = (evos: string[]) => evos.length > 0 && evos.every(isMegaName);
-                function matchesCatalog(s: typeof list[number]): boolean {
-                  const hasParent = parentOf.has(s.name);
-                  const evos = s.evolutions ?? [];
-                  const rank = s.suggested_rank;
-                  const proPlus = rank === "pro" || rank === "master";
-                  const cats: boolean[] = [];
-                  if (fStarter) cats.push(!!s.is_starter);
-                  if (fLegend) cats.push(!!s.is_legendary);
-                  if (fFirst) cats.push(!s.is_legendary && !proPlus && (!hasParent || evos.length === 0));
-                  if (fSecond) cats.push(!s.is_legendary && !proPlus && hasParent && evos.length > 0 && !allMega(evos));
-                  if (fLast) cats.push(!s.is_legendary && rank !== "master" && hasParent && (evos.length === 0 || allMega(evos)));
-                  const catMatch = cats.length === 0 ? true : cats.some(Boolean);
-                  const rankMatch = !fRank || s.suggested_rank === fRank;
-                  return catMatch && rankMatch;
-                }
-                function roll() {
-                  let pool: { id: string; name: string }[] = [];
-                  if (randomMode === "catalog") {
-                    pool = list.filter(matchesCatalog);
-                  } else if (randomMode === "biome") {
-                    const sl = speciesList ?? [];
-                    pool = sl
-                      .filter((s) => (s.biomes ?? []).includes(selectedBiome))
-                      .filter((s) => !fRank || s.suggested_rank === fRank);
-                  } else if (randomMode === "route") {
-                    const r = (routes ?? []).find((x) => x.id === selectedRouteId);
-                    if (!r) { toast.error("Selecione uma rota"); return; }
-                    const ids = new Set(r.species_ids);
-                    pool = list.filter((s) => ids.has(s.id));
-                  }
-                  if (pool.length === 0) { toast.error("Nenhum Pokémon corresponde aos filtros"); return; }
-                  const pick = pool[Math.floor(Math.random() * pool.length)];
-                  toast.success(`🎲 ${pick.name}`);
-                  createPokemon.mutate({ speciesId: pick.id, random: { rank: randomGenRank } });
-                }
-                return (
-                  <div className="space-y-2 rounded-md border border-border bg-muted/30 p-2.5 text-xs">
-                    <div className="flex gap-1">
-                      {(["catalog","route","biome"] as const).map((m) => (
-                        <button
-                          key={m}
-                          type="button"
-                          onClick={() => setRandomMode(m)}
-                          className={`flex-1 rounded px-2 py-1 text-xs font-medium transition ${randomMode === m ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`}
-                        >
-                          {m === "catalog" ? "Catálogo" : m === "route" ? "Rota" : "Bioma"}
-                        </button>
-                      ))}
+                        />
+                      </div>
+                      {filteredSpeciesList.map((s) => {
+                        const selected = s.id === newPkmSpecies;
+                        return (
+                          <button
+                            key={s.id}
+                            type="button"
+                            role="option"
+                            aria-selected={selected}
+                            className={`flex min-h-10 w-full items-center rounded-lg px-3 text-left text-sm font-semibold transition ${
+                              selected
+                                ? "bg-primary text-primary-foreground"
+                                : "hover:bg-accent hover:text-accent-foreground"
+                            }`}
+                            onClick={() => {
+                              setNewPkmSpecies(s.id);
+                              setSpeciesPickerOpen(false);
+                              setSpeciesSearch("");
+                            }}
+                          >
+                            {s.name}
+                          </button>
+                        );
+                      })}
+                      {!speciesList?.length && (
+                        <p className="px-3 py-4 text-center text-xs text-muted-foreground">
+                          Carregando especies...
+                        </p>
+                      )}
+                      {!!speciesList?.length && filteredSpeciesList.length === 0 && (
+                        <p className="px-3 py-4 text-center text-xs text-muted-foreground">
+                          Nenhum Pokemon encontrado.
+                        </p>
+                      )}
                     </div>
+                  )}
+                </div>
+                {randomOpen &&
+                  (() => {
+                    const list = speciesList ?? [];
+                    const parentOf = new Map<string, string>();
+                    for (const s of list)
+                      for (const ev of s.evolutions ?? []) parentOf.set(ev, s.name);
+                    const isMegaName = (n: string) => /\bMega\b/.test(n);
+                    const allMega = (evos: string[]) => evos.length > 0 && evos.every(isMegaName);
+                    function matchesCatalog(s: (typeof list)[number]): boolean {
+                      const hasParent = parentOf.has(s.name);
+                      const evos = s.evolutions ?? [];
+                      const rank = s.suggested_rank;
+                      const proPlus = rank === "pro" || rank === "master";
+                      const cats: boolean[] = [];
+                      if (fStarter) cats.push(!!s.is_starter);
+                      if (fLegend) cats.push(!!s.is_legendary);
+                      if (fFirst)
+                        cats.push(!s.is_legendary && !proPlus && (!hasParent || evos.length === 0));
+                      if (fSecond)
+                        cats.push(
+                          !s.is_legendary &&
+                            !proPlus &&
+                            hasParent &&
+                            evos.length > 0 &&
+                            !allMega(evos),
+                        );
+                      if (fLast)
+                        cats.push(
+                          !s.is_legendary &&
+                            rank !== "master" &&
+                            hasParent &&
+                            (evos.length === 0 || allMega(evos)),
+                        );
+                      const catMatch = cats.length === 0 ? true : cats.some(Boolean);
+                      const rankMatch = !fRank || s.suggested_rank === fRank;
+                      return catMatch && rankMatch;
+                    }
+                    function roll() {
+                      let pool: { id: string; name: string }[] = [];
+                      if (randomMode === "catalog") {
+                        pool = list.filter(matchesCatalog);
+                      } else if (randomMode === "biome") {
+                        const sl = speciesList ?? [];
+                        pool = sl
+                          .filter((s) => (s.biomes ?? []).includes(selectedBiome))
+                          .filter((s) => !fRank || s.suggested_rank === fRank);
+                      } else if (randomMode === "route") {
+                        const r = (routes ?? []).find((x) => x.id === selectedRouteId);
+                        if (!r) {
+                          toast.error("Selecione uma rota");
+                          return;
+                        }
+                        const ids = new Set(r.species_ids);
+                        pool = list.filter((s) => ids.has(s.id));
+                      }
+                      if (pool.length === 0) {
+                        toast.error("Nenhum Pokémon corresponde aos filtros");
+                        return;
+                      }
+                      const pick = pool[Math.floor(Math.random() * pool.length)];
+                      toast.success(`🎲 ${pick.name}`);
+                      createPokemon.mutate({ speciesId: pick.id, random: { rank: randomGenRank } });
+                    }
+                    return (
+                      <div className="space-y-2 rounded-md border border-border bg-muted/30 p-2.5 text-xs">
+                        <div className="flex gap-1">
+                          {(["catalog", "route", "biome"] as const).map((m) => (
+                            <button
+                              key={m}
+                              type="button"
+                              onClick={() => setRandomMode(m)}
+                              className={`flex-1 rounded px-2 py-1 text-xs font-medium transition ${randomMode === m ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`}
+                            >
+                              {m === "catalog" ? "Catálogo" : m === "route" ? "Rota" : "Bioma"}
+                            </button>
+                          ))}
+                        </div>
 
-                    {randomMode === "catalog" && (
-                      <div className="grid grid-cols-2 gap-1.5">
-                        <label className="flex items-center gap-1.5"><Checkbox checked={fStarter} onCheckedChange={(v) => setFStarter(!!v)} /> Starter</label>
-                        <label className="flex items-center gap-1.5"><Checkbox checked={fLegend} onCheckedChange={(v) => setFLegend(!!v)} /> Lendário</label>
-                        <label className="flex items-center gap-1.5"><Checkbox checked={fFirst} onCheckedChange={(v) => setFFirst(!!v)} /> Estágio inicial</label>
-                        <label className="flex items-center gap-1.5"><Checkbox checked={fSecond} onCheckedChange={(v) => setFSecond(!!v)} /> Segundo estágio</label>
-                        <label className="flex items-center gap-1.5"><Checkbox checked={fLast} onCheckedChange={(v) => setFLast(!!v)} /> Último estágio</label>
-                      </div>
-                    )}
+                        {randomMode === "catalog" && (
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <label className="flex items-center gap-1.5">
+                              <Checkbox
+                                checked={fStarter}
+                                onCheckedChange={(v) => setFStarter(!!v)}
+                              />{" "}
+                              Starter
+                            </label>
+                            <label className="flex items-center gap-1.5">
+                              <Checkbox
+                                checked={fLegend}
+                                onCheckedChange={(v) => setFLegend(!!v)}
+                              />{" "}
+                              Lendário
+                            </label>
+                            <label className="flex items-center gap-1.5">
+                              <Checkbox checked={fFirst} onCheckedChange={(v) => setFFirst(!!v)} />{" "}
+                              Estágio inicial
+                            </label>
+                            <label className="flex items-center gap-1.5">
+                              <Checkbox
+                                checked={fSecond}
+                                onCheckedChange={(v) => setFSecond(!!v)}
+                              />{" "}
+                              Segundo estágio
+                            </label>
+                            <label className="flex items-center gap-1.5">
+                              <Checkbox checked={fLast} onCheckedChange={(v) => setFLast(!!v)} />{" "}
+                              Último estágio
+                            </label>
+                          </div>
+                        )}
 
-                    {randomMode === "biome" && (
-                      <div className="flex items-center gap-2">
-                        <span className="whitespace-nowrap">Bioma:</span>
-                        <Select value={selectedBiome} onValueChange={setSelectedBiome}>
-                          <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {BIOME_KEYS.map((b) => <SelectItem key={b} value={b}>{BIOME_LABELS[b]}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
+                        {randomMode === "biome" && (
+                          <div className="flex items-center gap-2">
+                            <span className="whitespace-nowrap">Bioma:</span>
+                            <Select value={selectedBiome} onValueChange={setSelectedBiome}>
+                              <SelectTrigger className="h-7 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {BIOME_KEYS.map((b) => (
+                                  <SelectItem key={b} value={b}>
+                                    {BIOME_LABELS[b]}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
 
-                    {randomMode === "route" && (
-                      <>
+                        {randomMode === "route" && (
+                          <>
+                            <div className="flex items-center gap-2">
+                              <span className="whitespace-nowrap">Rota:</span>
+                              <Select value={selectedRouteId} onValueChange={setSelectedRouteId}>
+                                <SelectTrigger className="h-7 text-xs">
+                                  <SelectValue placeholder="Escolher" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {(routes ?? []).length === 0 && (
+                                    <div className="px-2 py-1 text-xs text-muted-foreground">
+                                      Sem rotas ainda
+                                    </div>
+                                  )}
+                                  {(routes ?? []).map((r) => (
+                                    <SelectItem key={r.id} value={r.id}>
+                                      {r.name} ({r.species_ids.length})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              {isNarrator && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-2"
+                                  onClick={() => setRouteMgrOpen(true)}
+                                >
+                                  Gerenciar
+                                </Button>
+                              )}
+                            </div>
+                          </>
+                        )}
+
+                        {randomMode !== "route" && (
+                          <div className="flex items-center gap-2">
+                            <span className="whitespace-nowrap">Rank recomendado:</span>
+                            <Select
+                              value={fRank || "any"}
+                              onValueChange={(v) => setFRank(v === "any" ? "" : v)}
+                            >
+                              <SelectTrigger className="h-7 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="any">Qualquer</SelectItem>
+                                <SelectItem value="starter">Starter</SelectItem>
+                                <SelectItem value="beginner">Beginner</SelectItem>
+                                <SelectItem value="amateur">Amateur</SelectItem>
+                                <SelectItem value="ace">Ace</SelectItem>
+                                <SelectItem value="pro">Pro</SelectItem>
+                                <SelectItem value="master">Master</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
                         <div className="flex items-center gap-2">
-                          <span className="whitespace-nowrap">Rota:</span>
-                          <Select value={selectedRouteId} onValueChange={setSelectedRouteId}>
-                            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Escolher" /></SelectTrigger>
+                          <span className="whitespace-nowrap">Rank do Pokémon:</span>
+                          <Select
+                            value={randomGenRank}
+                            onValueChange={(v) => setRandomGenRank(v as Rank)}
+                          >
+                            <SelectTrigger className="h-7 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
                             <SelectContent>
-                              {(routes ?? []).length === 0 && <div className="px-2 py-1 text-xs text-muted-foreground">Sem rotas ainda</div>}
-                              {(routes ?? []).map((r) => <SelectItem key={r.id} value={r.id}>{r.name} ({r.species_ids.length})</SelectItem>)}
+                              {RANKS.map((r) => (
+                                <SelectItem key={r} value={r}>
+                                  {RANK_LABELS[r]}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
-                          {isNarrator && (
-                            <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setRouteMgrOpen(true)}>Gerenciar</Button>
-                          )}
                         </div>
-                      </>
-                    )}
-
-                    {randomMode !== "route" && (
-                      <div className="flex items-center gap-2">
-                        <span className="whitespace-nowrap">Rank recomendado:</span>
-                        <Select value={fRank || "any"} onValueChange={(v) => setFRank(v === "any" ? "" : v)}>
-                          <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="any">Qualquer</SelectItem>
-                            <SelectItem value="starter">Starter</SelectItem>
-                            <SelectItem value="beginner">Beginner</SelectItem>
-                            <SelectItem value="amateur">Amateur</SelectItem>
-                            <SelectItem value="ace">Ace</SelectItem>
-                            <SelectItem value="pro">Pro</SelectItem>
-                            <SelectItem value="master">Master</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <p className="text-[10px] text-muted-foreground">
+                          Atributos, skills, sexo, nature, habilidade e moves serão sorteados
+                          conforme o rank.
+                        </p>
+                        <Button size="sm" className="w-full" onClick={roll}>
+                          <Dices className="mr-1 h-3.5 w-3.5" /> Sortear
+                        </Button>
                       </div>
-                    )}
-                    <div className="flex items-center gap-2">
-                      <span className="whitespace-nowrap">Rank do Pokémon:</span>
-                      <Select value={randomGenRank} onValueChange={(v) => setRandomGenRank(v as Rank)}>
-                        <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {RANKS.map((r) => <SelectItem key={r} value={r}>{RANK_LABELS[r]}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">Atributos, skills, sexo, nature, habilidade e moves serão sorteados conforme o rank.</p>
-                    <Button size="sm" className="w-full" onClick={roll}>
-                      <Dices className="mr-1 h-3.5 w-3.5" /> Sortear
-                    </Button>
-                  </div>
-                );
-              })()}
+                    );
+                  })()}
 
-              <label className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-2.5 text-sm">
-                <Checkbox
-                  checked={newPkmOvergrown}
-                  onCheckedChange={(v) => setNewPkmOvergrown(!!v)}
-                  className="mt-0.5"
-                />
-                <span>
-                  <span className="font-semibold">Overgrown</span>
-                  <span className="block text-xs text-muted-foreground">
-                    Pokémon raro com vitalidade superior. HP base +1.
+                <label className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-2.5 text-sm">
+                  <Checkbox
+                    checked={newPkmOvergrown}
+                    onCheckedChange={(v) => setNewPkmOvergrown(!!v)}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <span className="font-semibold">Overgrown</span>
+                    <span className="block text-xs text-muted-foreground">
+                      Pokémon raro com vitalidade superior. HP base +1.
+                    </span>
                   </span>
-                </span>
-              </label>
-              <p className="text-xs text-muted-foreground">
-                Chances de shiny/overgrown configuráveis em ⚙️ Settings.
-              </p>
-              <DialogFooter>
-                <Button onClick={() => createPokemon.mutate(undefined)} disabled={createPokemon.isPending}>Create</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>}
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  Chances de shiny/overgrown configuráveis em ⚙️ Settings.
+                </p>
+                <DialogFooter>
+                  <Button
+                    onClick={() => createPokemon.mutate(undefined)}
+                    disabled={createPokemon.isPending}
+                  >
+                    Create
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
 
           {/* Route Manager — narrator only */}
           {system !== "t20" && isNarrator && (
             <Dialog open={routeMgrOpen} onOpenChange={setRouteMgrOpen}>
               <DialogContent className="max-w-lg">
-                <DialogHeader><DialogTitle>Rotas de captura</DialogTitle></DialogHeader>
+                <DialogHeader>
+                  <DialogTitle>Rotas de captura</DialogTitle>
+                </DialogHeader>
                 <div className="space-y-3">
                   <div className="flex gap-2">
                     <Input
@@ -2274,12 +2878,20 @@ function FilesPanel({
                         const name = newRouteName.trim();
                         if (!name) return;
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        const { error } = await (supabase.from("routes" as any) as any).insert({ game_id: gameId, name });
-                        if (error) { toast.error(error.message); return; }
+                        const { error } = await (supabase.from("routes" as any) as any).insert({
+                          game_id: gameId,
+                          name,
+                        });
+                        if (error) {
+                          toast.error(error.message);
+                          return;
+                        }
                         setNewRouteName("");
                         refetchRoutes();
                       }}
-                    >Criar</Button>
+                    >
+                      Criar
+                    </Button>
                   </div>
 
                   <div className="max-h-80 space-y-2 overflow-auto">
@@ -2292,51 +2904,112 @@ function FilesPanel({
                             <span className="text-sm font-semibold">{r.name}</span>
                             <div className="flex gap-1">
                               {!isEditing ? (
-                                <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => { setEditingRouteId(r.id); setEditingRouteSpecies(r.species_ids); setRouteSpeciesPick(""); }}>Editar</Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 px-2 text-xs"
+                                  onClick={() => {
+                                    setEditingRouteId(r.id);
+                                    setEditingRouteSpecies(r.species_ids);
+                                    setRouteSpeciesPick("");
+                                  }}
+                                >
+                                  Editar
+                                </Button>
                               ) : (
-                                <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={async () => {
-                                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                  const { error } = await (supabase.from("routes" as any) as any).update({ species_ids: editingRouteSpecies }).eq("id", r.id);
-                                  if (error) { toast.error(error.message); return; }
-                                  setEditingRouteId(null);
-                                  refetchRoutes();
-                                  toast.success("Rota salva");
-                                }}>Salvar</Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 px-2 text-xs"
+                                  onClick={async () => {
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    const { error } = await (supabase.from("routes" as any) as any)
+                                      .update({ species_ids: editingRouteSpecies })
+                                      .eq("id", r.id);
+                                    if (error) {
+                                      toast.error(error.message);
+                                      return;
+                                    }
+                                    setEditingRouteId(null);
+                                    refetchRoutes();
+                                    toast.success("Rota salva");
+                                  }}
+                                >
+                                  Salvar
+                                </Button>
                               )}
-                              <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-destructive" onClick={async () => {
-                                if (!confirm(`Apagar rota "${r.name}"?`)) return;
-                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                await (supabase.from("routes" as any) as any).delete().eq("id", r.id);
-                                refetchRoutes();
-                              }}>×</Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 px-2 text-xs text-destructive"
+                                onClick={async () => {
+                                  if (!confirm(`Apagar rota "${r.name}"?`)) return;
+                                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                  await (supabase.from("routes" as any) as any)
+                                    .delete()
+                                    .eq("id", r.id);
+                                  refetchRoutes();
+                                }}
+                              >
+                                ×
+                              </Button>
                             </div>
                           </div>
 
                           {isEditing && (
                             <div className="mt-2 flex gap-1">
                               <Select value={routeSpeciesPick} onValueChange={setRouteSpeciesPick}>
-                                <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Adicionar Pokémon" /></SelectTrigger>
+                                <SelectTrigger className="h-7 text-xs">
+                                  <SelectValue placeholder="Adicionar Pokémon" />
+                                </SelectTrigger>
                                 <SelectContent>
-                                  {(speciesList ?? []).filter((s) => !editingRouteSpecies.includes(s.id)).map((s) => (
-                                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                                  ))}
+                                  {(speciesList ?? [])
+                                    .filter((s) => !editingRouteSpecies.includes(s.id))
+                                    .map((s) => (
+                                      <SelectItem key={s.id} value={s.id}>
+                                        {s.name}
+                                      </SelectItem>
+                                    ))}
                                 </SelectContent>
                               </Select>
-                              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => {
-                                if (routeSpeciesPick) { setEditingRouteSpecies((p) => [...p, routeSpeciesPick]); setRouteSpeciesPick(""); }
-                              }}>+</Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 px-2 text-xs"
+                                onClick={() => {
+                                  if (routeSpeciesPick) {
+                                    setEditingRouteSpecies((p) => [...p, routeSpeciesPick]);
+                                    setRouteSpeciesPick("");
+                                  }
+                                }}
+                              >
+                                +
+                              </Button>
                             </div>
                           )}
 
                           <div className="mt-2 flex flex-wrap gap-1">
-                            {speciesIds.length === 0 && <span className="text-[11px] text-muted-foreground">Vazia</span>}
+                            {speciesIds.length === 0 && (
+                              <span className="text-[11px] text-muted-foreground">Vazia</span>
+                            )}
                             {speciesIds.map((sid) => {
                               const s = (speciesList ?? []).find((x) => x.id === sid);
                               return (
-                                <span key={sid} className="inline-flex items-center gap-1 rounded bg-background px-1.5 py-0.5 text-[11px]">
+                                <span
+                                  key={sid}
+                                  className="inline-flex items-center gap-1 rounded bg-background px-1.5 py-0.5 text-[11px]"
+                                >
                                   {s?.name ?? "?"}
                                   {isEditing && (
-                                    <button type="button" className="text-muted-foreground hover:text-destructive" onClick={() => setEditingRouteSpecies((p) => p.filter((x) => x !== sid))}>×</button>
+                                    <button
+                                      type="button"
+                                      className="text-muted-foreground hover:text-destructive"
+                                      onClick={() =>
+                                        setEditingRouteSpecies((p) => p.filter((x) => x !== sid))
+                                      }
+                                    >
+                                      ×
+                                    </button>
                                   )}
                                 </span>
                               );
@@ -2355,13 +3028,29 @@ function FilesPanel({
           )}
 
           {!selectMode ? (
-            <Button size="sm" variant="outline" onClick={() => setSelectMode(true)}>Select</Button>
+            <Button size="sm" variant="outline" onClick={() => setSelectMode(true)}>
+              Select
+            </Button>
           ) : (
             <>
-              <Button size="sm" variant="destructive" disabled={selected.size === 0} onClick={bulkDelete}>
+              <Button
+                size="sm"
+                variant="destructive"
+                disabled={selected.size === 0}
+                onClick={bulkDelete}
+              >
                 <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete ({selected.size})
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => { setSelectMode(false); setSelected(new Set()); }}>Cancel</Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setSelectMode(false);
+                  setSelected(new Set());
+                }}
+              >
+                Cancel
+              </Button>
             </>
           )}
         </div>
@@ -2375,17 +3064,25 @@ function FilesPanel({
           placeholder="New top-level folder…"
           className="h-8 text-xs"
         />
-        <Button size="sm" variant="outline" onClick={() => addFolder()} disabled={!newFolder.trim()}>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => addFolder()}
+          disabled={!newFolder.trim()}
+        >
           <FolderPlus className="mr-1 h-3.5 w-3.5" /> Add
         </Button>
       </div>
 
       <p className="text-[11px] text-muted-foreground">
-        Tip: drag a character onto the map, drag sheets between folders, or drag a folder onto another to nest it. Use the + on a folder to add a subfolder.
+        Tip: drag a character onto the map, drag sheets between folders, or drag a folder onto
+        another to nest it. Use the + on a folder to add a subfolder.
       </p>
 
       <div className="space-y-2">
-        {tree.map((node) => <FolderNodeView key={node.path} node={node} depth={0} />)}
+        {tree.map((node) => (
+          <FolderNodeView key={node.path} node={node} depth={0} />
+        ))}
         <UnfiledGroup />
         {rows.length === 0 && filesPending && !filesHaveSnapshot && (
           <p className="text-xs text-muted-foreground">Carregando fichas...</p>
@@ -2393,11 +3090,15 @@ function FilesPanel({
         {rows.length === 0 && filesError && !filesHaveSnapshot && (
           <div className="flex items-center justify-between gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-2">
             <p className="text-xs text-destructive">Não foi possível carregar as fichas.</p>
-            <Button size="sm" variant="outline" onClick={refetchFiles}>Tentar novamente</Button>
+            <Button size="sm" variant="outline" onClick={refetchFiles}>
+              Tentar novamente
+            </Button>
           </div>
         )}
         {rows.length === 0 && !filesPending && !filesError && (
-          <p className="text-xs text-muted-foreground">No characters yet. Create one to get started.</p>
+          <p className="text-xs text-muted-foreground">
+            No characters yet. Create one to get started.
+          </p>
         )}
       </div>
 
@@ -2416,8 +3117,14 @@ function FilesPanel({
           <div
             className="fixed z-50 w-56 overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-xl"
             style={{
-              left: Math.min(ctxMenu.x, (typeof window !== "undefined" ? window.innerWidth : 9999) - 232),
-              top: Math.min(ctxMenu.y, (typeof window !== "undefined" ? window.innerHeight : 9999) - 280),
+              left: Math.min(
+                ctxMenu.x,
+                (typeof window !== "undefined" ? window.innerWidth : 9999) - 232,
+              ),
+              top: Math.min(
+                ctxMenu.y,
+                (typeof window !== "undefined" ? window.innerHeight : 9999) - 280,
+              ),
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -2426,25 +3133,80 @@ function FilesPanel({
             </div>
             {ctxMenu.mode === "main" ? (
               <div className="flex flex-col">
-                <button className="px-3 py-2.5 text-left text-sm hover:bg-accent" onClick={async () => { await sendRowToMap(ctxMenu.row); setCtxMenu(null); }}>📍 Enviar para mapa</button>
-                <button className="px-3 py-2.5 text-left text-sm hover:bg-accent" onClick={() => setCtxMenu({ ...ctxMenu, mode: "move" })}>📁 Mover para pasta</button>
-                <button className="px-3 py-2.5 text-left text-sm hover:bg-accent" onClick={() => { setSelectMode(true); setSelected((p) => { const n = new Set(p); n.add(`${ctxMenu.row.kind}:${ctxMenu.row.id}`); return n; }); setCtxMenu(null); }}>☑️ Selecionar</button>
-                <button className="px-3 py-2.5 text-left text-sm text-destructive hover:bg-destructive/10" onClick={async () => { const row = ctxMenu.row; setCtxMenu(null); await deleteRow(row); }}>🗑️ Deletar</button>
+                <button
+                  className="px-3 py-2.5 text-left text-sm hover:bg-accent"
+                  onClick={async () => {
+                    await sendRowToMap(ctxMenu.row);
+                    setCtxMenu(null);
+                  }}
+                >
+                  📍 Enviar para mapa
+                </button>
+                <button
+                  className="px-3 py-2.5 text-left text-sm hover:bg-accent"
+                  onClick={() => setCtxMenu({ ...ctxMenu, mode: "move" })}
+                >
+                  📁 Mover para pasta
+                </button>
+                <button
+                  className="px-3 py-2.5 text-left text-sm hover:bg-accent"
+                  onClick={() => {
+                    setSelectMode(true);
+                    setSelected((p) => {
+                      const n = new Set(p);
+                      n.add(`${ctxMenu.row.kind}:${ctxMenu.row.id}`);
+                      return n;
+                    });
+                    setCtxMenu(null);
+                  }}
+                >
+                  ☑️ Selecionar
+                </button>
+                <button
+                  className="px-3 py-2.5 text-left text-sm text-destructive hover:bg-destructive/10"
+                  onClick={async () => {
+                    const row = ctxMenu.row;
+                    setCtxMenu(null);
+                    await deleteRow(row);
+                  }}
+                >
+                  🗑️ Deletar
+                </button>
               </div>
             ) : (
               <div className="max-h-72 overflow-auto">
-                <button className="block w-full px-3 py-2 text-left text-sm hover:bg-accent" onClick={async () => { const row = ctxMenu.row; setCtxMenu(null); await moveToFolder(row, null); }}>
+                <button
+                  className="block w-full px-3 py-2 text-left text-sm hover:bg-accent"
+                  onClick={async () => {
+                    const row = ctxMenu.row;
+                    setCtxMenu(null);
+                    await moveToFolder(row, null);
+                  }}
+                >
                   📂 Unfiled
                 </button>
                 {folderPaths.length === 0 && (
                   <p className="px-3 py-2 text-xs text-muted-foreground">Nenhuma pasta criada.</p>
                 )}
                 {folderPaths.sort().map((p) => (
-                  <button key={p} className="block w-full px-3 py-2 text-left text-sm hover:bg-accent" onClick={async () => { const row = ctxMenu.row; setCtxMenu(null); await moveToFolder(row, p); }}>
+                  <button
+                    key={p}
+                    className="block w-full px-3 py-2 text-left text-sm hover:bg-accent"
+                    onClick={async () => {
+                      const row = ctxMenu.row;
+                      setCtxMenu(null);
+                      await moveToFolder(row, p);
+                    }}
+                  >
                     📁 {p}
                   </button>
                 ))}
-                <button className="block w-full border-t border-border px-3 py-2 text-left text-xs text-muted-foreground hover:bg-accent" onClick={() => setCtxMenu({ ...ctxMenu, mode: "main" })}>← Voltar</button>
+                <button
+                  className="block w-full border-t border-border px-3 py-2 text-left text-xs text-muted-foreground hover:bg-accent"
+                  onClick={() => setCtxMenu({ ...ctxMenu, mode: "main" })}
+                >
+                  ← Voltar
+                </button>
               </div>
             )}
           </div>
@@ -2458,7 +3220,13 @@ function FilesPanel({
 // Scenarios (narrator-only)
 // ============================================================
 
-type Scenario = { id: string; game_id: string; name: string; background_url: string | null; notes: string };
+type Scenario = {
+  id: string;
+  game_id: string;
+  name: string;
+  background_url: string | null;
+  notes: string;
+};
 
 function ScenarioButtons({ gameId, currentBg }: { gameId: string; currentBg: string | null }) {
   const qc = useQueryClient();
@@ -2466,7 +3234,11 @@ function ScenarioButtons({ gameId, currentBg }: { gameId: string; currentBg: str
   const { data: scenarios = [] } = useQuery({
     queryKey: ["scenarios", gameId],
     queryFn: async () => {
-      const { data } = await supabase.from("scenarios").select("*").eq("game_id", gameId).order("created_at");
+      const { data } = await supabase
+        .from("scenarios")
+        .select("*")
+        .eq("game_id", gameId)
+        .order("created_at");
       return (data ?? []) as Scenario[];
     },
   });
@@ -2474,15 +3246,23 @@ function ScenarioButtons({ gameId, currentBg }: { gameId: string; currentBg: str
   async function createScenario() {
     const name = prompt("Scenario name?")?.trim();
     if (!name) return;
-    const { error } = await supabase.from("scenarios").insert({ game_id: gameId, name, background_url: currentBg });
+    const { error } = await supabase
+      .from("scenarios")
+      .insert({ game_id: gameId, name, background_url: currentBg });
     if (error) toast.error(error.message);
-    else { toast.success("Scenario created"); qc.invalidateQueries({ queryKey: ["scenarios", gameId] }); }
+    else {
+      toast.success("Scenario created");
+      qc.invalidateQueries({ queryKey: ["scenarios", gameId] });
+    }
   }
   async function applyScenario(s: Scenario) {
-    await supabase.from("games").update({
-      background_url: s.background_url,
-      current_scenario_id: s.id,
-    } as never).eq("id", gameId);
+    await supabase
+      .from("games")
+      .update({
+        background_url: s.background_url,
+        current_scenario_id: s.id,
+      } as never)
+      .eq("id", gameId);
     // Auto-play first non-SFX track tagged to this scenario (if any)
     const { data: pl } = await supabase
       .from("music_tracks")
@@ -2494,8 +3274,15 @@ function ScenarioButtons({ gameId, currentBg }: { gameId: string; currentBg: str
       .limit(1);
     const first = (pl ?? [])[0] as { id: string } | undefined;
     if (first) {
-      await supabase.from("music_tracks").update({ is_playing: false } as never).eq("game_id", gameId).eq("is_sfx", false);
-      await supabase.from("music_tracks").update({ is_playing: true } as never).eq("id", first.id);
+      await supabase
+        .from("music_tracks")
+        .update({ is_playing: false } as never)
+        .eq("game_id", gameId)
+        .eq("is_sfx", false);
+      await supabase
+        .from("music_tracks")
+        .update({ is_playing: true } as never)
+        .eq("id", first.id);
     }
     qc.invalidateQueries({ queryKey: ["game", gameId] });
     toast.success(`Loaded "${s.name}"`);
@@ -2504,7 +3291,10 @@ function ScenarioButtons({ gameId, currentBg }: { gameId: string; currentBg: str
   async function uploadBg(s: Scenario, file: File) {
     const reader = new FileReader();
     reader.onload = async () => {
-      await supabase.from("scenarios").update({ background_url: reader.result as string }).eq("id", s.id);
+      await supabase
+        .from("scenarios")
+        .update({ background_url: reader.result as string })
+        .eq("id", s.id);
       qc.invalidateQueries({ queryKey: ["scenarios", gameId] });
     };
     reader.readAsDataURL(file);
@@ -2531,25 +3321,56 @@ function ScenarioButtons({ gameId, currentBg }: { gameId: string; currentBg: str
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[80vh] max-w-2xl overflow-hidden">
-          <DialogHeader><DialogTitle>Scenarios</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Scenarios</DialogTitle>
+          </DialogHeader>
           <div className="max-h-[60vh] overflow-y-auto space-y-2">
-            {scenarios.length === 0 && <p className="text-sm text-muted-foreground">No scenarios yet. Click "Scenario" to capture the current map as a scenario.</p>}
+            {scenarios.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                No scenarios yet. Click "Scenario" to capture the current map as a scenario.
+              </p>
+            )}
             {scenarios.map((s) => (
-              <div key={s.id} className="flex items-center gap-2 rounded-md border border-border bg-card p-2">
-                {s.background_url
-                  ? <img src={s.background_url} alt="" className="h-14 w-20 rounded object-cover" />
-                  : <div className="flex h-14 w-20 items-center justify-center rounded bg-muted text-[10px] text-muted-foreground">No bg</div>}
+              <div
+                key={s.id}
+                className="flex items-center gap-2 rounded-md border border-border bg-card p-2"
+              >
+                {s.background_url ? (
+                  <img src={s.background_url} alt="" className="h-14 w-20 rounded object-cover" />
+                ) : (
+                  <div className="flex h-14 w-20 items-center justify-center rounded bg-muted text-[10px] text-muted-foreground">
+                    No bg
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="truncate text-sm font-semibold">{s.name}</p>
                 </div>
-                <Button size="sm" variant="default" className="h-7" onClick={() => applyScenario(s)}>Load</Button>
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="h-7"
+                  onClick={() => applyScenario(s)}
+                >
+                  Load
+                </Button>
                 <label className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-md border border-border bg-card px-2 text-xs hover:bg-accent">
                   <ImageIcon className="h-3.5 w-3.5" />
-                  <input type="file" accept="image/*" className="hidden"
-                    onChange={(e) => e.target.files?.[0] && uploadBg(s, e.target.files[0])} />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => e.target.files?.[0] && uploadBg(s, e.target.files[0])}
+                  />
                 </label>
-                <Button size="sm" variant="ghost" className="h-7" onClick={() => rename(s)}>Rename</Button>
-                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => deleteScenario(s.id)}>
+                <Button size="sm" variant="ghost" className="h-7" onClick={() => rename(s)}>
+                  Rename
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 w-7 p-0"
+                  onClick={() => deleteScenario(s.id)}
+                >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -2574,7 +3395,12 @@ function CompendiumPanel({ system = "pokerole" }: { system?: string }) {
           <TabsTrigger value="skills">Pericias</TabsTrigger>
           <TabsTrigger value="notes">Notas</TabsTrigger>
         </TabsList>
-        <TabsContent value="rules" className="flex-1 overflow-hidden"><MechanicsCompendium mechanics={T20_MECHANICS} categories={T20_MECHANICS_CATEGORY_ORDER} /></TabsContent>
+        <TabsContent value="rules" className="flex-1 overflow-hidden">
+          <MechanicsCompendium
+            mechanics={T20_MECHANICS}
+            categories={T20_MECHANICS_CATEGORY_ORDER}
+          />
+        </TabsContent>
         <TabsContent value="skills" className="flex-1 overflow-auto p-3">
           <T20SkillsReference />
         </TabsContent>
@@ -2582,10 +3408,12 @@ function CompendiumPanel({ system = "pokerole" }: { system?: string }) {
           <div className="space-y-2 rounded-md border border-border bg-card p-3 text-sm">
             <h3 className="font-bold">Tormenta 20 no D20 Project</h3>
             <p className="text-muted-foreground">
-              Esta e uma primeira integracao jogavel: fichas, tokens, PV/PM, Defesa, rolagens d20 e ordem de iniciativa.
+              Esta e uma primeira integracao jogavel: fichas, tokens, PV/PM, Defesa, rolagens d20 e
+              ordem de iniciativa.
             </p>
             <p className="text-muted-foreground">
-              As regras detalhadas continuam no seu material de mesa. O app guarda os valores finais para facilitar o jogo sem prender voce a uma automacao rigida.
+              As regras detalhadas continuam no seu material de mesa. O app guarda os valores finais
+              para facilitar o jogo sem prender voce a uma automacao rigida.
             </p>
           </div>
         </TabsContent>
@@ -2600,10 +3428,18 @@ function CompendiumPanel({ system = "pokerole" }: { system?: string }) {
         <TabsTrigger value="moves">Moves</TabsTrigger>
         <TabsTrigger value="abilities">Abilities</TabsTrigger>
       </TabsList>
-      <TabsContent value="mechanics" className="flex-1 overflow-hidden"><MechanicsCompendium /></TabsContent>
-      <TabsContent value="pokedex" className="flex-1 overflow-hidden"><PokedexCompendium /></TabsContent>
-      <TabsContent value="moves" className="flex-1 overflow-hidden"><MovesCompendium /></TabsContent>
-      <TabsContent value="abilities" className="flex-1 overflow-hidden"><AbilitiesCompendium /></TabsContent>
+      <TabsContent value="mechanics" className="flex-1 overflow-hidden">
+        <MechanicsCompendium />
+      </TabsContent>
+      <TabsContent value="pokedex" className="flex-1 overflow-hidden">
+        <PokedexCompendium />
+      </TabsContent>
+      <TabsContent value="moves" className="flex-1 overflow-hidden">
+        <MovesCompendium />
+      </TabsContent>
+      <TabsContent value="abilities" className="flex-1 overflow-hidden">
+        <AbilitiesCompendium />
+      </TabsContent>
     </Tabs>
   );
 }
@@ -2728,7 +3564,16 @@ const MECHANICS: { title: string; body: string; category: string }[] = [
   },
 ];
 
-const MECHANICS_CATEGORY_ORDER = ["Básico", "Combate", "Mental & Vontade", "Progressão", "Especial", "Social", "Skills", "Itens"];
+const MECHANICS_CATEGORY_ORDER = [
+  "Básico",
+  "Combate",
+  "Mental & Vontade",
+  "Progressão",
+  "Especial",
+  "Social",
+  "Skills",
+  "Itens",
+];
 
 function MechanicsCompendium({
   mechanics = MECHANICS,
@@ -2739,18 +3584,27 @@ function MechanicsCompendium({
 }) {
   const [q, setQ] = useState("");
   const filtered = mechanics.filter(
-    (m) => !q || m.title.toLowerCase().includes(q.toLowerCase()) || m.body.toLowerCase().includes(q.toLowerCase()),
+    (m) =>
+      !q ||
+      m.title.toLowerCase().includes(q.toLowerCase()) ||
+      m.body.toLowerCase().includes(q.toLowerCase()),
   );
   const knownGroups = categories
     .map((cat) => ({ cat, items: filtered.filter((m) => m.category === cat) }))
     .filter((g) => g.items.length > 0);
   const known = new Set(categories);
-  const extraGroups = Array.from(new Set(filtered.map((m) => m.category).filter((cat) => !known.has(cat))))
-    .map((cat) => ({ cat, items: filtered.filter((m) => m.category === cat) }));
+  const extraGroups = Array.from(
+    new Set(filtered.map((m) => m.category).filter((cat) => !known.has(cat))),
+  ).map((cat) => ({ cat, items: filtered.filter((m) => m.category === cat) }));
   const groups = [...knownGroups, ...extraGroups];
   return (
     <div className="flex h-full flex-col gap-2 p-2">
-      <Input placeholder="Search rules…" value={q} onChange={(e) => setQ(e.target.value)} className="h-8 text-sm" />
+      <Input
+        placeholder="Search rules…"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        className="h-8 text-sm"
+      />
       <div className="flex-1 overflow-y-auto space-y-3">
         {groups.map((g) => (
           <section key={g.cat} className="space-y-1.5">
@@ -2759,13 +3613,19 @@ function MechanicsCompendium({
             </h3>
             {g.items.map((m) => (
               <details key={m.title} className="rounded-md border border-border bg-card">
-                <summary className="cursor-pointer px-3 py-2 text-sm font-semibold">{m.title}</summary>
-                <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground leading-relaxed whitespace-pre-line">{m.body}</p>
+                <summary className="cursor-pointer px-3 py-2 text-sm font-semibold">
+                  {m.title}
+                </summary>
+                <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground leading-relaxed whitespace-pre-line">
+                  {m.body}
+                </p>
               </details>
             ))}
           </section>
         ))}
-        {groups.length === 0 && <p className="p-4 text-center text-xs text-muted-foreground">No matches.</p>}
+        {groups.length === 0 && (
+          <p className="p-4 text-center text-xs text-muted-foreground">No matches.</p>
+        )}
       </div>
     </div>
   );
@@ -2775,9 +3635,44 @@ function T20SkillsReference() {
   const groups = [
     { title: "Combate", items: ["Iniciativa", "Luta", "Pontaria"] },
     { title: "Resistencias", items: ["Fortitude", "Reflexos", "Vontade"] },
-    { title: "Exploracao", items: ["Acrobacia", "Atletismo", "Cavalgar", "Furtividade", "Ladinagem", "Percepcao", "Pilotagem", "Sobrevivencia"] },
-    { title: "Conhecimento", items: ["Conhecimento", "Cura", "Guerra", "Investigacao", "Misticismo", "Nobreza", "Oficio", "Religiao"] },
-    { title: "Social", items: ["Adestramento", "Atuacao", "Diplomacia", "Enganacao", "Intimidacao", "Intuicao", "Jogatina"] },
+    {
+      title: "Exploracao",
+      items: [
+        "Acrobacia",
+        "Atletismo",
+        "Cavalgar",
+        "Furtividade",
+        "Ladinagem",
+        "Percepcao",
+        "Pilotagem",
+        "Sobrevivencia",
+      ],
+    },
+    {
+      title: "Conhecimento",
+      items: [
+        "Conhecimento",
+        "Cura",
+        "Guerra",
+        "Investigacao",
+        "Misticismo",
+        "Nobreza",
+        "Oficio",
+        "Religiao",
+      ],
+    },
+    {
+      title: "Social",
+      items: [
+        "Adestramento",
+        "Atuacao",
+        "Diplomacia",
+        "Enganacao",
+        "Intimidacao",
+        "Intuicao",
+        "Jogatina",
+      ],
+    },
   ];
   return (
     <div className="space-y-3">
@@ -2786,7 +3681,9 @@ function T20SkillsReference() {
           <h3 className="mb-2 text-sm font-bold">{g.title}</h3>
           <div className="flex flex-wrap gap-1.5">
             {g.items.map((item) => (
-              <span key={item} className="rounded-md bg-muted px-2 py-1 text-xs font-semibold">{item}</span>
+              <span key={item} className="rounded-md bg-muted px-2 py-1 text-xs font-semibold">
+                {item}
+              </span>
             ))}
           </div>
         </section>
@@ -2800,17 +3697,35 @@ function T20SkillsReference() {
 // ============================================================
 
 type InitRow = {
-  id: string; game_id: string; character_name: string; character_kind: string;
-  character_ref: string | null; successes: number; position: number; image_url: string | null;
+  id: string;
+  game_id: string;
+  character_name: string;
+  character_kind: string;
+  character_ref: string | null;
+  successes: number;
+  position: number;
+  image_url: string | null;
 };
 
-function InitiativePanel({ gameId, isNarrator, open, onClose }: { gameId: string; isNarrator: boolean; open: boolean; onClose: () => void }) {
+function InitiativePanel({
+  gameId,
+  isNarrator,
+  open,
+  onClose,
+}: {
+  gameId: string;
+  isNarrator: boolean;
+  open: boolean;
+  onClose: () => void;
+}) {
   const qc = useQueryClient();
   const { data: rows = [] } = useQuery({
     queryKey: ["initiative", gameId],
     queryFn: async () => {
       const { data } = await supabase
-        .from("initiative").select("*").eq("game_id", gameId)
+        .from("initiative")
+        .select("*")
+        .eq("game_id", gameId)
         .order("position", { ascending: true })
         .order("successes", { ascending: false })
         .order("created_at", { ascending: true });
@@ -2821,11 +3736,15 @@ function InitiativePanel({ gameId, isNarrator, open, onClose }: { gameId: string
   useEffect(() => {
     const ch = supabase
       .channel(`initiative:${gameId}`)
-      .on("postgres_changes",
+      .on(
+        "postgres_changes",
         { event: "*", schema: "public", table: "initiative", filter: `game_id=eq.${gameId}` },
-        () => qc.invalidateQueries({ queryKey: ["initiative", gameId] }))
+        () => qc.invalidateQueries({ queryKey: ["initiative", gameId] }),
+      )
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [gameId, qc]);
 
   if (!open) return null;
@@ -2839,7 +3758,10 @@ function InitiativePanel({ gameId, isNarrator, open, onClose }: { gameId: string
     if (rows.length < 2) return;
     const top = rows[0];
     const maxPos = rows.reduce((m, r) => Math.max(m, r.position ?? 0), 0);
-    await supabase.from("initiative").update({ position: maxPos + 1 }).eq("id", top.id);
+    await supabase
+      .from("initiative")
+      .update({ position: maxPos + 1 })
+      .eq("id", top.id);
     qc.invalidateQueries({ queryKey: ["initiative", gameId] });
   }
 
@@ -2857,11 +3779,24 @@ function InitiativePanel({ gameId, isNarrator, open, onClose }: { gameId: string
       <div className="p-3">
         {rows.length > 0 && (
           <div className="mb-2 flex flex-wrap items-center justify-end gap-1">
-            <Button size="sm" variant="default" className="h-7 text-xs" onClick={nextTurn} disabled={rows.length < 2} title="Próximo turno">
+            <Button
+              size="sm"
+              variant="default"
+              className="h-7 text-xs"
+              onClick={nextTurn}
+              disabled={rows.length < 2}
+              title="Próximo turno"
+            >
               <ChevronRight className="mr-1 h-3 w-3" /> Próximo turno
             </Button>
             {isNarrator && (
-              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={clearInit} title="End combat">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 text-xs"
+                onClick={clearInit}
+                title="End combat"
+              >
                 <Trash2 className="mr-1 h-3 w-3" /> End combat
               </Button>
             )}
@@ -2869,7 +3804,8 @@ function InitiativePanel({ gameId, isNarrator, open, onClose }: { gameId: string
         )}
         {rows.length === 0 ? (
           <p className="px-1 py-3 text-center text-[11px] text-muted-foreground">
-            Sem rolagens de iniciativa ainda. Clique em <em>Initiative</em> em uma ficha ou na ação rápida do token para entrar na ordem.
+            Sem rolagens de iniciativa ainda. Clique em <em>Initiative</em> em uma ficha ou na ação
+            rápida do token para entrar na ordem.
           </p>
         ) : (
           <ol className="space-y-1.5">
@@ -2878,9 +3814,15 @@ function InitiativePanel({ gameId, isNarrator, open, onClose }: { gameId: string
                 key={r.id}
                 className={`flex items-center gap-2 rounded px-2 py-1.5 text-xs ${i === 0 ? "bg-primary/15 font-semibold" : "bg-muted/50"}`}
               >
-                <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-background text-[10px]">{i + 1}</span>
+                <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-background text-[10px]">
+                  {i + 1}
+                </span>
                 {r.image_url ? (
-                  <img src={r.image_url} alt="" className="h-7 w-7 shrink-0 rounded-full border border-border object-cover" />
+                  <img
+                    src={r.image_url}
+                    alt=""
+                    className="h-7 w-7 shrink-0 rounded-full border border-border object-cover"
+                  />
                 ) : (
                   <div className="h-7 w-7 shrink-0 rounded-full bg-background" />
                 )}
@@ -2897,10 +3839,17 @@ function InitiativePanel({ gameId, isNarrator, open, onClose }: { gameId: string
 
 // Top "lingueta" disclosure — collapsed by default; click to reveal scenario controls.
 type SpeciesRow = {
-  id: string; name: string; dex_number: number | null; sprite_url: string | null;
-  types: PokemonType[]; base_hp: number; base_attrs: Record<string, number>;
+  id: string;
+  name: string;
+  dex_number: number | null;
+  sprite_url: string | null;
+  types: PokemonType[];
+  base_hp: number;
+  base_attrs: Record<string, number>;
   attr_limits: Record<string, number>;
-  abilities: string[]; hidden_ability: string | null; suggested_rank: Rank | null;
+  abilities: string[];
+  hidden_ability: string | null;
+  suggested_rank: Rank | null;
   evolutions: string[];
 };
 
@@ -2909,14 +3858,22 @@ function PokedexCompendium() {
   const { data: list = [] } = useQuery({
     queryKey: ["compendium-species"],
     queryFn: async () => {
-      const species = await fetchAllPaged<SpeciesRow>("species", "*", { orderBy: "dex_number", ascending: true });
+      const species = await fetchAllPaged<SpeciesRow>("species", "*", {
+        orderBy: "dex_number",
+        ascending: true,
+      });
       return species.map((entry) => applyPaldeaHisuiSpeciesBalance(entry));
     },
   });
   const filtered = list.filter((s) => !q || s.name.toLowerCase().includes(q.toLowerCase()));
   return (
     <div className="flex h-full flex-col gap-2 p-2">
-      <Input placeholder="Search Pokémon…" value={q} onChange={(e) => setQ(e.target.value)} className="h-8 text-sm" />
+      <Input
+        placeholder="Search Pokémon…"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        className="h-8 text-sm"
+      />
       <div className="flex-1 overflow-y-auto space-y-2">
         {filtered.map((s) => (
           <details key={s.id} className="rounded-md border border-border bg-card">
@@ -2928,50 +3885,87 @@ function PokedexCompendium() {
                 className="h-8 w-8 object-contain"
                 emptyFallback={<div className="h-8 w-8 rounded bg-muted" />}
               />
-              <span className="text-xs text-muted-foreground">#{String(s.dex_number ?? 0).padStart(3, "0")}</span>
+              <span className="text-xs text-muted-foreground">
+                #{String(s.dex_number ?? 0).padStart(3, "0")}
+              </span>
               <span className="flex-1 text-sm font-semibold">{s.name}</span>
               <div className="flex gap-0.5">
                 {(s.types ?? []).map((t) => (
-                  <span key={t} className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase"
-                    style={{ background: TYPE_COLORS[t]?.bg, color: TYPE_COLORS[t]?.fg }}>{t}</span>
+                  <span
+                    key={t}
+                    className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase"
+                    style={{ background: TYPE_COLORS[t]?.bg, color: TYPE_COLORS[t]?.fg }}
+                  >
+                    {t}
+                  </span>
                 ))}
               </div>
             </summary>
             <div className="divide-y divide-border border-t border-border text-xs">
               <div className="px-3 py-2">
-                <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-primary">Geral</div>
-                <p><span className="font-semibold">Base HP:</span> {s.base_hp}</p>
-                <p><span className="font-semibold">Rank sugerido:</span> {s.suggested_rank ?? "—"}</p>
+                <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-primary">
+                  Geral
+                </div>
+                <p>
+                  <span className="font-semibold">Base HP:</span> {s.base_hp}
+                </p>
+                <p>
+                  <span className="font-semibold">Rank sugerido:</span> {s.suggested_rank ?? "—"}
+                </p>
               </div>
               {Object.keys(s.base_attrs ?? {}).length > 0 && (
                 <div className="px-3 py-2">
-                  <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-primary">Atributos base</div>
-                  <p className="text-muted-foreground">{Object.entries(s.base_attrs).map(([k, v]) => `${k} ${v}`).join(" · ")}</p>
+                  <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-primary">
+                    Atributos base
+                  </div>
+                  <p className="text-muted-foreground">
+                    {Object.entries(s.base_attrs)
+                      .map(([k, v]) => `${k} ${v}`)
+                      .join(" · ")}
+                  </p>
                 </div>
               )}
               <div className="px-3 py-2">
-                <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-primary">Habilidades</div>
+                <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-primary">
+                  Habilidades
+                </div>
                 <p>{(s.abilities ?? []).join(", ") || "—"}</p>
-                {s.hidden_ability && <p className="text-muted-foreground"><em>Hidden:</em> {s.hidden_ability}</p>}
+                {s.hidden_ability && (
+                  <p className="text-muted-foreground">
+                    <em>Hidden:</em> {s.hidden_ability}
+                  </p>
+                )}
               </div>
               {(s.evolutions ?? []).length > 0 && (
                 <div className="px-3 py-2">
-                  <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-primary">Evoluções</div>
+                  <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-primary">
+                    Evoluções
+                  </div>
                   <p>{s.evolutions.join(" → ")}</p>
                 </div>
               )}
             </div>
           </details>
         ))}
-        {filtered.length === 0 && <p className="p-4 text-center text-xs text-muted-foreground">No species found.</p>}
+        {filtered.length === 0 && (
+          <p className="p-4 text-center text-xs text-muted-foreground">No species found.</p>
+        )}
       </div>
     </div>
   );
 }
 
 type MoveRow = {
-  id: string; name: string; type: PokemonType; power: number; category: string; target: string;
-  accuracy_stat: string | null; accuracy_skill: string | null; damage_stat: string | null; effect: string;
+  id: string;
+  name: string;
+  type: PokemonType;
+  power: number;
+  category: string;
+  target: string;
+  accuracy_stat: string | null;
+  accuracy_skill: string | null;
+  damage_stat: string | null;
+  effect: string;
 };
 
 function MovesCompendium() {
@@ -2983,31 +3977,48 @@ function MovesCompendium() {
       return await fetchAllPaged<MoveRow>("moves", "*", { orderBy: "name", ascending: true });
     },
   });
-  const filtered = list.filter((m) =>
-    (typeFilter === "all" || m.type === typeFilter) &&
-    (!q || m.name.toLowerCase().includes(q.toLowerCase()))
+  const filtered = list.filter(
+    (m) =>
+      (typeFilter === "all" || m.type === typeFilter) &&
+      (!q || m.name.toLowerCase().includes(q.toLowerCase())),
   );
-  const grouped = POKEMON_TYPES
-    .map((t) => ({ type: t, moves: filtered.filter((m) => m.type === t) }))
-    .filter((g) => g.moves.length > 0);
+  const grouped = POKEMON_TYPES.map((t) => ({
+    type: t,
+    moves: filtered.filter((m) => m.type === t),
+  })).filter((g) => g.moves.length > 0);
 
   return (
     <div className="flex h-full flex-col gap-2 p-2">
       <div className="flex gap-2">
-        <Input placeholder="Search move…" value={q} onChange={(e) => setQ(e.target.value)} className="h-8 flex-1 text-sm" />
+        <Input
+          placeholder="Search move…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          className="h-8 flex-1 text-sm"
+        />
         <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="h-8 w-32 text-xs">
+            <SelectValue />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All types</SelectItem>
-            {POKEMON_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+            {POKEMON_TYPES.map((t) => (
+              <SelectItem key={t} value={t}>
+                {t}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
       <div className="flex-1 overflow-y-auto space-y-3">
         {grouped.map(({ type, moves }) => (
           <div key={type}>
-            <h4 className="mb-1 inline-block rounded px-2 py-0.5 text-xs font-bold uppercase"
-              style={{ background: TYPE_COLORS[type].bg, color: TYPE_COLORS[type].fg }}>{type} · {moves.length}</h4>
+            <h4
+              className="mb-1 inline-block rounded px-2 py-0.5 text-xs font-bold uppercase"
+              style={{ background: TYPE_COLORS[type].bg, color: TYPE_COLORS[type].fg }}
+            >
+              {type} · {moves.length}
+            </h4>
             <div className="grid gap-1">
               {moves.map((m) => (
                 <details key={m.id} className="rounded-md border border-border bg-card">
@@ -3018,16 +4029,28 @@ function MovesCompendium() {
                   </summary>
                   <div className="divide-y divide-border border-t border-border text-xs">
                     <div className="px-3 py-2">
-                      <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-primary">Acurácia</div>
-                      <p>{m.accuracy_stat ?? "—"}{m.accuracy_skill ? ` + ${m.accuracy_skill}` : ""}</p>
+                      <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-primary">
+                        Acurácia
+                      </div>
+                      <p>
+                        {m.accuracy_stat ?? "—"}
+                        {m.accuracy_skill ? ` + ${m.accuracy_skill}` : ""}
+                      </p>
                     </div>
                     <div className="px-3 py-2">
-                      <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-primary">Dano & Alvo</div>
-                      <p><span className="font-semibold">Stat:</span> {m.damage_stat ?? "—"} · <span className="font-semibold">Alvo:</span> {m.target}</p>
+                      <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-primary">
+                        Dano & Alvo
+                      </div>
+                      <p>
+                        <span className="font-semibold">Stat:</span> {m.damage_stat ?? "—"} ·{" "}
+                        <span className="font-semibold">Alvo:</span> {m.target}
+                      </p>
                     </div>
                     {m.effect && (
                       <div className="px-3 py-2">
-                        <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-primary">Efeito</div>
+                        <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-primary">
+                          Efeito
+                        </div>
                         <p className="text-muted-foreground">{m.effect}</p>
                       </div>
                     )}
@@ -3037,7 +4060,9 @@ function MovesCompendium() {
             </div>
           </div>
         ))}
-        {grouped.length === 0 && <p className="p-4 text-center text-xs text-muted-foreground">No moves found.</p>}
+        {grouped.length === 0 && (
+          <p className="p-4 text-center text-xs text-muted-foreground">No moves found.</p>
+        )}
       </div>
     </div>
   );
@@ -3050,7 +4075,10 @@ function AbilitiesCompendium() {
   const { data: list = [] } = useQuery({
     queryKey: ["compendium-abilities"],
     queryFn: async () => {
-      return await fetchAllPaged<AbilityRow>("abilities", "*", { orderBy: "name", ascending: true });
+      return await fetchAllPaged<AbilityRow>("abilities", "*", {
+        orderBy: "name",
+        ascending: true,
+      });
     },
   });
   const filtered = list.filter((a) => !q || a.name.toLowerCase().includes(q.toLowerCase()));
@@ -3062,7 +4090,12 @@ function AbilitiesCompendium() {
   const letters = Object.keys(groups).sort();
   return (
     <div className="flex h-full flex-col gap-2 p-2">
-      <Input placeholder="Search ability…" value={q} onChange={(e) => setQ(e.target.value)} className="h-8 text-sm" />
+      <Input
+        placeholder="Search ability…"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        className="h-8 text-sm"
+      />
       <div className="flex-1 overflow-y-auto space-y-3">
         {letters.map((L) => (
           <section key={L} className="space-y-1">
@@ -3071,16 +4104,22 @@ function AbilitiesCompendium() {
             </h3>
             {groups[L].map((a) => (
               <details key={a.id} className="rounded-md border border-border bg-card">
-                <summary className="cursor-pointer px-3 py-1.5 text-sm font-semibold">{a.name}</summary>
+                <summary className="cursor-pointer px-3 py-1.5 text-sm font-semibold">
+                  {a.name}
+                </summary>
                 <div className="border-t border-border px-3 py-2 text-xs">
-                  <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-primary">Efeito</div>
+                  <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-primary">
+                    Efeito
+                  </div>
                   <p className="text-muted-foreground">{a.effect || "—"}</p>
                 </div>
               </details>
             ))}
           </section>
         ))}
-        {filtered.length === 0 && <p className="p-4 text-center text-xs text-muted-foreground">No abilities.</p>}
+        {filtered.length === 0 && (
+          <p className="p-4 text-center text-xs text-muted-foreground">No abilities.</p>
+        )}
       </div>
     </div>
   );
@@ -3115,7 +4154,9 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
     (async () => {
       const { data, error } = await supabase
         .from("games")
-        .select("shiny_chance,overgrown_chance,contest_weights,spdef_uses_insight,effectiveness_flat,grid_enabled,grid_snap,grid_snap_mode,grid_size,grid_color,grid_opacity,grid_unit_m,grid_unit_label")
+        .select(
+          "shiny_chance,overgrown_chance,contest_weights,spdef_uses_insight,effectiveness_flat,grid_enabled,grid_snap,grid_snap_mode,grid_size,grid_color,grid_opacity,grid_unit_m,grid_unit_label",
+        )
         .eq("id", gameId)
         .single();
       if (error) {
@@ -3124,20 +4165,32 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
         return;
       }
       const row = data as {
-        shiny_chance?: number; overgrown_chance?: number;
-        contest_weights?: Record<string, number> | null; spdef_uses_insight?: boolean;
+        shiny_chance?: number;
+        overgrown_chance?: number;
+        contest_weights?: Record<string, number> | null;
+        spdef_uses_insight?: boolean;
         effectiveness_flat?: boolean;
-        grid_enabled?: boolean; grid_snap?: boolean; grid_snap_mode?: string; grid_size?: number;
-        grid_color?: string; grid_opacity?: number; grid_unit_m?: number; grid_unit_label?: string;
+        grid_enabled?: boolean;
+        grid_snap?: boolean;
+        grid_snap_mode?: string;
+        grid_size?: number;
+        grid_color?: string;
+        grid_opacity?: number;
+        grid_unit_m?: number;
+        grid_unit_label?: string;
       } | null;
       setShiny(row?.shiny_chance ?? 10);
       setOver(row?.overgrown_chance ?? 0);
       setSpriteStyle(savedSpriteStyle);
       setSpdefIns(Boolean(row?.spdef_uses_insight));
-      setEffFlat(row?.effectiveness_flat === undefined || row?.effectiveness_flat === null ? true : Boolean(row.effectiveness_flat));
+      setEffFlat(
+        row?.effectiveness_flat === undefined || row?.effectiveness_flat === null
+          ? true
+          : Boolean(row.effectiveness_flat),
+      );
       setGridEnabled(row?.grid_enabled ?? true);
       setGridSnap(row?.grid_snap ?? true);
-      setGridSnapMode(((row?.grid_snap_mode as "center" | "line" | "free" | undefined) ?? "center"));
+      setGridSnapMode((row?.grid_snap_mode as "center" | "line" | "free" | undefined) ?? "center");
       setGridSize(row?.grid_size ?? 56);
       setGridColor(row?.grid_color ?? "#000000");
       setGridOpacity(row?.grid_opacity ?? 30);
@@ -3155,20 +4208,33 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
     const s = Math.max(0, Math.min(100, Math.round(shiny)));
     const o = Math.max(0, Math.min(100, Math.round(over)));
     const cw: Record<string, number> = {};
-    for (const c of REACTION_DECK) cw[c.id] = Math.max(0, Math.min(100, Math.round(weights[c.id] ?? 0)));
+    for (const c of REACTION_DECK)
+      cw[c.id] = Math.max(0, Math.min(100, Math.round(weights[c.id] ?? 0)));
     const gs = Math.max(16, Math.min(256, Math.round(gridSize)));
     const go = Math.max(0, Math.min(100, Math.round(gridOpacity)));
     const um = Math.max(0.1, Math.min(100, Number(gridUnitM)));
     const { error } = await supabase
       .from("games")
       .update({
-        shiny_chance: s, overgrown_chance: o, contest_weights: cw, spdef_uses_insight: spdefIns,
+        shiny_chance: s,
+        overgrown_chance: o,
+        contest_weights: cw,
+        spdef_uses_insight: spdefIns,
         effectiveness_flat: effFlat,
-        grid_enabled: gridEnabled, grid_snap: gridSnap, grid_snap_mode: gridSnapMode, grid_size: gs,
-        grid_color: gridColor, grid_opacity: go, grid_unit_m: um, grid_unit_label: gridUnitLabel,
+        grid_enabled: gridEnabled,
+        grid_snap: gridSnap,
+        grid_snap_mode: gridSnapMode,
+        grid_size: gs,
+        grid_color: gridColor,
+        grid_opacity: go,
+        grid_unit_m: um,
+        grid_unit_label: gridUnitLabel,
       } as never)
       .eq("id", gameId);
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     try {
       await saveGameSpriteStyle(gameId, spriteStyle);
     } catch (e) {
@@ -3189,26 +4255,49 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="secondary" className="h-8 justify-start">⚙️ Settings</Button>
+        <Button size="sm" variant="secondary" className="h-8 justify-start">
+          ⚙️ Settings
+        </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[85vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>Configurações do Jogo</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Configurações do Jogo</DialogTitle>
+        </DialogHeader>
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label className="text-xs">Chance de Shiny (%)</Label>
-              <Input type="number" min={0} max={100} value={shiny} onChange={(e) => setShiny(Number(e.target.value))} />
-              <p className="mt-1 text-[11px] text-muted-foreground">Aplicada ao criar um Pokémon novo.</p>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={shiny}
+                onChange={(e) => setShiny(Number(e.target.value))}
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Aplicada ao criar um Pokémon novo.
+              </p>
             </div>
             <div>
               <Label className="text-xs">Chance de Overgrown (%)</Label>
-              <Input type="number" min={0} max={100} value={over} onChange={(e) => setOver(Number(e.target.value))} />
-              <p className="mt-1 text-[11px] text-muted-foreground">0 = só manual (checkbox na criação).</p>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={over}
+                onChange={(e) => setOver(Number(e.target.value))}
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                0 = só manual (checkbox na criação).
+              </p>
             </div>
           </div>
           <div className="rounded-md border border-border bg-card p-3">
             <Label className="text-xs">Sprites dos Pokemon</Label>
-            <Select value={spriteStyle} onValueChange={(value) => setSpriteStyle(value as PokemonSpriteStyle)}>
+            <Select
+              value={spriteStyle}
+              onValueChange={(value) => setSpriteStyle(value as PokemonSpriteStyle)}
+            >
               <SelectTrigger className="mt-1">
                 <SelectValue />
               </SelectTrigger>
@@ -3232,7 +4321,9 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
             />
             <div>
               <span className="text-sm font-semibold">SpDef usa Insight (regra da casa)</span>
-              <p className="text-[11px] text-muted-foreground">Quando ligado, a Defesa Especial usa Insight no lugar de Vitality em toda a mesa.</p>
+              <p className="text-[11px] text-muted-foreground">
+                Quando ligado, a Defesa Especial usa Insight no lugar de Vitality em toda a mesa.
+              </p>
             </div>
           </div>
           <div
@@ -3245,18 +4336,27 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
               onClick={(e) => e.stopPropagation()}
             />
             <div>
-              <span className="text-sm font-semibold">Efetividade: regra da casa (+/− sucessos)</span>
-              <p className="text-[11px] text-muted-foreground">Ligado: super-efetivo soma +1/+2 sucessos de dano (e não-efetivo subtrai 1/2). Desligado: usa o RAW e adiciona/remove dados da pool antes de rolar.</p>
+              <span className="text-sm font-semibold">
+                Efetividade: regra da casa (+/− sucessos)
+              </span>
+              <p className="text-[11px] text-muted-foreground">
+                Ligado: super-efetivo soma +1/+2 sucessos de dano (e não-efetivo subtrai 1/2).
+                Desligado: usa o RAW e adiciona/remove dados da pool antes de rolar.
+              </p>
             </div>
           </div>
           <div className="rounded-md border border-border bg-card p-3 space-y-2">
-            <div className="text-xs font-bold uppercase tracking-wider text-primary">Grid do mapa</div>
+            <div className="text-xs font-bold uppercase tracking-wider text-primary">
+              Grid do mapa
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <label className="flex items-center gap-2 text-xs">
-                <Checkbox checked={gridEnabled} onCheckedChange={(v) => setGridEnabled(!!v)} /> Mostrar grid
+                <Checkbox checked={gridEnabled} onCheckedChange={(v) => setGridEnabled(!!v)} />{" "}
+                Mostrar grid
               </label>
               <label className="flex items-center gap-2 text-xs">
-                <Checkbox checked={gridSnap} onCheckedChange={(v) => setGridSnap(!!v)} /> Snap-to-grid
+                <Checkbox checked={gridSnap} onCheckedChange={(v) => setGridSnap(!!v)} />{" "}
+                Snap-to-grid
               </label>
               <div>
                 <Label className="text-xs">Modo de snap</Label>
@@ -3273,30 +4373,65 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
               </div>
               <div>
                 <Label className="text-xs">Tamanho da célula (px)</Label>
-                <Input type="number" min={16} max={256} value={gridSize} onChange={(e) => setGridSize(Number(e.target.value))} />
+                <Input
+                  type="number"
+                  min={16}
+                  max={256}
+                  value={gridSize}
+                  onChange={(e) => setGridSize(Number(e.target.value))}
+                />
               </div>
               <div>
                 <Label className="text-xs">Cor</Label>
-                <input type="color" value={gridColor} onChange={(e) => setGridColor(e.target.value)} className="h-9 w-full cursor-pointer rounded border border-input bg-transparent" />
+                <input
+                  type="color"
+                  value={gridColor}
+                  onChange={(e) => setGridColor(e.target.value)}
+                  className="h-9 w-full cursor-pointer rounded border border-input bg-transparent"
+                />
               </div>
               <div>
                 <Label className="text-xs">Opacidade (%)</Label>
-                <Input type="number" min={0} max={100} value={gridOpacity} onChange={(e) => setGridOpacity(Number(e.target.value))} />
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={gridOpacity}
+                  onChange={(e) => setGridOpacity(Number(e.target.value))}
+                />
               </div>
               <div>
                 <Label className="text-xs">Unidade por célula</Label>
                 <div className="flex gap-1">
-                  <Input type="number" step="0.1" min={0.1} value={gridUnitM} onChange={(e) => setGridUnitM(Number(e.target.value))} className="flex-1" />
-                  <Input value={gridUnitLabel} onChange={(e) => setGridUnitLabel(e.target.value)} className="w-16" placeholder="m" />
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min={0.1}
+                    value={gridUnitM}
+                    onChange={(e) => setGridUnitM(Number(e.target.value))}
+                    className="flex-1"
+                  />
+                  <Input
+                    value={gridUnitLabel}
+                    onChange={(e) => setGridUnitLabel(e.target.value)}
+                    className="w-16"
+                    placeholder="m"
+                  />
                 </div>
               </div>
             </div>
-            <p className="text-[11px] text-muted-foreground">Usado pela régua para mostrar distância (ex.: 1.5 m por célula).</p>
+            <p className="text-[11px] text-muted-foreground">
+              Usado pela régua para mostrar distância (ex.: 1.5 m por célula).
+            </p>
           </div>
           <div>
             <div className="mb-1 flex items-center justify-between">
-              <Label className="text-xs font-bold uppercase tracking-wider">Contest · Reaction deck weights</Label>
-              <span className={`text-[11px] tabular-nums ${weightTotal === 100 ? "text-muted-foreground" : "text-amber-500"}`}>
+              <Label className="text-xs font-bold uppercase tracking-wider">
+                Contest · Reaction deck weights
+              </Label>
+              <span
+                className={`text-[11px] tabular-nums ${weightTotal === 100 ? "text-muted-foreground" : "text-amber-500"}`}
+              >
                 Total {weightTotal}%
               </span>
             </div>
@@ -3305,10 +4440,14 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
                 <div key={c.id} className="grid grid-cols-[1fr_5rem] items-center gap-2">
                   <span className="text-xs">
                     <span className="font-medium">{c.name}</span>
-                    <span className="ml-1 text-muted-foreground">· {c.hearts > 0 ? `+${c.hearts}` : c.hearts} ♥</span>
+                    <span className="ml-1 text-muted-foreground">
+                      · {c.hearts > 0 ? `+${c.hearts}` : c.hearts} ♥
+                    </span>
                   </span>
                   <Input
-                    type="number" min={0} max={100}
+                    type="number"
+                    min={0}
+                    max={100}
                     value={weights[c.id] ?? 0}
                     onChange={(e) => setWeights((w) => ({ ...w, [c.id]: Number(e.target.value) }))}
                     className="h-7 text-center text-xs"
@@ -3316,7 +4455,8 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
                 </div>
               ))}
               <p className="px-1 pt-1 text-[11px] text-muted-foreground">
-                Ajuste pesos por carta. Em branco/0 = nunca sai. Booing não é sorteado — ocorre em falha.
+                Ajuste pesos por carta. Em branco/0 = nunca sai. Booing não é sorteado — ocorre em
+                falha.
               </p>
             </div>
           </div>
@@ -3330,7 +4470,9 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
 }
 
 function MinimalSheetButton({
-  gameId, userId, onCreated,
+  gameId,
+  userId,
+  onCreated,
 }: {
   gameId: string;
   userId: string;
@@ -3342,16 +4484,36 @@ function MinimalSheetButton({
   const [desc, setDesc] = useState("");
   const [busy, setBusy] = useState(false);
   async function create() {
-    if (!name.trim()) { toast.error("Dê um nome para a ficha"); return; }
+    if (!name.trim()) {
+      toast.error("Dê um nome para a ficha");
+      return;
+    }
     setBusy(true);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase.from("trainers") as any)
-      .insert({ game_id: gameId, owner_id: userId, name: name.trim(), is_minimal: true, image_url: image, description: desc || null })
-      .select().single();
+      .insert({
+        game_id: gameId,
+        owner_id: userId,
+        name: name.trim(),
+        is_minimal: true,
+        image_url: image,
+        description: desc || null,
+      })
+      .select()
+      .single();
     setBusy(false);
-    if (error) { toast.error(error.message); return; }
-    setOpen(false); setName(""); setImage(null); setDesc("");
-    onCreated((data as { id: string; name: string }).id, (data as { id: string; name: string }).name);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setOpen(false);
+    setName("");
+    setImage(null);
+    setDesc("");
+    onCreated(
+      (data as { id: string; name: string }).id,
+      (data as { id: string; name: string }).name,
+    );
   }
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -3361,21 +4523,37 @@ function MinimalSheetButton({
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogHeader><DialogTitle>Novo Handout</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Novo Handout</DialogTitle>
+        </DialogHeader>
         <div className="space-y-3">
           <div>
             <Label className="text-xs">Nome</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex.: NPC Mestre Bug" />
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ex.: NPC Mestre Bug"
+            />
           </div>
           <div className="flex items-start gap-3">
             {image ? (
-              <img src={image} alt="" className="h-20 w-20 rounded-md border border-border object-cover" />
+              <img
+                src={image}
+                alt=""
+                className="h-20 w-20 rounded-md border border-border object-cover"
+              />
             ) : (
-              <div className="flex h-20 w-20 items-center justify-center rounded-md border border-dashed border-border text-xs text-muted-foreground">Imagem</div>
+              <div className="flex h-20 w-20 items-center justify-center rounded-md border border-dashed border-border text-xs text-muted-foreground">
+                Imagem
+              </div>
             )}
             <div className="flex flex-col gap-1.5">
               <ImageSourceDialog title="Imagem" onPick={(u: string) => setImage(u)} />
-              {image && <Button size="sm" variant="outline" onClick={() => setImage(null)}>Remover</Button>}
+              {image && (
+                <Button size="sm" variant="outline" onClick={() => setImage(null)}>
+                  Remover
+                </Button>
+              )}
             </div>
           </div>
           <div>
@@ -3390,7 +4568,9 @@ function MinimalSheetButton({
           </div>
         </div>
         <DialogFooter>
-          <Button onClick={create} disabled={busy}>Criar</Button>
+          <Button onClick={create} disabled={busy}>
+            Criar
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { transparentDigiRoleImageUrl } from "@/lib/digi-api";
 import {
   createEngineState,
   currentEngineParticipant,
@@ -107,11 +108,12 @@ function eventLabel(event: EngineEvent): string {
   if (event.command === "start_turns") return "Ordem de turnos iniciada";
   if (event.command === "record_action") {
     const actor = payload.participantName ? `${payload.participantName} · ` : "";
-    const type = payload.actionType === "move"
-      ? "Move"
-      : payload.actionType === "reaction"
-        ? "Reação"
-        : "Ação";
+    const type =
+      payload.actionType === "move"
+        ? "Move"
+        : payload.actionType === "reaction"
+          ? "Reação"
+          : "Ação";
     return `${actor}${type}${payload.label ? ` · ${payload.label}` : ""}`;
   }
   if (event.command === "advance_turn") return "Turno avançado";
@@ -193,10 +195,7 @@ export function GameEnginePanel({
   }, [currentPageId, gameId, queryClient]);
 
   const characterRefs = useMemo(() => {
-    const refs = new Map<
-      string,
-      { kind: EngineParticipantKind; characterId: string }
-    >();
+    const refs = new Map<string, { kind: EngineParticipantKind; characterId: string }>();
     for (const token of tokens) {
       refs.set(`${token.character_kind}:${token.character_id}`, {
         kind: token.character_kind,
@@ -225,76 +224,100 @@ export function GameEnginePanel({
     queryFn: async () => {
       const pokemonIds = [
         ...new Set(
-          characterRefs
-            .filter((ref) => ref.kind === "pokemon")
-            .map((ref) => ref.characterId),
+          characterRefs.filter((ref) => ref.kind === "pokemon").map((ref) => ref.characterId),
         ),
       ];
       const trainerIds = [
         ...new Set(
-          characterRefs
-            .filter((ref) => ref.kind === "trainer")
-            .map((ref) => ref.characterId),
+          characterRefs.filter((ref) => ref.kind === "trainer").map((ref) => ref.characterId),
         ),
       ];
       const t20Ids = [
+        ...new Set(characterRefs.filter((ref) => ref.kind === "t20").map((ref) => ref.characterId)),
+      ];
+      const digiTamerIds = [
         ...new Set(
           characterRefs
-            .filter((ref) => ref.kind === "t20")
+            .filter((ref) => ref.kind === "digirole_tamer")
             .map((ref) => ref.characterId),
         ),
       ];
-      const digiTamerIds = [
-        ...new Set(characterRefs.filter((ref) => ref.kind === "digirole_tamer").map((ref) => ref.characterId)),
-      ];
       const digimonIds = [
-        ...new Set(characterRefs.filter((ref) => ref.kind === "digirole_digimon").map((ref) => ref.characterId)),
+        ...new Set(
+          characterRefs
+            .filter((ref) => ref.kind === "digirole_digimon")
+            .map((ref) => ref.characterId),
+        ),
       ];
-      const [pokemonResult, trainerResult, t20Result, digiTamerResult, digimonResult] = await Promise.all([
-        pokemonIds.length
-          ? supabase
-              .from("pokemon")
-              .select(
-                "id,nickname,image_url,owner_id,allowed_editors,current_attrs,skills,current_hp,hp,species:species_id(name,sprite_url)",
+      const [pokemonResult, trainerResult, t20Result, digiTamerResult, digimonResult] =
+        await Promise.all([
+          pokemonIds.length
+            ? supabase
+                .from("pokemon")
+                .select(
+                  "id,nickname,image_url,owner_id,allowed_editors,current_attrs,skills,current_hp,hp,species:species_id(name,sprite_url)",
+                )
+                .in("id", pokemonIds)
+            : Promise.resolve({ data: [], error: null }),
+          trainerIds.length
+            ? supabase
+                .from("trainers")
+                .select("id,name,image_url,owner_id,allowed_editors,attrs,skills,current_hp")
+                .in("id", trainerIds)
+            : Promise.resolve({ data: [], error: null }),
+          t20Ids.length
+            ? (
+                supabase.from("t20_characters" as never) as never as {
+                  select: (columns: string) => {
+                    in: (
+                      column: string,
+                      values: string[],
+                    ) => Promise<{ data: unknown[] | null; error: { message: string } | null }>;
+                  };
+                }
               )
-              .in("id", pokemonIds)
-          : Promise.resolve({ data: [], error: null }),
-        trainerIds.length
-          ? supabase
-              .from("trainers")
-              .select("id,name,image_url,owner_id,allowed_editors,attrs,skills,current_hp")
-              .in("id", trainerIds)
-          : Promise.resolve({ data: [], error: null }),
-        t20Ids.length
-          ? (
-              supabase.from("t20_characters" as never) as never as {
-                select: (columns: string) => {
-                  in: (
-                    column: string,
-                    values: string[],
-                  ) => Promise<{ data: unknown[] | null; error: { message: string } | null }>;
-                };
-              }
-            )
-              .select("id,name,image_url,owner_id,allowed_editors,skills,hp_current,hp_max")
-              .in("id", t20Ids)
-          : Promise.resolve({ data: [], error: null }),
-        digiTamerIds.length
-          ? (
-              supabase.from("digirole_tamers" as never) as never as {
-                select: (columns: string) => { in: (column: string, values: string[]) => Promise<{ data: unknown[] | null; error: { message: string } | null }> };
-              }
-            ).select("id,name,image_url,owner_id,allowed_editors,attrs,skills,hp_current,ds_current,condensed_count").in("id", digiTamerIds)
-          : Promise.resolve({ data: [], error: null }),
-        digimonIds.length
-          ? (
-              supabase.from("digirole_digimons" as never) as never as {
-                select: (columns: string) => { in: (column: string, values: string[]) => Promise<{ data: unknown[] | null; error: { message: string } | null }> };
-              }
-            ).select("id,nickname,image_url,owner_id,allowed_editors,attrs,skills,hp_current,ds_current,species:species_id(name,image_url,hp_base)").in("id", digimonIds)
-          : Promise.resolve({ data: [], error: null }),
-      ]);
-      const firstError = pokemonResult.error || trainerResult.error || t20Result.error || digiTamerResult.error || digimonResult.error;
+                .select("id,name,image_url,owner_id,allowed_editors,skills,hp_current,hp_max")
+                .in("id", t20Ids)
+            : Promise.resolve({ data: [], error: null }),
+          digiTamerIds.length
+            ? (
+                supabase.from("digirole_tamers" as never) as never as {
+                  select: (columns: string) => {
+                    in: (
+                      column: string,
+                      values: string[],
+                    ) => Promise<{ data: unknown[] | null; error: { message: string } | null }>;
+                  };
+                }
+              )
+                .select(
+                  "id,name,image_url,owner_id,allowed_editors,attrs,skills,hp_current,ds_current,condensed_count",
+                )
+                .in("id", digiTamerIds)
+            : Promise.resolve({ data: [], error: null }),
+          digimonIds.length
+            ? (
+                supabase.from("digirole_digimons" as never) as never as {
+                  select: (columns: string) => {
+                    in: (
+                      column: string,
+                      values: string[],
+                    ) => Promise<{ data: unknown[] | null; error: { message: string } | null }>;
+                  };
+                }
+              )
+                .select(
+                  "id,nickname,image_url,owner_id,allowed_editors,attrs,skills,hp_current,ds_current,species:species_id(name,image_url,hp_base)",
+                )
+                .in("id", digimonIds)
+            : Promise.resolve({ data: [], error: null }),
+        ]);
+      const firstError =
+        pokemonResult.error ||
+        trainerResult.error ||
+        t20Result.error ||
+        digiTamerResult.error ||
+        digimonResult.error;
       if (firstError) throw firstError;
 
       const result = new Map<string, CharacterData>();
@@ -312,12 +335,7 @@ export function GameEnginePanel({
               ? String(species.sprite_url)
               : null,
           ownerId: String(row.owner_id),
-          controllerIds: [
-            String(row.owner_id),
-            ...(Array.isArray(row.allowed_editors)
-              ? row.allowed_editors.filter((entry): entry is string => typeof entry === "string")
-              : []),
-          ],
+          controllerIds: [String(row.owner_id)],
           initiativePool: numberAt(attrs, "dexterity", 1) + numberAt(skills, "Alert", 0),
           initiativeModifier: 0,
           currentHp: typeof row.current_hp === "number" ? row.current_hp : null,
@@ -331,12 +349,7 @@ export function GameEnginePanel({
           name: String(row.name || "Treinador"),
           imageUrl: row.image_url ? String(row.image_url) : null,
           ownerId: String(row.owner_id),
-          controllerIds: [
-            String(row.owner_id),
-            ...(Array.isArray(row.allowed_editors)
-              ? row.allowed_editors.filter((entry): entry is string => typeof entry === "string")
-              : []),
-          ],
+          controllerIds: [String(row.owner_id)],
           initiativePool: numberAt(row.attrs, "dexterity", 1) + numberAt(row.skills, "Alert", 0),
           initiativeModifier: 0,
           currentHp: typeof row.current_hp === "number" ? row.current_hp : null,
@@ -373,7 +386,9 @@ export function GameEnginePanel({
           ownerId: String(row.owner_id),
           controllerIds: [
             String(row.owner_id),
-            ...(Array.isArray(row.allowed_editors) ? row.allowed_editors.filter((entry): entry is string => typeof entry === "string") : []),
+            ...(Array.isArray(row.allowed_editors)
+              ? row.allowed_editors.filter((entry): entry is string => typeof entry === "string")
+              : []),
           ],
           initiativePool: numberAt(attrs, "dexterity", 1) + numberAt(skills, "Alert", 0),
           initiativeModifier: 0,
@@ -389,11 +404,17 @@ export function GameEnginePanel({
         result.set(`digirole_digimon:${row.id}`, {
           id: String(row.id),
           name: String(row.nickname || species.name || "Digimon"),
-          imageUrl: row.image_url ? String(row.image_url) : species.image_url ? String(species.image_url) : null,
+          imageUrl: row.image_url
+            ? String(row.image_url)
+            : species.image_url
+              ? String(species.image_url)
+              : null,
           ownerId: String(row.owner_id),
           controllerIds: [
             String(row.owner_id),
-            ...(Array.isArray(row.allowed_editors) ? row.allowed_editors.filter((entry): entry is string => typeof entry === "string") : []),
+            ...(Array.isArray(row.allowed_editors)
+              ? row.allowed_editors.filter((entry): entry is string => typeof entry === "string")
+              : []),
           ],
           initiativePool: numberAt(attrs, "dexterity", 1) + numberAt(skills, "Alert", 0),
           initiativeModifier: 0,
@@ -432,9 +453,7 @@ export function GameEnginePanel({
             ...(character?.maxHp != null ? { hpMax: character.maxHp } : {}),
           },
           metadata: {
-            controllerIds: [
-              ...new Set([...(character?.controllerIds ?? []), token.owner_id]),
-            ],
+            controllerIds: [...new Set([...(character?.controllerIds ?? []), token.owner_id])],
           },
         };
       }),
@@ -517,12 +536,17 @@ export function GameEnginePanel({
 
   const session = engine.session;
   const current = session ? currentEngineParticipant(session.state) : null;
-  const participantImageUrl = (participant: EngineParticipant) =>
-    participant.imageUrl ||
-    (participant.characterId
-      ? characters.get(`${participant.kind}:${participant.characterId}`)?.imageUrl
-      : null) ||
-    null;
+  const participantImageUrl = (participant: EngineParticipant) => {
+    const imageUrl =
+      participant.imageUrl ||
+      (participant.characterId
+        ? characters.get(`${participant.kind}:${participant.characterId}`)?.imageUrl
+        : null) ||
+      null;
+    return participant.kind === "digirole_digimon"
+      ? transparentDigiRoleImageUrl(imageUrl)
+      : imageUrl;
+  };
   const mayControlCurrent = mayControlEngineParticipant(current, { userId, isNarrator });
   const allInitiativesReady =
     !!session && session.state.participants.every((participant) => participant.initiative != null);
@@ -589,8 +613,12 @@ export function GameEnginePanel({
                       })
                     }
                   />
-                  {participant.imageUrl ? (
-                    <img src={participant.imageUrl} alt="" className="h-8 w-8 object-contain" />
+                  {participantImageUrl(participant) ? (
+                    <img
+                      src={participantImageUrl(participant)!}
+                      alt=""
+                      className="h-8 w-8 object-contain"
+                    />
                   ) : (
                     <div className="h-8 w-8 rounded bg-muted" />
                   )}
@@ -670,7 +698,8 @@ export function GameEnginePanel({
                   onClick={() =>
                     void run(async () => {
                       const rolled = await rollNarratorInitiatives();
-                      if (rolled > 0) toast.success(`${rolled} iniciativa(s) do narrador rolada(s).`);
+                      if (rolled > 0)
+                        toast.success(`${rolled} iniciativa(s) do narrador rolada(s).`);
                       else toast.info("Nenhuma iniciativa do narrador está pendente.");
                     })
                   }
@@ -682,7 +711,10 @@ export function GameEnginePanel({
             </div>
             <div className="space-y-1.5">
               {session.state.participants.map((participant) => {
-                const mayRoll = mayControlEngineParticipant(participant, { userId, isNarrator: false });
+                const mayRoll = mayControlEngineParticipant(participant, {
+                  userId,
+                  isNarrator: false,
+                });
                 const imageUrl = participantImageUrl(participant);
                 return (
                   <div
@@ -748,7 +780,11 @@ export function GameEnginePanel({
               <section className="space-y-3">
                 <div className="flex items-center gap-3">
                   {participantImageUrl(current) ? (
-                    <img src={participantImageUrl(current)!} alt="" className="h-12 w-12 object-contain" />
+                    <img
+                      src={participantImageUrl(current)!}
+                      alt=""
+                      className="h-12 w-12 object-contain"
+                    />
                   ) : (
                     <div className="h-12 w-12 rounded bg-muted" />
                   )}
@@ -761,8 +797,16 @@ export function GameEnginePanel({
                     {actionEntries(current).length > 0 && (
                       <div className="mt-1 flex flex-wrap gap-1">
                         {actionEntries(current).map((entry, index) => (
-                          <Badge key={`${entry.type}-${entry.label}-${index}`} variant="outline" className="text-[9px]">
-                            {entry.type === "move" ? "Move" : entry.type === "reaction" ? "Reação" : "Ação"}
+                          <Badge
+                            key={`${entry.type}-${entry.label}-${index}`}
+                            variant="outline"
+                            className="text-[9px]"
+                          >
+                            {entry.type === "move"
+                              ? "Move"
+                              : entry.type === "reaction"
+                                ? "Reação"
+                                : "Ação"}
                             {entry.label ? ` · ${entry.label}` : ""}
                           </Badge>
                         ))}

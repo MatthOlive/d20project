@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
-import { ImagePlus } from "lucide-react";
+import { ImagePlus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 /**
@@ -16,11 +16,13 @@ export function ImageSourceDialog({
   trigger,
   title = "Definir imagem",
   maxBytes = 5_000_000,
+  canRemove = false,
   onPick,
 }: {
   trigger?: React.ReactNode;
   title?: string;
   maxBytes?: number;
+  canRemove?: boolean;
   onPick: (url: string) => void | Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
@@ -77,6 +79,14 @@ export function ImageSourceDialog({
               <Button onClick={applyUrl}>Usar</Button>
             </div>
           </div>
+          {canRemove && (
+            <Button type="button" variant="destructive" className="w-full" onClick={async () => {
+              await onPick("");
+              setOpen(false);
+            }}>
+              <Trash2 className="mr-2 h-4 w-4" /> Remover imagem
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

@@ -7,31 +7,75 @@ import {
   type ClientHealthSnapshot,
 } from "@/lib/client-health";
 import { downloadClientDiagnostics } from "@/lib/client-diagnostics";
+import { supabase } from "@/integrations/supabase/client";
 
 const HEALTHY: ClientHealthSnapshot = { pendingSaves: 0, saveErrors: 0, realtimeErrors: 0 };
+const CONNECTIVITY_CHECK_INTERVAL_MS = 30_000;
+const CONNECTIVITY_CHECK_TIMEOUT_MS = 6_000;
 
 export function ConnectionStatus() {
-  const [online, setOnline] = useState(() =>
+  const [browserOnline, setBrowserOnline] = useState(() =>
     typeof navigator === "undefined" ? true : navigator.onLine,
+  );
+  const [backendReachable, setBackendReachable] = useState<boolean | null>(() =>
+    typeof navigator === "undefined" || navigator.onLine ? true : null,
   );
   const [health, setHealth] = useState<ClientHealthSnapshot>(HEALTHY);
 
   useEffect(() => {
-    const connected = () => setOnline(true);
-    const disconnected = () => setOnline(false);
+    let active = true;
+    let probeInFlight = false;
+
+    const probeBackend = async () => {
+      if (probeInFlight) return;
+      probeInFlight = true;
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), CONNECTIVITY_CHECK_TIMEOUT_MS);
+      try {
+        const { error } = await supabase
+          .from("games")
+          .select("id")
+          .limit(1)
+          .abortSignal(controller.signal);
+        if (active) setBackendReachable(!error);
+      } catch {
+        if (active) setBackendReachable(false);
+      } finally {
+        window.clearTimeout(timeout);
+        probeInFlight = false;
+      }
+    };
+
+    const connected = () => {
+      setBrowserOnline(true);
+      setBackendReachable(true);
+    };
+    const disconnected = () => {
+      setBrowserOnline(false);
+      setBackendReachable(null);
+      void probeBackend();
+    };
     window.addEventListener("online", connected);
     window.addEventListener("offline", disconnected);
+    if (navigator.onLine === false) void probeBackend();
+    const connectivityCheck = window.setInterval(() => {
+      if (navigator.onLine === false) void probeBackend();
+    }, CONNECTIVITY_CHECK_INTERVAL_MS);
     const unsubscribeHealth = subscribeClientHealth(setHealth);
     return () => {
+      active = false;
+      window.clearInterval(connectivityCheck);
       window.removeEventListener("online", connected);
       window.removeEventListener("offline", disconnected);
       unsubscribeHealth();
     };
   }, []);
 
+  const checkingConnection = !browserOnline && backendReachable === null;
+  const online = browserOnline || backendReachable === true;
   const degraded = health.realtimeErrors > 0;
   const failedSave = health.saveErrors > 0;
-  if (online && !degraded && !failedSave) return null;
+  if (checkingConnection || (online && !degraded && !failedSave)) return null;
 
   const message = !online
     ? health.pendingSaves > 0

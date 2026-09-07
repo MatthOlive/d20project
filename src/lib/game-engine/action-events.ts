@@ -20,11 +20,14 @@ export type EngineActionRolledDetail = {
   actionType: "move" | "reaction" | "initiative";
   label: string;
   resultSuccesses?: number;
+  actionsBefore?: number;
 };
 
 export function emitEngineActionRolled(detail: EngineActionRolledDetail) {
   if (typeof window === "undefined") return;
-  window.dispatchEvent(new CustomEvent<EngineActionRolledDetail>(ENGINE_ACTION_ROLLED_EVENT, {
-    detail,
-  }));
+  window.dispatchEvent(
+    new CustomEvent<EngineActionRolledDetail>(ENGINE_ACTION_ROLLED_EVENT, {
+      detail,
+    }),
+  );
 }

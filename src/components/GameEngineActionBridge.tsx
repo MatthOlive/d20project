@@ -52,7 +52,8 @@ export function GameEngineActionBridge({
 
       const matching = session.state.participants.filter(
         (participant) =>
-          participant.characterId === detail.characterId && participant.kind === detail.characterKind,
+          participant.characterId === detail.characterId &&
+          participant.kind === detail.characterKind,
       );
       const current = session.state.participants[session.state.turnIndex] ?? null;
       const participant =
@@ -63,21 +64,23 @@ export function GameEngineActionBridge({
 
       if (!participant || !engineParticipantControllerIds(participant).includes(userId)) return;
 
-      const command = detail.actionType === "initiative"
-        ? {
-            type: "set_initiative" as const,
-            participantId: participant.id,
-            value: Math.trunc(detail.resultSuccesses ?? 0),
-            detail: { label: detail.label },
-          }
-        : {
-            type: "record_action" as const,
-            participantId: participant.id,
-            participantName: participant.name,
-            actionType: detail.actionType,
-            label: detail.label,
-            resultSuccesses: detail.resultSuccesses,
-          };
+      const command =
+        detail.actionType === "initiative"
+          ? {
+              type: "set_initiative" as const,
+              participantId: participant.id,
+              value: Math.trunc(detail.resultSuccesses ?? 0),
+              detail: { label: detail.label },
+            }
+          : {
+              type: "record_action" as const,
+              participantId: participant.id,
+              participantName: participant.name,
+              actionType: detail.actionType,
+              label: detail.label,
+              resultSuccesses: detail.resultSuccesses,
+              actionsBefore: detail.actionsBefore,
+            };
       const updated = await commitRef.current(command);
       sessionRef.current = updated;
     }

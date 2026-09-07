@@ -7,36 +7,61 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AttrFourField, SkillNumberInput } from "@/components/AttrFourField";
 import {
-  ATTRS, SOCIAL_ATTRS, RANKS, RANK_LABELS, RANK_BONUS, TRAINER_SKILLS, HUMAN_ATTR_CAP, type Rank,
+  ATTRS,
+  SOCIAL_ATTRS,
+  RANKS,
+  RANK_LABELS,
+  RANK_BONUS,
+  TRAINER_SKILLS,
+  HUMAN_ATTR_CAP,
+  type Rank,
 } from "@/lib/pokerole";
 import {
-  CONTEST_RANKS, CONTEST_RANK_LABELS, CONTEST_RANK_UP, NEXT_CONTEST_RANK,
-  NOTORIETY_SKILLS, NOTORIETY_CAP,
+  CONTEST_RANKS,
+  CONTEST_RANK_LABELS,
+  CONTEST_RANK_UP,
+  NEXT_CONTEST_RANK,
+  NOTORIETY_SKILLS,
+  NOTORIETY_CAP,
 } from "@/lib/contest";
 import { ImageSourceDialog } from "@/components/ImageSourceDialog";
 import { AutosaveStatus } from "@/components/AutosaveStatus";
 
 import { useDebouncedPatch } from "@/lib/use-debounced-patch";
 import { toast } from "sonner";
-import { Dices, ImagePlus, X as XIcon, Plus, Trash2, Award, ChevronDown, ChevronUp } from "lucide-react";
 import {
-  HpAndStatusBlock, AttackRollButton, GenericRollButton, painPenaltyFor,
+  Dices,
+  ImagePlus,
+  X as XIcon,
+  Plus,
+  Trash2,
+  Award,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
+import {
+  HpAndStatusBlock,
+  AttackRollButton,
+  GenericRollButton,
+  painPenaltyFor,
 } from "@/components/SheetRolls";
 import { SheetPermissionsDialog } from "@/components/SheetPermissionsDialog";
 import { TrainerAppearanceImage } from "@/components/TrainerAppearance";
 
 const POKEBALLS = {
-  pokeball:  { label: "Pokéball",  pool: 4 },
+  pokeball: { label: "Pokéball", pool: 4 },
   greatball: { label: "Greatball", pool: 6 },
   ultraball: { label: "Ultraball", pool: 8 },
-  masterball:{ label: "Master Ball (auto)", pool: 0 },
+  masterball: { label: "Master Ball (auto)", pool: 0 },
 } as const;
 type BallKey = keyof typeof POKEBALLS;
 
@@ -88,7 +113,12 @@ type CustomSkill = { name: string; value: number };
 type Badge = { name: string; image_url?: string | null };
 
 type InventoryItem = { name: string; qty: number; desc?: string };
-type Achievement = { name: string; done: boolean; kind?: "rank" | "custom" | "contest_rank"; rankFor?: string };
+type Achievement = {
+  name: string;
+  done: boolean;
+  kind?: "rank" | "custom" | "contest_rank";
+  rankFor?: string;
+};
 
 // Requisitos para alcançar CADA rank (chave = rank de destino).
 // Quando o treinador está em X, mostramos os requisitos da chave NEXT_RANK[X].
@@ -104,19 +134,11 @@ const RANK_UP_REQUIREMENTS: Record<string, { label: string; items: string[] }> =
   },
   amateur: {
     label: "Amateur",
-    items: [
-      "Evolve a Pokémon",
-      "Win your First Badge",
-      "Increase a Pokémon's Loyalty & Happiness",
-    ],
+    items: ["Evolve a Pokémon", "Win your First Badge", "Increase a Pokémon's Loyalty & Happiness"],
   },
   ace: {
     label: "Ace",
-    items: [
-      "Win 8 Badges",
-      "Get a full party of six evolved Pokémon",
-      "Defeat your Rival",
-    ],
+    items: ["Win 8 Badges", "Get a full party of six evolved Pokémon", "Defeat your Rival"],
   },
   pro: {
     label: "Pro",
@@ -128,9 +150,7 @@ const RANK_UP_REQUIREMENTS: Record<string, { label: string; items: string[] }> =
   },
   master: {
     label: "Master",
-    items: [
-      "Find and study all Pokémon species in your Region",
-    ],
+    items: ["Find and study all Pokémon species in your Region"],
   },
   champion: {
     label: "Champion",
@@ -146,7 +166,6 @@ const NEXT_RANK: Record<string, string> = {
   pro: "master",
   master: "champion",
 };
-
 
 const POTION_TIERS: { key: string; label: string; defaultMax: number }[] = [
   { key: "potion", label: "Potion", defaultMax: 2 },
@@ -165,49 +184,74 @@ export function TrainerSheet({
   trainerId: string;
   userId: string;
   isNarrator: boolean;
-  onRoll: (label: string, n: number, penalty?: number, meta?: { characterKind: "trainer" | "pokemon"; characterId: string; imageUrl?: string | null }) => void;
+  onRoll: (
+    label: string,
+    n: number,
+    penalty?: number,
+    meta?: { characterKind: "trainer" | "pokemon"; characterId: string; imageUrl?: string | null },
+  ) => void;
   onDeleted?: () => void;
 }) {
   const qc = useQueryClient();
   const [ballKey, setBallKey] = useState<BallKey>("pokeball");
   const [catchBonus, setCatchBonus] = useState(0);
   const queryKey = useMemo(() => ["trainer", trainerId], [trainerId]);
-  const { data: trainer, error: trainerError, refetch: refetchTrainer } = useQuery({
+  const {
+    data: trainer,
+    error: trainerError,
+    refetch: refetchTrainer,
+  } = useQuery({
     queryKey,
     queryFn: async () => {
-      const { data, error } = await supabase.from("trainers").select("*").eq("id", trainerId).single();
+      const { data, error } = await supabase
+        .from("trainers")
+        .select("*")
+        .eq("id", trainerId)
+        .single();
       if (error) throw error;
       return data as unknown as Trainer;
     },
   });
 
-  const commit = useCallback(async (p: Partial<Trainer>) => {
-    const expectedVersion = qc.getQueryData<Trainer>(queryKey)?.row_version;
-    if (typeof expectedVersion !== "number") {
-      const { error } = await supabase.from("trainers").update(p as never).eq("id", trainerId);
-      if (error) throw new Error(error.message);
-      return;
-    }
+  const commit = useCallback(
+    async (p: Partial<Trainer>) => {
+      const expectedVersion = qc.getQueryData<Trainer>(queryKey)?.row_version;
+      if (typeof expectedVersion !== "number") {
+        const { error } = await supabase
+          .from("trainers")
+          .update(p as never)
+          .eq("id", trainerId);
+        if (error) throw new Error(error.message);
+        return;
+      }
 
-    const { data, error } = await supabase
-      .from("trainers")
-      .update(p as never)
-      .eq("id", trainerId)
-      .eq("row_version" as never, expectedVersion)
-      .select("row_version,updated_at" as never)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    if (!data) {
-      const latest = await supabase.from("trainers").select("*").eq("id", trainerId).single();
-      if (latest.error) throw new Error(latest.error.message);
-      qc.setQueryData<Trainer>(queryKey, { ...(latest.data as unknown as Trainer), ...p });
-      throw new Error("A ficha mudou em outra sessão. As alterações locais serão reaplicadas.");
-    }
-    qc.setQueryData<Trainer>(queryKey, (current) => current
-      ? { ...current, ...(data as unknown as Partial<Trainer>) }
-      : current);
-  }, [qc, queryKey, trainerId]);
-  const { patch, retry: retrySave, mergeServerPatch, saveState, saveError } = useDebouncedPatch<Trainer>(queryKey, commit, 400, {
+      const { data, error } = await supabase
+        .from("trainers")
+        .update(p as never)
+        .eq("id", trainerId)
+        .eq("row_version" as never, expectedVersion)
+        .select("row_version,updated_at" as never)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!data) {
+        const latest = await supabase.from("trainers").select("*").eq("id", trainerId).single();
+        if (latest.error) throw new Error(latest.error.message);
+        qc.setQueryData<Trainer>(queryKey, { ...(latest.data as unknown as Trainer), ...p });
+        throw new Error("A ficha mudou em outra sessão. As alterações locais serão reaplicadas.");
+      }
+      qc.setQueryData<Trainer>(queryKey, (current) =>
+        current ? { ...current, ...(data as unknown as Partial<Trainer>) } : current,
+      );
+    },
+    [qc, queryKey, trainerId],
+  );
+  const {
+    patch,
+    retry: retrySave,
+    mergeServerPatch,
+    saveState,
+    saveError,
+  } = useDebouncedPatch<Trainer>(queryKey, commit, 400, {
     storageKey: `d20:pending:trainer:${userId}:${trainerId}`,
     snapshotKey: `sheet:${userId}:trainer:${trainerId}`,
   });
@@ -226,39 +270,56 @@ export function TrainerSheet({
       .subscribe((status) => {
         if (status === "SUBSCRIBED") void qc.invalidateQueries({ queryKey });
       });
-    return () => { void supabase.removeChannel(channel); };
+    return () => {
+      void supabase.removeChannel(channel);
+    };
   }, [mergeServerPatch, qc, queryKey, trainerId]);
 
   if (trainerError) {
     return (
       <div className="grid min-h-48 place-items-center gap-3 p-6 text-center text-sm">
         <p className="text-destructive">Não foi possível abrir a ficha: {trainerError.message}</p>
-        <Button size="sm" variant="outline" onClick={() => { void refetchTrainer(); }}>Tentar novamente</Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            void refetchTrainer();
+          }}
+        >
+          Tentar novamente
+        </Button>
       </div>
     );
   }
   if (!trainer) return <div className="p-4 text-sm text-muted-foreground">Carregando ficha…</div>;
-  const canEdit = trainer.owner_id === userId
-    || isNarrator
-    || (trainer.allowed_editors ?? []).includes(userId);
+  const canEdit =
+    trainer.owner_id === userId || isNarrator || (trainer.allowed_editors ?? []).includes(userId);
 
   if (!canEdit) {
     return (
       <div className="space-y-4 p-4">
         <section className="overflow-hidden rounded-xl border border-border bg-card">
           <div className="flex items-center gap-2 border-b-2 border-primary bg-primary/10 px-3 py-1.5">
-            <span className="truncate text-[12px] font-bold uppercase tracking-wider text-primary">{trainer.name}</span>
+            <span className="truncate text-[12px] font-bold uppercase tracking-wider text-primary">
+              {trainer.name}
+            </span>
           </div>
           <div className="flex flex-col items-center gap-3 p-6">
             {trainer.image_url ? (
-              <TrainerAppearanceImage value={trainer.image_url} alt={trainer.name} className="h-48 w-48 rounded-lg bg-muted/30 object-contain" />
+              <TrainerAppearanceImage
+                value={trainer.image_url}
+                alt={trainer.name}
+                className="h-48 w-48 rounded-lg bg-muted/30 object-contain"
+              />
             ) : (
               <div className="grid h-48 w-48 place-items-center rounded-lg border border-dashed border-border text-xs text-muted-foreground">
                 Sem imagem
               </div>
             )}
             <div className="text-lg font-bold">{trainer.name}</div>
-            <div className="text-xs text-muted-foreground">Você não tem permissão para ver detalhes desta ficha.</div>
+            <div className="text-xs text-muted-foreground">
+              Você não tem permissão para ver detalhes desta ficha.
+            </div>
           </div>
         </section>
       </div>
@@ -309,30 +370,49 @@ export function TrainerSheet({
       {/* ============ BLOCO 1 — Identidade ============ */}
       <section className="overflow-hidden rounded-xl border border-border bg-card">
         <div className="flex items-center gap-2 border-b-2 border-primary bg-primary/10 px-3 py-1.5">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-primary">Pokémon League · Trainer Card</span>
+          <span className="text-[11px] font-bold uppercase tracking-wider text-primary">
+            Pokémon League · Trainer Card
+          </span>
           <AutosaveStatus
             state={saveState}
             error={saveError}
-            onRetry={() => { void retrySave().catch(() => undefined); }}
+            onRetry={() => {
+              void retrySave().catch(() => undefined);
+            }}
           />
           <span className="ml-auto text-[11px] uppercase text-muted-foreground">Rank</span>
-          <Select value={trainer.rank} onValueChange={(v) => patch({ rank: v as Rank })} disabled={!canEdit}>
-            <SelectTrigger className="h-6 w-28 text-xs"><SelectValue /></SelectTrigger>
+          <Select
+            value={trainer.rank}
+            onValueChange={(v) => patch({ rank: v as Rank })}
+            disabled={!canEdit}
+          >
+            <SelectTrigger className="h-6 w-28 text-xs">
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
-              {RANKS.map((r) => <SelectItem key={r} value={r}>{RANK_LABELS[r]}</SelectItem>)}
+              {RANKS.map((r) => (
+                <SelectItem key={r} value={r}>
+                  {RANK_LABELS[r]}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
         <div className="grid gap-3 p-3 sm:grid-cols-[160px_1fr]">
           {/* Left: image + money */}
           <div className="space-y-2">
-            <TrainerImage trainer={trainer} canEdit={canEdit} onChange={(url) => patch({ image_url: url })} />
+            <TrainerImage
+              trainer={trainer}
+              canEdit={canEdit}
+              onChange={(url) => patch({ image_url: url })}
+            />
             <div className="rounded-md border border-border bg-background px-2 py-1.5">
               <Label className="text-[10px] uppercase text-muted-foreground">Money</Label>
               <div className="flex items-center gap-1">
                 <span className="text-xs font-bold text-primary">₽</span>
                 <Input
-                  type="number" value={trainer.money}
+                  type="number"
+                  value={trainer.money}
                   onChange={(e) => patch({ money: parseInt(e.target.value) || 0 })}
                   disabled={!canEdit}
                   className="h-7 text-sm"
@@ -345,15 +425,31 @@ export function TrainerSheet({
             <div>
               <Label className="text-[10px] uppercase text-muted-foreground">Name</Label>
               <div className="flex items-center gap-2">
-                <Input value={trainer.name} onChange={(e) => patch({ name: e.target.value })} disabled={!canEdit} className="h-9 text-base font-bold" />
-                <SheetPermissionsDialog kind="trainer" entityId={trainerId} gameId={trainer.game_id} isNarrator={isNarrator} />
+                <Input
+                  value={trainer.name}
+                  onChange={(e) => patch({ name: e.target.value })}
+                  disabled={!canEdit}
+                  className="h-9 text-base font-bold"
+                />
+                <SheetPermissionsDialog
+                  kind="trainer"
+                  entityId={trainerId}
+                  gameId={trainer.game_id}
+                  isNarrator={isNarrator}
+                />
               </div>
             </div>
             <div className="grid gap-2 sm:grid-cols-3">
               <div>
                 <Label className="text-[10px] uppercase text-muted-foreground">Sex</Label>
-                <Select value={trainer.sex ?? ""} onValueChange={(v) => patch({ sex: v || null })} disabled={!canEdit}>
-                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
+                <Select
+                  value={trainer.sex ?? ""}
+                  onValueChange={(v) => patch({ sex: v || null })}
+                  disabled={!canEdit}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="male">Male</SelectItem>
                     <SelectItem value="female">Female</SelectItem>
@@ -365,7 +461,8 @@ export function TrainerSheet({
               <div>
                 <Label className="text-[10px] uppercase text-muted-foreground">Age</Label>
                 <Input
-                  type="number" value={trainer.age ?? ""}
+                  type="number"
+                  value={trainer.age ?? ""}
                   onChange={(e) => patch({ age: parseInt(e.target.value) || null })}
                   disabled={!canEdit}
                   className="h-8 text-xs"
@@ -374,7 +471,8 @@ export function TrainerSheet({
               <div>
                 <Label className="text-[10px] uppercase text-muted-foreground">Confidence</Label>
                 <Input
-                  type="number" value={trainer.confidence}
+                  type="number"
+                  value={trainer.confidence}
                   onChange={(e) => patch({ confidence: parseInt(e.target.value) || 0 })}
                   disabled={!canEdit}
                   className="h-8 text-xs"
@@ -391,8 +489,18 @@ export function TrainerSheet({
             </div>
             {/* Action row */}
             <div className="flex flex-wrap items-center gap-1.5 pt-1">
-              <Button size="sm" variant="outline" className="h-7"
-                onClick={() => onRoll(`${charName} · Initiative (Dex+Alert)`, initiativePool, painPenalty, { characterKind: "trainer", characterId: trainerId, imageUrl: trainer.image_url })}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7"
+                onClick={() =>
+                  onRoll(`${charName} · Initiative (Dex+Alert)`, initiativePool, painPenalty, {
+                    characterKind: "trainer",
+                    characterId: trainerId,
+                    imageUrl: trainer.image_url,
+                  })
+                }
+              >
                 <Dices className="mr-1 h-3.5 w-3.5" /> Initiative · {initiativePool}d6
               </Button>
               <AttackRollButton
@@ -403,20 +511,32 @@ export function TrainerSheet({
                 painPenalty={painPenalty}
                 onRoll={onRoll}
               />
-              <Button size="sm" variant="outline" className="h-7"
-                onClick={() => onRoll(`${charName} · Evasion (Dex+Evasion)`, evasionPool, painPenalty, {
-                  characterKind: "trainer",
-                  characterId: trainerId,
-                  imageUrl: trainer.image_url,
-                })}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7"
+                onClick={() =>
+                  onRoll(`${charName} · Evasion (Dex+Evasion)`, evasionPool, painPenalty, {
+                    characterKind: "trainer",
+                    characterId: trainerId,
+                    imageUrl: trainer.image_url,
+                  })
+                }
+              >
                 <Dices className="mr-1 h-3.5 w-3.5" /> Evasion · {evasionPool}d6
               </Button>
-              <Button size="sm" variant="outline" className="h-7"
-                onClick={() => onRoll(`${charName} · Clash (Str+Clash)`, clashPool, painPenalty, {
-                  characterKind: "trainer",
-                  characterId: trainerId,
-                  imageUrl: trainer.image_url,
-                })}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7"
+                onClick={() =>
+                  onRoll(`${charName} · Clash (Str+Clash)`, clashPool, painPenalty, {
+                    characterKind: "trainer",
+                    characterId: trainerId,
+                    imageUrl: trainer.image_url,
+                  })
+                }
+              >
                 <Dices className="mr-1 h-3.5 w-3.5" /> Clash · {clashPool}d6
               </Button>
               <GenericRollButton
@@ -428,34 +548,54 @@ export function TrainerSheet({
               />
               <div className="flex items-center gap-1.5 rounded-md border border-border bg-background px-1.5 py-1">
                 <Select value={ballKey} onValueChange={(v) => setBallKey(v as BallKey)}>
-                  <SelectTrigger className="h-6 w-32 text-[11px]"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-6 w-32 text-[11px]">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     {Object.entries(POKEBALLS).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v.label} · {v.pool}d6</SelectItem>
+                      <SelectItem key={k} value={k}>
+                        {v.label} · {v.pool}d6
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <div className="flex flex-col items-center">
-                  <span className="text-[8px] uppercase tracking-wider text-muted-foreground">Bônus</span>
-                  <Input type="number" min={0} max={3} value={catchBonus} title="Bonus"
-                    onChange={(e) => setCatchBonus(Math.max(0, Math.min(3, parseInt(e.target.value) || 0)))}
-                    className="h-7 w-14 text-center text-sm font-bold" />
+                  <span className="text-[8px] uppercase tracking-wider text-muted-foreground">
+                    Bônus
+                  </span>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={3}
+                    value={catchBonus}
+                    title="Bonus"
+                    onChange={(e) =>
+                      setCatchBonus(Math.max(0, Math.min(3, parseInt(e.target.value) || 0)))
+                    }
+                    className="h-7 w-14 text-center text-sm font-bold"
+                  />
                 </div>
-                <Button size="sm" variant="outline" className="h-7 px-2 text-xs"
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2 text-xs"
                   disabled={ballKey === "masterball"}
-                  onClick={() => onRoll(
-                    `${trainer.name} · Catch (${ball.label}${catchBonus ? ` +${catchBonus}` : ""})`,
-                    catchPool,
-                    -catchBonus,
-                  )}>
+                  onClick={() =>
+                    onRoll(
+                      `${trainer.name} · Catch (${ball.label}${catchBonus ? ` +${catchBonus}` : ""})`,
+                      catchPool,
+                      -catchBonus,
+                    )
+                  }
+                >
                   <Dices className="mr-1 h-3 w-3" />
                   {ballKey === "masterball" ? "Auto" : `Catch · ${catchPool}d6`}
                 </Button>
-
               </div>
             </div>
             <p className="text-[10px] text-muted-foreground">
-              Catch bonuses: +1 alvo a meio HP, +1 a 1 HP, +1 com status (máx +3). Sucessos: Starter 3 · Beginner 4 · Amateur 6 · Ace 8 · Pro 9.
+              Catch bonuses: +1 alvo a meio HP, +1 a 1 HP, +1 com status (máx +3). Sucessos: Starter
+              3 · Beginner 4 · Amateur 6 · Ace 8 · Pro 9.
             </p>
           </div>
         </div>
@@ -464,7 +604,9 @@ export function TrainerSheet({
       {/* ============ BLOCO 2 — Status + Atributos físicos + Sociais ============ */}
       <section className="grid gap-3 lg:grid-cols-3">
         <div className="rounded-lg border border-border bg-card p-3">
-          <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Status problems</h4>
+          <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            Status problems
+          </h4>
           <HpAndStatusBlock
             current={currentHp}
             max={hp}
@@ -495,8 +637,29 @@ export function TrainerSheet({
                 cap={HUMAN_ATTR_CAP}
                 onChange={(d) => {
                   if (d.base !== undefined) patch({ attrs: { ...trainer.attrs, [a]: d.base } });
-                  if (d.points !== undefined) patch({ attr_points: { ...trainer.attr_points, [a]: d.points } });
-                  if (d.bonus !== undefined) patch({ attr_bonus: { ...trainer.attr_bonus, [a]: d.bonus } });
+                  if (d.points !== undefined)
+                    patch({ attr_points: { ...trainer.attr_points, [a]: d.points } });
+                  if (d.bonus !== undefined)
+                    patch({ attr_bonus: { ...trainer.attr_bonus, [a]: d.bonus } });
+                }}
+              />
+            ))}
+            {[
+              ["clash_times", "Clash times"],
+              ["evasion_times", "Evasion times"],
+            ].map(([key, label]) => (
+              <AttrFourField
+                key={key}
+                label={label}
+                base={1}
+                points={0}
+                bonus={trainer.attr_bonus?.[key] ?? 0}
+                baseEditable={false}
+                hidePoints
+                disabled={!canEdit}
+                onChange={(d) => {
+                  if (d.bonus !== undefined)
+                    patch({ attr_bonus: { ...trainer.attr_bonus, [key]: d.bonus } });
                 }}
               />
             ))}
@@ -517,9 +680,12 @@ export function TrainerSheet({
                 disabled={!canEdit}
                 cap={HUMAN_ATTR_CAP}
                 onChange={(d) => {
-                  if (d.base !== undefined) patch({ social_attrs: { ...trainer.social_attrs, [a]: d.base } });
-                  if (d.points !== undefined) patch({ social_attr_points: { ...trainer.social_attr_points, [a]: d.points } });
-                  if (d.bonus !== undefined) patch({ social_attr_bonus: { ...trainer.social_attr_bonus, [a]: d.bonus } });
+                  if (d.base !== undefined)
+                    patch({ social_attrs: { ...trainer.social_attrs, [a]: d.base } });
+                  if (d.points !== undefined)
+                    patch({ social_attr_points: { ...trainer.social_attr_points, [a]: d.points } });
+                  if (d.bonus !== undefined)
+                    patch({ social_attr_bonus: { ...trainer.social_attr_bonus, [a]: d.bonus } });
                 }}
               />
             ))}
@@ -527,35 +693,55 @@ export function TrainerSheet({
         </div>
       </section>
 
-
       {/* ============ BLOCO 3 — Skills (Fight / Survival / Social / Knowledge / Custom) ============ */}
       <section className="rounded-lg border border-border bg-card p-3">
         <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-primary">Skills</h3>
         <div className="grid gap-3 lg:grid-cols-6">
-          <SkillGroup title="Fight" tint="bg-primary/15 text-primary"
+          <SkillGroup
+            title="Fight"
+            tint="bg-primary/15 text-primary"
             skills={["Brawl", "Throw", "Evasion", "Weapons"]}
-            values={trainer.skills} canEdit={canEdit}
-            onChange={(s) => patch({ skills: { ...trainer.skills, ...s } })} />
-          <SkillGroup title="Survival" tint="bg-emerald-500/15 text-emerald-500"
+            values={trainer.skills}
+            canEdit={canEdit}
+            onChange={(s) => patch({ skills: { ...trainer.skills, ...s } })}
+          />
+          <SkillGroup
+            title="Survival"
+            tint="bg-emerald-500/15 text-emerald-500"
             skills={["Alert", "Athletic", "Nature", "Stealth"]}
-            values={trainer.skills} canEdit={canEdit}
-            onChange={(s) => patch({ skills: { ...trainer.skills, ...s } })} />
-          <SkillGroup title="Social" tint="bg-pink-500/15 text-pink-500"
+            values={trainer.skills}
+            canEdit={canEdit}
+            onChange={(s) => patch({ skills: { ...trainer.skills, ...s } })}
+          />
+          <SkillGroup
+            title="Social"
+            tint="bg-pink-500/15 text-pink-500"
             skills={["Allure", "Etiquette", "Intimidate", "Perform"]}
-            values={trainer.skills} canEdit={canEdit}
-            onChange={(s) => patch({ skills: { ...trainer.skills, ...s } })} />
-          <SkillGroup title="Knowledge" tint="bg-sky-500/15 text-sky-500"
+            values={trainer.skills}
+            canEdit={canEdit}
+            onChange={(s) => patch({ skills: { ...trainer.skills, ...s } })}
+          />
+          <SkillGroup
+            title="Knowledge"
+            tint="bg-sky-500/15 text-sky-500"
             skills={["Crafts", "Lore", "Medicine", "Science"]}
-            values={trainer.skills} canEdit={canEdit}
-            onChange={(s) => patch({ skills: { ...trainer.skills, ...s } })} />
-          <SkillGroup title="Notoriety" tint="bg-amber-500/15 text-amber-500"
+            values={trainer.skills}
+            canEdit={canEdit}
+            onChange={(s) => patch({ skills: { ...trainer.skills, ...s } })}
+          />
+          <SkillGroup
+            title="Notoriety"
+            tint="bg-amber-500/15 text-amber-500"
             skills={[...NOTORIETY_SKILLS]}
-            values={trainer.notoriety ?? {}} canEdit={canEdit}
+            values={trainer.notoriety ?? {}}
+            canEdit={canEdit}
             onChange={(s) => {
               const merged = { ...(trainer.notoriety ?? {}), ...s };
-              for (const k of Object.keys(merged)) merged[k] = Math.max(0, Math.min(NOTORIETY_CAP, merged[k] ?? 0));
+              for (const k of Object.keys(merged))
+                merged[k] = Math.max(0, Math.min(NOTORIETY_CAP, merged[k] ?? 0));
               patch({ notoriety: merged });
-            }} />
+            }}
+          />
           <CustomSkillsSection
             items={trainer.custom_skills ?? []}
             canEdit={canEdit}
@@ -620,9 +806,19 @@ export function TrainerSheet({
 
       <section className="space-y-2">
         <Label>Background</Label>
-        <Textarea value={trainer.background ?? ""} onChange={(e) => patch({ background: e.target.value })} disabled={!canEdit} rows={2} />
+        <Textarea
+          value={trainer.background ?? ""}
+          onChange={(e) => patch({ background: e.target.value })}
+          disabled={!canEdit}
+          rows={2}
+        />
         <Label>Notes</Label>
-        <Textarea value={trainer.notes} onChange={(e) => patch({ notes: e.target.value })} disabled={!canEdit} rows={3} />
+        <Textarea
+          value={trainer.notes}
+          onChange={(e) => patch({ notes: e.target.value })}
+          disabled={!canEdit}
+          rows={3}
+        />
       </section>
 
       {canEdit && (
@@ -631,13 +827,33 @@ export function TrainerSheet({
             variant="outline"
             size="sm"
             onClick={async () => {
-              const { data: row, error: fetchErr } = await supabase.from("trainers").select("*").eq("id", trainerId).single();
-              if (fetchErr || !row) { toast.error(fetchErr?.message ?? "Falha ao copiar"); return; }
-              const { id: _id, created_at: _c, updated_at: _u, ...rest } = row as Record<string, unknown>;
-              void _id; void _c; void _u;
-              const copy = { ...rest, name: `${(row as { name?: string }).name ?? "Trainer"} (cópia)` };
+              const { data: row, error: fetchErr } = await supabase
+                .from("trainers")
+                .select("*")
+                .eq("id", trainerId)
+                .single();
+              if (fetchErr || !row) {
+                toast.error(fetchErr?.message ?? "Falha ao copiar");
+                return;
+              }
+              const {
+                id: _id,
+                created_at: _c,
+                updated_at: _u,
+                ...rest
+              } = row as Record<string, unknown>;
+              void _id;
+              void _c;
+              void _u;
+              const copy = {
+                ...rest,
+                name: `${(row as { name?: string }).name ?? "Trainer"} (cópia)`,
+              };
               const { error } = await supabase.from("trainers").insert(copy as never);
-              if (error) { toast.error(error.message); return; }
+              if (error) {
+                toast.error(error.message);
+                return;
+              }
               toast.success("Treinador duplicado");
             }}
           >
@@ -649,7 +865,10 @@ export function TrainerSheet({
             onClick={async () => {
               if (!confirm(`Delete trainer "${trainer.name}"? This cannot be undone.`)) return;
               const { error } = await supabase.from("trainers").delete().eq("id", trainerId);
-              if (error) { toast.error(error.message); return; }
+              if (error) {
+                toast.error(error.message);
+                return;
+              }
               toast.success("Trainer deleted");
               onDeleted?.();
             }}
@@ -663,7 +882,12 @@ export function TrainerSheet({
 }
 
 function SkillGroup({
-  title, tint, skills, values, canEdit, onChange,
+  title,
+  tint,
+  skills,
+  values,
+  canEdit,
+  onChange,
 }: {
   title: string;
   tint: string;
@@ -674,14 +898,22 @@ function SkillGroup({
 }) {
   return (
     <div className="rounded-md border border-border bg-background p-2">
-      <div className={`mb-2 inline-block rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${tint}`}>{title}</div>
+      <div
+        className={`mb-2 inline-block rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${tint}`}
+      >
+        {title}
+      </div>
       <div className="space-y-1.5">
         {skills.map((s) => {
           const v = values?.[s] ?? 0;
           return (
             <div key={s} className="flex items-center justify-between gap-2">
               <span className="text-xs">{s}</span>
-              <SkillNumberInput value={v} onChange={(n) => onChange({ [s]: n })} disabled={!canEdit} />
+              <SkillNumberInput
+                value={v}
+                onChange={(n) => onChange({ [s]: n })}
+                disabled={!canEdit}
+              />
             </div>
           );
         })}
@@ -691,7 +923,9 @@ function SkillGroup({
 }
 
 function CustomSkillsSection({
-  items, canEdit, onChange,
+  items,
+  canEdit,
+  onChange,
 }: {
   items: CustomSkill[];
   canEdit: boolean;
@@ -703,9 +937,17 @@ function CustomSkillsSection({
   return (
     <div className="rounded-md border border-border bg-background p-2">
       <div className="mb-2 flex items-center justify-between">
-        <div className="inline-block rounded bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">Custom</div>
+        <div className="inline-block rounded bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+          Custom
+        </div>
         {canEdit && (
-          <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={add} title="Add custom skill">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 w-6 p-0"
+            onClick={add}
+            title="Add custom skill"
+          >
             <Plus className="h-3.5 w-3.5" />
           </Button>
         )}
@@ -719,17 +961,23 @@ function CustomSkillsSection({
             <Input
               value={it.name}
               disabled={!canEdit}
-              onChange={(e) => onChange(items.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}
+              onChange={(e) =>
+                onChange(items.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))
+              }
               className="h-6 flex-1 text-xs"
             />
             <SkillNumberInput
               value={it.value}
-              onChange={(n) => onChange(items.map((x, j) => j === i ? { ...x, value: n } : x))}
+              onChange={(n) => onChange(items.map((x, j) => (j === i ? { ...x, value: n } : x)))}
               disabled={!canEdit}
             />
             {canEdit && (
-              <Button size="sm" variant="ghost" className="h-6 w-6 p-0"
-                onClick={() => onChange(items.filter((_, j) => j !== i))}>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 w-6 p-0"
+                onClick={() => onChange(items.filter((_, j) => j !== i))}
+              >
                 <Trash2 className="h-3 w-3" />
               </Button>
             )}
@@ -741,7 +989,9 @@ function CustomSkillsSection({
 }
 
 function BadgesSection({
-  items, canEdit, onChange,
+  items,
+  canEdit,
+  onChange,
 }: {
   items: Badge[];
   canEdit: boolean;
@@ -751,9 +1001,13 @@ function BadgesSection({
     onChange([...(items ?? []), { name: "New badge" }]);
   }
   function uploadImage(idx: number, file: File) {
-    if (file.size > 1_000_000) { toast.error("Image must be under 1 MB"); return; }
+    if (file.size > 1_000_000) {
+      toast.error("Image must be under 1 MB");
+      return;
+    }
     const reader = new FileReader();
-    reader.onload = () => onChange(items.map((x, j) => j === idx ? { ...x, image_url: reader.result as string } : x));
+    reader.onload = () =>
+      onChange(items.map((x, j) => (j === idx ? { ...x, image_url: reader.result as string } : x)));
     reader.readAsDataURL(file);
   }
   return (
@@ -771,29 +1025,42 @@ function BadgesSection({
       ) : (
         <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
           {(items ?? []).map((b, i) => (
-            <div key={i} className="group flex flex-col items-center gap-1 rounded-md border border-border bg-background p-1.5">
+            <div
+              key={i}
+              className="group flex flex-col items-center gap-1 rounded-md border border-border bg-background p-1.5"
+            >
               {b.image_url ? (
                 <img src={b.image_url} alt={b.name} className="h-10 w-10 object-contain" />
               ) : (
-                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-dashed border-border text-[10px] text-muted-foreground">★</div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-dashed border-border text-[10px] text-muted-foreground">
+                  ★
+                </div>
               )}
               <Input
                 value={b.name}
                 disabled={!canEdit}
-                onChange={(e) => onChange(items.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}
+                onChange={(e) =>
+                  onChange(items.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))
+                }
                 className="h-5 w-full text-center text-[10px]"
               />
               {canEdit && (
                 <div className="flex w-full gap-0.5">
                   <label className="flex-1 cursor-pointer rounded bg-muted px-1 py-0.5 text-center text-[9px] hover:bg-accent">
                     img
-                    <input type="file" accept="image/*" className="hidden"
-                      onChange={(e) => e.target.files?.[0] && uploadImage(i, e.target.files[0])} />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => e.target.files?.[0] && uploadImage(i, e.target.files[0])}
+                    />
                   </label>
                   <button
                     onClick={() => onChange(items.filter((_, j) => j !== i))}
                     className="rounded bg-muted px-1 py-0.5 text-[9px] hover:bg-destructive hover:text-destructive-foreground"
-                  >×</button>
+                  >
+                    ×
+                  </button>
                 </div>
               )}
             </div>
@@ -805,7 +1072,9 @@ function BadgesSection({
 }
 
 function TrainerImage({
-  trainer, canEdit, onChange,
+  trainer,
+  canEdit,
+  onChange,
 }: {
   trainer: Trainer;
   canEdit: boolean;
@@ -814,9 +1083,15 @@ function TrainerImage({
   return (
     <div className="flex flex-col items-start gap-2">
       {trainer.image_url ? (
-        <TrainerAppearanceImage value={trainer.image_url} alt={trainer.name} className="h-24 w-24 rounded-xl border border-border bg-muted object-cover" />
+        <TrainerAppearanceImage
+          value={trainer.image_url}
+          alt={trainer.name}
+          className="h-24 w-24 rounded-xl border border-border bg-muted object-cover"
+        />
       ) : (
-        <div className="flex h-24 w-24 items-center justify-center rounded-xl border border-dashed border-border bg-muted text-xs text-muted-foreground">No image</div>
+        <div className="flex h-24 w-24 items-center justify-center rounded-xl border border-dashed border-border bg-muted text-xs text-muted-foreground">
+          No image
+        </div>
       )}
       {canEdit && (
         <div className="flex w-full flex-wrap gap-1.5">
@@ -836,7 +1111,9 @@ function TrainerImage({
             <button
               onClick={() => onChange(null)}
               className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold hover:bg-accent"
-            ><XIcon className="h-3 w-3" /> Remove</button>
+            >
+              <XIcon className="h-3 w-3" /> Remove
+            </button>
           )}
         </div>
       )}
@@ -864,10 +1141,7 @@ function NatureSelect({
   const { data: natures = [] } = useQuery({
     queryKey: ["natures"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("natures")
-        .select("*")
-        .order("sort_order");
+      const { data, error } = await supabase.from("natures").select("*").order("sort_order");
       if (error) throw error;
       return (data ?? []) as Nature[];
     },
@@ -897,13 +1171,10 @@ function NatureSelect({
           ))}
         </SelectContent>
       </Select>
-      {current && (
-        <p className="text-xs text-muted-foreground">{current.description}</p>
-      )}
+      {current && <p className="text-xs text-muted-foreground">{current.description}</p>}
     </div>
   );
 }
-
 
 type PokedexEntry = { name: string; captured: boolean; sprite_url?: string | null };
 
@@ -941,14 +1212,19 @@ function PokedexSection({
   }, [speciesList, search]);
 
   function addSpecies(s: { id: string; name: string; sprite_url: string | null }) {
-    if (pokedex[s.id]) { toast.info(`${s.name} already in Pokédex`); return; }
+    if (pokedex[s.id]) {
+      toast.info(`${s.name} already in Pokédex`);
+      return;
+    }
     onChange({ ...pokedex, [s.id]: { name: s.name, captured: false, sprite_url: s.sprite_url } });
   }
   function toggleCaptured(id: string) {
     onChange({ ...pokedex, [id]: { ...pokedex[id], captured: !pokedex[id].captured } });
   }
   function removeEntry(id: string) {
-    const next = { ...pokedex }; delete next[id]; onChange(next);
+    const next = { ...pokedex };
+    delete next[id];
+    onChange(next);
   }
 
   const seen = entries.length;
@@ -957,7 +1233,12 @@ function PokedexSection({
   return (
     <section>
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-bold">Pokédex <span className="text-muted-foreground font-normal">· Seen {seen} · Caught {caught}</span></h3>
+        <h3 className="text-sm font-bold">
+          Pokédex{" "}
+          <span className="text-muted-foreground font-normal">
+            · Seen {seen} · Caught {caught}
+          </span>
+        </h3>
         <div className="flex items-center gap-1.5">
           <Button
             size="sm"
@@ -966,7 +1247,11 @@ function PokedexSection({
             onClick={() => setCollapsed((v) => !v)}
             title={collapsed ? "Expandir lista" : "Minimizar lista"}
           >
-            {collapsed ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+            {collapsed ? (
+              <ChevronDown className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronUp className="h-3.5 w-3.5" />
+            )}
             <span className="ml-1 text-xs">{collapsed ? "Expandir" : "Minimizar"}</span>
           </Button>
           {canEdit && (
@@ -976,13 +1261,16 @@ function PokedexSection({
           )}
         </div>
       </div>
-      {!collapsed && (
-        entries.length === 0 ? (
+      {!collapsed &&
+        (entries.length === 0 ? (
           <p className="text-xs text-muted-foreground">No Pokémon recorded yet.</p>
         ) : (
           <div className="grid gap-1.5 sm:grid-cols-2">
             {entries.map(([id, e]) => (
-              <div key={id} className="flex items-center gap-2 rounded-md border border-border bg-card px-2 py-1.5">
+              <div
+                key={id}
+                className="flex items-center gap-2 rounded-md border border-border bg-card px-2 py-1.5"
+              >
                 {e.sprite_url ? (
                   <img src={e.sprite_url} alt={e.name} className="h-8 w-8 object-contain" />
                 ) : (
@@ -998,20 +1286,30 @@ function PokedexSection({
                   Caught
                 </label>
                 {canEdit && (
-                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => removeEntry(id)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 w-7 p-0"
+                    onClick={() => removeEntry(id)}
+                  >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 )}
               </div>
             ))}
           </div>
-        )
-      )}
+        ))}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[80vh] max-w-lg overflow-hidden">
-          <DialogHeader><DialogTitle>Add Pokémon to Pokédex</DialogTitle></DialogHeader>
-          <Input placeholder="Search species…" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <DialogHeader>
+            <DialogTitle>Add Pokémon to Pokédex</DialogTitle>
+          </DialogHeader>
+          <Input
+            placeholder="Search species…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
           <div className="max-h-[55vh] overflow-y-auto rounded-md border border-border">
             {filtered.map((s) => {
               const added = !!pokedex[s.id];
@@ -1025,16 +1323,24 @@ function PokedexSection({
                 >
                   {s.sprite_url ? (
                     <img src={s.sprite_url} alt={s.name} className="h-8 w-8 object-contain" />
-                  ) : <div className="h-8 w-8 rounded bg-muted" />}
+                  ) : (
+                    <div className="h-8 w-8 rounded bg-muted" />
+                  )}
                   <span className="flex-1 text-sm">
-                    {s.dex_number ? <span className="text-muted-foreground">#{String(s.dex_number).padStart(3, "0")} </span> : null}
+                    {s.dex_number ? (
+                      <span className="text-muted-foreground">
+                        #{String(s.dex_number).padStart(3, "0")}{" "}
+                      </span>
+                    ) : null}
                     {s.name}
                   </span>
                   {added && <span className="text-xs text-muted-foreground">Added</span>}
                 </button>
               );
             })}
-            {filtered.length === 0 && <p className="p-4 text-center text-xs text-muted-foreground">No species found.</p>}
+            {filtered.length === 0 && (
+              <p className="p-4 text-center text-xs text-muted-foreground">No species found.</p>
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -1043,7 +1349,12 @@ function PokedexSection({
 }
 
 function ItemListSection({
-  title, items, canEdit, onChange, placeholder, embedded,
+  title,
+  items,
+  canEdit,
+  onChange,
+  placeholder,
+  embedded,
 }: {
   title: string;
   items: InventoryItem[];
@@ -1058,7 +1369,8 @@ function ItemListSection({
     const n = name.trim();
     if (!n) return;
     onChange([...items, { name: n, qty: Math.max(1, qty) }]);
-    setName(""); setQty(1);
+    setName("");
+    setQty(1);
   }
   function update(idx: number, patch: Partial<InventoryItem>) {
     onChange(items.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
@@ -1072,11 +1384,12 @@ function ItemListSection({
         <h3 className="text-sm font-bold">{title}</h3>
       </div>
       <div className="space-y-1.5 rounded-md border border-border bg-card p-2">
-        {items.length === 0 && (
-          <p className="px-1 text-xs text-muted-foreground">No items.</p>
-        )}
+        {items.length === 0 && <p className="px-1 text-xs text-muted-foreground">No items.</p>}
         {items.map((it, i) => (
-          <div key={i} className="space-y-1 rounded-md border border-border/60 bg-background/40 p-1.5">
+          <div
+            key={i}
+            className="space-y-1 rounded-md border border-border/60 bg-background/40 p-1.5"
+          >
             <div className="flex items-center gap-1.5">
               <Input
                 value={it.name}
@@ -1085,7 +1398,8 @@ function ItemListSection({
                 className="h-7 flex-1 text-sm"
               />
               <Input
-                type="number" min={0}
+                type="number"
+                min={0}
                 value={it.qty}
                 onChange={(e) => update(i, { qty: parseInt(e.target.value) || 0 })}
                 disabled={!canEdit}
@@ -1117,7 +1431,9 @@ function ItemListSection({
               className="h-7 flex-1 text-sm"
             />
             <Input
-              type="number" min={1} value={qty}
+              type="number"
+              min={1}
+              value={qty}
               onChange={(e) => setQty(parseInt(e.target.value) || 1)}
               className="h-7 w-14 text-center text-sm"
             />
@@ -1132,7 +1448,9 @@ function ItemListSection({
 }
 
 function PotionsBlock({
-  potions, canEdit, onChange,
+  potions,
+  canEdit,
+  onChange,
 }: {
   potions: Record<string, { count: number; used: number; max: number }>;
   canEdit: boolean;
@@ -1148,22 +1466,43 @@ function PotionsBlock({
       <h3 className="mb-2 text-sm font-bold">Potions</h3>
       <div className="space-y-1 rounded-md border border-border bg-card p-2">
         <div className="grid grid-cols-[1fr_repeat(3,minmax(0,3.5rem))] items-center gap-1.5 px-1 text-[10px] font-semibold uppercase text-muted-foreground">
-          <span></span><span className="text-center">Count</span><span className="text-center">Used</span><span className="text-center">Max</span>
+          <span></span>
+          <span className="text-center">Count</span>
+          <span className="text-center">Used</span>
+          <span className="text-center">Max</span>
         </div>
         {POTION_TIERS.map((tier) => {
           const v = potions[tier.key] ?? { count: 0, used: 0, max: tier.defaultMax };
           return (
-            <div key={tier.key} className="grid grid-cols-[1fr_repeat(3,minmax(0,3.5rem))] items-center gap-1.5">
+            <div
+              key={tier.key}
+              className="grid grid-cols-[1fr_repeat(3,minmax(0,3.5rem))] items-center gap-1.5"
+            >
               <span className="text-xs font-medium">{tier.label}</span>
-              <Input type="number" min={0} value={v.count} disabled={!canEdit}
+              <Input
+                type="number"
+                min={0}
+                value={v.count}
+                disabled={!canEdit}
                 onChange={(e) => update(tier.key, "count", parseInt(e.target.value) || 0)}
-                className="h-7 text-center text-xs" />
-              <Input type="number" min={0} value={v.used} disabled={!canEdit}
+                className="h-7 text-center text-xs"
+              />
+              <Input
+                type="number"
+                min={0}
+                value={v.used}
+                disabled={!canEdit}
                 onChange={(e) => update(tier.key, "used", parseInt(e.target.value) || 0)}
-                className="h-7 text-center text-xs" />
-              <Input type="number" min={0} value={v.max} disabled={!canEdit}
+                className="h-7 text-center text-xs"
+              />
+              <Input
+                type="number"
+                min={0}
+                value={v.max}
+                disabled={!canEdit}
                 onChange={(e) => update(tier.key, "max", parseInt(e.target.value) || 0)}
-                className="h-7 text-center text-xs" />
+                className="h-7 text-center text-xs"
+              />
             </div>
           );
         })}
@@ -1173,7 +1512,10 @@ function PotionsBlock({
 }
 
 function AchievementsSection({
-  items, rank, canEdit, onChange,
+  items,
+  rank,
+  canEdit,
+  onChange,
 }: {
   items: Achievement[];
   rank: string;
@@ -1187,7 +1529,9 @@ function AchievementsSection({
   // Build rank-up achievements for the NEXT rank, preserving done state from existing items
   const rankItems: Achievement[] = rankReq
     ? rankReq.items.map((n) => {
-        const existing = items.find((a) => a.kind === "rank" && a.rankFor === nextRankKey && a.name === n);
+        const existing = items.find(
+          (a) => a.kind === "rank" && a.rankFor === nextRankKey && a.name === n,
+        );
         return { name: n, done: existing?.done ?? false, kind: "rank", rankFor: nextRankKey };
       })
     : [];
@@ -1199,10 +1543,15 @@ function AchievementsSection({
     onChange([...newRank, ...contestItems, ...customItems]);
   }
   function updateCustom(next: Achievement[]) {
-    onChange([...rankItems, ...contestItems, ...next.map((x) => ({ ...x, kind: "custom" as const }))]);
+    onChange([
+      ...rankItems,
+      ...contestItems,
+      ...next.map((x) => ({ ...x, kind: "custom" as const })),
+    ]);
   }
   function add() {
-    const n = name.trim(); if (!n) return;
+    const n = name.trim();
+    if (!n) return;
     updateCustom([...customItems, { name: n, done: false }]);
     setName("");
   }
@@ -1223,14 +1572,15 @@ function AchievementsSection({
                   disabled={!canEdit}
                   onCheckedChange={() => updateRankDone(i, !a.done)}
                 />
-                <span className={`flex-1 text-sm ${a.done ? "line-through text-muted-foreground" : ""}`}>
+                <span
+                  className={`flex-1 text-sm ${a.done ? "line-through text-muted-foreground" : ""}`}
+                >
                   {a.name}
                 </span>
               </div>
             ))}
           </div>
         )}
-
 
         {customItems.length === 0 && !rankReq && (
           <p className="px-1 text-xs text-muted-foreground">No achievements yet.</p>
@@ -1240,17 +1590,27 @@ function AchievementsSection({
             <Checkbox
               checked={a.done}
               disabled={!canEdit}
-              onCheckedChange={() => updateCustom(customItems.map((x, j) => j === i ? { ...x, done: !x.done } : x))}
+              onCheckedChange={() =>
+                updateCustom(customItems.map((x, j) => (j === i ? { ...x, done: !x.done } : x)))
+              }
             />
             <Input
               value={a.name}
               disabled={!canEdit}
-              onChange={(e) => updateCustom(customItems.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}
+              onChange={(e) =>
+                updateCustom(
+                  customItems.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)),
+                )
+              }
               className={`h-7 flex-1 text-sm ${a.done ? "line-through text-muted-foreground" : ""}`}
             />
             {canEdit && (
-              <Button size="sm" variant="ghost" className="h-7 w-7 p-0"
-                onClick={() => updateCustom(customItems.filter((_, j) => j !== i))}>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 w-7 p-0"
+                onClick={() => updateCustom(customItems.filter((_, j) => j !== i))}
+              >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
             )}
@@ -1275,15 +1635,15 @@ function AchievementsSection({
   );
 }
 
-
-
-
-
 // ============================================================
 // Contest section (rank + per-rank achievements)
 // ============================================================
 function ContestSection({
-  contestRank, achievements, canEdit, onRankChange, onAchievements,
+  contestRank,
+  achievements,
+  canEdit,
+  onRankChange,
+  onAchievements,
 }: {
   contestRank: string;
   achievements: Achievement[];
@@ -1295,8 +1655,15 @@ function ContestSection({
   const req = nextKey ? CONTEST_RANK_UP[nextKey] : undefined;
   const rankItems: Achievement[] = req
     ? req.items.map((n) => {
-        const existing = achievements.find((a) => a.kind === "contest_rank" && a.rankFor === nextKey && a.name === n);
-        return { name: n, done: existing?.done ?? false, kind: "contest_rank" as Achievement["kind"], rankFor: nextKey };
+        const existing = achievements.find(
+          (a) => a.kind === "contest_rank" && a.rankFor === nextKey && a.name === n,
+        );
+        return {
+          name: n,
+          done: existing?.done ?? false,
+          kind: "contest_rank" as Achievement["kind"],
+          rankFor: nextKey,
+        };
       })
     : [];
   const other = achievements.filter((a) => a.kind !== "contest_rank");
@@ -1317,10 +1684,14 @@ function ContestSection({
           onValueChange={(v) => onRankChange(v === "none" ? "" : v)}
           disabled={!canEdit}
         >
-          <SelectTrigger className="h-7 w-44 text-xs"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="h-7 w-44 text-xs">
+            <SelectValue />
+          </SelectTrigger>
           <SelectContent>
             {CONTEST_RANKS.map((r) => (
-              <SelectItem key={r || "none"} value={r || "none"}>{CONTEST_RANK_LABELS[r]}</SelectItem>
+              <SelectItem key={r || "none"} value={r || "none"}>
+                {CONTEST_RANK_LABELS[r]}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -1337,7 +1708,9 @@ function ContestSection({
                 disabled={!canEdit}
                 onCheckedChange={() => updateDone(i, !a.done)}
               />
-              <span className={`flex-1 text-sm ${a.done ? "line-through text-muted-foreground" : ""}`}>
+              <span
+                className={`flex-1 text-sm ${a.done ? "line-through text-muted-foreground" : ""}`}
+              >
                 {a.name}
               </span>
             </div>

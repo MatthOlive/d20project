@@ -87,7 +87,10 @@ export function ChatPanel({
     queryKey: ["profiles-for-chat", gameId, profileIds.join(",")],
     queryFn: async () => {
       if (profileIds.length === 0) return {};
-      const { data } = await supabase.from("profiles").select("id,display_name").in("id", profileIds);
+      const { data } = await supabase
+        .from("profiles")
+        .select("id,display_name")
+        .in("id", profileIds);
       const map: Record<string, string> = {};
       (data ?? []).forEach((p) => (map[p.id] = p.display_name));
       return map;
@@ -105,7 +108,8 @@ export function ChatPanel({
       "v" in row.roll_data &&
       row.roll_data.v === "move-1" &&
       row.roll_data.phase === "accuracy"
-    ) return;
+    )
+      return;
     if (row.id === lastTriggeredIdRef.current || aiBusyRef.current) return;
     lastTriggeredIdRef.current = row.id;
     window.setTimeout(() => {
@@ -161,7 +165,12 @@ export function ChatPanel({
     }
   }
 
-  async function rollFromPanel(faces: number, count: number, modifier: number, successMode: boolean) {
+  async function rollFromPanel(
+    faces: number,
+    count: number,
+    modifier: number,
+    successMode: boolean,
+  ) {
     const n = Math.max(1, Math.min(50, Math.floor(count)));
     const mod = Math.floor(modifier) || 0;
     const result = rollDice(n, faces);
@@ -210,19 +219,41 @@ export function ChatPanel({
         { count: number; mod: number }
       >,
   );
-  const resolvedMoveIds = useMemo(() => new Set(
-    messages.flatMap((message) => {
+  const resolvedMoveIds = useMemo(
+    () =>
+      new Set(
+        messages.flatMap((message) => {
+          const data = message.roll_data;
+          return data &&
+            "v" in data &&
+            data.v === "move-1" &&
+            data.phase === "resolution" &&
+            data.resolutionId
+            ? [data.resolutionId]
+            : [];
+        }),
+      ),
+    [messages],
+  );
+  const displayedMessages = useMemo(() => {
+    const preferredMove = new Map<string, Msg>();
+    for (const message of messages) {
       const data = message.roll_data;
-      return data && "v" in data && data.v === "move-1" && data.phase === "resolution" && data.resolutionId
-        ? [data.resolutionId]
-        : [];
-    }),
-  ), [messages]);
+      if (!data || !("v" in data) || data.v !== "move-1" || !data.resolutionId) continue;
+      const current = preferredMove.get(data.resolutionId);
+      if (!current || data.phase === "resolution") preferredMove.set(data.resolutionId, message);
+    }
+    return messages.filter((message) => {
+      const data = message.roll_data;
+      if (!data || !("v" in data) || data.v !== "move-1" || !data.resolutionId) return true;
+      return preferredMove.get(data.resolutionId)?.id === message.id;
+    });
+  }, [messages]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div ref={scrollRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
-        {messages.map((m) => (
+        {displayedMessages.map((m) => (
           <MessageBubble
             key={m.id}
             msg={m}
@@ -239,14 +270,14 @@ export function ChatPanel({
             }
           />
         ))}
-        {messages.length === 0 && (
+        {displayedMessages.length === 0 && (
           <p className="py-6 text-center text-sm text-muted-foreground">
             {aiNarrator ? (
               "Tap “Ask AI Narrator” to open the scene."
             ) : (
               <>
-                No messages yet. Try <code className="rounded bg-muted px-1.5 py-0.5">/r 5d6</code> or{" "}
-                <code className="rounded bg-muted px-1.5 py-0.5">/r 2d20</code>.
+                No messages yet. Try <code className="rounded bg-muted px-1.5 py-0.5">/r 5d6</code>{" "}
+                or <code className="rounded bg-muted px-1.5 py-0.5">/r 2d20</code>.
               </>
             )}
           </p>
@@ -266,7 +297,9 @@ export function ChatPanel({
               className="h-7 text-xs"
               disabled={aiBusy}
               onClick={() =>
-                askNarrator(messages.length === 0 ? "Begin the adventure. Set the opening scene." : undefined)
+                askNarrator(
+                  messages.length === 0 ? "Begin the adventure. Set the opening scene." : undefined,
+                )
               }
             >
               <Sparkles className="mr-1 h-3 w-3" />
@@ -275,7 +308,12 @@ export function ChatPanel({
           </div>
         )}
         <div className="mb-2 flex flex-wrap gap-1">
-          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setDiceOpen(true)}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => setDiceOpen(true)}
+          >
             <Dices className="mr-1 h-3 w-3" /> Dados
           </Button>
           <Button
@@ -295,7 +333,11 @@ export function ChatPanel({
           }}
           className="flex gap-2"
         >
-          <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Message or /r 3d6" />
+          <Input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Message or /r 3d6"
+          />
           <Button type="submit" size="icon" aria-label="Send message">
             <Send className="h-4 w-4" />
           </Button>
@@ -510,7 +552,9 @@ function MessageBubble({
               title="Chance Die: somente 6 conta como sucesso"
               className={cn(
                 "inline-flex h-7 min-w-7 items-center justify-center rounded-md border border-dashed px-1.5 text-sm font-bold tabular-nums",
-                d === 6 ? "border-success bg-success/15 text-success" : "border-border bg-muted text-muted-foreground",
+                d === 6
+                  ? "border-success bg-success/15 text-success"
+                  : "border-border bg-muted text-muted-foreground",
               )}
             >
               {d}
@@ -527,12 +571,19 @@ function MessageBubble({
                 </span>
               )}
               {typeof rd.required === "number" && (
-                <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold", rd.isHit ? "bg-success/15 text-success" : "bg-destructive/10 text-destructive")}>
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-0.5 text-xs font-bold",
+                    rd.isHit ? "bg-success/15 text-success" : "bg-destructive/10 text-destructive",
+                  )}
+                >
                   {rd.isHit ? "acertou" : "falhou"} · precisava {rd.required}
                 </span>
               )}
               {typeof rd.rawSuccesses === "number" && rd.rawSuccesses !== rd.successes && (
-                <span className="text-[10px] text-muted-foreground">mínimo aplicado sobre {rd.rawSuccesses}</span>
+                <span className="text-[10px] text-muted-foreground">
+                  mínimo aplicado sobre {rd.rawSuccesses}
+                </span>
               )}
             </>
           ) : (

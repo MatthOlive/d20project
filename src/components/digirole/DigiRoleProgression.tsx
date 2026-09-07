@@ -4,14 +4,19 @@ import { ArrowRightLeft, Database, Dumbbell, Plus, ScanLine, Sparkles, Trophy } 
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchDigiApiImage } from "@/lib/digi-api";
+import { fetchDigiRoleSignatureTechniqueId } from "@/lib/digirole-techniques";
 import {
-  DIGIROLE_ATTRS,
   DIGIROLE_SKILL_GROUPS,
   DIGIROLE_TRAINING_REQUIRED,
   nextDigiRoleRank,
@@ -24,6 +29,7 @@ type SpeciesSummary = {
   name: string;
   stage: string;
   image_url: string | null;
+  evolution_text?: string | null;
 };
 
 type ScanEntry = {
@@ -50,7 +56,7 @@ function table(name: string) {
 const callRpc = (name: string, args: Record<string, unknown>) => (supabase as any).rpc(name, args);
 
 function relation<T>(value: T | T[] | null | undefined): T | null {
-  return Array.isArray(value) ? value[0] ?? null : value ?? null;
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 }
 
 function messageOf(error: unknown): string {
@@ -63,12 +69,14 @@ function messageOf(error: unknown): string {
 
 export function DigiRoleScanPanel({
   gameId,
+  activePageId,
   tamerId,
   canEdit,
   scanPool,
   onRoll,
 }: {
   gameId: string;
+  activePageId: string | null;
   tamerId: string;
   canEdit: boolean;
   scanPool: number;
@@ -83,31 +91,53 @@ export function DigiRoleScanPanel({
     queryKey: ["digirole-scans", tamerId],
     queryFn: async (): Promise<ScanEntry[]> => {
       const result = await table("digirole_scan_data")
-        .select("species_id,percentage,scanned_subject_ids,species:species_id(id,name,stage,image_url)")
+        .select(
+          "species_id,percentage,scanned_subject_ids,species:species_id(id,name,stage,image_url)",
+        )
         .eq("tamer_id", tamerId)
         .order("percentage", { ascending: false });
       if (result.error) throw result.error;
-      return (result.data ?? []).map((raw: ScanEntry & { species: SpeciesSummary | SpeciesSummary[] | null }) => ({
-        ...raw,
-        scanned_subject_ids: raw.scanned_subject_ids ?? [],
-        species: relation(raw.species),
-      }));
+      return (result.data ?? []).map(
+        (raw: ScanEntry & { species: SpeciesSummary | SpeciesSummary[] | null }) => ({
+          ...raw,
+          scanned_subject_ids: raw.scanned_subject_ids ?? [],
+          species: relation(raw.species),
+        }),
+      );
     },
   });
   const targetsQuery = useQuery({
-    queryKey: ["digirole-scan-targets", gameId],
+    queryKey: ["digirole-scan-targets", gameId, activePageId],
     enabled: dialogOpen,
     queryFn: async (): Promise<ScanTarget[]> => {
+      if (!activePageId) return [];
+      const tokenResult = await table("tokens")
+        .select("character_id")
+        .eq("game_id", gameId)
+        .eq("page_id", activePageId)
+        .eq("character_kind", "digirole_digimon");
+      if (tokenResult.error) throw tokenResult.error;
+      const visibleIds = [
+        ...new Set(
+          (tokenResult.data ?? [])
+            .map((token: { character_id: string | null }) => token.character_id)
+            .filter(Boolean),
+        ),
+      ] as string[];
+      if (!visibleIds.length) return [];
       const result = await table("digirole_digimons")
         .select("id,nickname,species_id,species:species_id(id,name,stage,image_url)")
         .eq("game_id", gameId)
+        .in("id", visibleIds)
         .order("created_at", { ascending: false })
         .limit(500);
       if (result.error) throw result.error;
-      return (result.data ?? []).map((raw: ScanTarget & { species: SpeciesSummary | SpeciesSummary[] | null }) => ({
-        ...raw,
-        species: relation(raw.species),
-      }));
+      return (result.data ?? []).map(
+        (raw: ScanTarget & { species: SpeciesSummary | SpeciesSummary[] | null }) => ({
+          ...raw,
+          species: relation(raw.species),
+        }),
+      );
     },
   });
   const scannedIds = useMemo(
@@ -118,7 +148,9 @@ export function DigiRoleScanPanel({
     const normalized = search.trim().toLocaleLowerCase("pt-BR");
     return (targetsQuery.data ?? []).filter((target) => {
       if (!target.species_id || scannedIds.has(target.id)) return false;
-      const label = `${target.nickname ?? ""} ${target.species?.name ?? ""}`.toLocaleLowerCase("pt-BR");
+      const label = `${target.nickname ?? ""} ${target.species?.name ?? ""}`.toLocaleLowerCase(
+        "pt-BR",
+      );
       return !normalized || label.includes(normalized);
     });
   }, [scannedIds, search, targetsQuery.data]);
@@ -128,7 +160,10 @@ export function DigiRoleScanPanel({
     if (!selected?.species) return;
     setBusy(true);
     try {
-      const rolled = await onRoll(`Data Scan · ${selected.nickname || selected.species.name}`, scanPool);
+      const rolled = await onRoll(
+        `Data Scan · ${selected.nickname || selected.species.name}`,
+        scanPool,
+      );
       if (!rolled) return;
       const result = await callRpc("record_digirole_scan", {
         p_tamer_id: tamerId,
@@ -149,7 +184,11 @@ export function DigiRoleScanPanel({
   }
 
   async function condense(entry: ScanEntry) {
-    if (!entry.species || !confirm(`Consumir ${entry.percentage}% de Data e condensar ${entry.species.name}?`)) return;
+    if (
+      !entry.species ||
+      !confirm(`Consumir ${entry.percentage}% de Data e condensar ${entry.species.name}?`)
+    )
+      return;
     setBusy(true);
     try {
       const result = await callRpc("condense_digirole", {
@@ -159,7 +198,9 @@ export function DigiRoleScanPanel({
       });
       if (result.error) throw result.error;
       const data = result.data as { bonus?: number } | null;
-      toast.success(`${entry.species.name} condensado${data?.bonus ? ` com +${data.bonus} ponto(s) de Atributo Base` : ""}.`);
+      toast.success(
+        `${entry.species.name} condensado${data?.bonus ? ` com +${data.bonus} ponto(s) de Atributo Base` : ""}.`,
+      );
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["digirole-scans", tamerId] }),
         queryClient.invalidateQueries({ queryKey: ["digirole-tamer", tamerId] }),
@@ -177,39 +218,90 @@ export function DigiRoleScanPanel({
       <div className="mb-3 flex items-center justify-between gap-2">
         <div>
           <h3 className="text-xs font-black uppercase text-muted-foreground">Scan Data</h3>
-          <p className="text-[10px] text-muted-foreground">WIS + Science · {scanPool > 0 ? `${scanPool}d6` : "Chance"}</p>
+          <p className="text-[10px] text-muted-foreground">
+            Sabedoria + Science · {scanPool > 0 ? `${scanPool}d6` : "Chance"}
+          </p>
         </div>
-        {canEdit && <Button size="sm" variant="outline" onClick={() => setDialogOpen(true)}><ScanLine className="mr-1 h-3.5 w-3.5" /> Escanear</Button>}
+        {canEdit && (
+          <Button size="sm" variant="outline" onClick={() => setDialogOpen(true)}>
+            <ScanLine className="mr-1 h-3.5 w-3.5" /> Escanear
+          </Button>
+        )}
       </div>
       <div className="space-y-2">
         {(scanQuery.data ?? []).map((entry) => (
           <div key={entry.species_id} className="rounded-md border border-border p-2.5">
             <div className="mb-1.5 flex items-center gap-2">
               <Database className="h-4 w-4 text-primary" />
-              <strong className="min-w-0 flex-1 truncate text-xs">{entry.species?.name ?? "Espécie"}</strong>
+              <strong className="min-w-0 flex-1 truncate text-xs">
+                {entry.species?.name ?? "Espécie"}
+              </strong>
               <span className="text-xs font-black tabular-nums">{entry.percentage}%</span>
-              {canEdit && entry.percentage >= 100 && <Button size="sm" className="h-7" disabled={busy} onClick={() => void condense(entry)}>Condensar</Button>}
+              {canEdit && entry.percentage >= 100 && (
+                <Button
+                  size="sm"
+                  className="h-7"
+                  disabled={busy}
+                  onClick={() => void condense(entry)}
+                >
+                  Condensar
+                </Button>
+              )}
             </div>
             <Progress value={entry.percentage / 2} className="h-1.5" />
           </div>
         ))}
-        {!scanQuery.isLoading && (scanQuery.data?.length ?? 0) === 0 && <p className="text-xs text-muted-foreground">Nenhum Data coletado.</p>}
+        {!scanQuery.isLoading && (scanQuery.data?.length ?? 0) === 0 && (
+          <p className="text-xs text-muted-foreground">Nenhum Data coletado.</p>
+        )}
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-h-[85vh] max-w-xl overflow-hidden">
-          <DialogHeader><DialogTitle>Data Scan</DialogTitle></DialogHeader>
-          <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Procurar Digimon visível..." autoFocus />
+          <DialogHeader>
+            <DialogTitle>Data Scan</DialogTitle>
+          </DialogHeader>
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Procurar Digimon visível..."
+            autoFocus
+          />
           <div className="min-h-0 space-y-1 overflow-y-auto">
             {targets.map((target) => {
               const active = target.id === targetId;
-              return <button key={target.id} type="button" onClick={() => setTargetId(target.id)} className={`flex w-full items-center gap-2 rounded border px-3 py-2 text-left ${active ? "border-primary bg-primary/10" : "border-border hover:bg-accent"}`}><span className="min-w-0 flex-1"><strong className="block truncate text-xs">{target.nickname || target.species?.name || "Digimon"}</strong><span className="block truncate text-[10px] text-muted-foreground">{target.species?.name} · {target.species?.stage}</span></span>{active && <ScanLine className="h-4 w-4 text-primary" />}</button>;
+              return (
+                <button
+                  key={target.id}
+                  type="button"
+                  onClick={() => setTargetId(target.id)}
+                  className={`flex w-full items-center gap-2 rounded border px-3 py-2 text-left ${active ? "border-primary bg-primary/10" : "border-border hover:bg-accent"}`}
+                >
+                  <span className="min-w-0 flex-1">
+                    <strong className="block truncate text-xs">
+                      {target.nickname || target.species?.name || "Digimon"}
+                    </strong>
+                    <span className="block truncate text-[10px] text-muted-foreground">
+                      {target.species?.name} · {target.species?.stage}
+                    </span>
+                  </span>
+                  {active && <ScanLine className="h-4 w-4 text-primary" />}
+                </button>
+              );
             })}
-            {!targetsQuery.isLoading && targets.length === 0 && <p className="p-3 text-xs text-muted-foreground">Nenhum indivíduo disponível para um novo Scan.</p>}
+            {!targetsQuery.isLoading && targets.length === 0 && (
+              <p className="p-3 text-xs text-muted-foreground">
+                Nenhum Digimon ainda não escaneado possui token nesta página.
+              </p>
+            )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-            <Button disabled={!selected || busy} onClick={() => void scan()}><ScanLine className="mr-1 h-4 w-4" /> Rolar Scan</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button disabled={!selected || busy} onClick={() => void scan()}>
+              <ScanLine className="mr-1 h-4 w-4" /> Rolar Scan
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -219,51 +311,37 @@ export function DigiRoleScanPanel({
 
 export function DigiRoleTrainingPanel({
   digimonId,
-  name,
   rank,
   trainingSuccesses,
-  lastTrainingOn,
-  attrs,
-  skills,
+  retrainingSuccesses,
   canEdit,
-  onRoll,
   onProgressed,
 }: {
   digimonId: string;
-  name: string;
   rank: string;
   trainingSuccesses: number;
-  lastTrainingOn: string | null;
-  attrs: DigiRoleNumbers;
-  skills: DigiRoleNumbers;
+  retrainingSuccesses: number;
   canEdit: boolean;
-  onRoll: (label: string, pool: number) => Promise<DigiRoleRoll | null>;
   onProgressed: () => Promise<unknown> | void;
 }) {
-  const [open, setOpen] = useState(false);
-  const [attr, setAttr] = useState("strength");
-  const [skill, setSkill] = useState("Athletic");
-  const [bonus, setBonus] = useState(0);
   const [busy, setBusy] = useState(false);
   const nextRank = nextDigiRoleRank(rank);
-  const required = nextRank ? DIGIROLE_TRAINING_REQUIRED[nextRank] ?? 0 : 0;
-  const attrMeta = DIGIROLE_ATTRS.find((entry) => entry.id === attr) ?? DIGIROLE_ATTRS[0];
-  const pool = Math.max(0, (attrs[attr] ?? 0) + (skills[skill] ?? 0) + bonus);
+  const required = nextRank ? (DIGIROLE_TRAINING_REQUIRED[nextRank] ?? 0) : 0;
+  const training = Math.max(0, Math.min(required, trainingSuccesses));
+  const retrainingRequired = 3;
+  const retraining = Math.max(0, Math.min(retrainingRequired, retrainingSuccesses));
 
-  async function train() {
+  async function updateProgress(
+    field: "training_successes" | "retraining_successes",
+    value: number,
+    maximum: number,
+  ) {
     setBusy(true);
     try {
-      const rolled = await onRoll(`${name} · Training Roll · ${attrMeta.short} + ${skill}${bonus ? ` + ${bonus}` : ""}`, pool);
-      if (!rolled) return;
-      const result = await callRpc("record_digirole_training", {
-        p_digimon_id: digimonId,
-        p_successes: rolled.successes,
-        p_force: false,
-      });
+      const result = await table("digirole_digimons")
+        .update({ [field]: Math.max(0, Math.min(maximum, value)) })
+        .eq("id", digimonId);
       if (result.error) throw result.error;
-      const data = result.data as { rankedUp?: boolean; rank?: string; trainingTotal?: number } | null;
-      toast.success(data?.rankedUp ? `${name} alcançou o Rank ${data.rank}.` : `Treino registrado: ${data?.trainingTotal ?? 0}/${required}.`);
-      setOpen(false);
       await onProgressed();
     } catch (error) {
       toast.error(messageOf(error));
@@ -273,26 +351,102 @@ export function DigiRoleTrainingPanel({
   }
 
   return (
-    <div className="rounded-md border border-border p-3">
-      <div className="flex items-center gap-2">
-        <Dumbbell className="h-4 w-4 text-primary" />
-        <div className="min-w-0 flex-1"><strong className="block text-xs">Treinamento</strong><span className="block text-[10px] text-muted-foreground">{nextRank ? `${trainingSuccesses}/${required} para ${nextRank}` : "Rank normal máximo"}{lastTrainingOn ? ` · último ${lastTrainingOn}` : ""}</span></div>
-        {canEdit && nextRank && <Button size="sm" variant="outline" onClick={() => setOpen(true)}><Plus className="mr-1 h-3.5 w-3.5" /> Sessão</Button>}
-      </div>
-      {nextRank && <Progress value={required > 0 ? (trainingSuccesses / required) * 100 : 0} className="mt-2 h-1.5" />}
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>Sessão de treino</DialogTitle></DialogHeader>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="space-y-1 text-xs font-bold">Atributo<Select value={attr} onValueChange={setAttr}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{DIGIROLE_ATTRS.map((entry) => <SelectItem key={entry.id} value={entry.id}>{entry.short} · {entry.label}</SelectItem>)}</SelectContent></Select></label>
-            <label className="space-y-1 text-xs font-bold">Perícia<Select value={skill} onValueChange={setSkill}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.values(DIGIROLE_SKILL_GROUPS).flat().map((entry) => <SelectItem key={entry} value={entry}>{entry}</SelectItem>)}</SelectContent></Select></label>
-            <label className="space-y-1 text-xs font-bold">Bônus<Input type="number" value={bonus} onChange={(event) => setBonus(Number.parseInt(event.target.value, 10) || 0)} /></label>
-            <div className="flex items-end"><div className="w-full rounded border border-border px-3 py-2 text-center text-sm font-black">{pool > 0 ? `${pool}d6` : "Chance Die"}</div></div>
+    <div className="space-y-3 rounded-md border border-border p-3">
+      <div>
+        <div className="mb-1 flex items-center gap-2">
+          <Dumbbell className="h-4 w-4 text-primary" />
+          <div className="min-w-0 flex-1">
+            <strong className="block text-xs">Treinamento</strong>
+            <span className="block text-[10px] text-muted-foreground">
+              {nextRank ? `Progresso para ${nextRank}` : "Rank normal máximo"}
+            </span>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button><Button disabled={busy} onClick={() => void train()}><Dumbbell className="mr-1 h-4 w-4" /> Rolar treino</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <span className="text-xs font-black tabular-nums">
+            {training}/{required}
+          </span>
+        </div>
+        {nextRank && (
+          <div className="flex items-center gap-1.5">
+            <Progress
+              value={required > 0 ? (training / required) * 100 : 0}
+              className="h-2 flex-1"
+            />
+            {canEdit && (
+              <>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 w-6 p-0"
+                  title="Diminuir treinamento"
+                  aria-label="Diminuir treinamento"
+                  disabled={busy || training <= 0}
+                  onClick={() => void updateProgress("training_successes", training - 1, required)}
+                >
+                  −
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 w-6 p-0"
+                  title="Aumentar treinamento"
+                  aria-label="Aumentar treinamento"
+                  disabled={busy || training >= required}
+                  onClick={() => void updateProgress("training_successes", training + 1, required)}
+                >
+                  +
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <div className="mb-1 flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <strong className="block text-xs">Retreino</strong>
+            <span className="block text-[10px] text-muted-foreground">
+              Progresso para redistribuição
+            </span>
+          </div>
+          <span className="text-xs font-black tabular-nums">
+            {retraining}/{retrainingRequired}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Progress value={(retraining / retrainingRequired) * 100} className="h-2 flex-1" />
+          {canEdit && (
+            <>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 w-6 p-0"
+                title="Diminuir retreino"
+                aria-label="Diminuir retreino"
+                disabled={busy || retraining <= 0}
+                onClick={() =>
+                  void updateProgress("retraining_successes", retraining - 1, retrainingRequired)
+                }
+              >
+                −
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 w-6 p-0"
+                title="Aumentar retreino"
+                aria-label="Aumentar retreino"
+                disabled={busy || retraining >= retrainingRequired}
+                onClick={() =>
+                  void updateProgress("retraining_successes", retraining + 1, retrainingRequired)
+                }
+              >
+                +
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -300,11 +454,214 @@ export function DigiRoleTrainingPanel({
 type ArchiveForm = {
   species_id: string;
   stabilized: boolean;
+  pe: number;
+  battles: number;
   victories: number;
   species: SpeciesSummary & { stabilization_victories: number };
 };
 
-const NORMAL_RANKS = ["In-Training I", "In-Training II", "Rookie", "Champion", "Ultimate", "Mega", "Mega+"];
+const FORM_STAGE_ORDER: Record<string, number> = {
+  "In-Training I": 0,
+  "In-Training II": 1,
+  Rookie: 2,
+  Armor: 3,
+  Hybrid: 3,
+  Champion: 3,
+  Ultimate: 4,
+  Jogress: 4,
+  Mega: 5,
+  "Mega+": 6,
+};
+
+function evolutionRequirement(
+  evolutionText: string | null,
+  target: SpeciesSummary,
+  catalog: SpeciesSummary[],
+) {
+  if (!evolutionText) return "Requisitos definidos pelo narrador";
+  const source = evolutionText.replace(/\s+/g, " ").trim();
+  const upper = source.toLocaleUpperCase("pt-BR");
+  const start = upper.indexOf(target.name.toLocaleUpperCase("pt-BR"));
+  if (start < 0) return "Requisitos definidos pelo narrador";
+  const tail = source.slice(start + target.name.length).trim();
+  const tailUpper = tail.toLocaleUpperCase("pt-BR");
+  const nextRoute = catalog.reduce((nearest, entry) => {
+    if (entry.id === target.id) return nearest;
+    const index = tailUpper.indexOf(entry.name.toLocaleUpperCase("pt-BR"));
+    return index > 0 && index < nearest ? index : nearest;
+  }, tail.length);
+  const requirement = tail
+    .slice(0, nextRoute)
+    .replace(/^[·:;|\-\s]+/, "")
+    .trim();
+  if (!requirement) return "Sem requisito adicional descrito";
+  return requirement.length > 220 ? `${requirement.slice(0, 217)}...` : requirement;
+}
+
+type EvolutionTechnique = { grade: string; field: string };
+
+type EvolutionRequirementContext = {
+  rank: string;
+  pe: number;
+  attrs: DigiRoleNumbers;
+  skills: DigiRoleNumbers;
+  bond: number;
+  battles: number;
+  victories: number;
+  trainingSuccesses: number;
+  techniques: EvolutionTechnique[];
+};
+
+function requiredRankForEvolutionStage(stage: string) {
+  if (stage === "Armor" || stage === "Hybrid") return "Champion";
+  if (stage === "Jogress") return "Ultimate";
+  return stage;
+}
+
+function evolutionRankMet(rank: string, targetStage: string) {
+  const requiredRank = requiredRankForEvolutionStage(targetStage);
+  return (FORM_STAGE_ORDER[rank] ?? -1) >= (FORM_STAGE_ORDER[requiredRank] ?? Number.MAX_VALUE);
+}
+
+const ATTRIBUTE_REQUIREMENTS: Record<string, { id: string; label: string }> = {
+  STR: { id: "strength", label: "Força" },
+  DEX: { id: "dexterity", label: "Destreza" },
+  VIT: { id: "vitality", label: "Vitalidade" },
+  WIS: { id: "wisdom", label: "Sabedoria" },
+  SPR: { id: "spirit", label: "Espírito" },
+  CHA: { id: "charisma", label: "Carisma" },
+};
+
+function evolutionPeCost(stage: string) {
+  return (
+    (
+      {
+        "In-Training II": 2,
+        Rookie: 5,
+        Champion: 15,
+        Ultimate: 25,
+        Mega: 40,
+        "Mega+": 40,
+        Armor: 15,
+        Hybrid: 15,
+        Jogress: 25,
+      } as Record<string, number>
+    )[stage] ?? 0
+  );
+}
+
+function normalizedRequirement(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleUpperCase("pt-BR");
+}
+
+function gradeNumber(value: string) {
+  return (
+    ({ I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6, VII: 7 } as Record<string, number>)[
+      value.toUpperCase()
+    ] ??
+    (Number.parseInt(value, 10) || 0)
+  );
+}
+
+function evaluateEvolutionRequirement(
+  text: string,
+  target: SpeciesSummary,
+  context: EvolutionRequirementContext,
+) {
+  const normalized = normalizedRequirement(text);
+  const requirements: Array<{ label: string; met: boolean }> = [];
+  const cost = evolutionPeCost(target.stage);
+  const requiredRank = requiredRankForEvolutionStage(target.stage);
+  const rankCheck = {
+    label: `Rank ${requiredRank}`,
+    met: evolutionRankMet(context.rank, target.stage),
+  };
+  const peCheck = { label: `${cost} PE`, met: context.pe >= cost };
+
+  for (const [short, attr] of Object.entries(ATTRIBUTE_REQUIREMENTS)) {
+    const match = normalized.match(new RegExp(`\\b${short}\\s*(\\d+)`, "i"));
+    if (match)
+      requirements.push({
+        label: `${attr.label} ${match[1]}`,
+        met: (context.attrs[attr.id] ?? 0) >= Number(match[1]),
+      });
+  }
+
+  const bond = normalized.match(/VINCULO\s*(\d+)/);
+  if (bond)
+    requirements.push({ label: `Vínculo ${bond[1]}`, met: context.bond >= Number(bond[1]) });
+  const victories = normalized.match(/(\d+)\s*VITORIAS?/);
+  if (victories)
+    requirements.push({
+      label: `${victories[1]} vitórias`,
+      met: context.victories >= Number(victories[1]),
+    });
+  const battles = normalized.match(/(\d+)\s*BATALHAS?/);
+  if (battles)
+    requirements.push({
+      label: `${battles[1]} batalhas`,
+      met: context.battles >= Number(battles[1]),
+    });
+  const training = normalized.match(/(\d+)\s*SUCESSOS?\s*(?:DE|EM)?\s*TREINO/);
+  if (training)
+    requirements.push({
+      label: `${training[1]} sucessos de treino`,
+      met: context.trainingSuccesses >= Number(training[1]),
+    });
+
+  const skills = Object.values(DIGIROLE_SKILL_GROUPS).flat();
+  for (const skill of skills) {
+    const skillMatch = normalized.match(
+      new RegExp(
+        `\\b${normalizedRequirement(skill).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*(\\d+)`,
+        "i",
+      ),
+    );
+    if (skillMatch)
+      requirements.push({
+        label: `${skill} ${skillMatch[1]}`,
+        met: (context.skills[skill] ?? 0) >= Number(skillMatch[1]),
+      });
+  }
+
+  const techniqueMatch = normalized.match(
+    /(?:(\d+)\s*)?(?:MOVE|TECNICA)(?:\s+GRAU)?\s+([IVX]+|\d+)?\s*((?:(?:DR|VB|WG|DA|DS|NSP|NSO|ME|JT)(?:\s+OU\s+)?)+)/,
+  );
+  if (techniqueMatch) {
+    const amount = Number(techniqueMatch[1] || 1);
+    const grade = techniqueMatch[2] ? gradeNumber(techniqueMatch[2]) : 0;
+    const fields = techniqueMatch[3].match(/DR|VB|WG|DA|DS|NSP|NSO|ME|JT/g) ?? [];
+    const eligible = context.techniques.filter((technique) => {
+      const field = normalizedRequirement(technique.field);
+      return (
+        (!grade || gradeNumber(technique.grade) >= grade) &&
+        fields.some((candidate) => field.includes(candidate))
+      );
+    }).length;
+    requirements.push({
+      label: `${amount} técnica${amount === 1 ? "" : "s"}${grade ? ` Grau ${techniqueMatch[2]}` : ""} ${fields.join("/")}`,
+      met: eligible >= amount,
+    });
+  }
+
+  const thresholdMatch = normalized.match(/CUMPRA\s*(\d+)\s*(?:\/|1)\s*(\d+)/);
+  const required = thresholdMatch
+    ? Math.min(Number(thresholdMatch[1]), requirements.length)
+    : requirements.length;
+  const metRequirements = requirements.filter((check) => check.met).length;
+  const routeMet =
+    requirements.length === 0
+      ? !/MISSAO|ITEM.CHAVE|CONDICAO NARRATIVA|TRANSFORMACAO ESPECIAL/.test(normalized)
+      : metRequirements >= required;
+  return {
+    cost,
+    checks: [rankCheck, peCheck, ...requirements],
+    met: rankCheck.met && peCheck.met && routeMet,
+  };
+}
 
 export function DigiRoleEvolutionPanel({
   gameId,
@@ -314,8 +671,13 @@ export function DigiRoleEvolutionPanel({
   rank,
   pe,
   evolutionText,
+  attrs,
+  skills,
+  bond,
+  battles,
+  victories,
+  trainingSuccesses,
   canEdit,
-  isNarrator,
   onUpdated,
 }: {
   gameId: string;
@@ -325,82 +687,180 @@ export function DigiRoleEvolutionPanel({
   rank: string;
   pe: number;
   evolutionText: string | null;
+  attrs: DigiRoleNumbers;
+  skills: DigiRoleNumbers;
+  bond: number;
+  battles: number;
+  victories: number;
+  trainingSuccesses: number;
   canEdit: boolean;
-  isNarrator: boolean;
   onUpdated: () => Promise<unknown> | void;
 }) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [requirementsConfirmed, setRequirementsConfirmed] = useState(false);
-  const [force, setForce] = useState(false);
   const [busy, setBusy] = useState(false);
   const formsQuery = useQuery({
     queryKey: ["digirole-forms", digimonId],
     queryFn: async (): Promise<ArchiveForm[]> => {
-      const result = await table("digirole_forms")
-        .select("species_id,stabilized,victories,species:species_id(id,name,stage,image_url,stabilization_victories)")
+      let result = await table("digirole_forms")
+        .select(
+          "species_id,stabilized,pe,battles,victories,species:species_id(id,name,stage,image_url,stabilization_victories)",
+        )
         .eq("digimon_id", digimonId)
         .order("unlocked_at");
+      if (result.error && /\b(pe|battles)\b/i.test(result.error.message ?? "")) {
+        result = await table("digirole_forms")
+          .select(
+            "species_id,stabilized,victories,species:species_id(id,name,stage,image_url,stabilization_victories)",
+          )
+          .eq("digimon_id", digimonId)
+          .order("unlocked_at");
+      }
       if (result.error) throw result.error;
-      return (result.data ?? []).map((raw: Omit<ArchiveForm, "species"> & { species: ArchiveForm["species"] | ArchiveForm["species"][] }) => ({
-        ...raw,
-        species: relation(raw.species) as ArchiveForm["species"],
-      })).filter((entry: ArchiveForm) => !!entry.species);
+      return (result.data ?? [])
+        .map(
+          (
+            raw: Omit<ArchiveForm, "species"> & {
+              species: ArchiveForm["species"] | ArchiveForm["species"][];
+            },
+          ) => ({
+            ...raw,
+            pe: raw.pe ?? 0,
+            battles: raw.battles ?? 0,
+            species: relation(raw.species) as ArchiveForm["species"],
+          }),
+        )
+        .filter((entry: ArchiveForm) => !!entry.species);
     },
   });
   const catalogQuery = useQuery({
-    queryKey: ["digirole-evolution-catalog", search],
+    queryKey: ["digirole-evolution-catalog"],
     enabled: open,
     queryFn: async (): Promise<SpeciesSummary[]> => {
-      let builder = table("digirole_species").select("id,name,stage,image_url").order("name").limit(150);
-      if (search.trim()) builder = builder.ilike("name", `%${search.trim()}%`);
+      const builder = table("digirole_species")
+        .select("id,name,stage,image_url,evolution_text")
+        .order("name")
+        .limit(600);
       const result = await builder;
       if (result.error) throw result.error;
       return (result.data ?? []) as SpeciesSummary[];
     },
   });
-  const rankIndex = NORMAL_RANKS.indexOf(rank);
-  const unlocked = useMemo(() => new Set((formsQuery.data ?? []).map((entry) => entry.species_id)), [formsQuery.data]);
+  const techniquesQuery = useQuery({
+    queryKey: ["digirole-evolution-techniques", digimonId],
+    enabled: open,
+    queryFn: async (): Promise<EvolutionTechnique[]> => {
+      const result = await table("digirole_digimon_techniques")
+        .select("technique:technique_id(grade,field)")
+        .eq("digimon_id", digimonId);
+      if (result.error) throw result.error;
+      return (result.data ?? []).flatMap(
+        (row: { technique: EvolutionTechnique | EvolutionTechnique[] | null }) =>
+          Array.isArray(row.technique) ? row.technique : row.technique ? [row.technique] : [],
+      );
+    },
+  });
+  const unlocked = useMemo(
+    () => new Set((formsQuery.data ?? []).map((entry) => entry.species_id)),
+    [formsQuery.data],
+  );
   const candidates = useMemo(() => {
     const route = (evolutionText ?? "").toLocaleUpperCase("pt-BR");
+    const currentName = currentSpeciesName.toLocaleUpperCase("pt-BR");
+    const currentStage =
+      (catalogQuery.data ?? []).find((entry) => entry.id === currentSpeciesId)?.stage ?? rank;
+    const currentOrder = FORM_STAGE_ORDER[currentStage] ?? 99;
+    const normalizedSearch = search.trim().toLocaleLowerCase("pt-BR");
     return (catalogQuery.data ?? [])
       .filter((entry) => !unlocked.has(entry.id) && entry.id !== currentSpeciesId)
-      .filter((entry) => force || rankIndex < 0 || NORMAL_RANKS.indexOf(entry.stage) <= rankIndex)
+      .filter((entry) => {
+        const isNextForm = route.includes(entry.name.toLocaleUpperCase("pt-BR"));
+        const isPreviousForm =
+          (FORM_STAGE_ORDER[entry.stage] ?? 99) < currentOrder &&
+          (entry.evolution_text ?? "").toLocaleUpperCase("pt-BR").includes(currentName);
+        return isNextForm || isPreviousForm;
+      })
+      .filter(
+        (entry) =>
+          !normalizedSearch || entry.name.toLocaleLowerCase("pt-BR").includes(normalizedSearch),
+      )
       .sort((left, right) => {
         const leftRoute = route.includes(left.name.toLocaleUpperCase("pt-BR")) ? 0 : 1;
         const rightRoute = route.includes(right.name.toLocaleUpperCase("pt-BR")) ? 0 : 1;
         return leftRoute - rightRoute || left.name.localeCompare(right.name, "pt-BR");
       });
-  }, [catalogQuery.data, currentSpeciesId, evolutionText, force, rankIndex, unlocked]);
+  }, [
+    catalogQuery.data,
+    currentSpeciesId,
+    currentSpeciesName,
+    evolutionText,
+    rank,
+    search,
+    unlocked,
+  ]);
   const selected = candidates.find((entry) => entry.id === selectedId) ?? null;
 
   async function refreshAll() {
     await Promise.all([
       formsQuery.refetch(),
       queryClient.invalidateQueries({ queryKey: ["digirole-files", gameId] }),
+      queryClient.invalidateQueries({ queryKey: ["digirole-roster"] }),
+      queryClient.invalidateQueries({ queryKey: ["digirole-target-info", gameId] }),
+      queryClient.invalidateQueries({
+        queryKey: ["token-digirole", "digirole_digimon", digimonId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["token-digirole-stats", "digirole_digimon", digimonId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["token-digirole_digimon-status", digimonId],
+      }),
       onUpdated(),
     ]);
   }
 
   async function unlock() {
     if (!selected) return;
+    const isPreviousForm =
+      (FORM_STAGE_ORDER[selected.stage] ?? 99) <
+      (FORM_STAGE_ORDER[
+        (catalogQuery.data ?? []).find((entry) => entry.id === currentSpeciesId)?.stage ?? rank
+      ] ?? 99);
+    const requirement = isPreviousForm
+      ? `Forma anterior ligada a ${currentSpeciesName}`
+      : evolutionRequirement(evolutionText, selected, catalogQuery.data ?? []);
+    const status = evaluateEvolutionRequirement(requirement, selected, {
+      rank,
+      pe,
+      attrs,
+      skills,
+      bond,
+      battles,
+      victories,
+      trainingSuccesses,
+      techniques: techniquesQuery.data ?? [],
+    });
+    if (!status.met) {
+      toast.error("Esta forma ainda possui requisitos pendentes.");
+      return;
+    }
     setBusy(true);
     try {
       const result = await callRpc("unlock_digirole_form", {
         p_digimon_id: digimonId,
         p_species_id: selected.id,
-        p_requirements_confirmed: requirementsConfirmed,
-        p_force: force,
+        p_requirements_confirmed: true,
+        p_force: false,
       });
       if (result.error) throw result.error;
       const data = result.data as { cost?: number } | null;
-      toast.success(`${selected.name} adicionado ao DigiArchive${data?.cost ? ` por ${data.cost} PE` : ""}.`);
+      toast.success(
+        `${selected.name} adicionado ao DigiArchive${data?.cost ? ` por ${data.cost} PE` : ""}.`,
+      );
       setOpen(false);
       setSelectedId(null);
-      setRequirementsConfirmed(false);
-      setForce(false);
       await refreshAll();
     } catch (error) {
       toast.error(messageOf(error));
@@ -410,16 +870,90 @@ export function DigiRoleEvolutionPanel({
   }
 
   async function transform(form: ArchiveForm) {
+    if (!evolutionRankMet(rank, form.species.stage)) {
+      toast.error(
+        `Aumente o rank deste Digimon para ${requiredRankForEvolutionStage(form.species.stage)} antes de Digievoluir.`,
+      );
+      return;
+    }
     setBusy(true);
     try {
+      const [beforeResult, targetResult] = await Promise.all([
+        table("digirole_digimons").select("attrs").eq("id", digimonId).single(),
+        table("digirole_species")
+          .select("id,name,base_attrs,signature_technique,image_url")
+          .eq("id", form.species_id)
+          .single(),
+      ]);
+      if (beforeResult.error) throw beforeResult.error;
+      if (targetResult.error) throw targetResult.error;
+      const previousAttrs = (beforeResult.data?.attrs ?? {}) as Record<string, number>;
+      const targetAttrs = (targetResult.data?.base_attrs ?? {}) as Record<string, number>;
       const result = await callRpc("transform_digirole_form", {
         p_digimon_id: digimonId,
         p_species_id: form.species_id,
       });
       if (result.error) throw result.error;
-      const data = result.data as { digimonDsCost?: number; tamerDsCost?: number; maintenanceDs?: number } | null;
+      const afterResult = await table("digirole_digimons")
+        .select("attrs,hp_current")
+        .eq("id", digimonId)
+        .single();
+      if (afterResult.error) throw afterResult.error;
+      const currentAttrs = (afterResult.data?.attrs ?? {}) as Record<string, number>;
+      const targetImage =
+        (targetResult.data?.image_url as string | null | undefined) ||
+        (await fetchDigiApiImage(targetResult.data?.name as string));
+      if (targetImage && !targetResult.data?.image_url) {
+        const speciesImage = await table("digirole_species")
+          .update({ image_url: targetImage })
+          .eq("id", form.species_id);
+        if (speciesImage.error) throw speciesImage.error;
+      }
+      const transformedValues: Record<string, unknown> = {
+        image_hidden: false,
+      };
+      if (targetImage) transformedValues.image_url = targetImage;
+      if (JSON.stringify(currentAttrs) !== JSON.stringify(targetAttrs)) {
+        const vitalityDelta = (targetAttrs.vitality ?? 1) - (previousAttrs.vitality ?? 1);
+        transformedValues.attrs = targetAttrs;
+        transformedValues.hp_current = Math.max(
+          0,
+          (afterResult.data?.hp_current ?? 0) + vitalityDelta,
+        );
+      }
+      const updated = await table("digirole_digimons")
+        .update(transformedValues)
+        .eq("id", digimonId);
+      if (updated.error) throw updated.error;
+      const cleared = await table("digirole_digimon_techniques")
+        .delete()
+        .eq("digimon_id", digimonId)
+        .eq("source", "signature");
+      if (cleared.error) throw cleared.error;
+      const signature = targetResult.data?.signature_technique as string | null | undefined;
+      if (signature) {
+        const techniqueId = await fetchDigiRoleSignatureTechniqueId({
+          speciesId: targetResult.data.id as string,
+          signatureName: signature,
+          speciesName: targetResult.data.name as string,
+        });
+        if (techniqueId) {
+          const learned = await table("digirole_digimon_techniques").upsert(
+            { digimon_id: digimonId, technique_id: techniqueId, source: "signature" },
+            { onConflict: "digimon_id,technique_id" },
+          );
+          if (learned.error) throw learned.error;
+        }
+      }
+      const data = result.data as {
+        digimonDsCost?: number;
+        tamerDsCost?: number;
+        maintenanceDs?: number;
+      } | null;
       const totalCost = (data?.digimonDsCost ?? 0) + (data?.tamerDsCost ?? 0);
-      toast.success(`${form.species.name} ativado${totalCost ? ` por ${totalCost} DS` : ""}${data?.maintenanceDs ? ` · manutenção ${data.maintenanceDs} DS` : ""}.`);
+      toast.success(
+        `${form.species.name} ativado${totalCost ? ` por ${totalCost} DS` : ""}${data?.maintenanceDs ? ` · manutenção ${data.maintenanceDs} DS` : ""}.`,
+      );
       await refreshAll();
     } catch (error) {
       toast.error(messageOf(error));
@@ -433,8 +967,16 @@ export function DigiRoleEvolutionPanel({
     try {
       const result = await callRpc("record_digirole_form_victory", { p_digimon_id: digimonId });
       if (result.error) throw result.error;
-      const data = result.data as { victories?: number; required?: number; newlyStabilized?: boolean } | null;
-      toast.success(data?.newlyStabilized ? `${currentSpeciesName} foi estabilizado.` : `Vitória registrada: ${data?.victories ?? 0}/${data?.required ?? 0}.`);
+      const data = result.data as {
+        victories?: number;
+        required?: number;
+        newlyStabilized?: boolean;
+      } | null;
+      toast.success(
+        data?.newlyStabilized
+          ? `${currentSpeciesName} foi estabilizado.`
+          : `Vitória registrada: ${data?.victories ?? 0}/${data?.required ?? 0}.`,
+      );
       await refreshAll();
     } catch (error) {
       toast.error(messageOf(error));
@@ -447,32 +989,174 @@ export function DigiRoleEvolutionPanel({
     <div className="mt-3 rounded-md border border-border p-3">
       <div className="mb-2 flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-primary" />
-        <div className="min-w-0 flex-1"><strong className="block text-xs">DigiArchive</strong><span className="block text-[10px] text-muted-foreground">{pe} PE · formas e estabilização</span></div>
-        {canEdit && <Button size="sm" variant="outline" onClick={() => setOpen(true)}><Plus className="mr-1 h-3.5 w-3.5" /> Desbloquear</Button>}
+        <div className="min-w-0 flex-1">
+          <strong className="block text-xs">DigiArchive</strong>
+          <span className="block text-[10px] text-muted-foreground">
+            {pe} PE · formas e estabilização
+          </span>
+        </div>
+        {canEdit && (
+          <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+            <Plus className="mr-1 h-3.5 w-3.5" /> Desbloquear
+          </Button>
+        )}
       </div>
-      <div className="space-y-1.5">
+      <div className="max-h-72 space-y-1.5 overflow-y-auto pr-1">
         {(formsQuery.data ?? []).map((form) => {
           const active = form.species_id === currentSpeciesId;
+          const formPe = active ? pe : form.pe;
+          const formBattles = active ? battles : form.battles;
+          const formVictories = active ? victories : form.victories;
           const required = form.species.stabilization_victories ?? 0;
-          return <div key={form.species_id} className={`flex items-center gap-2 rounded border px-2 py-2 ${active ? "border-primary bg-primary/5" : "border-border"}`}><span className="min-w-0 flex-1"><strong className="block truncate text-xs">{form.species.name}</strong><span className="block text-[10px] text-muted-foreground">{form.species.stage} · {form.victories}/{required} vitórias</span></span>{form.stabilized && <Badge variant="secondary" className="text-[9px]">Estável</Badge>}{active ? <Badge className="text-[9px]">Ativa</Badge> : canEdit && <Button size="sm" variant="ghost" disabled={busy} onClick={() => void transform(form)}><ArrowRightLeft className="mr-1 h-3.5 w-3.5" /> Transformar</Button>}{active && canEdit && !form.stabilized && <Button size="icon" variant="ghost" disabled={busy} title="Registrar vitória nesta forma" onClick={() => void victory()}><Trophy className="h-4 w-4" /></Button>}</div>;
+          const activeStage =
+            (formsQuery.data ?? []).find((entry) => entry.species_id === currentSpeciesId)?.species
+              .stage ?? rank;
+          const action =
+            (FORM_STAGE_ORDER[form.species.stage] ?? 99) < (FORM_STAGE_ORDER[activeStage] ?? 99)
+              ? "Regressão"
+              : "Digievoluir";
+          const rankReady = evolutionRankMet(rank, form.species.stage);
+          return (
+            <div
+              key={form.species_id}
+              className={`flex items-center gap-2 rounded border px-2 py-2 ${active ? "border-primary bg-primary/5" : "border-border"}`}
+            >
+              <span className="min-w-0 flex-1">
+                <strong className="block truncate text-xs">{form.species.name}</strong>
+                <span className="block text-[10px] text-muted-foreground">
+                  {form.species.stage} · {formPe} PE · {formBattles} batalhas · {formVictories}/
+                  {required} vitórias
+                </span>
+                {!active && !rankReady && (
+                  <span className="block text-[9px] font-semibold text-destructive">
+                    Requer Rank {requiredRankForEvolutionStage(form.species.stage)}
+                  </span>
+                )}
+              </span>
+              {form.stabilized && (
+                <Badge variant="secondary" className="text-[9px]">
+                  Estável
+                </Badge>
+              )}
+              {active ? (
+                <Badge className="text-[9px]">Ativa</Badge>
+              ) : (
+                canEdit && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={busy || !rankReady}
+                    title={
+                      rankReady
+                        ? action
+                        : `Requer Rank ${requiredRankForEvolutionStage(form.species.stage)}`
+                    }
+                    onClick={() => void transform(form)}
+                  >
+                    <ArrowRightLeft className="mr-1 h-3.5 w-3.5" /> {action}
+                  </Button>
+                )
+              )}
+              {active && canEdit && !form.stabilized && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  disabled={busy}
+                  title="Registrar vitória nesta forma"
+                  onClick={() => void victory()}
+                >
+                  <Trophy className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          );
         })}
       </div>
-      {evolutionText && <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground"><strong>Rotas desta forma:</strong> {evolutionText}</p>}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[85vh] max-w-2xl overflow-hidden">
-          <DialogHeader><DialogTitle>Desbloquear forma</DialogTitle></DialogHeader>
-          <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Procurar forma no catálogo..." autoFocus />
-          <div className="min-h-0 space-y-1 overflow-y-auto">
+        <DialogContent className="flex max-h-[85vh] max-w-2xl flex-col overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>Desbloquear forma</DialogTitle>
+          </DialogHeader>
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Procurar forma no catálogo..."
+            autoFocus
+          />
+          <div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
             {candidates.map((entry) => {
-              const inRoute = (evolutionText ?? "").toLocaleUpperCase("pt-BR").includes(entry.name.toLocaleUpperCase("pt-BR"));
               const active = selectedId === entry.id;
-              return <button type="button" key={entry.id} onClick={() => setSelectedId(entry.id)} className={`flex w-full items-center gap-2 rounded border px-3 py-2 text-left ${active ? "border-primary bg-primary/10" : "border-border hover:bg-accent"}`}><span className="min-w-0 flex-1"><strong className="block truncate text-xs">{entry.name}</strong><span className="block text-[10px] text-muted-foreground">{entry.stage}{inRoute ? " · rota listada" : " · fora do texto extraído"}</span></span>{active && <Sparkles className="h-4 w-4 text-primary" />}</button>;
+              const currentStage =
+                (catalogQuery.data ?? []).find((species) => species.id === currentSpeciesId)
+                  ?.stage ?? rank;
+              const isPreviousForm =
+                (FORM_STAGE_ORDER[entry.stage] ?? 99) < (FORM_STAGE_ORDER[currentStage] ?? 99);
+              const requirement = isPreviousForm
+                ? `Forma anterior ligada a ${currentSpeciesName}`
+                : evolutionRequirement(evolutionText, entry, catalogQuery.data ?? []);
+              const status = evaluateEvolutionRequirement(requirement, entry, {
+                rank,
+                pe,
+                attrs,
+                skills,
+                bond,
+                battles,
+                victories,
+                trainingSuccesses,
+                techniques: techniquesQuery.data ?? [],
+              });
+              return (
+                <button
+                  type="button"
+                  key={entry.id}
+                  disabled={!status.met}
+                  onClick={() => status.met && setSelectedId(entry.id)}
+                  className={`flex w-full items-center gap-2 rounded border px-3 py-2 text-left transition-colors ${
+                    status.met
+                      ? active
+                        ? "border-primary bg-primary/10"
+                        : "border-border hover:bg-accent"
+                      : "cursor-not-allowed border-border/60 bg-muted/40 opacity-55 grayscale"
+                  }`}
+                >
+                  <span className="min-w-0 flex-1">
+                    <strong className="block truncate text-xs">{entry.name}</strong>
+                    <span className="block text-[10px] text-muted-foreground">
+                      {entry.stage} · {status.cost} PE
+                    </span>
+                    <span className="mt-0.5 block text-[10px] text-foreground">
+                      {requirement || "Sem requisito adicional descrito"}
+                    </span>
+                    <span className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[9px]">
+                      {status.checks.map((check) => (
+                        <span
+                          key={`${entry.id}-${check.label}`}
+                          className={check.met ? "text-emerald-500" : "text-destructive"}
+                        >
+                          {check.met ? "✓" : "✕"} {check.label}
+                        </span>
+                      ))}
+                    </span>
+                  </span>
+                  {active && <Sparkles className="h-4 w-4 text-primary" />}
+                </button>
+              );
             })}
+            {!catalogQuery.isLoading && candidates.length === 0 && (
+              <p className="py-8 text-center text-xs text-muted-foreground">
+                Nenhuma forma encontrada na rota evolutiva.
+              </p>
+            )}
           </div>
-          <label className="flex items-center gap-2 text-xs"><Checkbox checked={requirementsConfirmed} onCheckedChange={(checked) => setRequirementsConfirmed(checked === true)} /> Requisitos da forma conferidos</label>
-          {isNarrator && <label className="flex items-center gap-2 text-xs"><Checkbox checked={force} onCheckedChange={(checked) => setForce(checked === true)} /> Forçar rota como narrador</label>}
-          <DialogFooter><Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button><Button disabled={!selected || (!requirementsConfirmed && !force) || busy} onClick={() => void unlock()}><Sparkles className="mr-1 h-4 w-4" /> Desbloquear</Button></DialogFooter>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Cancelar
+            </Button>
+            <Button disabled={!selected || busy} onClick={() => void unlock()}>
+              <Sparkles className="mr-1 h-4 w-4" /> Desbloquear
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

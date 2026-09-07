@@ -51,15 +51,18 @@ export function engineParticipantControllerIds(participant: EngineParticipant): 
   const controllerIds = Array.isArray(stored)
     ? stored.filter((entry): entry is string => typeof entry === "string" && entry.length > 0)
     : [];
-  return [...new Set([participant.ownerId, ...controllerIds].filter((entry): entry is string => !!entry))];
+  return [
+    ...new Set([participant.ownerId, ...controllerIds].filter((entry): entry is string => !!entry)),
+  ];
 }
 
 export function mayControlEngineParticipant(
   participant: EngineParticipant | null,
   actor: EngineActor,
 ): boolean {
-  return !!participant && (
-    actor.isNarrator || engineParticipantControllerIds(participant).includes(actor.userId)
+  return (
+    !!participant &&
+    (actor.isNarrator || engineParticipantControllerIds(participant).includes(actor.userId))
   );
 }
 
@@ -95,7 +98,8 @@ export function applyEngineCommand(
     if (!actor.isNarrator) throw new Error("Somente o narrador pode iniciar os turnos.");
     if (next.participants.length === 0) throw new Error("Adicione participantes antes de iniciar.");
     next.participants.sort((left, right) => {
-      const groupDifference = initiativeGroup(left, next.systemId) - initiativeGroup(right, next.systemId);
+      const groupDifference =
+        initiativeGroup(left, next.systemId) - initiativeGroup(right, next.systemId);
       if (groupDifference) return groupDifference;
       const initiativeDifference = (right.initiative ?? -9999) - (left.initiative ?? -9999);
       return initiativeDifference || left.name.localeCompare(right.name, "pt-BR");
@@ -105,6 +109,9 @@ export function applyEngineCommand(
       participant.metadata.actions = [];
       participant.metadata.lastActionType = null;
       participant.metadata.lastActionLabel = null;
+      participant.metadata.reactionRound = 1;
+      participant.metadata.clashUsed = 0;
+      participant.metadata.evasionUsed = 0;
     });
     next.status = "running";
     next.phase = "turns";
@@ -123,7 +130,25 @@ export function applyEngineCommand(
     const previousActions = Array.isArray(participant.metadata.actions)
       ? participant.metadata.actions
       : [];
+    if (typeof command.actionsBefore === "number") {
+      participant.actionsUsed = Math.max(0, Math.trunc(command.actionsBefore));
+    }
     participant.actionsUsed += 1;
+    if (command.actionType === "reaction") {
+      if (Number(participant.metadata.reactionRound) !== next.round) {
+        participant.metadata.reactionRound = next.round;
+        participant.metadata.clashUsed = 0;
+        participant.metadata.evasionUsed = 0;
+      }
+      const reactionKey = /clash/i.test(label ?? "")
+        ? "clashUsed"
+        : /eva(de|sion)/i.test(label ?? "")
+          ? "evasionUsed"
+          : null;
+      if (reactionKey)
+        participant.metadata[reactionKey] =
+          Math.max(0, Number(participant.metadata[reactionKey]) || 0) + 1;
+    }
     participant.metadata.actions = [
       ...previousActions,
       {
@@ -156,11 +181,19 @@ export function applyEngineCommand(
     if (next.participants.length === 0) return next;
     const wrapped = next.turnIndex >= next.participants.length - 1;
     next.turnIndex = wrapped ? 0 : next.turnIndex + 1;
-    if (wrapped) next.round += 1;
+    if (wrapped) {
+      next.round += 1;
+      next.participants.forEach((participant) => {
+        participant.metadata.reactionRound = next.round;
+        participant.metadata.clashUsed = 0;
+        participant.metadata.evasionUsed = 0;
+      });
+    }
     const nextParticipant = next.participants[next.turnIndex];
     const trainerKind = next.systemId === "digirole" ? "digirole_tamer" : "trainer";
     const hasTrainer = next.participants.some((participant) => participant.kind === trainerKind);
-    const completedTrainerPhase = current?.kind === trainerKind && nextParticipant.kind !== trainerKind;
+    const completedTrainerPhase =
+      current?.kind === trainerKind && nextParticipant.kind !== trainerKind;
     const resetSharedActions =
       (next.systemId === "pokerole" || next.systemId === "digirole") &&
       (completedTrainerPhase || (!hasTrainer && wrapped));

@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useGameSpriteStyle } from "@/hooks/use-game-sprite-style";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { TrainerAppearanceImage } from "@/components/TrainerAppearance";
+import { transparentDigiRoleImageUrl } from "@/lib/digi-api";
 
 /**
  * Reads the live character image + status conditions for a token. Subscribes
@@ -11,6 +12,7 @@ import { TrainerAppearanceImage } from "@/components/TrainerAppearance";
  */
 export type TokenCharacterVisual = {
   image_url: string | null;
+  suppress_fallback?: boolean;
   status: string[];
   species_name: string | null;
   species_sprite_url: string | null;
@@ -27,20 +29,45 @@ function useCharacter(kind: TokenCharacterKind, id: string, enabled: boolean) {
         const table = kind === "digirole_tamer" ? "digirole_tamers" : "digirole_digimons";
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data, error } = await (supabase.from(table as never) as any)
-          .select(kind === "digirole_digimon" ? "image_url,conditions,species:species_id(image_url)" : "image_url,conditions")
+          .select(
+            kind === "digirole_digimon"
+              ? "image_url,image_hidden,conditions,species:species_id(image_url)"
+              : "image_url,conditions,hybrid_state",
+          )
           .eq("id", id)
           .maybeSingle();
         if (error) throw error;
+        let hybridImage: string | null = null;
+        let hybridName: string | null = null;
+        const hybridSpeciesId =
+          kind === "digirole_tamer" && data?.hybrid_state?.speciesId
+            ? String(data.hybrid_state.speciesId)
+            : null;
+        if (hybridSpeciesId) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const hybrid = await (supabase.from("digirole_species" as never) as any)
+            .select("name,image_url")
+            .eq("id", hybridSpeciesId)
+            .maybeSingle();
+          if (hybrid.error) throw hybrid.error;
+          hybridImage = hybrid.data?.image_url ?? null;
+          hybridName = hybrid.data?.name ?? null;
+        }
+        const imageUrl = data?.image_hidden
+          ? null
+          : (hybridImage ?? data?.image_url ?? data?.species?.image_url ?? null);
         return {
-          image_url: data?.image_url ?? data?.species?.image_url ?? null,
+          image_url: imageUrl,
+          suppress_fallback: kind === "digirole_tamer" ? !imageUrl : !!data?.image_hidden,
           status: data?.conditions ?? [],
-          species_name: null,
+          species_name: hybridName,
           species_sprite_url: null,
           is_shiny: false,
         };
       }
       if (kind === "t20") {
-        const { data, error } = await supabase.from("t20_characters")
+        const { data, error } = await supabase
+          .from("t20_characters")
           .select("image_url")
           .eq("id", id)
           .maybeSingle();
@@ -62,7 +89,8 @@ function useCharacter(kind: TokenCharacterKind, id: string, enabled: boolean) {
         if (error) throw error;
         return {
           image_url: (data as { image_url?: string | null } | null)?.image_url ?? null,
-          status: ((data as { status_conditions?: string[] } | null)?.status_conditions ?? []) as string[],
+          status: ((data as { status_conditions?: string[] } | null)?.status_conditions ??
+            []) as string[],
           species_name: null,
           species_sprite_url: null,
           is_shiny: false,
@@ -94,19 +122,25 @@ function useCharacter(kind: TokenCharacterKind, id: string, enabled: boolean) {
 }
 
 const STATUS_ICONS: Record<string, { emoji: string; color: string; title: string }> = {
-  Burn:           { emoji: "🔥", color: "#f97316", title: "Burn" },
-  Poison:         { emoji: "☠️", color: "#a855f7", title: "Poison" },
-  Paralyzed:      { emoji: "⚡", color: "#eab308", title: "Paralyzed" },
+  Burn: { emoji: "🔥", color: "#f97316", title: "Burn" },
+  Poison: { emoji: "☠️", color: "#a855f7", title: "Poison" },
+  Paralyzed: { emoji: "⚡", color: "#eab308", title: "Paralyzed" },
   "Frozen Solid": { emoji: "❄️", color: "#38bdf8", title: "Frozen Solid" },
-  Sleep:          { emoji: "💤", color: "#94a3b8", title: "Sleep" },
-  Confused:       { emoji: "💫", color: "#f59e0b", title: "Confused" },
-  Disabled:       { emoji: "🚫", color: "#ef4444", title: "Disabled" },
-  Flinched:       { emoji: "😵", color: "#64748b", title: "Flinched" },
-  "In Love":      { emoji: "💗", color: "#ec4899", title: "In Love" },
+  Sleep: { emoji: "💤", color: "#94a3b8", title: "Sleep" },
+  Confused: { emoji: "💫", color: "#f59e0b", title: "Confused" },
+  Disabled: { emoji: "🚫", color: "#ef4444", title: "Disabled" },
+  Flinched: { emoji: "😵", color: "#64748b", title: "Flinched" },
+  "In Love": { emoji: "💗", color: "#ec4899", title: "In Love" },
 };
 
 export function TokenAvatar({
-  kind, id, fallbackImage, label, variant = "token", gameId, character,
+  kind,
+  id,
+  fallbackImage,
+  label,
+  variant = "token",
+  gameId,
+  character,
 }: {
   kind: TokenCharacterKind;
   id: string;
@@ -134,7 +168,9 @@ export function TokenAvatar({
       />
     );
   }
-  const img = data?.image_url ?? fallbackImage;
+  const sourceImage = data?.suppress_fallback ? null : (data?.image_url ?? fallbackImage);
+  const isDigiRoleCreature = kind === "digirole_digimon" || !!data?.species_name;
+  const img = isDigiRoleCreature ? transparentDigiRoleImageUrl(sourceImage) : sourceImage;
   if (kind === "trainer" && img) {
     return (
       <TrainerAppearanceImage
@@ -145,14 +181,21 @@ export function TokenAvatar({
     );
   }
   return img ? (
-    <img src={img} alt={label} className={`h-full w-full object-cover ${variant === "handout" ? "rounded-none" : "rounded-full"}`} draggable={false} />
+    <img
+      src={img}
+      alt={label}
+      className={`h-full w-full ${isDigiRoleCreature ? "rounded-none object-contain" : `object-cover ${variant === "handout" ? "rounded-none" : "rounded-full"}`}`}
+      draggable={false}
+    />
   ) : (
     <span className="text-xs font-bold">{label.slice(0, 2).toUpperCase()}</span>
   );
 }
 
 export function TokenStatusBadges({
-  kind, id, character,
+  kind,
+  id,
+  character,
 }: {
   kind: TokenCharacterKind;
   id: string;

@@ -4,13 +4,7 @@ export type EngineStatus = "setup" | "running" | "paused" | "finished";
 export type EnginePhase = "initiative" | "turns" | "complete";
 
 export type EngineParticipantKind =
-  | "pokemon"
-  | "trainer"
-  | "t20"
-  | "lancer"
-  | "npc"
-  | "digirole_tamer"
-  | "digirole_digimon";
+  "pokemon" | "trainer" | "t20" | "lancer" | "npc" | "digirole_tamer" | "digirole_digimon";
 
 export type EngineParticipant = {
   id: string;
@@ -67,6 +61,7 @@ export type EngineCommand =
       actionType: string;
       label?: string;
       resultSuccesses?: number;
+      actionsBefore?: number;
     }
   | { type: "advance_turn" }
   | { type: "pause" }

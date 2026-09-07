@@ -4,7 +4,14 @@ import { Dices } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,6 +47,19 @@ type TokenRow = {
   layer?: string | null;
 };
 
+function normalizeDigiRoleToken(
+  token: Omit<TokenRow, "character_kind"> & { character_kind: string },
+): TokenRow | null {
+  const characterKind =
+    token.character_kind === "pokemon"
+      ? "digirole_digimon"
+      : token.character_kind === "trainer"
+        ? "digirole_tamer"
+        : token.character_kind;
+  if (characterKind !== "digirole_tamer" && characterKind !== "digirole_digimon") return null;
+  return { ...token, character_kind: characterKind } as TokenRow;
+}
+
 type TargetInfo = {
   tokenId: string;
   characterId: string;
@@ -53,6 +73,8 @@ type TargetInfo = {
   clashPhysical: number;
   clashEnergy: number;
   evadePool: number;
+  clashTimes: number;
+  evasionTimes: number;
 };
 
 type CharacterRow = {
@@ -62,8 +84,19 @@ type CharacterRow = {
   name?: string | null;
   nickname?: string | null;
   attrs: DigiRoleNumbers | null;
+  attr_points?: DigiRoleNumbers | null;
+  bonuses?: DigiRoleNumbers | null;
   skills: DigiRoleNumbers | null;
-  species?: { name?: string | null; digi_attribute?: string | null; fields?: string[] | null } | Array<{ name?: string | null; digi_attribute?: string | null; fields?: string[] | null }> | null;
+  hybrid_state?: { speciesId?: string } | null;
+  species?: TargetSpecies | TargetSpecies[] | null;
+};
+
+type TargetSpecies = {
+  id?: string;
+  name?: string | null;
+  digi_attribute?: string | null;
+  fields?: string[] | null;
+  base_attrs?: DigiRoleNumbers | null;
 };
 
 function table(name: string) {
@@ -73,12 +106,13 @@ function table(name: string) {
 }
 
 function relation<T>(value: T | T[] | null | undefined): T | null {
-  return Array.isArray(value) ? value[0] ?? null : value ?? null;
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 }
 
 function messageOf(error: unknown): string {
   if (error instanceof Error) return error.message;
-  if (error && typeof error === "object" && "message" in error) return String((error as { message?: unknown }).message ?? error);
+  if (error && typeof error === "object" && "message" in error)
+    return String((error as { message?: unknown }).message ?? error);
   return String(error);
 }
 
@@ -95,13 +129,20 @@ function useCurrentPage(gameId: string, userId: string, enabled: boolean) {
     queryFn: async () => {
       const [gameResult, memberResult] = await Promise.all([
         supabase.from("games").select("active_page_id,narrator_id").eq("id", gameId).single(),
-        supabase.from("game_members").select("viewing_page_id").eq("game_id", gameId).eq("user_id", userId).maybeSingle(),
+        supabase
+          .from("game_members")
+          .select("viewing_page_id")
+          .eq("game_id", gameId)
+          .eq("user_id", userId)
+          .maybeSingle(),
       ]);
       if (gameResult.error) throw gameResult.error;
       if (memberResult.error) throw memberResult.error;
       const game = gameResult.data as { active_page_id: string | null; narrator_id: string };
       const member = memberResult.data as { viewing_page_id?: string | null } | null;
-      return game.narrator_id === userId ? game.active_page_id : member?.viewing_page_id ?? game.active_page_id;
+      return game.narrator_id === userId
+        ? game.active_page_id
+        : (member?.viewing_page_id ?? game.active_page_id);
     },
   });
 }
@@ -111,44 +152,152 @@ function useDigiRoleTargets(gameId: string, pageId: string | null | undefined, e
     queryKey: ["tokens", gameId, pageId],
     enabled: enabled && !!pageId,
     queryFn: async (): Promise<TokenRow[]> => {
-      const result = await supabase.from("tokens").select("id,owner_id,character_id,character_kind,label,layer").eq("game_id", gameId).eq("page_id", pageId!);
+      const result = await supabase
+        .from("tokens")
+        .select("id,owner_id,character_id,character_kind,label,layer")
+        .eq("game_id", gameId)
+        .eq("page_id", pageId!);
       if (result.error) throw result.error;
-      return (result.data ?? []).filter((token): token is typeof token & TokenRow =>
-        token.character_kind === "digirole_tamer" || token.character_kind === "digirole_digimon",
-      );
+      return (result.data ?? [])
+        .map((token) => normalizeDigiRoleToken(token))
+        .filter((token): token is TokenRow => !!token);
     },
   });
-  const tokens = useMemo(() => (tokenQuery.data ?? []).filter((token) => (token.layer ?? "tokens") === "tokens"), [tokenQuery.data]);
-  const tamerIds = useMemo(() => [...new Set(tokens.filter((token) => token.character_kind === "digirole_tamer").map((token) => token.character_id))], [tokens]);
-  const digimonIds = useMemo(() => [...new Set(tokens.filter((token) => token.character_kind === "digirole_digimon").map((token) => token.character_id))], [tokens]);
-  const ids = useMemo(() => tokens.map((token) => `${token.character_kind}:${token.character_id}`).sort().join(","), [tokens]);
+  const tokens = useMemo(
+    () => (tokenQuery.data ?? []).filter((token) => (token.layer ?? "tokens") === "tokens"),
+    [tokenQuery.data],
+  );
+  const tamerIds = useMemo(
+    () => [
+      ...new Set(
+        tokens
+          .filter((token) => token.character_kind === "digirole_tamer")
+          .map((token) => token.character_id),
+      ),
+    ],
+    [tokens],
+  );
+  const digimonIds = useMemo(
+    () => [
+      ...new Set(
+        tokens
+          .filter((token) => token.character_kind === "digirole_digimon")
+          .map((token) => token.character_id),
+      ),
+    ],
+    [tokens],
+  );
+  const ids = useMemo(
+    () =>
+      tokens
+        .map((token) => `${token.character_kind}:${token.character_id}`)
+        .sort()
+        .join(","),
+    [tokens],
+  );
   const infoQuery = useQuery({
     queryKey: ["digirole-target-info", gameId, pageId, ids],
     enabled: enabled && !!pageId && tokens.length > 0,
     staleTime: 0,
     queryFn: async () => {
+      // The RPC exposes only combat-facing target values, not private sheet data.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const combatInfo = await (supabase as any).rpc("get_digirole_target_info", {
+        p_game_id: gameId,
+        p_page_id: pageId,
+      });
+      if (!combatInfo.error) {
+        const tokenOwners = new Map(tokens.map((token) => [token.id, token.owner_id]));
+        return new Map<string, TargetInfo>(
+          (combatInfo.data ?? []).map((row: Record<string, unknown>) => [
+            String(row.token_id),
+            {
+              tokenId: String(row.token_id),
+              characterId: String(row.character_id),
+              kind: row.character_kind as TokenRow["character_kind"],
+              name: String(row.target_name || "Alvo"),
+              controllerIds: [
+                ...new Set(
+                  [String(row.character_owner_id), tokenOwners.get(String(row.token_id))].filter(
+                    (id): id is string => !!id,
+                  ),
+                ),
+              ],
+              def: Number(row.def ?? 0),
+              res: Number(row.res ?? 0),
+              fields: Array.isArray(row.target_fields) ? (row.target_fields as string[]) : [],
+              digiAttribute: String(row.digi_attribute || "None"),
+              clashPhysical: Number(row.clash_physical ?? 0),
+              clashEnergy: Number(row.clash_energy ?? 0),
+              evadePool: Number(row.evade_pool ?? 0),
+              clashTimes: Math.max(0, Number(row.clash_times ?? 1)),
+              evasionTimes: Math.max(0, Number(row.evasion_times ?? 1)),
+            },
+          ]),
+        );
+      }
       const [tamers, digimons] = await Promise.all([
-        tamerIds.length ? table("digirole_tamers").select("id,owner_id,allowed_editors,name,attrs,skills").in("id", tamerIds) : Promise.resolve({ data: [], error: null }),
-        digimonIds.length ? table("digirole_digimons").select("id,owner_id,allowed_editors,nickname,attrs,skills,species:species_id(name,digi_attribute,fields)").in("id", digimonIds) : Promise.resolve({ data: [], error: null }),
+        tamerIds.length
+          ? table("digirole_tamers")
+              .select("id,owner_id,name,attrs,attr_points,bonuses,skills,hybrid_state")
+              .in("id", tamerIds)
+          : Promise.resolve({ data: [], error: null }),
+        digimonIds.length
+          ? table("digirole_digimons")
+              .select(
+                "id,owner_id,nickname,attrs,attr_points,bonuses,skills,species:species_id(id,name,digi_attribute,fields,base_attrs)",
+              )
+              .in("id", digimonIds)
+          : Promise.resolve({ data: [], error: null }),
       ]);
       if (tamers.error) throw tamers.error;
       if (digimons.error) throw digimons.error;
+      const hybridSpeciesIds = [
+        ...new Set(
+          ((tamers.data ?? []) as CharacterRow[])
+            .map((row) => row.hybrid_state?.speciesId)
+            .filter((id): id is string => !!id),
+        ),
+      ];
+      const hybridSpeciesResult = hybridSpeciesIds.length
+        ? await table("digirole_species")
+            .select("id,name,digi_attribute,fields,base_attrs")
+            .in("id", hybridSpeciesIds)
+        : { data: [], error: null };
+      if (hybridSpeciesResult.error) throw hybridSpeciesResult.error;
+      const hybridSpecies = new Map(
+        ((hybridSpeciesResult.data ?? []) as TargetSpecies[]).map((species) => [
+          species.id!,
+          species,
+        ]),
+      );
       const characters = new Map<string, CharacterRow>();
-      for (const row of (tamers.data ?? []) as CharacterRow[]) characters.set(`digirole_tamer:${row.id}`, row);
-      for (const row of (digimons.data ?? []) as CharacterRow[]) characters.set(`digirole_digimon:${row.id}`, row);
+      for (const row of (tamers.data ?? []) as CharacterRow[])
+        characters.set(`digirole_tamer:${row.id}`, row);
+      for (const row of (digimons.data ?? []) as CharacterRow[])
+        characters.set(`digirole_digimon:${row.id}`, row);
       const result = new Map<string, TargetInfo>();
       for (const token of tokens) {
         const character = characters.get(`${token.character_kind}:${token.character_id}`);
         if (!character) continue;
-        const attrs = character.attrs ?? {};
+        const species =
+          token.character_kind === "digirole_tamer" && character.hybrid_state?.speciesId
+            ? (hybridSpecies.get(character.hybrid_state.speciesId) ?? null)
+            : relation(character.species);
+        const baseAttrs = species?.base_attrs ?? character.attrs ?? {};
+        const attrs = Object.fromEntries(
+          Object.entries(baseAttrs).map(([key, value]) => [
+            key,
+            value + (character.attr_points?.[key] ?? 0) + (character.bonuses?.[key] ?? 0),
+          ]),
+        );
         const skills = character.skills ?? {};
-        const species = relation(character.species);
         result.set(token.id, {
           tokenId: token.id,
           characterId: token.character_id,
           kind: token.character_kind,
           name: character.nickname || character.name || species?.name || token.label || "Alvo",
-          controllerIds: [...new Set([character.owner_id, token.owner_id, ...(character.allowed_editors ?? [])].filter(Boolean))],
+          controllerIds: [...new Set([character.owner_id, token.owner_id].filter(Boolean))],
           def: Math.max(0, attrs.vitality ?? 0),
           res: Math.max(0, attrs.wisdom ?? 0),
           fields: species?.fields ?? [],
@@ -156,12 +305,19 @@ function useDigiRoleTargets(gameId: string, pageId: string | null | undefined, e
           clashPhysical: Math.max(0, (attrs.strength ?? 0) + (skills.Clash ?? 0)),
           clashEnergy: Math.max(0, (attrs.spirit ?? 0) + (skills.Clash ?? 0)),
           evadePool: Math.max(0, (attrs.dexterity ?? 0) + (skills.Evasion ?? 0)),
+          clashTimes: Math.max(0, 1 + (character.bonuses?.clash_times ?? 0)),
+          evasionTimes: Math.max(0, 1 + (character.bonuses?.evasion_times ?? 0)),
         });
       }
       return result;
     },
   });
-  return { tokens, info: infoQuery.data ?? new Map<string, TargetInfo>(), loading: infoQuery.isFetching, error: infoQuery.error };
+  return {
+    tokens,
+    info: infoQuery.data ?? new Map<string, TargetInfo>(),
+    loading: infoQuery.isFetching,
+    error: infoQuery.error,
+  };
 }
 
 export function DigiRoleTechniqueRollDialog({
@@ -176,6 +332,7 @@ export function DigiRoleTechniqueRollDialog({
   damagePool,
   dsCurrent,
   onDsChanged,
+  characterKind = "digirole_digimon",
 }: {
   technique: Technique;
   gameId: string;
@@ -188,11 +345,14 @@ export function DigiRoleTechniqueRollDialog({
   damagePool: number;
   dsCurrent: number;
   onDsChanged: (value: number) => void;
+  characterKind?: "digirole_tamer" | "digirole_digimon";
 }) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [accuracyBonus, setAccuracyBonus] = useState(0);
   const [damageBonus, setDamageBonus] = useState(0);
+  const [criticalBonus, setCriticalBonus] = useState(0);
+  const [actionsUsed, setActionsUsed] = useState(0);
   const [manualDefense, setManualDefense] = useState(0);
   const [busy, setBusy] = useState(false);
   const pageQuery = useCurrentPage(gameId, userId, open);
@@ -202,25 +362,44 @@ export function DigiRoleTechniqueRollDialog({
     enabled: open,
     retry: false,
     queryFn: async () => {
-      const result = await table("game_engine_sessions").select("*").eq("game_id", gameId).maybeSingle();
+      const result = await table("game_engine_sessions")
+        .select("*")
+        .eq("game_id", gameId)
+        .maybeSingle();
       if (result.error) throw result.error;
       return (result.data as EngineSession | null) ?? null;
     },
   });
-  const participant = engine?.state.participants.find((entry) => entry.characterId === digimonId && entry.kind === "digirole_digimon") ?? null;
-  const actions = Math.max(0, participant?.actionsUsed ?? 0);
+  const participant =
+    engine?.state.participants.find(
+      (entry) => entry.characterId === digimonId && entry.kind === characterKind,
+    ) ?? null;
+  const actions = Math.max(0, actionsUsed);
   const required = actions + 1;
+  const criticalRequired = Math.max(1, 3 + actions - criticalBonus);
   const energy = isEnergy(technique.category);
   const selectedReady = selected.every((tokenId) => targets.info.has(tokenId));
-  const selectedInfo = selected.map((tokenId) => targets.info.get(tokenId)).filter(Boolean) as TargetInfo[];
-  const fieldModifier = selectedInfo.length > 0
-    ? Math.min(...selectedInfo.map((target) => digiRoleFieldAccuracyModifier(technique.field, target.fields)))
-    : 0;
+  const selectedInfo = selected
+    .map((tokenId) => targets.info.get(tokenId))
+    .filter(Boolean) as TargetInfo[];
+  const fieldModifier =
+    selectedInfo.length > 0
+      ? Math.min(
+          ...selectedInfo.map((target) =>
+            digiRoleFieldAccuracyModifier(technique.field, target.fields),
+          ),
+        )
+      : 0;
   const finalAccuracyPool = Math.max(0, accuracyPool + accuracyBonus + fieldModifier);
 
   useEffect(() => {
-    if (!open) setSelected([]);
-  }, [open]);
+    if (!open) {
+      setSelected([]);
+      return;
+    }
+    setActionsUsed(Math.max(0, participant?.actionsUsed ?? 0));
+    setCriticalBonus(0);
+  }, [open, participant?.actionsUsed]);
 
   async function publishResolution(payload: MoveRollMessage) {
     const result = await supabase.from("chat_messages").insert({
@@ -235,24 +414,30 @@ export function DigiRoleTechniqueRollDialog({
 
   async function confirm() {
     if (busy) return;
-    if (selected.length > 0 && !selectedReady) return toast.error("Aguarde os dados dos alvos carregarem.");
+    if (selected.length > 0 && !selectedReady)
+      return toast.error("Aguarde os dados dos alvos carregarem.");
     setBusy(true);
     try {
       const accuracy = rollDigiRole(finalAccuracyPool, finalAccuracyPool <= 0 ? 1 : 0);
       const isHit = accuracy.successes >= required;
+      const isCritical = isHit && accuracy.successes >= criticalRequired;
       const resolutionId = crypto.randomUUID();
       const requestIds = new Map(selected.map((tokenId) => [tokenId, crypto.randomUUID()]));
-      const reactionTargets: MoveReactionTarget[] = isHit ? selectedInfo.map((target) => ({
-        requestId: requestIds.get(target.tokenId)!,
-        tokenId: target.tokenId,
-        characterId: target.characterId,
-        characterKind: target.kind,
-        name: target.name,
-        controllerIds: target.controllerIds,
-        clashPool: energy ? target.clashEnergy : target.clashPhysical,
-        evadePool: target.evadePool,
-        painPenalty: 0,
-      })) : [];
+      const reactionTargets: MoveReactionTarget[] = isHit
+        ? selectedInfo.map((target) => ({
+            requestId: requestIds.get(target.tokenId)!,
+            tokenId: target.tokenId,
+            characterId: target.characterId,
+            characterKind: target.kind,
+            name: target.name,
+            controllerIds: target.controllerIds,
+            clashPool: energy ? target.clashEnergy : target.clashPhysical,
+            evadePool: target.evadePool,
+            clashTimes: target.clashTimes,
+            evasionTimes: target.evasionTimes,
+            painPenalty: 0,
+          }))
+        : [];
       let damage: MoveRollMessage["damage"] = null;
       if (isHit && technique.damage_formula) {
         let damageTargets: MoveRollTarget[] | undefined;
@@ -303,7 +488,7 @@ export function DigiRoleTechniqueRollDialog({
         system: "digirole",
         phase: "accuracy",
         resolutionId,
-        attacker: { characterId: digimonId, characterKind: "digirole_digimon", tokenId: participant?.tokenId ?? null },
+        attacker: { characterId: digimonId, characterKind, tokenId: participant?.tokenId ?? null },
         reactionTargets,
         pokemonName: digimonName,
         hasStab: false,
@@ -324,25 +509,65 @@ export function DigiRoleTechniqueRollDialog({
           successes: accuracy.successes,
           penalty: 0,
           isHit,
-          crit: { margin: 0, actions, required, critRequired: Number.MAX_SAFE_INTEGER, isCrit: false },
+          crit: {
+            margin: criticalBonus,
+            actions,
+            required,
+            critRequired: criticalRequired,
+            isCrit: isCritical,
+          },
         },
         damage,
         chance: [],
       };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = await (supabase as any).rpc("use_digirole_technique", {
-        p_digimon_id: digimonId,
-        p_ds_cost: technique.ds_cost,
-        p_body: `${digimonName} usou ${technique.name} · Accuracy`,
-        p_roll_data: payload,
+      let nextDs = Math.max(0, dsCurrent - technique.ds_cost);
+      if (characterKind === "digirole_digimon") {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const result = await (supabase as any).rpc("use_digirole_technique", {
+          p_digimon_id: digimonId,
+          p_ds_cost: technique.ds_cost,
+          p_body: `${digimonName} usou ${technique.name} · Accuracy`,
+          p_roll_data: payload,
+        });
+        if (result.error) throw result.error;
+        const rpcData = result.data as { dsCurrent?: number } | null;
+        nextDs = rpcData?.dsCurrent ?? nextDs;
+      } else {
+        const updated = await table("digirole_tamers")
+          .update({ ds_current: nextDs })
+          .eq("id", digimonId)
+          .eq("ds_current", dsCurrent)
+          .select("ds_current")
+          .maybeSingle();
+        if (updated.error) throw updated.error;
+        if (!updated.data) throw new Error("A DigiSoul do Tamer mudou. Abra a técnica novamente.");
+        const posted = await supabase.from("chat_messages").insert({
+          game_id: gameId,
+          user_id: userId,
+          kind: "move",
+          body: `${digimonName} usou ${technique.name} · Accuracy`,
+          roll_data: payload as unknown as never,
+        });
+        if (posted.error) throw posted.error;
+      }
+      onDsChanged(nextDs);
+      emitEngineActionRolled({
+        gameId,
+        tokenId: participant?.tokenId,
+        characterId: digimonId,
+        characterKind,
+        actionType: "move",
+        label: technique.name,
+        resultSuccesses: accuracy.successes,
+        actionsBefore: actions,
       });
-      if (result.error) throw result.error;
-      const rpcData = result.data as { dsCurrent?: number } | null;
-      onDsChanged(rpcData?.dsCurrent ?? Math.max(0, dsCurrent - technique.ds_cost));
-      emitEngineActionRolled({ gameId, tokenId: participant?.tokenId, characterId: digimonId, characterKind: "digirole_digimon", actionType: "move", label: technique.name, resultSuccesses: accuracy.successes });
       if (!isHit || reactionTargets.length === 0) await publishResolution(payload);
       setOpen(false);
-      toast[isHit ? "success" : "error"](isHit ? `${technique.name} acertou.` : `${technique.name} falhou: ${accuracy.successes}/${required}.`);
+      toast[isHit ? "success" : "error"](
+        isHit
+          ? `${technique.name} acertou.`
+          : `${technique.name} falhou: ${accuracy.successes}/${required}.`,
+      );
     } catch (error) {
       toast.error(messageOf(error));
     } finally {
@@ -351,35 +576,184 @@ export function DigiRoleTechniqueRollDialog({
   }
 
   const groups = [
-    { key: "digimon", label: "Digimon", rows: targets.tokens.filter((token) => token.character_kind === "digirole_digimon") },
-    { key: "tamer", label: "Tamers", rows: targets.tokens.filter((token) => token.character_kind === "digirole_tamer") },
+    {
+      key: "digimon",
+      label: "Digimon",
+      rows: targets.tokens.filter((token) => token.character_kind === "digirole_digimon"),
+    },
+    {
+      key: "tamer",
+      label: "Tamers",
+      rows: targets.tokens.filter((token) => token.character_kind === "digirole_tamer"),
+    },
   ].filter((group) => group.rows.length > 0);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild><Button size="sm" disabled={dsCurrent < technique.ds_cost}><Dices className="mr-1 h-3.5 w-3.5" /> Usar técnica</Button></DialogTrigger>
+      <DialogTrigger asChild>
+        <Button size="sm" disabled={dsCurrent < technique.ds_cost}>
+          <Dices className="mr-1 h-3.5 w-3.5" /> Usar técnica
+        </Button>
+      </DialogTrigger>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-        <DialogHeader><DialogTitle>{technique.name}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>{technique.name}</DialogTitle>
+        </DialogHeader>
         <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded border border-border p-2"><span className="block text-[10px] font-bold uppercase text-muted-foreground">Accuracy</span><strong>{finalAccuracyPool > 0 ? `${finalAccuracyPool}d6` : "Chance Die"}</strong><p className="text-[10px] text-muted-foreground">{technique.accuracy_formula}{fieldModifier ? ` · Field ${fieldModifier > 0 ? "+" : ""}${fieldModifier}` : ""}</p></div>
-          <div className="rounded border border-border p-2"><span className="block text-[10px] font-bold uppercase text-muted-foreground">Dano</span><strong>{technique.damage_formula ? `${Math.max(0, damagePool + damageBonus)}d6` : "Sem dano"}</strong><p className="text-[10px] text-muted-foreground">{energy ? "RES" : "DEF"} remove dados</p></div>
-          <div className="rounded border border-border p-2"><span className="block text-[10px] font-bold uppercase text-muted-foreground">Ação</span><strong>{required} sucesso(s)</strong><p className="text-[10px] text-muted-foreground">{actions} já realizada(s)</p></div>
+          <div className="rounded border border-border p-2">
+            <span className="block text-[10px] font-bold uppercase text-muted-foreground">
+              Accuracy
+            </span>
+            <strong>{finalAccuracyPool > 0 ? `${finalAccuracyPool}d6` : "Chance Die"}</strong>
+            <p className="text-[10px] text-muted-foreground">
+              {technique.accuracy_formula}
+              {fieldModifier ? ` · Field ${fieldModifier > 0 ? "+" : ""}${fieldModifier}` : ""}
+            </p>
+          </div>
+          <div className="rounded border border-border p-2">
+            <span className="block text-[10px] font-bold uppercase text-muted-foreground">
+              Dano
+            </span>
+            <strong>
+              {technique.damage_formula ? `${Math.max(0, damagePool + damageBonus)}d6` : "Sem dano"}
+            </strong>
+            <p className="text-[10px] text-muted-foreground">
+              {energy ? "RES" : "DEF"} remove dados
+            </p>
+          </div>
+          <div className="rounded border border-border p-2">
+            <span className="block text-[10px] font-bold uppercase text-muted-foreground">
+              Ação
+            </span>
+            <strong>{required} sucesso(s)</strong>
+            <p className="text-[10px] text-muted-foreground">{actions} já realizada(s)</p>
+          </div>
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <label className="space-y-1"><Label>Bônus de Accuracy</Label><Input type="number" value={accuracyBonus} onChange={(event) => setAccuracyBonus(Number.parseInt(event.target.value, 10) || 0)} /></label>
-          <label className="space-y-1"><Label>Bônus de dano</Label><Input type="number" value={damageBonus} onChange={(event) => setDamageBonus(Number.parseInt(event.target.value, 10) || 0)} /></label>
-          {selected.length === 0 && <label className="space-y-1"><Label>{energy ? "RES" : "DEF"} manual</Label><Input type="number" min={0} value={manualDefense} onChange={(event) => setManualDefense(Math.max(0, Number.parseInt(event.target.value, 10) || 0))} /></label>}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <label className="space-y-1">
+            <Label>Ações usadas</Label>
+            <Input
+              type="number"
+              min={0}
+              value={actionsUsed}
+              onChange={(event) =>
+                setActionsUsed(Math.max(0, Number.parseInt(event.target.value, 10) || 0))
+              }
+            />
+          </label>
+          <label className="space-y-1">
+            <Label>Bônus de Accuracy</Label>
+            <Input
+              type="number"
+              value={accuracyBonus}
+              onChange={(event) => setAccuracyBonus(Number.parseInt(event.target.value, 10) || 0)}
+            />
+          </label>
+          <label className="space-y-1">
+            <Label>Bônus de dano</Label>
+            <Input
+              type="number"
+              value={damageBonus}
+              onChange={(event) => setDamageBonus(Number.parseInt(event.target.value, 10) || 0)}
+            />
+          </label>
+          <label className="space-y-1">
+            <Label>Bônus de crítico</Label>
+            <Input
+              type="number"
+              min={0}
+              value={criticalBonus}
+              onChange={(event) =>
+                setCriticalBonus(Math.max(0, Number.parseInt(event.target.value, 10) || 0))
+              }
+            />
+            <span className="block text-[10px] text-muted-foreground">
+              Critical: 3 + ações − bônus = {criticalRequired}
+            </span>
+          </label>
+          {selected.length === 0 && (
+            <label className="space-y-1">
+              <Label>{energy ? "RES" : "DEF"} manual</Label>
+              <Input
+                type="number"
+                min={0}
+                value={manualDefense}
+                onChange={(event) =>
+                  setManualDefense(Math.max(0, Number.parseInt(event.target.value, 10) || 0))
+                }
+              />
+            </label>
+          )}
         </div>
         <section className="rounded-md border border-border p-3">
           <h3 className="text-xs font-black">Alvos no campo (opcional)</h3>
-          <p className="mb-2 text-[10px] text-muted-foreground">Somente tokens na página atual. Field ajusta Accuracy; {energy ? "RES" : "DEF"} reduz a Pool de Dano.</p>
-          {groups.map((group) => <div key={group.key} className="mb-2 last:mb-0"><p className="mb-1 text-[10px] font-black uppercase text-muted-foreground">{group.label}</p><div className="space-y-1">{group.rows.map((token) => { const info = targets.info.get(token.id); return <label key={token.id} className="flex items-center gap-2 rounded border border-border px-2 py-2 text-xs"><Checkbox checked={selected.includes(token.id)} onCheckedChange={(checked) => setSelected((current) => checked ? [...current, token.id] : current.filter((id) => id !== token.id))} /><strong className="min-w-0 flex-1 truncate">{info?.name ?? token.label}</strong>{info && <span className="text-[10px] text-muted-foreground">{energy ? `RES ${info.res}` : `DEF ${info.def}`} · {digiRoleFieldAccuracyModifier(technique.field, info.fields) >= 0 ? "+" : ""}{digiRoleFieldAccuracyModifier(technique.field, info.fields)} Acc</span>}</label>; })}</div></div>)}
-          {targets.loading && <p className="text-xs text-muted-foreground">Carregando dados dos alvos...</p>}
+          <p className="mb-2 text-[10px] text-muted-foreground">
+            Somente tokens na página atual. Field ajusta Accuracy; {energy ? "RES" : "DEF"} reduz a
+            Pool de Dano.
+          </p>
+          {groups.map((group) => (
+            <div key={group.key} className="mb-2 last:mb-0">
+              <p className="mb-1 text-[10px] font-black uppercase text-muted-foreground">
+                {group.label}
+              </p>
+              <div className="space-y-1">
+                {group.rows.map((token) => {
+                  const info = targets.info.get(token.id);
+                  return (
+                    <label
+                      key={token.id}
+                      className="flex items-center gap-2 rounded border border-border px-2 py-2 text-xs"
+                    >
+                      <Checkbox
+                        checked={selected.includes(token.id)}
+                        onCheckedChange={(checked) =>
+                          setSelected((current) =>
+                            checked
+                              ? [...current, token.id]
+                              : current.filter((id) => id !== token.id),
+                          )
+                        }
+                      />
+                      <strong className="min-w-0 flex-1 truncate">
+                        {info?.name ?? token.label}
+                      </strong>
+                      {info && (
+                        <span className="text-[10px] text-muted-foreground">
+                          {energy ? `RES ${info.res}` : `DEF ${info.def}`} ·{" "}
+                          {digiRoleFieldAccuracyModifier(technique.field, info.fields) >= 0
+                            ? "+"
+                            : ""}
+                          {digiRoleFieldAccuracyModifier(technique.field, info.fields)} Acc
+                        </span>
+                      )}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+          {targets.loading && (
+            <p className="text-xs text-muted-foreground">Carregando dados dos alvos...</p>
+          )}
           {targets.error && <p className="text-xs text-destructive">{messageOf(targets.error)}</p>}
-          {!targets.loading && groups.length === 0 && <p className="text-xs text-muted-foreground">Nenhum alvo DigiRole nesta página.</p>}
+          {!targets.loading && groups.length === 0 && (
+            <p className="text-xs text-muted-foreground">Nenhum alvo DigiRole nesta página.</p>
+          )}
         </section>
         <p className="text-xs leading-relaxed text-muted-foreground">{technique.description}</p>
-        <DialogFooter><Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button><Button disabled={busy || dsCurrent < technique.ds_cost || (selected.length > 0 && !selectedReady)} onClick={() => void confirm()}><Dices className="mr-1 h-4 w-4" /> Rolar e enviar card · {technique.ds_cost} DS</Button></DialogFooter>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            Cancelar
+          </Button>
+          <Button
+            disabled={
+              busy || dsCurrent < technique.ds_cost || (selected.length > 0 && !selectedReady)
+            }
+            onClick={() => void confirm()}
+          >
+            <Dices className="mr-1 h-4 w-4" /> Rolar e enviar card · {technique.ds_cost} DS
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

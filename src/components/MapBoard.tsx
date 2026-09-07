@@ -5,18 +5,49 @@ import { clearRealtimeStatus, reportRealtimeStatus } from "@/lib/client-health";
 import { readLocalGameSnapshot, writeLocalGameSnapshot } from "@/lib/local-game-cache";
 import { toast } from "sonner";
 import {
-  X, MousePointer2, Ruler, Pencil, Square, Circle as CircleIcon,
-  Minus, Type as TypeIcon, Eraser, Eye, EyeOff, CloudFog, Box, Lightbulb, Trash2,
-  ChevronLeft, ChevronRight, Image as ImageIcon, Plus, RotateCw, ArrowUp, ArrowDown,
-  Palette, DoorOpen, DoorClosed, Lock, Unlock,
+  X,
+  MousePointer2,
+  Ruler,
+  Pencil,
+  Square,
+  Circle as CircleIcon,
+  Minus,
+  Type as TypeIcon,
+  Eraser,
+  Eye,
+  EyeOff,
+  CloudFog,
+  Box,
+  Lightbulb,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  Image as ImageIcon,
+  Plus,
+  RotateCw,
+  ArrowUp,
+  ArrowDown,
+  Palette,
+  DoorOpen,
+  DoorClosed,
+  Lock,
+  Unlock,
 } from "lucide-react";
 import { TokenActionBar } from "@/components/TokenActionBar";
 import { TokenStatsBar } from "@/components/TokenStatsBar";
-import { TokenAvatar, TokenStatusBadges, type TokenCharacterVisual } from "@/components/TokenAvatar";
+import {
+  TokenAvatar,
+  TokenStatusBadges,
+  type TokenCharacterVisual,
+} from "@/components/TokenAvatar";
 import { TokenAppearanceDialog, type AppearanceToken } from "@/components/TokenAppearanceDialog";
 import { TokenLightDialog, type TokenLightInit } from "@/components/TokenLightDialog";
 import { PageSwitcher } from "@/components/PageSwitcher";
 import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  ENGINE_ACTION_ROLLED_EVENT,
+  type EngineActionRolledDetail,
+} from "@/lib/game-engine/action-events";
 
 export type DragCharacterPayload = {
   kind: "pokemon" | "trainer" | "t20" | "digirole_tamer" | "digirole_digimon";
@@ -75,9 +106,17 @@ type Drawing = {
   kind: DrawKind;
   geometry: {
     points?: [number, number][];
-    x?: number; y?: number; w?: number; h?: number;
-    cx?: number; cy?: number; r?: number;
-    x1?: number; y1?: number; x2?: number; y2?: number;
+    x?: number;
+    y?: number;
+    w?: number;
+    h?: number;
+    cx?: number;
+    cy?: number;
+    r?: number;
+    x1?: number;
+    y1?: number;
+    x2?: number;
+    y2?: number;
     fontSize?: number;
   };
   stroke: string;
@@ -103,7 +142,16 @@ type Mode = "select" | "ruler" | "draw" | "fog" | "walls" | "background";
 type WallKind = "wall" | "door" | "window";
 type WallTool = "select" | "single" | "poly" | "vision" | "door" | "window";
 
-type FogRegion = { id: string; game_id: string; x: number; y: number; w: number; h: number; revealed: boolean; author_id: string };
+type FogRegion = {
+  id: string;
+  game_id: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  revealed: boolean;
+  author_id: string;
+};
 type Wall = {
   id: string;
   game_id: string;
@@ -140,19 +188,30 @@ type BackgroundAddOptions = { cols?: number; rows?: number };
 export type Visibility = { fogEnabled: boolean; dynamicLighting: boolean };
 
 const DEFAULT_GRID: GridSettings = {
-  enabled: true, snap: true, snapMode: "center", size: 56, color: "#000000",
-  opacity: 30, unitMeters: 1.5, unitLabel: "m",
+  enabled: true,
+  snap: true,
+  snapMode: "center",
+  size: 56,
+  color: "#000000",
+  opacity: 30,
+  unitMeters: 1.5,
+  unitLabel: "m",
 };
 const DEFAULT_VIS: Visibility = { fogEnabled: false, dynamicLighting: false };
 const WALL_SCHEMA_COLUMNS = ["kind", "is_open", "locked", "blocks_sight", "blocks_light"];
 
-function isSchemaCacheColumnError(error: { message?: string } | null | undefined, columns: string[]) {
+function isSchemaCacheColumnError(
+  error: { message?: string } | null | undefined,
+  columns: string[],
+) {
   const message = error?.message ?? "";
   return message.includes("schema cache") && columns.some((column) => message.includes(column));
 }
 
 export function MapBoard({
   gameId,
+  systemId,
+  narratorId,
   backgroundUrl,
   userId,
   isNarrator,
@@ -166,6 +225,8 @@ export function MapBoard({
   visibility = DEFAULT_VIS,
 }: {
   gameId: string;
+  systemId?: string;
+  narratorId?: string;
   backgroundUrl: string | null;
   userId: string;
   isNarrator: boolean;
@@ -173,7 +234,17 @@ export function MapBoard({
   topLeftSlot?: React.ReactNode;
   toolbarSlot?: React.ReactNode;
   collapsedToolbarSlot?: React.ReactNode;
-  onRoll?: (label: string, n: number, penalty?: number, meta?: { characterKind: Token["character_kind"]; characterId: string; imageUrl?: string | null; tokenId?: string | null }) => void;
+  onRoll?: (
+    label: string,
+    n: number,
+    penalty?: number,
+    meta?: {
+      characterKind: Token["character_kind"];
+      characterId: string;
+      imageUrl?: string | null;
+      tokenId?: string | null;
+    },
+  ) => void;
   onOpenSheet?: (kind: Token["character_kind"], id: string, label: string) => void;
   gridSettings?: GridSettings;
   visibility?: Visibility;
@@ -223,7 +294,7 @@ export function MapBoard({
         .eq("game_id", gameId)
         .eq("user_id", userId)
         .maybeSingle();
-      return ((data as { viewing_page_id?: string | null } | null)?.viewing_page_id) ?? null;
+      return (data as { viewing_page_id?: string | null } | null)?.viewing_page_id ?? null;
     },
   });
   useEffect(() => {
@@ -236,7 +307,9 @@ export function MapBoard({
         () => qc.invalidateQueries({ queryKey: ["my-viewing-page", gameId, userId] }),
       )
       .subscribe();
-    return () => { void supabase.removeChannel(ch); };
+    return () => {
+      void supabase.removeChannel(ch);
+    };
   }, [gameId, userId, isNarrator, qc]);
 
   const playerEffectivePage = memberOverride ?? activePageId;
@@ -253,6 +326,25 @@ export function MapBoard({
     }
   }, [activePageId, isNarrator, playerEffectivePage, viewingPageId]);
   const pageId = viewingPageId;
+
+  useEffect(() => {
+    function restoreTokenDimensions(event: Event) {
+      const detail = (event as CustomEvent<EngineActionRolledDetail>).detail;
+      if (!detail || detail.gameId !== gameId || !detail.tokenId) return;
+      const tokenId = detail.tokenId;
+      setLocalSize((current) => {
+        if (!(tokenId in current)) return current;
+        const next = { ...current };
+        delete next[tokenId];
+        return next;
+      });
+      resizeOrigin.current = null;
+      setResizeTokenId((current) => (current === tokenId ? null : current));
+      void qc.invalidateQueries({ queryKey: ["tokens", gameId, pageId] });
+    }
+    window.addEventListener(ENGINE_ACTION_ROLLED_EVENT, restoreTokenDimensions);
+    return () => window.removeEventListener(ENGINE_ACTION_ROLLED_EVENT, restoreTokenDimensions);
+  }, [gameId, pageId, qc]);
 
   useEffect(() => {
     qc.setQueryData(["current-map-page", gameId, userId], pageId);
@@ -284,7 +376,9 @@ export function MapBoard({
   }, [gameId, pageId, userId, addMapPing]);
 
   // Ruler state (local only)
-  const [ruler, setRuler] = useState<{ ax: number; ay: number; bx: number; by: number } | null>(null);
+  const [ruler, setRuler] = useState<{ ax: number; ay: number; bx: number; by: number } | null>(
+    null,
+  );
 
   // Draw-in-progress state (local until mouseup)
   const [drawingShape, setDrawingShape] = useState<Drawing | null>(null);
@@ -315,15 +409,28 @@ export function MapBoard({
         if (drag.kind === "move") {
           const dx = (e.clientX - drag.sx) / rect.width / zoom;
           const dy = (e.clientY - drag.sy) / rect.height / zoom;
-          setBgLocal((s) => ({ ...s, [drag.id]: { ...(s[drag.id] ?? {}), x: drag.ox + dx, y: drag.oy + dy } }));
+          setBgLocal((s) => ({
+            ...s,
+            [drag.id]: { ...(s[drag.id] ?? {}), x: drag.ox + dx, y: drag.oy + dy },
+          }));
         } else if (drag.kind === "resize") {
           const dx = (e.clientX - drag.sx) / rect.width / zoom;
           const dy = (e.clientY - drag.sy) / rect.height / zoom;
-          setBgLocal((s) => ({ ...s, [drag.id]: { ...(s[drag.id] ?? {}), width: Math.max(0.03, drag.ow + dx), height: Math.max(0.03, drag.oh + dy) } }));
+          setBgLocal((s) => ({
+            ...s,
+            [drag.id]: {
+              ...(s[drag.id] ?? {}),
+              width: Math.max(0.03, drag.ow + dx),
+              height: Math.max(0.03, drag.oh + dy),
+            },
+          }));
         } else if (drag.kind === "rotate") {
-          const angle = Math.atan2(e.clientY - drag.cy, e.clientX - drag.cx) * 180 / Math.PI;
+          const angle = (Math.atan2(e.clientY - drag.cy, e.clientX - drag.cx) * 180) / Math.PI;
           const delta = angle - drag.startAngle;
-          setBgLocal((s) => ({ ...s, [drag.id]: { ...(s[drag.id] ?? {}), rotation: drag.baseRotation + delta } }));
+          setBgLocal((s) => ({
+            ...s,
+            [drag.id]: { ...(s[drag.id] ?? {}), rotation: drag.baseRotation + delta },
+          }));
         }
       }
     }
@@ -335,8 +442,15 @@ export function MapBoard({
         resizeOrigin.current = null;
         setResizeTokenId(null);
         if (finalSize) {
-          await supabase.from("tokens").update({ size: Math.round(finalSize) }).eq("id", id);
-          setLocalSize((s) => { const n = { ...s }; delete n[id]; return n; });
+          await supabase
+            .from("tokens")
+            .update({ size: Math.round(finalSize) })
+            .eq("id", id);
+          setLocalSize((s) => {
+            const n = { ...s };
+            delete n[id];
+            return n;
+          });
         }
       }
       // Persist bg edit
@@ -345,9 +459,16 @@ export function MapBoard({
         const local = bgLocalRef.current[drag.id];
         bgDragRef.current = null;
         if (local) {
-          const { error } = await (supabase.from("map_backgrounds" as never).update(local as never).eq("id", drag.id) as unknown as Promise<{ error: { message: string } | null }>);
+          const { error } = await (supabase
+            .from("map_backgrounds" as never)
+            .update(local as never)
+            .eq("id", drag.id) as unknown as Promise<{ error: { message: string } | null }>);
           if (error) toast.error(error.message);
-          setBgLocal((s) => { const n = { ...s }; delete n[drag.id]; return n; });
+          setBgLocal((s) => {
+            const n = { ...s };
+            delete n[drag.id];
+            return n;
+          });
         }
       }
     }
@@ -356,7 +477,11 @@ export function MapBoard({
     window.addEventListener("mouseup", onUp);
     function onZoom(e: Event) {
       const detail = (e as CustomEvent).detail as { delta?: number; reset?: boolean };
-      if (detail?.reset) { setZoom(1); setPan({ x: 0, y: 0 }); return; }
+      if (detail?.reset) {
+        setZoom(1);
+        setPan({ x: 0, y: 0 });
+        return;
+      }
       if (typeof detail?.delta === "number") {
         setZoom((z) => Math.max(0.3, Math.min(4, z * (1 + detail.delta!))));
       }
@@ -369,10 +494,6 @@ export function MapBoard({
       window.removeEventListener("map-zoom", onZoom as EventListener);
     };
   }, [resizeTokenId, localSize, mode, zoom]);
-
-
-
-
 
   const tokenCacheKey = `tokens:${userId}:${gameId}:${pageId ?? "none"}`;
   const tokenLocalQueryKey = ["local-tokens", userId, gameId, pageId] as const;
@@ -388,7 +509,10 @@ export function MapBoard({
     enabled: !!pageId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("tokens").select("*").eq("game_id", gameId).eq("page_id", pageId!);
+        .from("tokens")
+        .select("*")
+        .eq("game_id", gameId)
+        .eq("page_id", pageId!);
       if (error) throw error;
       const snapshot = (data ?? []) as Token[];
       const savedAt = Date.now();
@@ -409,19 +533,52 @@ export function MapBoard({
     return () => window.clearTimeout(timer);
   }, [pageId, tokenCacheKey, tokensRaw]);
   const tokens = useMemo(
-    () => tokensRaw.filter((t) => isNarrator || (t.layer ?? "tokens") !== "gm"),
-    [tokensRaw, isNarrator],
+    () =>
+      tokensRaw
+        .filter((t) => isNarrator || (t.layer ?? "tokens") !== "gm")
+        .map((token) => {
+          if (systemId !== "digirole") return token;
+          if (token.character_kind === "pokemon") {
+            return { ...token, character_kind: "digirole_digimon" as const };
+          }
+          if (token.character_kind === "trainer") {
+            return { ...token, character_kind: "digirole_tamer" as const };
+          }
+          return token;
+        }),
+    [tokensRaw, isNarrator, systemId],
   );
   const visiblePokemonIds = useMemo(
-    () => [...new Set(tokens.filter((token) => token.character_kind === "pokemon").map((token) => token.character_id))].sort(),
+    () =>
+      [
+        ...new Set(
+          tokens
+            .filter((token) => token.character_kind === "pokemon")
+            .map((token) => token.character_id),
+        ),
+      ].sort(),
     [tokens],
   );
   const visibleTrainerIds = useMemo(
-    () => [...new Set(tokens.filter((token) => token.character_kind === "trainer").map((token) => token.character_id))].sort(),
+    () =>
+      [
+        ...new Set(
+          tokens
+            .filter((token) => token.character_kind === "trainer")
+            .map((token) => token.character_id),
+        ),
+      ].sort(),
     [tokens],
   );
   const tokenVisualQueryKey = useMemo(
-    () => ["map-token-visuals", gameId, pageId, visiblePokemonIds.join(","), visibleTrainerIds.join(",")] as const,
+    () =>
+      [
+        "map-token-visuals",
+        gameId,
+        pageId,
+        visiblePokemonIds.join(","),
+        visibleTrainerIds.join(","),
+      ] as const,
     [gameId, pageId, visiblePokemonIds, visibleTrainerIds],
   );
   const tokenVisualQueryKeyRef = useRef(tokenVisualQueryKey);
@@ -484,10 +641,14 @@ export function MapBoard({
   });
   useEffect(() => {
     visiblePokemonIdsRef.current = new Set(
-      tokens.filter((token) => token.character_kind === "pokemon").map((token) => token.character_id),
+      tokens
+        .filter((token) => token.character_kind === "pokemon")
+        .map((token) => token.character_id),
     );
     visibleTrainerIdsRef.current = new Set(
-      tokens.filter((token) => token.character_kind === "trainer").map((token) => token.character_id),
+      tokens
+        .filter((token) => token.character_kind === "trainer")
+        .map((token) => token.character_id),
     );
   }, [tokens]);
 
@@ -496,29 +657,42 @@ export function MapBoard({
     queryKey: ["editable-char-ids", gameId, userId],
     queryFn: async () => {
       const [pkm, trs, digiTamers, digimons] = await Promise.all([
-        supabase.from("pokemon").select("id, owner_id, allowed_editors").eq("game_id", gameId),
-        supabase.from("trainers").select("id, owner_id, allowed_editors").eq("game_id", gameId),
+        supabase.from("pokemon").select("id, owner_id").eq("game_id", gameId),
+        supabase.from("trainers").select("id, owner_id").eq("game_id", gameId),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (supabase.from("digirole_tamers" as never) as any).select("id, owner_id, allowed_editors").eq("game_id", gameId),
+        (supabase.from("digirole_tamers" as never) as any)
+          .select("id, owner_id")
+          .eq("game_id", gameId),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (supabase.from("digirole_digimons" as never) as any).select("id, owner_id, allowed_editors").eq("game_id", gameId),
+        (supabase.from("digirole_digimons" as never) as any)
+          .select("id, owner_id")
+          .eq("game_id", gameId),
       ]);
       const set = new Set<string>();
-      for (const r of (pkm.data ?? []) as { id: string; owner_id: string; allowed_editors: string[] | null }[]) {
-        if (r.owner_id === userId || (r.allowed_editors ?? []).includes(userId)) set.add(r.id);
+      for (const r of (pkm.data ?? []) as {
+        id: string;
+        owner_id: string;
+      }[]) {
+        if (r.owner_id === userId) set.add(r.id);
       }
-      for (const r of (trs.data ?? []) as { id: string; owner_id: string; allowed_editors: string[] | null }[]) {
-        if (r.owner_id === userId || (r.allowed_editors ?? []).includes(userId)) set.add(r.id);
+      for (const r of (trs.data ?? []) as {
+        id: string;
+        owner_id: string;
+      }[]) {
+        if (r.owner_id === userId) set.add(r.id);
       }
-      for (const r of [...(digiTamers.data ?? []), ...(digimons.data ?? [])] as { id: string; owner_id: string; allowed_editors: string[] | null }[]) {
-        if (r.owner_id === userId || (r.allowed_editors ?? []).includes(userId)) set.add(r.id);
+      for (const r of [...(digiTamers.data ?? []), ...(digimons.data ?? [])] as {
+        id: string;
+        owner_id: string;
+      }[]) {
+        if (r.owner_id === userId) set.add(r.id);
       }
       return set;
     },
   });
   const canActAsOwner = useCallback(
-    (t: Token) => t.owner_id === userId || (editableCharIds?.has(t.character_id) ?? false),
-    [userId, editableCharIds],
+    (t: Token) => editableCharIds?.has(t.character_id) ?? false,
+    [editableCharIds],
   );
 
   useEffect(() => {
@@ -577,18 +751,26 @@ export function MapBoard({
 
     const flushCharacterUpdates = () => {
       flushTimer = null;
-      const needsVisualRefetch = [...pendingPokemonIds].some((id) => !pendingPokemonRows.has(id))
-        || [...pendingTrainerIds].some((id) => !pendingTrainerRows.has(id));
+      const needsVisualRefetch =
+        [...pendingPokemonIds].some((id) => !pendingPokemonRows.has(id)) ||
+        [...pendingTrainerIds].some((id) => !pendingTrainerRows.has(id));
       for (const id of pendingPokemonIds) {
         const row = pendingPokemonRows.get(id);
         if (row) {
-          qc.setQueriesData<Record<string, unknown>>(
-            { queryKey: ["token-pokemon", id] },
-            (old) => old ? { ...old, ...row } : old,
+          qc.setQueriesData<Record<string, unknown>>({ queryKey: ["token-pokemon", id] }, (old) =>
+            old ? { ...old, ...row } : old,
           );
-          qc.setQueryData(["token-pokemon-stats", id], (old: Record<string, unknown> | undefined) => old ? { ...old, ...row } : old);
-          qc.setQueryData(["token-pokemon-status", id], (old: Record<string, unknown> | undefined) => old ? { ...old, ...row } : old);
-          qc.setQueryData(["pokemon", id], (old: Record<string, unknown> | undefined) => old ? { ...old, ...row } : old);
+          qc.setQueryData(
+            ["token-pokemon-stats", id],
+            (old: Record<string, unknown> | undefined) => (old ? { ...old, ...row } : old),
+          );
+          qc.setQueryData(
+            ["token-pokemon-status", id],
+            (old: Record<string, unknown> | undefined) => (old ? { ...old, ...row } : old),
+          );
+          qc.setQueryData(["pokemon", id], (old: Record<string, unknown> | undefined) =>
+            old ? { ...old, ...row } : old,
+          );
         } else {
           void qc.invalidateQueries({ queryKey: ["token-pokemon", id] });
           void qc.invalidateQueries({ queryKey: ["token-pokemon-stats", id] });
@@ -598,45 +780,57 @@ export function MapBoard({
       for (const id of pendingTrainerIds) {
         const row = pendingTrainerRows.get(id);
         if (row) {
-          qc.setQueriesData<Record<string, unknown>>(
-            { queryKey: ["token-trainer", id] },
-            (old) => old ? { ...old, ...row } : old,
+          qc.setQueriesData<Record<string, unknown>>({ queryKey: ["token-trainer", id] }, (old) =>
+            old ? { ...old, ...row } : old,
           );
-          qc.setQueryData(["token-trainer-stats", id], (old: Record<string, unknown> | undefined) => old ? { ...old, ...row } : old);
-          qc.setQueryData(["token-trainer-status", id], (old: Record<string, unknown> | undefined) => old ? { ...old, ...row } : old);
-          qc.setQueryData(["trainer", id], (old: Record<string, unknown> | undefined) => old ? { ...old, ...row } : old);
+          qc.setQueryData(
+            ["token-trainer-stats", id],
+            (old: Record<string, unknown> | undefined) => (old ? { ...old, ...row } : old),
+          );
+          qc.setQueryData(
+            ["token-trainer-status", id],
+            (old: Record<string, unknown> | undefined) => (old ? { ...old, ...row } : old),
+          );
+          qc.setQueryData(["trainer", id], (old: Record<string, unknown> | undefined) =>
+            old ? { ...old, ...row } : old,
+          );
         } else {
           void qc.invalidateQueries({ queryKey: ["token-trainer", id] });
           void qc.invalidateQueries({ queryKey: ["token-trainer-stats", id] });
           void qc.invalidateQueries({ queryKey: ["token-trainer-status", id] });
         }
       }
-      qc.setQueryData<Map<string, TokenCharacterVisual>>(tokenVisualQueryKeyRef.current, (current) => {
-        if (!current) return current;
-        const next = new Map(current);
-        for (const [id, row] of pendingPokemonRows) {
-          const key = `pokemon:${id}`;
-          const previous = next.get(key);
-          if (!previous) continue;
-          next.set(key, {
-            ...previous,
-            image_url: "image_url" in row ? (row.image_url as string | null) : previous.image_url,
-            status: Array.isArray(row.status) ? row.status as string[] : previous.status,
-            is_shiny: "is_shiny" in row ? Boolean(row.is_shiny) : previous.is_shiny,
-          });
-        }
-        for (const [id, row] of pendingTrainerRows) {
-          const key = `trainer:${id}`;
-          const previous = next.get(key);
-          if (!previous) continue;
-          next.set(key, {
-            ...previous,
-            image_url: "image_url" in row ? (row.image_url as string | null) : previous.image_url,
-            status: Array.isArray(row.status_conditions) ? row.status_conditions as string[] : previous.status,
-          });
-        }
-        return next;
-      });
+      qc.setQueryData<Map<string, TokenCharacterVisual>>(
+        tokenVisualQueryKeyRef.current,
+        (current) => {
+          if (!current) return current;
+          const next = new Map(current);
+          for (const [id, row] of pendingPokemonRows) {
+            const key = `pokemon:${id}`;
+            const previous = next.get(key);
+            if (!previous) continue;
+            next.set(key, {
+              ...previous,
+              image_url: "image_url" in row ? (row.image_url as string | null) : previous.image_url,
+              status: Array.isArray(row.status) ? (row.status as string[]) : previous.status,
+              is_shiny: "is_shiny" in row ? Boolean(row.is_shiny) : previous.is_shiny,
+            });
+          }
+          for (const [id, row] of pendingTrainerRows) {
+            const key = `trainer:${id}`;
+            const previous = next.get(key);
+            if (!previous) continue;
+            next.set(key, {
+              ...previous,
+              image_url: "image_url" in row ? (row.image_url as string | null) : previous.image_url,
+              status: Array.isArray(row.status_conditions)
+                ? (row.status_conditions as string[])
+                : previous.status,
+            });
+          }
+          return next;
+        },
+      );
       if (needsVisualRefetch) {
         void qc.invalidateQueries({ queryKey: ["map-token-visuals", gameId, pageId] });
       }
@@ -652,7 +846,8 @@ export function MapBoard({
       row?: Record<string, unknown>,
     ) => {
       if (!id) return;
-      const visibleIds = kind === "pokemon" ? visiblePokemonIdsRef.current : visibleTrainerIdsRef.current;
+      const visibleIds =
+        kind === "pokemon" ? visiblePokemonIdsRef.current : visibleTrainerIdsRef.current;
       if (!visibleIds.has(id)) return;
       (kind === "pokemon" ? pendingPokemonIds : pendingTrainerIds).add(id);
       if (row) (kind === "pokemon" ? pendingPokemonRows : pendingTrainerRows).set(id, row);
@@ -668,11 +863,28 @@ export function MapBoard({
       const id = (row?.id as string | undefined) ?? previous?.id;
       if (!id) return;
       if (row) {
-        const merge = (current: Record<string, unknown> | undefined) => current ? { ...current, ...row } : current;
+        const normalizedRow =
+          kind === "digirole_digimon" && "image_hidden" in row
+            ? {
+                ...row,
+                image_url: row.image_hidden ? null : row.image_url,
+                suppress_fallback: Boolean(row.image_hidden),
+              }
+            : kind === "digirole_tamer" && "image_url" in row
+              ? { ...row, suppress_fallback: !row.image_url }
+              : row;
+        const merge = (current: Record<string, unknown> | undefined) =>
+          current ? { ...current, ...normalizedRow } : current;
         qc.setQueriesData({ queryKey: ["token-digirole", kind, id] }, merge);
         qc.setQueryData(["token-digirole-stats", kind, id], merge);
         qc.setQueryData([`token-${kind}-status`, id], merge);
-        qc.setQueryData([kind === "digirole_tamer" ? "digirole-tamer" : "digirole-digimon", id], merge);
+        qc.setQueryData(
+          [kind === "digirole_tamer" ? "digirole-tamer" : "digirole-digimon", id],
+          merge,
+        );
+        if (kind === "digirole_tamer" && "hybrid_state" in row) {
+          void qc.invalidateQueries({ queryKey: [`token-${kind}-status`, id] });
+        }
       } else {
         void qc.invalidateQueries({ queryKey: ["token-digirole", kind, id] });
         void qc.invalidateQueries({ queryKey: ["token-digirole-stats", kind, id] });
@@ -680,6 +892,9 @@ export function MapBoard({
       }
       void qc.invalidateQueries({ queryKey: ["digirole-target-info", gameId] });
       void qc.invalidateQueries({ queryKey: ["digirole-files", gameId] });
+      if (kind === "digirole_digimon") {
+        void qc.invalidateQueries({ queryKey: ["digirole-roster"] });
+      }
     };
 
     let wasSubscribed = false;
@@ -690,18 +905,28 @@ export function MapBoard({
         "postgres_changes",
         { event: "*", schema: "public", table: "pokemon", filter: `game_id=eq.${gameId}` },
         (payload) => {
-          const id = (payload.new as { id?: string } | null)?.id
-            ?? (payload.old as { id?: string } | null)?.id;
-          scheduleCharacterUpdate("pokemon", id, payload.new as Record<string, unknown> | undefined);
+          const id =
+            (payload.new as { id?: string } | null)?.id ??
+            (payload.old as { id?: string } | null)?.id;
+          scheduleCharacterUpdate(
+            "pokemon",
+            id,
+            payload.new as Record<string, unknown> | undefined,
+          );
         },
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "trainers", filter: `game_id=eq.${gameId}` },
         (payload) => {
-          const id = (payload.new as { id?: string } | null)?.id
-            ?? (payload.old as { id?: string } | null)?.id;
-          scheduleCharacterUpdate("trainer", id, payload.new as Record<string, unknown> | undefined);
+          const id =
+            (payload.new as { id?: string } | null)?.id ??
+            (payload.old as { id?: string } | null)?.id;
+          scheduleCharacterUpdate(
+            "trainer",
+            id,
+            payload.new as Record<string, unknown> | undefined,
+          );
         },
       )
       .on(
@@ -711,7 +936,12 @@ export function MapBoard({
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "digirole_digimons", filter: `game_id=eq.${gameId}` },
+        {
+          event: "*",
+          schema: "public",
+          table: "digirole_digimons",
+          filter: `game_id=eq.${gameId}`,
+        },
         (payload) => applyDigiRoleUpdate("digirole_digimon", payload),
       )
       .subscribe((status) => {
@@ -739,7 +969,14 @@ export function MapBoard({
     queryKey: ["map_drawings", gameId, pageId],
     enabled: !!pageId,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("map_drawings" as never).select("*").eq("game_id", gameId).eq("page_id", pageId!) as unknown as Promise<{ data: Drawing[] | null; error: { message: string } | null }>);
+      const { data, error } = await (supabase
+        .from("map_drawings" as never)
+        .select("*")
+        .eq("game_id", gameId)
+        .eq("page_id", pageId!) as unknown as Promise<{
+        data: Drawing[] | null;
+        error: { message: string } | null;
+      }>);
       if (error) throw new Error(error.message);
       return (data ?? []) as Drawing[];
     },
@@ -754,7 +991,9 @@ export function MapBoard({
         () => qc.invalidateQueries({ queryKey: ["map_drawings", gameId, pageId] }),
       )
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [gameId, pageId, qc]);
 
   const visibleDrawings = useMemo(
@@ -767,18 +1006,35 @@ export function MapBoard({
   const bgDragRef = useRef<
     | { id: string; kind: "move"; sx: number; sy: number; ox: number; oy: number }
     | { id: string; kind: "resize"; sx: number; sy: number; ow: number; oh: number }
-    | { id: string; kind: "rotate"; cx: number; cy: number; startAngle: number; baseRotation: number }
+    | {
+        id: string;
+        kind: "rotate";
+        cx: number;
+        cy: number;
+        startAngle: number;
+        baseRotation: number;
+      }
     | null
   >(null);
   const [bgLocal, setBgLocal] = useState<Record<string, Partial<MapBg>>>({});
   const bgLocalRef = useRef(bgLocal);
-  useEffect(() => { bgLocalRef.current = bgLocal; }, [bgLocal]);
+  useEffect(() => {
+    bgLocalRef.current = bgLocal;
+  }, [bgLocal]);
 
   const { data: mapBgsRaw = [] } = useQuery({
     queryKey: ["map_backgrounds", gameId, pageId],
     enabled: !!pageId,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("map_backgrounds" as never).select("*").eq("game_id", gameId).eq("page_id", pageId!).order("z_index", { ascending: true }) as unknown as Promise<{ data: MapBg[] | null; error: { message: string } | null }>);
+      const { data, error } = await (supabase
+        .from("map_backgrounds" as never)
+        .select("*")
+        .eq("game_id", gameId)
+        .eq("page_id", pageId!)
+        .order("z_index", { ascending: true }) as unknown as Promise<{
+        data: MapBg[] | null;
+        error: { message: string } | null;
+      }>);
       if (error) throw new Error(error.message);
       return (data ?? []) as MapBg[];
     },
@@ -793,7 +1049,9 @@ export function MapBoard({
         () => qc.invalidateQueries({ queryKey: ["map_backgrounds", gameId, pageId] }),
       )
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [gameId, pageId, qc]);
 
   const mapBgs = useMemo<MapBg[]>(
@@ -802,9 +1060,18 @@ export function MapBoard({
   );
 
   async function addBackground(url: string, options: BackgroundAddOptions = {}) {
-    if (!isNarrator) { toast.error("Apenas o narrador pode adicionar imagens ao cenário."); return; }
-    if (!pageId) { toast.error("Nenhuma página ativa."); return; }
-    if (!url) { toast.error("Informe uma imagem."); return; }
+    if (!isNarrator) {
+      toast.error("Apenas o narrador pode adicionar imagens ao cenário.");
+      return;
+    }
+    if (!pageId) {
+      toast.error("Nenhuma página ativa.");
+      return;
+    }
+    if (!url) {
+      toast.error("Informe uma imagem.");
+      return;
+    }
     const maxZ = mapBgsRaw.reduce((m, b) => Math.max(m, b.z_index), 0);
     const cols = Math.max(1, Math.min(12, Math.floor(options.cols ?? 1)));
     const rows = Math.max(1, Math.min(12, Math.floor(options.rows ?? 1)));
@@ -836,18 +1103,30 @@ export function MapBoard({
         tile_row: rows * cols > 1 ? row : null,
       };
     });
-    const { error } = await (supabase.from("map_backgrounds" as never).insert(records as never) as unknown as Promise<{ error: { message: string } | null }>);
+    const { error } = await (supabase
+      .from("map_backgrounds" as never)
+      .insert(records as never) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
   }
   async function deleteBackground(id: string) {
-    const { error } = await (supabase.from("map_backgrounds" as never).delete().eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
+    const { error } = await (supabase
+      .from("map_backgrounds" as never)
+      .delete()
+      .eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
     if (selectedBgId === id) setSelectedBgId(null);
   }
   async function persistBg(id: string, patch: Partial<MapBg>) {
-    const { error } = await (supabase.from("map_backgrounds" as never).update(patch as never).eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
+    const { error } = await (supabase
+      .from("map_backgrounds" as never)
+      .update(patch as never)
+      .eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
-    setBgLocal((s) => { const n = { ...s }; delete n[id]; return n; });
+    setBgLocal((s) => {
+      const n = { ...s };
+      delete n[id];
+      return n;
+    });
   }
   async function reorderBg(id: string, dir: "front" | "back") {
     const bg = mapBgsRaw.find((b) => b.id === id);
@@ -857,10 +1136,11 @@ export function MapBoard({
     await persistBg(id, { z_index: dir === "front" ? maxZ + 1 : minZ - 1 });
   }
 
-
   // ───────────── Fog of War + Walls (Phase 2) ─────────────
   const [fogTool, setFogTool] = useState<"reveal" | "hide">("reveal");
-  const [fogRect, setFogRect] = useState<{ ax: number; ay: number; bx: number; by: number } | null>(null);
+  const [fogRect, setFogRect] = useState<{ ax: number; ay: number; bx: number; by: number } | null>(
+    null,
+  );
   const [wallTool, setWallTool] = useState<WallTool>("single");
   const [wallStart, setWallStart] = useState<{ x: number; y: number } | null>(null);
   const [wallPolyFirst, setWallPolyFirst] = useState<{ x: number; y: number } | null>(null);
@@ -896,7 +1176,14 @@ export function MapBoard({
     queryKey: ["fog_regions", gameId, pageId],
     enabled: !!pageId,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("fog_regions" as never).select("*").eq("game_id", gameId).eq("page_id", pageId!) as unknown as Promise<{ data: FogRegion[] | null; error: { message: string } | null }>);
+      const { data, error } = await (supabase
+        .from("fog_regions" as never)
+        .select("*")
+        .eq("game_id", gameId)
+        .eq("page_id", pageId!) as unknown as Promise<{
+        data: FogRegion[] | null;
+        error: { message: string } | null;
+      }>);
       if (error) throw new Error(error.message);
       return (data ?? []) as FogRegion[];
     },
@@ -905,7 +1192,14 @@ export function MapBoard({
     queryKey: ["walls", gameId, pageId],
     enabled: !!pageId,
     queryFn: async () => {
-      const { data, error } = await (supabase.from("walls" as never).select("*").eq("game_id", gameId).eq("page_id", pageId!) as unknown as Promise<{ data: Wall[] | null; error: { message: string } | null }>);
+      const { data, error } = await (supabase
+        .from("walls" as never)
+        .select("*")
+        .eq("game_id", gameId)
+        .eq("page_id", pageId!) as unknown as Promise<{
+        data: Wall[] | null;
+        error: { message: string } | null;
+      }>);
       if (error) throw new Error(error.message);
       return (data ?? []) as Wall[];
     },
@@ -917,7 +1211,10 @@ export function MapBoard({
     enabled: !!pageId,
     queryFn: async () => {
       const { data } = await supabase
-        .from("scenarios").select("darkness_level").eq("id", pageId!).maybeSingle();
+        .from("scenarios")
+        .select("darkness_level")
+        .eq("id", pageId!)
+        .maybeSingle();
       return (data as { darkness_level: number } | null) ?? { darkness_level: 0 };
     },
   });
@@ -925,39 +1222,88 @@ export function MapBoard({
   const fogActive = visibility.fogEnabled || visibility.dynamicLighting || darknessLevel > 0;
   useEffect(() => {
     if (!pageId) return;
-    const ch = supabase.channel(`scenario-meta:${pageId}`).on("postgres_changes",
-      { event: "UPDATE", schema: "public", table: "scenarios", filter: `id=eq.${pageId}` },
-      () => qc.invalidateQueries({ queryKey: ["scenario-meta", pageId] })).subscribe();
-    return () => { supabase.removeChannel(ch); };
+    const ch = supabase
+      .channel(`scenario-meta:${pageId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "scenarios", filter: `id=eq.${pageId}` },
+        () => qc.invalidateQueries({ queryKey: ["scenario-meta", pageId] }),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [pageId, qc]);
   useEffect(() => {
     if (!pageId) return;
-    const ch1 = supabase.channel(`fog:${gameId}:${pageId}`).on("postgres_changes",
-      { event: "*", schema: "public", table: "fog_regions", filter: `page_id=eq.${pageId}` },
-      () => qc.invalidateQueries({ queryKey: ["fog_regions", gameId, pageId] })).subscribe();
-    const ch2 = supabase.channel(`walls:${gameId}:${pageId}`).on("postgres_changes",
-      { event: "*", schema: "public", table: "walls", filter: `page_id=eq.${pageId}` },
-      () => qc.invalidateQueries({ queryKey: ["walls", gameId, pageId] })).subscribe();
-    return () => { supabase.removeChannel(ch1); supabase.removeChannel(ch2); };
+    const ch1 = supabase
+      .channel(`fog:${gameId}:${pageId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "fog_regions", filter: `page_id=eq.${pageId}` },
+        () => qc.invalidateQueries({ queryKey: ["fog_regions", gameId, pageId] }),
+      )
+      .subscribe();
+    const ch2 = supabase
+      .channel(`walls:${gameId}:${pageId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "walls", filter: `page_id=eq.${pageId}` },
+        () => qc.invalidateQueries({ queryKey: ["walls", gameId, pageId] }),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch1);
+      supabase.removeChannel(ch2);
+    };
   }, [gameId, pageId, qc]);
 
-  async function insertFogRegion(ax: number, ay: number, bx: number, by: number, revealed: boolean) {
+  async function insertFogRegion(
+    ax: number,
+    ay: number,
+    bx: number,
+    by: number,
+    revealed: boolean,
+  ) {
     if (!pageId) return;
-    const x = Math.min(ax, bx), y = Math.min(ay, by);
-    const w = Math.abs(bx - ax), h = Math.abs(by - ay);
+    const x = Math.min(ax, bx),
+      y = Math.min(ay, by);
+    const w = Math.abs(bx - ax),
+      h = Math.abs(by - ay);
     if (w < 0.005 || h < 0.005) return;
-    const { error } = await (supabase.from("fog_regions" as never).insert({ game_id: gameId, page_id: pageId, x, y, w, h, revealed, author_id: userId } as never) as unknown as Promise<{ error: { message: string } | null }>);
+    const { error } = await (supabase.from("fog_regions" as never).insert({
+      game_id: gameId,
+      page_id: pageId,
+      x,
+      y,
+      w,
+      h,
+      revealed,
+      author_id: userId,
+    } as never) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
   }
   async function clearFog() {
     if (!pageId) return;
     if (!confirm("Apagar toda a fog desta página?")) return;
-    const { error } = await (supabase.from("fog_regions" as never).delete().eq("page_id", pageId) as unknown as Promise<{ error: { message: string } | null }>);
+    const { error } = await (supabase
+      .from("fog_regions" as never)
+      .delete()
+      .eq("page_id", pageId) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
   }
   async function revealAll() {
     if (!pageId) return;
-    const { error } = await (supabase.from("fog_regions" as never).insert({ game_id: gameId, page_id: pageId, x: 0, y: 0, w: 1, h: 1, revealed: true, author_id: userId } as never) as unknown as Promise<{ error: { message: string } | null }>);
+    const { error } = await (supabase.from("fog_regions" as never).insert({
+      game_id: gameId,
+      page_id: pageId,
+      x: 0,
+      y: 0,
+      w: 1,
+      h: 1,
+      revealed: true,
+      author_id: userId,
+    } as never) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
   }
   async function insertWall(
@@ -986,60 +1332,92 @@ export function MapBoard({
       is_open: false,
       locked: false,
     };
-    const { error } = await (supabase.from("walls" as never).insert(fullPayload as never) as unknown as Promise<{ error: { message: string } | null }>);
+    const { error } = await (supabase
+      .from("walls" as never)
+      .insert(fullPayload as never) as unknown as Promise<{ error: { message: string } | null }>);
     if (isSchemaCacheColumnError(error, WALL_SCHEMA_COLUMNS)) {
-      const retry = await (supabase.from("walls" as never).insert(basePayload as never) as unknown as Promise<{ error: { message: string } | null }>);
+      const retry = await (supabase
+        .from("walls" as never)
+        .insert(basePayload as never) as unknown as Promise<{ error: { message: string } | null }>);
       if (retry.error) toast.error(retry.error.message);
-      else toast.warning("Parede salva como basica. Aplique a migracao no Supabase para ativar portas, janelas e bloqueios avancados.");
+      else
+        toast.warning(
+          "Parede salva como basica. Aplique a migracao no Supabase para ativar portas, janelas e bloqueios avancados.",
+        );
       return;
     }
     if (error) toast.error(error.message);
   }
   async function updateWall(id: string, patch: Partial<Wall>) {
-    const { error } = await (supabase.from("walls" as never).update(patch as never).eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
+    const { error } = await (supabase
+      .from("walls" as never)
+      .update(patch as never)
+      .eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
     if (isSchemaCacheColumnError(error, WALL_SCHEMA_COLUMNS)) {
-      const fallback = Object.fromEntries(Object.entries(patch).filter(([key]) => !WALL_SCHEMA_COLUMNS.includes(key)));
+      const fallback = Object.fromEntries(
+        Object.entries(patch).filter(([key]) => !WALL_SCHEMA_COLUMNS.includes(key)),
+      );
       if (Object.keys(fallback).length === 0) {
         toast.warning("Esse ajuste precisa da migracao de paredes aplicada no Supabase.");
         return;
       }
-      const retry = await (supabase.from("walls" as never).update(fallback as never).eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
+      const retry = await (supabase
+        .from("walls" as never)
+        .update(fallback as never)
+        .eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
       if (retry.error) toast.error(retry.error.message);
       return;
     }
     if (error) toast.error(error.message);
   }
   async function toggleDoor(w: Wall) {
-    if (!isNarrator || w.locked || ((w.kind ?? "wall") === "wall")) return;
+    if (!isNarrator || w.locked || (w.kind ?? "wall") === "wall") return;
     await updateWall(w.id, { is_open: !w.is_open });
   }
   async function deleteWall(id: string) {
-    const { error } = await (supabase.from("walls" as never).delete().eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
+    const { error } = await (supabase
+      .from("walls" as never)
+      .delete()
+      .eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
   }
   async function clearWalls() {
     if (!pageId) return;
     if (!confirm("Apagar todas as paredes desta página?")) return;
-    const { error } = await (supabase.from("walls" as never).delete().eq("page_id", pageId) as unknown as Promise<{ error: { message: string } | null }>);
+    const { error } = await (supabase
+      .from("walls" as never)
+      .delete()
+      .eq("page_id", pageId) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
   }
   async function toggleGameFlag(field: "fog_enabled" | "dynamic_lighting", value: boolean) {
-    const { error } = await (supabase.from("games").update({ [field]: value } as never).eq("id", gameId) as unknown as Promise<{ error: { message: string } | null }>);
+    const { error } = await (supabase
+      .from("games")
+      .update({ [field]: value } as never)
+      .eq("id", gameId) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
     else qc.invalidateQueries({ queryKey: ["game", gameId] });
   }
   async function setTokenVision(t: Token) {
     const cur = t.vision_radius ?? 0;
-    const raw = window.prompt(`Raio de visão de "${t.label}" (em células, 0 = sem visão):`, String(cur));
+    const raw = window.prompt(
+      `Raio de visão de "${t.label}" (em células, 0 = sem visão):`,
+      String(cur),
+    );
     if (raw === null) return;
     const n = Math.max(0, Math.min(60, Number(raw) || 0));
-    const { error } = await (supabase.from("tokens").update({ vision_radius: n } as never).eq("id", t.id) as unknown as Promise<{ error: { message: string } | null }>);
+    const { error } = await (supabase
+      .from("tokens")
+      .update({ vision_radius: n } as never)
+      .eq("id", t.id) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
   }
 
   // Raycasting helper — returns visibility polygon in pixel coords.
   function castPolygon(
-    ox: number, oy: number, radius: number,
+    ox: number,
+    oy: number,
+    radius: number,
     wallsPx: { ax: number; ay: number; bx: number; by: number }[],
     cone?: { angle: number; direction: number },
   ): [number, number][] {
@@ -1051,11 +1429,14 @@ export function MapBoard({
       const ang = fullCircle
         ? (i / N) * Math.PI * 2
         : cone.direction - cone.angle / 2 + (i / Math.max(1, N - 1)) * cone.angle;
-      const dx = Math.cos(ang), dy = Math.sin(ang);
+      const dx = Math.cos(ang),
+        dy = Math.sin(ang);
       let bestT = radius;
       for (const w of wallsPx) {
-        const sx = w.ax - ox, sy = w.ay - oy;
-        const rx = w.bx - w.ax, ry = w.by - w.ay;
+        const sx = w.ax - ox,
+          sy = w.ay - oy;
+        const rx = w.bx - w.ax,
+          ry = w.by - w.ay;
         const denom = dx * ry - dy * rx;
         if (Math.abs(denom) < 1e-6) continue;
         const tt = (sx * ry - sy * rx) / denom;
@@ -1067,7 +1448,11 @@ export function MapBoard({
     return pts;
   }
   function ptsToPath(pts: [number, number][], W: number, H: number): string {
-    return pts.map(([px, py], i) => `${i === 0 ? "M" : "L"}${(px / W) * 1000},${(py / H) * 1000}`).join(" ") + " Z";
+    return (
+      pts
+        .map(([px, py], i) => `${i === 0 ? "M" : "L"}${(px / W) * 1000},${(py / H) * 1000}`)
+        .join(" ") + " Z"
+    );
   }
 
   // Visibility polygons (vision) — used as fog mask reveals.
@@ -1079,25 +1464,56 @@ export function MapBoard({
       ? tokens.filter((t) => (t.vision_radius ?? 0) > 0)
       : tokens.filter((t) => canActAsOwner(t) && (t.vision_radius ?? 0) > 0);
     if (sources.length === 0) return [];
-    const W = rect.width, H = rect.height;
-    const wallsPx = walls.filter((w) => !w.is_open && w.blocks_sight !== false).map((w) => ({ ax: w.x1 * W, ay: w.y1 * H, bx: w.x2 * W, by: w.y2 * H }));
-    return sources.map((t) => ptsToPath(castPolygon(t.x * W, t.y * H, (t.vision_radius ?? 0) * gridSettings.size, wallsPx), W, H));
-  }, [tokens, walls, visibility.dynamicLighting, darknessLevel, isNarrator, gridSettings.size, canActAsOwner]);
+    const W = rect.width,
+      H = rect.height;
+    const wallsPx = walls
+      .filter((w) => !w.is_open && w.blocks_sight !== false)
+      .map((w) => ({ ax: w.x1 * W, ay: w.y1 * H, bx: w.x2 * W, by: w.y2 * H }));
+    return sources.map((t) =>
+      ptsToPath(
+        castPolygon(t.x * W, t.y * H, (t.vision_radius ?? 0) * gridSettings.size, wallsPx),
+        W,
+        H,
+      ),
+    );
+  }, [
+    tokens,
+    walls,
+    visibility.dynamicLighting,
+    darknessLevel,
+    isNarrator,
+    gridSettings.size,
+    canActAsOwner,
+  ]);
 
   // Light polygons — colored tint, blocks_light only.
   const lightPolygons = useMemo(() => {
-    if (!visibility.dynamicLighting && darknessLevel === 0) return [] as { path: string; color: string; cx: number; cy: number; r: number; bright: number }[];
+    if (!visibility.dynamicLighting && darknessLevel === 0)
+      return [] as {
+        path: string;
+        color: string;
+        cx: number;
+        cy: number;
+        r: number;
+        bright: number;
+      }[];
     const rect = (innerRef.current ?? boardRef.current)?.getBoundingClientRect();
     if (!rect) return [];
-    const lights = tokens.filter((t) => t.light_enabled && ((t.light_radius_bright ?? 0) + (t.light_radius_dim ?? 0)) > 0);
+    const lights = tokens.filter(
+      (t) => t.light_enabled && (t.light_radius_bright ?? 0) + (t.light_radius_dim ?? 0) > 0,
+    );
     if (lights.length === 0) return [];
-    const W = rect.width, H = rect.height;
-    const wallsPx = walls.filter((w) => !w.is_open && w.blocks_light !== false).map((w) => ({ ax: w.x1 * W, ay: w.y1 * H, bx: w.x2 * W, by: w.y2 * H }));
+    const W = rect.width,
+      H = rect.height;
+    const wallsPx = walls
+      .filter((w) => !w.is_open && w.blocks_light !== false)
+      .map((w) => ({ ax: w.x1 * W, ay: w.y1 * H, bx: w.x2 * W, by: w.y2 * H }));
     return lights.map((t) => {
       const bright = (t.light_radius_bright ?? 0) * gridSettings.size;
       const dim = (t.light_radius_dim ?? 0) * gridSettings.size;
       const total = bright + dim;
-      const ox = t.x * W, oy = t.y * H;
+      const ox = t.x * W,
+        oy = t.y * H;
       const coneAngle = ((t.light_angle ?? 360) * Math.PI) / 180;
       const pts = castPolygon(ox, oy, total, wallsPx, {
         angle: coneAngle,
@@ -1113,17 +1529,24 @@ export function MapBoard({
       };
     });
   }, [tokens, walls, visibility.dynamicLighting, darknessLevel, gridSettings.size]);
-  
+
   // ─────────────────────────────────────────────────────────
 
   const [exploredPaths, setExploredPaths] = useState<string[]>([]);
-  const exploredStorageKey = useMemo(() => `fog-memory:${gameId}:${pageId ?? "none"}:${userId}`, [gameId, pageId, userId]);
+  const exploredStorageKey = useMemo(
+    () => `fog-memory:${gameId}:${pageId ?? "none"}:${userId}`,
+    [gameId, pageId, userId],
+  );
 
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(exploredStorageKey);
       const parsed = raw ? JSON.parse(raw) : [];
-      setExploredPaths(Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string").slice(-160) : []);
+      setExploredPaths(
+        Array.isArray(parsed)
+          ? parsed.filter((v): v is string => typeof v === "string").slice(-160)
+          : [],
+      );
     } catch {
       setExploredPaths([]);
     }
@@ -1132,7 +1555,9 @@ export function MapBoard({
   useEffect(() => {
     if (isNarrator || visibilityPolygons.length === 0) return;
     setExploredPaths((prev) => {
-      const unique = Array.from(new Set([...prev, ...visibilityPolygons].filter(Boolean))).slice(-160);
+      const unique = Array.from(new Set([...prev, ...visibilityPolygons].filter(Boolean))).slice(
+        -160,
+      );
       try {
         window.localStorage.setItem(exploredStorageKey, JSON.stringify(unique));
       } catch {
@@ -1148,8 +1573,12 @@ export function MapBoard({
     if (!ownerToken) return;
     const timer = window.setTimeout(() => {
       void (async () => {
-        const { error } = await (supabase.from("tokens" as never).update({ explored_mask: exploredPaths.slice(-160) } as never).eq("id", ownerToken.id) as unknown as Promise<{ error: { message: string } | null }>);
-        if (error && !isSchemaCacheColumnError(error, ["explored_mask"])) toast.error(error.message);
+        const { error } = await (supabase
+          .from("tokens" as never)
+          .update({ explored_mask: exploredPaths.slice(-160) } as never)
+          .eq("id", ownerToken.id) as unknown as Promise<{ error: { message: string } | null }>);
+        if (error && !isSchemaCacheColumnError(error, ["explored_mask"]))
+          toast.error(error.message);
       })();
     }, 1200);
     return () => window.clearTimeout(timer);
@@ -1185,7 +1614,8 @@ export function MapBoard({
     return {
       x: (clientX - rect.left) / rect.width,
       y: (clientY - rect.top) / rect.height,
-      rectW: rect.width, rectH: rect.height,
+      rectW: rect.width,
+      rectH: rect.height,
     };
   }
   function pointToRel(clientX: number, clientY: number) {
@@ -1202,7 +1632,9 @@ export function MapBoard({
     const delta = -e.deltaY * 0.0015;
     setZoom((z) => Math.max(0.3, Math.min(4, z * (1 + delta))));
   }
-  function onContextMenu(e: React.MouseEvent) { e.preventDefault(); }
+  function onContextMenu(e: React.MouseEvent) {
+    e.preventDefault();
+  }
   function scheduleLongClickPing(e: React.MouseEvent) {
     const sx = e.clientX;
     const sy = e.clientY;
@@ -1339,16 +1771,29 @@ export function MapBoard({
           return { ...cur, geometry: { points } };
         }
         if (cur.kind === "rect") {
-          const x0 = cur.geometry.x!, y0 = cur.geometry.y!;
-          return { ...cur, geometry: { x: Math.min(x0, p.x), y: Math.min(y0, p.y), w: Math.abs(p.x - x0), h: Math.abs(p.y - y0) } };
+          const x0 = cur.geometry.x!,
+            y0 = cur.geometry.y!;
+          return {
+            ...cur,
+            geometry: {
+              x: Math.min(x0, p.x),
+              y: Math.min(y0, p.y),
+              w: Math.abs(p.x - x0),
+              h: Math.abs(p.y - y0),
+            },
+          };
         }
         if (cur.kind === "circle") {
-          const cx = cur.geometry.cx!, cy = cur.geometry.cy!;
+          const cx = cur.geometry.cx!,
+            cy = cur.geometry.cy!;
           const r = Math.hypot(p.x - cx, p.y - cy);
           return { ...cur, geometry: { cx, cy, r } };
         }
         if (cur.kind === "line") {
-          return { ...cur, geometry: { x1: cur.geometry.x1!, y1: cur.geometry.y1!, x2: p.x, y2: p.y } };
+          return {
+            ...cur,
+            geometry: { x1: cur.geometry.x1!, y1: cur.geometry.y1!, x2: p.x, y2: p.y },
+          };
         }
         return cur;
       });
@@ -1369,7 +1814,8 @@ export function MapBoard({
       if (d.kind === "rect" && ((d.geometry.w ?? 0) < 0.005 || (d.geometry.h ?? 0) < 0.005)) return;
       if (d.kind === "circle" && (d.geometry.r ?? 0) < 0.005) return;
       if (d.kind === "line") {
-        const dx = (d.geometry.x2! - d.geometry.x1!), dy = (d.geometry.y2! - d.geometry.y1!);
+        const dx = d.geometry.x2! - d.geometry.x1!,
+          dy = d.geometry.y2! - d.geometry.y1!;
         if (Math.hypot(dx, dy) < 0.005) return;
       }
       if (d.kind === "freehand" && (d.geometry.points?.length ?? 0) < 2) return;
@@ -1390,23 +1836,35 @@ export function MapBoard({
       text_content: d.text_content,
       author_id: d.author_id,
     };
-    const { error } = await (supabase.from("map_drawings" as never).insert(payload as never) as unknown as Promise<{ error: { message: string } | null }>);
+    const { error } = await (supabase
+      .from("map_drawings" as never)
+      .insert(payload as never) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
   }
   async function deleteDrawing(id: string) {
-    const { error } = await (supabase.from("map_drawings" as never).delete().eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
+    const { error } = await (supabase
+      .from("map_drawings" as never)
+      .delete()
+      .eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
   }
   async function clearMyDrawings() {
     if (!pageId) return;
     if (!confirm("Apagar todos os seus desenhos nesta página?")) return;
-    const q = supabase.from("map_drawings" as never).delete().eq("page_id", pageId).eq("author_id", userId);
+    const q = supabase
+      .from("map_drawings" as never)
+      .delete()
+      .eq("page_id", pageId)
+      .eq("author_id", userId);
     const { error } = await (q as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
   }
 
   async function placeCharacterToken(p: DragCharacterPayload, x: number, y: number) {
-    if (!pageId) { toast.error("Nenhuma página ativa"); return; }
+    if (!pageId) {
+      toast.error("Nenhuma página ativa");
+      return;
+    }
     const optimisticId = `optimistic-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const optimisticToken: Token = {
       id: optimisticId,
@@ -1422,9 +1880,14 @@ export function MapBoard({
       size: gridSettings.size,
       layer: "tokens",
     };
-    qc.setQueryData<Token[]>(["tokens", gameId, pageId], (old) => [...(old ?? []), optimisticToken]);
+    qc.setQueryData<Token[]>(["tokens", gameId, pageId], (old) => [
+      ...(old ?? []),
+      optimisticToken,
+    ]);
     const removeOptimistic = () => {
-      qc.setQueryData<Token[]>(["tokens", gameId, pageId], (old) => (old ?? []).filter((t) => t.id !== optimisticId));
+      qc.setQueryData<Token[]>(["tokens", gameId, pageId], (old) =>
+        (old ?? []).filter((t) => t.id !== optimisticId),
+      );
     };
 
     const { data: createdTokenId, error } = await supabase.rpc("create_token_from_character", {
@@ -1442,7 +1905,9 @@ export function MapBoard({
         qc.setQueryData<Token[]>(["tokens", gameId, pageId], (old) => {
           const current = old ?? [];
           const serverToken = current.find((token) => token.id === createdTokenId);
-          const withoutPending = current.filter((token) => token.id !== optimisticId && token.id !== createdTokenId);
+          const withoutPending = current.filter(
+            (token) => token.id !== optimisticId && token.id !== createdTokenId,
+          );
           return [...withoutPending, serverToken ?? { ...optimisticToken, id: createdTokenId }];
         });
       }
@@ -1452,25 +1917,32 @@ export function MapBoard({
       return;
     }
     if (error) {
-      const fallback = await supabase.from("tokens").insert({
-        game_id: gameId,
-        page_id: pageId,
-        character_kind: p.kind,
-        character_id: p.id,
-        label: p.label,
-        image_url: p.imageUrl ?? null,
-        owner_id: p.ownerId || userId,
-        size: gridSettings.size,
-        layer: "tokens",
-        x, y,
-      }).select("*").single();
+      const fallback = await supabase
+        .from("tokens")
+        .insert({
+          game_id: gameId,
+          page_id: pageId,
+          character_kind: p.kind,
+          character_id: p.id,
+          label: p.label,
+          image_url: p.imageUrl ?? null,
+          owner_id: p.ownerId || userId,
+          size: gridSettings.size,
+          layer: "tokens",
+          x,
+          y,
+        })
+        .select("*")
+        .single();
       if (fallback.error) {
         removeOptimistic();
         toast.error("Não foi possível criar o token", {
           description: `${error.message}. ${fallback.error.message}`,
           action: {
             label: "Tentar novamente",
-            onClick: () => { void placeCharacterToken(p, x, y); },
+            onClick: () => {
+              void placeCharacterToken(p, x, y);
+            },
           },
         });
         return;
@@ -1478,7 +1950,9 @@ export function MapBoard({
       const confirmedToken = fallback.data as Token;
       qc.setQueryData<Token[]>(["tokens", gameId, pageId], (old) => {
         const current = old ?? [];
-        const withoutConfirmed = current.filter((token) => token.id !== optimisticId && token.id !== confirmedToken.id);
+        const withoutConfirmed = current.filter(
+          (token) => token.id !== optimisticId && token.id !== confirmedToken.id,
+        );
         return [...withoutConfirmed, confirmedToken];
       });
     }
@@ -1491,15 +1965,24 @@ export function MapBoard({
 
   useEffect(() => {
     function onPointerDrop(e: Event) {
-      const detail = (e as CustomEvent).detail as { payload?: DragCharacterPayload; clientX?: number; clientY?: number } | undefined;
+      const detail = (e as CustomEvent).detail as
+        { payload?: DragCharacterPayload; clientX?: number; clientY?: number } | undefined;
       if (e.defaultPrevented) return;
-      if (!detail?.payload || typeof detail.clientX !== "number" || typeof detail.clientY !== "number") return;
+      if (
+        !detail?.payload ||
+        typeof detail.clientX !== "number" ||
+        typeof detail.clientY !== "number"
+      )
+        return;
       const handledBySheet = document
         .elementsFromPoint(detail.clientX, detail.clientY)
-        .some((el) => el instanceof HTMLElement && (
-          !!el.closest('[data-trainer-sheet-drop-target="true"]') ||
-          !!el.closest('[data-pokemon-pc-drop-target="true"]')
-        ));
+        .some(
+          (el) =>
+            el instanceof HTMLElement &&
+            (!!el.closest('[data-trainer-sheet-drop-target="true"]') ||
+              !!el.closest('[data-pokemon-pc-drop-target="true"]') ||
+              !!el.closest('[data-digirole-roster-drop-target="true"]')),
+        );
       if (handledBySheet) return;
       const rect = (innerRef.current ?? boardRef.current)?.getBoundingClientRect();
       if (!rect) return;
@@ -1518,16 +2001,26 @@ export function MapBoard({
 
   async function onDrop(e: React.DragEvent) {
     e.preventDefault();
-    if (!pageId) { toast.error("Nenhuma página ativa"); return; }
-    const imageFile = Array.from(e.dataTransfer.files ?? []).find((file) => file.type.startsWith("image/"));
+    if (!pageId) {
+      toast.error("Nenhuma página ativa");
+      return;
+    }
+    const imageFile = Array.from(e.dataTransfer.files ?? []).find((file) =>
+      file.type.startsWith("image/"),
+    );
     if (imageFile) {
       if (!isNarrator || mode !== "background") {
         toast.error("Para soltar uma imagem no mapa, use o modo Backgrounds como narrador.");
         return;
       }
-      if (imageFile.size > 5_000_000) { toast.error("Imagem muito grande (>5MB)"); return; }
+      if (imageFile.size > 5_000_000) {
+        toast.error("Imagem muito grande (>5MB)");
+        return;
+      }
       const reader = new FileReader();
-      reader.onload = () => { void addBackground(String(reader.result)); };
+      reader.onload = () => {
+        void addBackground(String(reader.result));
+      };
       reader.readAsDataURL(imageFile);
       return;
     }
@@ -1547,7 +2040,8 @@ export function MapBoard({
       const t = tokens.find((tk) => tk.id === dragId);
       if (!t) return;
       qc.setQueryData<Token[]>(["tokens", gameId, pageId], (old) =>
-        (old ?? []).map((tk) => (tk.id === dragId ? { ...tk, x, y } : tk)));
+        (old ?? []).map((tk) => (tk.id === dragId ? { ...tk, x, y } : tk)),
+      );
       const { error } = await supabase.from("tokens").update({ x, y }).eq("id", dragId);
       if (error) toast.error(error.message);
       setDragId(null);
@@ -1596,7 +2090,10 @@ export function MapBoard({
 
   async function toggleTokenLayer(id: string, current: "tokens" | "gm") {
     const next = current === "gm" ? "tokens" : "gm";
-    const { error } = await (supabase.from("tokens").update({ layer: next } as never).eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
+    const { error } = await (supabase
+      .from("tokens")
+      .update({ layer: next } as never)
+      .eq("id", id) as unknown as Promise<{ error: { message: string } | null }>);
     if (error) toast.error(error.message);
   }
 
@@ -1619,570 +2116,799 @@ export function MapBoard({
 
   return (
     <>
-    <div className="flex h-full w-full items-center justify-center">
-    <div
-      ref={boardRef}
-      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
-      onDrop={onDrop}
-      onWheel={onWheel}
-      onContextMenu={onContextMenu}
-      onMouseDown={onMouseDown}
-      onMouseMove={onMouseMoveBoard}
-      onMouseUp={onMouseUpBoard}
-      className="relative h-full w-full overflow-hidden rounded-xl border border-border bg-muted"
-      style={{
-        cursor: mode === "ruler" || mode === "draw" || mode === "fog" || mode === "walls" ? "crosshair" : undefined,
-      }}
-    >
-      {topLeftSlot && <div className="absolute right-3 top-3 z-30 flex items-center gap-2">{topLeftSlot}</div>}
-
-      {gridSettings.enabled && (
+      <div className="flex h-full w-full items-center justify-center">
         <div
-          className="pointer-events-none absolute inset-0 z-[1]"
-          style={{
-            opacity: Math.max(0, Math.min(1, gridSettings.opacity / 100)),
-            backgroundImage:
-              `repeating-linear-gradient(to right, transparent 0, transparent ${Math.max(0, viewportGridSize - 1)}px, ${gridSettings.color} ${Math.max(0, viewportGridSize - 1)}px, ${gridSettings.color} ${viewportGridSize}px), repeating-linear-gradient(to bottom, transparent 0, transparent ${Math.max(0, viewportGridSize - 1)}px, ${gridSettings.color} ${Math.max(0, viewportGridSize - 1)}px, ${gridSettings.color} ${viewportGridSize}px)`,
-            backgroundPosition: `${viewportGridOffsetX}px ${viewportGridOffsetY}px`,
+          ref={boardRef}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
           }}
-        />
-      )}
+          onDrop={onDrop}
+          onWheel={onWheel}
+          onContextMenu={onContextMenu}
+          onMouseDown={onMouseDown}
+          onMouseMove={onMouseMoveBoard}
+          onMouseUp={onMouseUpBoard}
+          className="relative h-full w-full overflow-hidden rounded-xl border border-border bg-muted"
+          style={{
+            cursor:
+              mode === "ruler" || mode === "draw" || mode === "fog" || mode === "walls"
+                ? "crosshair"
+                : undefined,
+          }}
+        >
+          {topLeftSlot && (
+            <div className="absolute right-3 top-3 z-30 flex items-center gap-2">{topLeftSlot}</div>
+          )}
 
-      <MapToolbar
-        mode={mode} setMode={setMode}
-        drawTool={drawTool} setDrawTool={setDrawTool}
-        drawColor={drawColor} setDrawColor={setDrawColor}
-        drawWidth={drawWidth} setDrawWidth={setDrawWidth}
-        drawLayer={drawLayer} setDrawLayer={setDrawLayer}
-        isNarrator={isNarrator}
-        showGMLayer={showGMLayer} setShowGMLayer={setShowGMLayer}
-        showBackgrounds={showBackgrounds} setShowBackgrounds={setShowBackgrounds}
-        showTokens={showTokens} setShowTokens={setShowTokens}
-        onClearMine={clearMyDrawings}
-        isMobile={isMobile}
-        visibility={visibility}
-        fogTool={fogTool} setFogTool={setFogTool}
-        wallTool={wallTool} setWallTool={setWallTool}
-        selectedWall={selectedWall}
-        onUpdateWall={updateWall}
-        onDeleteWall={deleteWall}
-        onClearFog={clearFog}
-        onRevealAll={revealAll}
-        onClearWalls={clearWalls}
-        onToggleFog={(v) => toggleGameFlag("fog_enabled", v)}
-        onToggleLighting={(v) => toggleGameFlag("dynamic_lighting", v)}
-        visEnabled={visEnabled} setVisEnabled={setVisEnabled}
-        onAddBackground={addBackground}
-        onDeleteSelectedBg={selectedBgId ? () => void deleteBackground(selectedBgId) : undefined}
-        onSendBgBack={selectedBgId ? () => void reorderBg(selectedBgId, "back") : undefined}
-        onBringBgFront={selectedBgId ? () => void reorderBg(selectedBgId, "front") : undefined}
-        selectedBgId={selectedBgId}
-        pageSwitcherSlot={(
-          <PageSwitcher
-            gameId={gameId}
-            userId={userId}
-            viewingPageId={viewingPageId}
-            activePageId={activePageId}
+          {gridSettings.enabled && (
+            <div
+              className="pointer-events-none absolute inset-0 z-[1]"
+              style={{
+                opacity: Math.max(0, Math.min(1, gridSettings.opacity / 100)),
+                backgroundImage: `repeating-linear-gradient(to right, transparent 0, transparent ${Math.max(0, viewportGridSize - 1)}px, ${gridSettings.color} ${Math.max(0, viewportGridSize - 1)}px, ${gridSettings.color} ${viewportGridSize}px), repeating-linear-gradient(to bottom, transparent 0, transparent ${Math.max(0, viewportGridSize - 1)}px, ${gridSettings.color} ${Math.max(0, viewportGridSize - 1)}px, ${gridSettings.color} ${viewportGridSize}px)`,
+                backgroundPosition: `${viewportGridOffsetX}px ${viewportGridOffsetY}px`,
+              }}
+            />
+          )}
+
+          <MapToolbar
+            mode={mode}
+            setMode={setMode}
+            drawTool={drawTool}
+            setDrawTool={setDrawTool}
+            drawColor={drawColor}
+            setDrawColor={setDrawColor}
+            drawWidth={drawWidth}
+            setDrawWidth={setDrawWidth}
+            drawLayer={drawLayer}
+            setDrawLayer={setDrawLayer}
             isNarrator={isNarrator}
-            onView={(id) => setViewingPageId(id)}
-            embedded
-          />
-        )}
-        toolbarSlot={toolbarSlot}
-        collapsedToolbarSlot={collapsedToolbarSlot}
-      />
-
-      <div
-        ref={innerRef}
-        className="absolute inset-0 origin-center"
-        style={{
-          transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-          ...(backgroundUrl
-            ? { backgroundImage: `url(${backgroundUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
-            : {}),
-        }}
-      >
-      {mapPings.map((ping) => (
-        <div
-          key={ping.id}
-          className="pointer-events-none absolute z-[35] -translate-x-1/2 -translate-y-1/2"
-          style={{ left: `${ping.x * 100}%`, top: `${ping.y * 100}%` }}
-        >
-          <span className="map-ping-wave absolute -left-12 -top-12 h-24 w-24 rounded-full border-2 border-primary bg-primary/10 shadow-[0_0_30px_rgba(239,68,68,0.45)]" />
-          <span className="absolute -left-1.5 -top-1.5 h-3 w-3 rounded-full bg-primary shadow-[0_0_18px_rgba(239,68,68,0.9)]" />
-        </div>
-      ))}
-
-      {/* Multi-image background layer */}
-      {showBackgrounds && mapBgs.map((bg) => {
-        const isSel = selectedBgId === bg.id;
-        const editable = isNarrator && mode === "background";
-        const cropX = bg.crop_x ?? 0;
-        const cropY = bg.crop_y ?? 0;
-        const cropW = bg.crop_w ?? 1;
-        const cropH = bg.crop_h ?? 1;
-        return (
-          <div
-            key={bg.id}
-            className={`absolute ${editable ? "cursor-move" : "pointer-events-none"} ${isSel ? "outline-2 outline-amber-400 outline-dashed" : ""}`}
-            style={{
-              left: `${bg.x * 100}%`,
-              top: `${bg.y * 100}%`,
-              width: `${bg.width * 100}%`,
-              height: `${bg.height * 100}%`,
-              transform: `rotate(${bg.rotation}deg)`,
-              transformOrigin: "center center",
-              zIndex: 0,
-            }}
-            onMouseDown={(e) => {
-              if (!editable) return;
-              e.stopPropagation();
-              setSelectedBgId(bg.id);
-              bgDragRef.current = { id: bg.id, kind: "move", sx: e.clientX, sy: e.clientY, ox: bg.x, oy: bg.y };
-            }}
-          >
-            <div className="pointer-events-none relative h-full w-full overflow-hidden">
-              <img
-                src={bg.image_url}
-                alt=""
-                draggable={false}
-                className="absolute select-none"
-                style={{
-                  left: `${-(cropX / cropW) * 100}%`,
-                  top: `${-(cropY / cropH) * 100}%`,
-                  width: `${100 / cropW}%`,
-                  height: `${100 / cropH}%`,
-                  objectFit: "fill",
-                }}
-              />
-            </div>
-            {editable && isSel && (
-              <>
-                {/* resize handle (bottom-right) */}
-                <div
-                  className="absolute -bottom-2 -right-2 h-4 w-4 cursor-se-resize rounded-sm border-2 border-amber-400 bg-background shadow"
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    bgDragRef.current = { id: bg.id, kind: "resize", sx: e.clientX, sy: e.clientY, ow: bg.width, oh: bg.height };
-                  }}
-                />
-                {/* rotate handle (top) */}
-                <div
-                  className="absolute -top-8 left-1/2 -translate-x-1/2 cursor-grab rounded-full border-2 border-amber-400 bg-background p-1 shadow"
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    const target = (e.currentTarget as HTMLElement).parentElement!.getBoundingClientRect();
-                    const cx = target.left + target.width / 2;
-                    const cy = target.top + target.height / 2;
-                    const startAngle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI;
-                    bgDragRef.current = { id: bg.id, kind: "rotate", cx, cy, startAngle, baseRotation: bg.rotation };
-                  }}
-                >
-                  <RotateCw className="h-3 w-3" />
-                </div>
-              </>
-            )}
-          </div>
-        );
-      })}
-
-      {/* Drawings SVG layer */}
-      <svg
-        className="pointer-events-none absolute inset-0 h-full w-full"
-        viewBox="0 0 1000 1000"
-        preserveAspectRatio="none"
-      >
-        {visibleDrawings.map((d) => renderDrawing(d, false, isNarrator, userId, deleteDrawing))}
-        {drawingShape && renderDrawing(drawingShape, true, isNarrator, userId, deleteDrawing)}
-      </svg>
-
-      {/* Walls layer — visible to narrator only */}
-      {isNarrator && (walls.length > 0 || (wallStart && wallCursor)) && (
-        <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1000 1000" preserveAspectRatio="none">
-          {walls.map((w) => {
-            const kind = w.kind ?? "wall";
-            const selected = selectedWallId === w.id;
-            const mx = ((w.x1 + w.x2) / 2) * 1000;
-            const my = ((w.y1 + w.y2) / 2) * 1000;
-            const color = kind === "door" ? "#f59e0b" : kind === "window" ? "#38bdf8" : w.blocks_light === false ? "#a78bfa" : "#ef4444";
-            return (
-            <g key={w.id}>
-              <line
-                x1={w.x1 * 1000} y1={w.y1 * 1000} x2={w.x2 * 1000} y2={w.y2 * 1000}
-                stroke={color} strokeWidth={selected ? 5 : 3} strokeDasharray={w.is_open ? "2 8" : kind === "wall" ? "4 3" : "8 4"} strokeLinecap="round"
-                vectorEffect="non-scaling-stroke" opacity={w.is_open ? 0.45 : 0.9}
-              />
-              {mode === "walls" && (
-                <g
-                  style={{ cursor: "pointer", pointerEvents: "auto" }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedWallId(w.id);
-                    if (kind !== "wall" && wallTool !== "select") void toggleDoor(w);
-                  }}
-                >
-                  <circle cx={mx} cy={my} r={kind === "wall" ? 8 : 12} fill={selected ? "#fbbf24" : color} />
-                  {kind === "wall" ? (
-                    <text x={mx} y={my + 4} fontSize={11} textAnchor="middle" fill="white" fontWeight="bold">{selected ? "✓" : "•"}</text>
-                  ) : (
-                    <foreignObject x={mx - 8} y={my - 8} width={16} height={16}>
-                      <div className="flex h-4 w-4 items-center justify-center text-white">
-                        {w.is_open ? <DoorOpen className="h-3.5 w-3.5" /> : <DoorClosed className="h-3.5 w-3.5" />}
-                      </div>
-                    </foreignObject>
-                  )}
-                </g>
-              )}
-            </g>
-            );
-          })}
-          {wallStart && wallCursor && (
-            <line
-              x1={wallStart.x * 1000} y1={wallStart.y * 1000}
-              x2={wallCursor.x * 1000} y2={wallCursor.y * 1000}
-              stroke="#fbbf24" strokeWidth={2} vectorEffect="non-scaling-stroke"
-            />
-          )}
-        </svg>
-      )}
-
-      {/* Fog of War + Dynamic Lighting */}
-      {fogActive && visEnabled && (
-        <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1000 1000" preserveAspectRatio="none">
-          <defs>
-            <mask id={`fog-mask-${gameId}`}>
-              {/* Start fully covered */}
-              <rect x="0" y="0" width="1000" height="1000" fill="white" />
-              {/* Subtract revealed regions (manual fog) */}
-              {visibility.fogEnabled && fogRegions.filter((r) => r.revealed).map((r) => (
-                <rect key={r.id} x={r.x * 1000} y={r.y * 1000} width={r.w * 1000} height={r.h * 1000} fill="black" />
-              ))}
-              {/* Subtract vision polygons */}
-              {visibilityPolygons.map((d, i) => (
-                <path key={`vis-${i}`} d={d} fill="black" />
-              ))}
-              {/* Subtract light polygons (light reveals what is lit) */}
-              {lightPolygons.map((l, i) => (
-                <path key={`lit-${i}`} d={l.path} fill="black" />
-              ))}
-              {savedExploredPaths.map((d, i) => (
-                <path key={`memory-${i}`} d={d} fill="black" />
-              ))}
-              {/* Re-cover hidden regions on top */}
-              {visibility.fogEnabled && fogRegions.filter((r) => !r.revealed).map((r) => (
-                <rect key={r.id} x={r.x * 1000} y={r.y * 1000} width={r.w * 1000} height={r.h * 1000} fill="white" />
-              ))}
-            </mask>
-            <mask id={`fog-memory-mask-${gameId}`}>
-              <rect x="0" y="0" width="1000" height="1000" fill="black" />
-              {savedExploredPaths.map((d, i) => (
-                <path key={`memory-soft-${i}`} d={d} fill="white" />
-              ))}
-            </mask>
-          </defs>
-          {savedExploredPaths.length > 0 && !isNarrator && (
-            <rect
-              x="0" y="0" width="1000" height="1000"
-              fill="#000000"
-              opacity={0.28}
-              mask={`url(#fog-memory-mask-${gameId})`}
-            />
-          )}
-          {(() => {
-            const playerDark = visibility.fogEnabled ? 1 : Math.max(darknessLevel, visibility.dynamicLighting ? 0.85 : 0);
-            const op = isNarrator ? Math.min(0.5, playerDark) : playerDark;
-            return (
-              <rect
-                x="0" y="0" width="1000" height="1000"
-                fill="#000000"
-                opacity={op}
-                mask={`url(#fog-mask-${gameId})`}
-              />
-            );
-          })()}
-          {/* Colored light tint inside light polygons */}
-          {lightPolygons.length > 0 && (
-            <g style={{ mixBlendMode: "screen" }}>
-              <defs>
-                {lightPolygons.map((l, i) => (
-                  <radialGradient key={`lg-${i}`} id={`light-grad-${gameId}-${i}`} cx={l.cx} cy={l.cy} r={l.r} gradientUnits="userSpaceOnUse">
-                    <stop offset="0%" stopColor={l.color} stopOpacity={0.55} />
-                    <stop offset={`${Math.round(l.bright * 100)}%`} stopColor={l.color} stopOpacity={0.4} />
-                    <stop offset="100%" stopColor={l.color} stopOpacity={0} />
-                  </radialGradient>
-                ))}
-              </defs>
-              {lightPolygons.map((l, i) => (
-                <path key={`lf-${i}`} d={l.path} fill={`url(#light-grad-${gameId}-${i})`} />
-              ))}
-            </g>
-          )}
-          {/* Live fog rectangle preview */}
-          {isNarrator && mode === "fog" && fogRect && (() => {
-            const x = Math.min(fogRect.ax, fogRect.bx) * 1000;
-            const y = Math.min(fogRect.ay, fogRect.by) * 1000;
-            const w = Math.abs(fogRect.bx - fogRect.ax) * 1000;
-            const h = Math.abs(fogRect.by - fogRect.ay) * 1000;
-            return (
-              <rect x={x} y={y} width={w} height={h}
-                fill={fogTool === "reveal" ? "rgba(34,197,94,0.25)" : "rgba(239,68,68,0.25)"}
-                stroke={fogTool === "reveal" ? "#22c55e" : "#ef4444"} strokeWidth={2}
-                strokeDasharray="4 3" vectorEffect="non-scaling-stroke"
-              />
-            );
-          })()}
-        </svg>
-      )}
-
-      {/* Ruler overlay */}
-      {ruler && rulerInfo && (
-        <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1000 1000" preserveAspectRatio="none">
-          <line
-            x1={ruler.ax * 1000} y1={ruler.ay * 1000}
-            x2={ruler.bx * 1000} y2={ruler.by * 1000}
-            stroke="#fbbf24" strokeWidth={2} strokeDasharray="6 4"
-            vectorEffect="non-scaling-stroke"
-          />
-          <circle cx={ruler.ax * 1000} cy={ruler.ay * 1000} r={5} fill="#fbbf24" vectorEffect="non-scaling-stroke" />
-          <circle cx={ruler.bx * 1000} cy={ruler.by * 1000} r={5} fill="#fbbf24" vectorEffect="non-scaling-stroke" />
-        </svg>
-      )}
-      {ruler && rulerInfo && (
-        <div
-          className="pointer-events-none absolute z-20 rounded bg-black/80 px-2 py-1 text-[11px] font-bold text-amber-300 shadow"
-          style={{
-            left: `${((ruler.ax + ruler.bx) / 2) * 100}%`,
-            top: `${((ruler.ay + ruler.by) / 2) * 100}%`,
-            transform: "translate(-50%, -50%)",
-          }}
-        >
-          {rulerInfo.cells.toFixed(1)} células · {rulerInfo.meters.toFixed(1)} {gridSettings.unitLabel}
-        </div>
-      )}
-
-      {(!isNarrator || showTokens) && tokens.map((t) => {
-        const canMove = isNarrator || canActAsOwner(t);
-        const isSelected = selectedTokenId === t.id;
-        const isHover = hoverTokenId === t.id;
-        const showStats = isSelected || isHover;
-        const onGmLayer = (t.layer ?? "tokens") === "gm";
-        const isHandout = t.style === "handout";
-        const isPokemonSprite = (t.character_kind === "pokemon" || t.character_kind === "digirole_digimon") && !isHandout;
-        return (
-          <div
-            key={t.id}
-              data-map-token
-            onPointerDown={(e) => onTokenPointerDown(e, t, canMove)}
-            onMouseEnter={() => setHoverTokenId(t.id)}
-            onMouseLeave={() => setHoverTokenId((cur) => (cur === t.id ? null : cur))}
-            onClick={(e) => {
-              if (mode !== "select") return;
-              e.stopPropagation();
-              setSelectedTokenId(t.id);
-            }}
-            className="group absolute -translate-x-1/2 -translate-y-1/2 select-none"
-            style={{
-              left: `${t.x * 100}%`,
-              top: `${t.y * 100}%`,
-              width: localSize[t.id] ?? t.size,
-              height: localSize[t.id] ?? t.size,
-              cursor: mode !== "select" ? "inherit" : canMove ? "grab" : "pointer",
-              zIndex: isSelected || isHover ? 20 : 1,
-              opacity: onGmLayer ? 0.7 : 1,
-              touchAction: canMove && mode === "select" ? "none" : undefined,
-              transition: dragId === t.id || resizeTokenId === t.id ? "none" : "left 200ms ease, top 200ms ease, width 120ms ease, height 120ms ease",
-            }}
-            title={t.label}
-          >
-            {/* Auras (rendered behind the avatar, sized in grid cells) */}
-            {!isHandout && [
-              { r: t.aura1_radius ?? 0, c: t.aura1_color ?? "#22c55e" },
-              { r: t.aura2_radius ?? 0, c: t.aura2_color ?? "#3b82f6" },
-            ].map((a, i) => a.r > 0 ? (
-              <div
-                key={`aura-${i}`}
-                className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
-                style={{
-                  width: a.r * gridSettings.size * 2,
-                  height: a.r * gridSettings.size * 2,
-                  backgroundColor: a.c,
-                  opacity: 0.18,
-                  border: `2px solid ${a.c}`,
-                  zIndex: -1,
-                }}
-              />
-            ) : null)}
-            {!isHandout && showStats && (
-              <div className="pointer-events-none absolute left-1/2 -top-2 -translate-x-1/2 -translate-y-full">
-                <TokenStatsBar
-                  kind={t.character_kind}
-                  id={t.character_id}
-                  gameId={gameId}
-                  editable={canMove}
-                  expanded={isSelected}
-                />
-              </div>
-            )}
-            {/* Custom bar (always visible above token when configured) */}
-            {(t.bar_label && t.bar_max && t.bar_max > 0) && (
-              <div className="pointer-events-none absolute left-1/2 -top-3 -translate-x-1/2 -translate-y-full flex flex-col items-center gap-0.5">
-                <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted/70 ring-1 ring-background/80">
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${Math.max(0, Math.min(100, ((t.bar_value ?? 0) / t.bar_max) * 100))}%`,
-                      backgroundColor: t.bar_color ?? "#f59e0b",
-                    }}
-                  />
-                </div>
-                <span className="rounded bg-background/80 px-1 text-[8px] font-bold uppercase tracking-wider text-foreground/80">
-                  {t.bar_label}
-                </span>
-              </div>
-            )}
-            <div className={`relative flex h-full w-full items-center justify-center ${
-              isHandout
-                ? ""
-                : isPokemonSprite
-                  ? isSelected
-                    ? "drop-shadow-[0_0_6px_rgba(251,191,36,0.95)]"
-                    : onGmLayer
-                      ? "drop-shadow-[0_0_5px_rgba(168,85,247,0.9)]"
-                      : ""
-                  : `rounded-full border-2 ${isSelected ? "border-amber-400 ring-2 ring-amber-400/50" : onGmLayer ? "border-purple-500 ring-2 ring-purple-500/40 border-dashed" : "border-primary ring-2 ring-background"} bg-card shadow-md`
-            }`}>
-              <TokenAvatar
-                kind={t.character_kind}
-                id={t.character_id}
-                fallbackImage={t.image_url ?? null}
-                label={t.label}
-                variant={isHandout ? "handout" : "token"}
+            showGMLayer={showGMLayer}
+            setShowGMLayer={setShowGMLayer}
+            showBackgrounds={showBackgrounds}
+            setShowBackgrounds={setShowBackgrounds}
+            showTokens={showTokens}
+            setShowTokens={setShowTokens}
+            onClearMine={clearMyDrawings}
+            isMobile={isMobile}
+            visibility={visibility}
+            fogTool={fogTool}
+            setFogTool={setFogTool}
+            wallTool={wallTool}
+            setWallTool={setWallTool}
+            selectedWall={selectedWall}
+            onUpdateWall={updateWall}
+            onDeleteWall={deleteWall}
+            onClearFog={clearFog}
+            onRevealAll={revealAll}
+            onClearWalls={clearWalls}
+            onToggleFog={(v) => toggleGameFlag("fog_enabled", v)}
+            onToggleLighting={(v) => toggleGameFlag("dynamic_lighting", v)}
+            visEnabled={visEnabled}
+            setVisEnabled={setVisEnabled}
+            onAddBackground={addBackground}
+            onDeleteSelectedBg={
+              selectedBgId ? () => void deleteBackground(selectedBgId) : undefined
+            }
+            onSendBgBack={selectedBgId ? () => void reorderBg(selectedBgId, "back") : undefined}
+            onBringBgFront={selectedBgId ? () => void reorderBg(selectedBgId, "front") : undefined}
+            selectedBgId={selectedBgId}
+            pageSwitcherSlot={
+              <PageSwitcher
                 gameId={gameId}
-                character={tokenVisuals.get(`${t.character_kind}:${t.character_id}`)}
+                userId={userId}
+                viewingPageId={viewingPageId}
+                activePageId={activePageId}
+                isNarrator={isNarrator}
+                onView={(id) => setViewingPageId(id)}
+                embedded
               />
-              {!isHandout && (
-                <TokenStatusBadges
-                  kind={t.character_kind}
-                  id={t.character_id}
-                  character={tokenVisuals.get(`${t.character_kind}:${t.character_id}`)}
-                />
-              )}
-              {t.tint_color && !isPokemonSprite && (
-                <div
-                  className="pointer-events-none absolute inset-0 rounded-full"
-                  style={{ backgroundColor: t.tint_color, opacity: 0.45, mixBlendMode: "multiply" }}
-                />
-              )}
-              {onGmLayer && isNarrator && (
-                <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded bg-purple-600 px-1.5 py-0.5 text-[8px] font-bold uppercase text-white shadow">GM</span>
-              )}
-              {canMove && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); removeToken(t.id); }}
-                  className="absolute -right-1 -top-1 hidden h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow group-hover:flex"
-                  aria-label="Remove token"
-                ><X className="h-3 w-3" /></button>
-              )}
-              {canMove && isSelected && (
-                <div
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    setResizeTokenId(t.id);
-                    resizeOrigin.current = { mx: e.clientX, my: e.clientY, size: localSize[t.id] ?? t.size };
-                  }}
-                  className="absolute -bottom-1 -right-1 h-4 w-4 cursor-se-resize rounded-sm border-2 border-amber-400 bg-background shadow"
-                  title="Drag to resize"
-                />
-              )}
-            </div>
-            <div className="pointer-events-none absolute left-1/2 top-full mt-0.5 -translate-x-1/2 whitespace-nowrap rounded bg-background/90 px-1.5 py-0.5 text-[10px] font-semibold shadow">
-              {t.label}
-            </div>
-            {isSelected && onRoll && mode === "select" && (
+            }
+            toolbarSlot={toolbarSlot}
+            collapsedToolbarSlot={collapsedToolbarSlot}
+          />
+
+          <div
+            ref={innerRef}
+            className="absolute inset-0 origin-center"
+            style={{
+              transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+              ...(backgroundUrl
+                ? {
+                    backgroundImage: `url(${backgroundUrl})`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                  }
+                : {}),
+            }}
+          >
+            {mapPings.map((ping) => (
               <div
-                data-token-action-bar
-                className="absolute left-1/2 top-full mt-6 -translate-x-1/2"
-                onClick={(e) => e.stopPropagation()}
+                key={ping.id}
+                className="pointer-events-none absolute z-[35] -translate-x-1/2 -translate-y-1/2"
+                style={{ left: `${ping.x * 100}%`, top: `${ping.y * 100}%` }}
               >
-                <TokenActionBar
-                  kind={t.character_kind}
-                  id={t.character_id}
-                  tokenId={t.id}
-                  label={t.label}
-                  gameId={gameId}
-                  userId={userId}
-                  onRoll={onRoll}
-                  onClose={() => setSelectedTokenId(null)}
-                  onOpenSheet={() => onOpenSheet?.(t.character_kind, t.character_id, t.label)}
-                  extra={isNarrator ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => toggleTokenLayer(t.id, (t.layer ?? "tokens") as "tokens" | "gm")}
-                        className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-background px-2 text-[11px] font-semibold hover:bg-accent"
-                        title="Mover entre camada visível e GM"
-                      >
-                        {onGmLayer ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
-                        {onGmLayer ? "Tornar visível" : "Mover para GM"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setLightToken({
-                          id: t.id, label: t.label,
-                          light_enabled: !!t.light_enabled,
-                          light_radius_bright: t.light_radius_bright ?? 0,
-                          light_radius_dim: t.light_radius_dim ?? 0,
-                          light_color: t.light_color ?? "#ffd27a",
-                          light_angle: t.light_angle ?? 360,
-                          light_direction: t.light_direction ?? 0,
-                          vision_radius: t.vision_radius ?? 0,
-                        })}
-                        className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-background px-2 text-[11px] font-semibold hover:bg-accent"
-                        title="Visão e luz emitida"
-                      >
-                        <Lightbulb className="h-3 w-3" />
-                        Visão/Luz
-                        {(t.vision_radius ?? 0) > 0 && <span className="opacity-60">·{t.vision_radius}</span>}
-                        {t.light_enabled && <span className="opacity-60">·☼</span>}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAppearanceToken({
-                          id: t.id, label: t.label,
-                          aura1_radius: t.aura1_radius, aura1_color: t.aura1_color,
-                          aura2_radius: t.aura2_radius, aura2_color: t.aura2_color,
-                          tint_color: t.tint_color,
-                          bar_label: t.bar_label, bar_value: t.bar_value, bar_max: t.bar_max,
-                          bar_color: t.bar_color,
-                        })}
-                        className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-background px-2 text-[11px] font-semibold hover:bg-accent"
-                        title="Auras, tinting e barra customizada"
-                      >
-                        <Palette className="h-3 w-3" />
-                        Aparência
-                      </button>
-                    </>
-                  ) : undefined}
+                <span className="map-ping-wave absolute -left-12 -top-12 h-24 w-24 rounded-full border-2 border-primary bg-primary/10 shadow-[0_0_30px_rgba(239,68,68,0.45)]" />
+                <span className="absolute -left-1.5 -top-1.5 h-3 w-3 rounded-full bg-primary shadow-[0_0_18px_rgba(239,68,68,0.9)]" />
+              </div>
+            ))}
+
+            {/* Multi-image background layer */}
+            {showBackgrounds &&
+              mapBgs.map((bg) => {
+                const isSel = selectedBgId === bg.id;
+                const editable = isNarrator && mode === "background";
+                const cropX = bg.crop_x ?? 0;
+                const cropY = bg.crop_y ?? 0;
+                const cropW = bg.crop_w ?? 1;
+                const cropH = bg.crop_h ?? 1;
+                return (
+                  <div
+                    key={bg.id}
+                    className={`absolute ${editable ? "cursor-move" : "pointer-events-none"} ${isSel ? "outline-2 outline-amber-400 outline-dashed" : ""}`}
+                    style={{
+                      left: `${bg.x * 100}%`,
+                      top: `${bg.y * 100}%`,
+                      width: `${bg.width * 100}%`,
+                      height: `${bg.height * 100}%`,
+                      transform: `rotate(${bg.rotation}deg)`,
+                      transformOrigin: "center center",
+                      zIndex: 0,
+                    }}
+                    onMouseDown={(e) => {
+                      if (!editable) return;
+                      e.stopPropagation();
+                      setSelectedBgId(bg.id);
+                      bgDragRef.current = {
+                        id: bg.id,
+                        kind: "move",
+                        sx: e.clientX,
+                        sy: e.clientY,
+                        ox: bg.x,
+                        oy: bg.y,
+                      };
+                    }}
+                  >
+                    <div className="pointer-events-none relative h-full w-full overflow-hidden">
+                      <img
+                        src={bg.image_url}
+                        alt=""
+                        draggable={false}
+                        className="absolute select-none"
+                        style={{
+                          left: `${-(cropX / cropW) * 100}%`,
+                          top: `${-(cropY / cropH) * 100}%`,
+                          width: `${100 / cropW}%`,
+                          height: `${100 / cropH}%`,
+                          objectFit: "fill",
+                        }}
+                      />
+                    </div>
+                    {editable && isSel && (
+                      <>
+                        {/* resize handle (bottom-right) */}
+                        <div
+                          className="absolute -bottom-2 -right-2 h-4 w-4 cursor-se-resize rounded-sm border-2 border-amber-400 bg-background shadow"
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            bgDragRef.current = {
+                              id: bg.id,
+                              kind: "resize",
+                              sx: e.clientX,
+                              sy: e.clientY,
+                              ow: bg.width,
+                              oh: bg.height,
+                            };
+                          }}
+                        />
+                        {/* rotate handle (top) */}
+                        <div
+                          className="absolute -top-8 left-1/2 -translate-x-1/2 cursor-grab rounded-full border-2 border-amber-400 bg-background p-1 shadow"
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            const target = (
+                              e.currentTarget as HTMLElement
+                            ).parentElement!.getBoundingClientRect();
+                            const cx = target.left + target.width / 2;
+                            const cy = target.top + target.height / 2;
+                            const startAngle =
+                              (Math.atan2(e.clientY - cy, e.clientX - cx) * 180) / Math.PI;
+                            bgDragRef.current = {
+                              id: bg.id,
+                              kind: "rotate",
+                              cx,
+                              cy,
+                              startAngle,
+                              baseRotation: bg.rotation,
+                            };
+                          }}
+                        >
+                          <RotateCw className="h-3 w-3" />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+
+            {/* Drawings SVG layer */}
+            <svg
+              className="pointer-events-none absolute inset-0 h-full w-full"
+              viewBox="0 0 1000 1000"
+              preserveAspectRatio="none"
+            >
+              {visibleDrawings.map((d) =>
+                renderDrawing(d, false, isNarrator, userId, deleteDrawing),
+              )}
+              {drawingShape && renderDrawing(drawingShape, true, isNarrator, userId, deleteDrawing)}
+            </svg>
+
+            {/* Walls layer — visible to narrator only */}
+            {isNarrator && (walls.length > 0 || (wallStart && wallCursor)) && (
+              <svg
+                className="pointer-events-none absolute inset-0 h-full w-full"
+                viewBox="0 0 1000 1000"
+                preserveAspectRatio="none"
+              >
+                {walls.map((w) => {
+                  const kind = w.kind ?? "wall";
+                  const selected = selectedWallId === w.id;
+                  const mx = ((w.x1 + w.x2) / 2) * 1000;
+                  const my = ((w.y1 + w.y2) / 2) * 1000;
+                  const color =
+                    kind === "door"
+                      ? "#f59e0b"
+                      : kind === "window"
+                        ? "#38bdf8"
+                        : w.blocks_light === false
+                          ? "#a78bfa"
+                          : "#ef4444";
+                  return (
+                    <g key={w.id}>
+                      <line
+                        x1={w.x1 * 1000}
+                        y1={w.y1 * 1000}
+                        x2={w.x2 * 1000}
+                        y2={w.y2 * 1000}
+                        stroke={color}
+                        strokeWidth={selected ? 5 : 3}
+                        strokeDasharray={w.is_open ? "2 8" : kind === "wall" ? "4 3" : "8 4"}
+                        strokeLinecap="round"
+                        vectorEffect="non-scaling-stroke"
+                        opacity={w.is_open ? 0.45 : 0.9}
+                      />
+                      {mode === "walls" && (
+                        <g
+                          style={{ cursor: "pointer", pointerEvents: "auto" }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedWallId(w.id);
+                            if (kind !== "wall" && wallTool !== "select") void toggleDoor(w);
+                          }}
+                        >
+                          <circle
+                            cx={mx}
+                            cy={my}
+                            r={kind === "wall" ? 8 : 12}
+                            fill={selected ? "#fbbf24" : color}
+                          />
+                          {kind === "wall" ? (
+                            <text
+                              x={mx}
+                              y={my + 4}
+                              fontSize={11}
+                              textAnchor="middle"
+                              fill="white"
+                              fontWeight="bold"
+                            >
+                              {selected ? "✓" : "•"}
+                            </text>
+                          ) : (
+                            <foreignObject x={mx - 8} y={my - 8} width={16} height={16}>
+                              <div className="flex h-4 w-4 items-center justify-center text-white">
+                                {w.is_open ? (
+                                  <DoorOpen className="h-3.5 w-3.5" />
+                                ) : (
+                                  <DoorClosed className="h-3.5 w-3.5" />
+                                )}
+                              </div>
+                            </foreignObject>
+                          )}
+                        </g>
+                      )}
+                    </g>
+                  );
+                })}
+                {wallStart && wallCursor && (
+                  <line
+                    x1={wallStart.x * 1000}
+                    y1={wallStart.y * 1000}
+                    x2={wallCursor.x * 1000}
+                    y2={wallCursor.y * 1000}
+                    stroke="#fbbf24"
+                    strokeWidth={2}
+                    vectorEffect="non-scaling-stroke"
+                  />
+                )}
+              </svg>
+            )}
+
+            {/* Fog of War + Dynamic Lighting */}
+            {fogActive && visEnabled && (
+              <svg
+                className="pointer-events-none absolute inset-0 h-full w-full"
+                viewBox="0 0 1000 1000"
+                preserveAspectRatio="none"
+              >
+                <defs>
+                  <mask id={`fog-mask-${gameId}`}>
+                    {/* Start fully covered */}
+                    <rect x="0" y="0" width="1000" height="1000" fill="white" />
+                    {/* Subtract revealed regions (manual fog) */}
+                    {visibility.fogEnabled &&
+                      fogRegions
+                        .filter((r) => r.revealed)
+                        .map((r) => (
+                          <rect
+                            key={r.id}
+                            x={r.x * 1000}
+                            y={r.y * 1000}
+                            width={r.w * 1000}
+                            height={r.h * 1000}
+                            fill="black"
+                          />
+                        ))}
+                    {/* Subtract vision polygons */}
+                    {visibilityPolygons.map((d, i) => (
+                      <path key={`vis-${i}`} d={d} fill="black" />
+                    ))}
+                    {/* Subtract light polygons (light reveals what is lit) */}
+                    {lightPolygons.map((l, i) => (
+                      <path key={`lit-${i}`} d={l.path} fill="black" />
+                    ))}
+                    {savedExploredPaths.map((d, i) => (
+                      <path key={`memory-${i}`} d={d} fill="black" />
+                    ))}
+                    {/* Re-cover hidden regions on top */}
+                    {visibility.fogEnabled &&
+                      fogRegions
+                        .filter((r) => !r.revealed)
+                        .map((r) => (
+                          <rect
+                            key={r.id}
+                            x={r.x * 1000}
+                            y={r.y * 1000}
+                            width={r.w * 1000}
+                            height={r.h * 1000}
+                            fill="white"
+                          />
+                        ))}
+                  </mask>
+                  <mask id={`fog-memory-mask-${gameId}`}>
+                    <rect x="0" y="0" width="1000" height="1000" fill="black" />
+                    {savedExploredPaths.map((d, i) => (
+                      <path key={`memory-soft-${i}`} d={d} fill="white" />
+                    ))}
+                  </mask>
+                </defs>
+                {savedExploredPaths.length > 0 && !isNarrator && (
+                  <rect
+                    x="0"
+                    y="0"
+                    width="1000"
+                    height="1000"
+                    fill="#000000"
+                    opacity={0.28}
+                    mask={`url(#fog-memory-mask-${gameId})`}
+                  />
+                )}
+                {(() => {
+                  const playerDark = visibility.fogEnabled
+                    ? 1
+                    : Math.max(darknessLevel, visibility.dynamicLighting ? 0.85 : 0);
+                  const op = isNarrator ? Math.min(0.5, playerDark) : playerDark;
+                  return (
+                    <rect
+                      x="0"
+                      y="0"
+                      width="1000"
+                      height="1000"
+                      fill="#000000"
+                      opacity={op}
+                      mask={`url(#fog-mask-${gameId})`}
+                    />
+                  );
+                })()}
+                {/* Colored light tint inside light polygons */}
+                {lightPolygons.length > 0 && (
+                  <g style={{ mixBlendMode: "screen" }}>
+                    <defs>
+                      {lightPolygons.map((l, i) => (
+                        <radialGradient
+                          key={`lg-${i}`}
+                          id={`light-grad-${gameId}-${i}`}
+                          cx={l.cx}
+                          cy={l.cy}
+                          r={l.r}
+                          gradientUnits="userSpaceOnUse"
+                        >
+                          <stop offset="0%" stopColor={l.color} stopOpacity={0.55} />
+                          <stop
+                            offset={`${Math.round(l.bright * 100)}%`}
+                            stopColor={l.color}
+                            stopOpacity={0.4}
+                          />
+                          <stop offset="100%" stopColor={l.color} stopOpacity={0} />
+                        </radialGradient>
+                      ))}
+                    </defs>
+                    {lightPolygons.map((l, i) => (
+                      <path key={`lf-${i}`} d={l.path} fill={`url(#light-grad-${gameId}-${i})`} />
+                    ))}
+                  </g>
+                )}
+                {/* Live fog rectangle preview */}
+                {isNarrator &&
+                  mode === "fog" &&
+                  fogRect &&
+                  (() => {
+                    const x = Math.min(fogRect.ax, fogRect.bx) * 1000;
+                    const y = Math.min(fogRect.ay, fogRect.by) * 1000;
+                    const w = Math.abs(fogRect.bx - fogRect.ax) * 1000;
+                    const h = Math.abs(fogRect.by - fogRect.ay) * 1000;
+                    return (
+                      <rect
+                        x={x}
+                        y={y}
+                        width={w}
+                        height={h}
+                        fill={
+                          fogTool === "reveal" ? "rgba(34,197,94,0.25)" : "rgba(239,68,68,0.25)"
+                        }
+                        stroke={fogTool === "reveal" ? "#22c55e" : "#ef4444"}
+                        strokeWidth={2}
+                        strokeDasharray="4 3"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    );
+                  })()}
+              </svg>
+            )}
+
+            {/* Ruler overlay */}
+            {ruler && rulerInfo && (
+              <svg
+                className="pointer-events-none absolute inset-0 h-full w-full"
+                viewBox="0 0 1000 1000"
+                preserveAspectRatio="none"
+              >
+                <line
+                  x1={ruler.ax * 1000}
+                  y1={ruler.ay * 1000}
+                  x2={ruler.bx * 1000}
+                  y2={ruler.by * 1000}
+                  stroke="#fbbf24"
+                  strokeWidth={2}
+                  strokeDasharray="6 4"
+                  vectorEffect="non-scaling-stroke"
                 />
+                <circle
+                  cx={ruler.ax * 1000}
+                  cy={ruler.ay * 1000}
+                  r={5}
+                  fill="#fbbf24"
+                  vectorEffect="non-scaling-stroke"
+                />
+                <circle
+                  cx={ruler.bx * 1000}
+                  cy={ruler.by * 1000}
+                  r={5}
+                  fill="#fbbf24"
+                  vectorEffect="non-scaling-stroke"
+                />
+              </svg>
+            )}
+            {ruler && rulerInfo && (
+              <div
+                className="pointer-events-none absolute z-20 rounded bg-black/80 px-2 py-1 text-[11px] font-bold text-amber-300 shadow"
+                style={{
+                  left: `${((ruler.ax + ruler.bx) / 2) * 100}%`,
+                  top: `${((ruler.ay + ruler.by) / 2) * 100}%`,
+                  transform: "translate(-50%, -50%)",
+                }}
+              >
+                {rulerInfo.cells.toFixed(1)} células · {rulerInfo.meters.toFixed(1)}{" "}
+                {gridSettings.unitLabel}
               </div>
             )}
+
+            {(!isNarrator || showTokens) &&
+              tokens.map((t) => {
+                const storedSize = Number(t.size);
+                const stableSize = Number.isFinite(storedSize)
+                  ? Math.max(24, Math.min(240, storedSize))
+                  : gridSettings.size;
+                const renderedSize = localSize[t.id] ?? stableSize;
+                const canMove = isNarrator || canActAsOwner(t);
+                const isSelected = selectedTokenId === t.id;
+                const isHover = hoverTokenId === t.id;
+                const showStats = isSelected || isHover;
+                const onGmLayer = (t.layer ?? "tokens") === "gm";
+                const isHandout = t.style === "handout";
+                const isPokemonSprite =
+                  (t.character_kind === "pokemon" || t.character_kind === "digirole_digimon") &&
+                  !isHandout;
+                return (
+                  <div
+                    key={t.id}
+                    data-map-token
+                    onPointerDown={(e) => onTokenPointerDown(e, t, canMove)}
+                    onMouseEnter={() => setHoverTokenId(t.id)}
+                    onMouseLeave={() => setHoverTokenId((cur) => (cur === t.id ? null : cur))}
+                    onClick={(e) => {
+                      if (mode !== "select") return;
+                      e.stopPropagation();
+                      setSelectedTokenId(t.id);
+                    }}
+                    className="group absolute -translate-x-1/2 -translate-y-1/2 select-none"
+                    style={{
+                      left: `${t.x * 100}%`,
+                      top: `${t.y * 100}%`,
+                      width: renderedSize,
+                      height: renderedSize,
+                      cursor: mode !== "select" ? "inherit" : canMove ? "grab" : "pointer",
+                      zIndex: isSelected || isHover ? 20 : 1,
+                      opacity: onGmLayer ? 0.7 : 1,
+                      touchAction: canMove && mode === "select" ? "none" : undefined,
+                      transition:
+                        dragId === t.id || resizeTokenId === t.id
+                          ? "none"
+                          : "left 200ms ease, top 200ms ease",
+                    }}
+                    title={t.label}
+                  >
+                    {/* Auras (rendered behind the avatar, sized in grid cells) */}
+                    {!isHandout &&
+                      [
+                        { r: t.aura1_radius ?? 0, c: t.aura1_color ?? "#22c55e" },
+                        { r: t.aura2_radius ?? 0, c: t.aura2_color ?? "#3b82f6" },
+                      ].map((a, i) =>
+                        a.r > 0 ? (
+                          <div
+                            key={`aura-${i}`}
+                            className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+                            style={{
+                              width: a.r * gridSettings.size * 2,
+                              height: a.r * gridSettings.size * 2,
+                              backgroundColor: a.c,
+                              opacity: 0.18,
+                              border: `2px solid ${a.c}`,
+                              zIndex: -1,
+                            }}
+                          />
+                        ) : null,
+                      )}
+                    {!isHandout && showStats && canMove && (
+                      <div
+                        className="absolute left-1/2 -top-2 -translate-x-1/2 -translate-y-full"
+                        onPointerDown={(event) => event.stopPropagation()}
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <TokenStatsBar
+                          kind={t.character_kind}
+                          id={t.character_id}
+                          gameId={gameId}
+                          editable={canMove}
+                          expanded={isSelected}
+                        />
+                      </div>
+                    )}
+                    {/* Custom bar (always visible above token when configured) */}
+                    {t.bar_label && t.bar_max && t.bar_max > 0 && (
+                      <div className="pointer-events-none absolute left-1/2 -top-3 -translate-x-1/2 -translate-y-full flex flex-col items-center gap-0.5">
+                        <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted/70 ring-1 ring-background/80">
+                          <div
+                            className="h-full rounded-full"
+                            style={{
+                              width: `${Math.max(0, Math.min(100, ((t.bar_value ?? 0) / t.bar_max) * 100))}%`,
+                              backgroundColor: t.bar_color ?? "#f59e0b",
+                            }}
+                          />
+                        </div>
+                        <span className="rounded bg-background/80 px-1 text-[8px] font-bold uppercase tracking-wider text-foreground/80">
+                          {t.bar_label}
+                        </span>
+                      </div>
+                    )}
+                    <div
+                      className={`relative flex h-full w-full items-center justify-center ${
+                        isHandout
+                          ? ""
+                          : isPokemonSprite
+                            ? isSelected
+                              ? "drop-shadow-[0_0_6px_rgba(251,191,36,0.95)]"
+                              : onGmLayer
+                                ? "drop-shadow-[0_0_5px_rgba(168,85,247,0.9)]"
+                                : ""
+                            : `rounded-full border-2 ${isSelected ? "border-amber-400 ring-2 ring-amber-400/50" : onGmLayer ? "border-purple-500 ring-2 ring-purple-500/40 border-dashed" : "border-primary ring-2 ring-background"} bg-card shadow-md`
+                      }`}
+                    >
+                      <TokenAvatar
+                        kind={t.character_kind}
+                        id={t.character_id}
+                        fallbackImage={t.image_url ?? null}
+                        label={t.label}
+                        variant={isHandout ? "handout" : "token"}
+                        gameId={gameId}
+                        character={tokenVisuals.get(`${t.character_kind}:${t.character_id}`)}
+                      />
+                      {!isHandout && (
+                        <TokenStatusBadges
+                          kind={t.character_kind}
+                          id={t.character_id}
+                          character={tokenVisuals.get(`${t.character_kind}:${t.character_id}`)}
+                        />
+                      )}
+                      {t.tint_color && !isPokemonSprite && (
+                        <div
+                          className="pointer-events-none absolute inset-0 rounded-full"
+                          style={{
+                            backgroundColor: t.tint_color,
+                            opacity: 0.45,
+                            mixBlendMode: "multiply",
+                          }}
+                        />
+                      )}
+                      {onGmLayer && isNarrator && (
+                        <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded bg-purple-600 px-1.5 py-0.5 text-[8px] font-bold uppercase text-white shadow">
+                          GM
+                        </span>
+                      )}
+                      {canMove && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeToken(t.id);
+                          }}
+                          className="absolute -right-1 -top-1 hidden h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow group-hover:flex"
+                          aria-label="Remove token"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                      {canMove && isSelected && (
+                        <div
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            setResizeTokenId(t.id);
+                            resizeOrigin.current = {
+                              mx: e.clientX,
+                              my: e.clientY,
+                              size: renderedSize,
+                            };
+                          }}
+                          className="absolute -bottom-1 -right-1 h-4 w-4 cursor-se-resize rounded-sm border-2 border-amber-400 bg-background shadow"
+                          title="Drag to resize"
+                        />
+                      )}
+                    </div>
+                    <div className="pointer-events-none absolute left-1/2 top-full mt-0.5 -translate-x-1/2 whitespace-nowrap rounded bg-background/90 px-1.5 py-0.5 text-[10px] font-semibold shadow">
+                      {t.label}
+                    </div>
+                    {isSelected && canMove && onRoll && mode === "select" && (
+                      <div
+                        data-token-action-bar
+                        className="absolute left-1/2 top-full mt-6 -translate-x-1/2"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <TokenActionBar
+                          kind={t.character_kind}
+                          id={t.character_id}
+                          tokenId={t.id}
+                          label={t.label}
+                          gameId={gameId}
+                          userId={userId}
+                          onRoll={onRoll}
+                          onClose={() => setSelectedTokenId(null)}
+                          onOpenSheet={() =>
+                            onOpenSheet?.(t.character_kind, t.character_id, t.label)
+                          }
+                          showInitiative={!!narratorId && t.owner_id !== narratorId}
+                          extra={
+                            isNarrator ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    toggleTokenLayer(t.id, (t.layer ?? "tokens") as "tokens" | "gm")
+                                  }
+                                  className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-background px-2 text-[11px] font-semibold hover:bg-accent"
+                                  title="Mover entre camada visível e GM"
+                                >
+                                  {onGmLayer ? (
+                                    <Eye className="h-3 w-3" />
+                                  ) : (
+                                    <EyeOff className="h-3 w-3" />
+                                  )}
+                                  {onGmLayer ? "Tornar visível" : "Mover para GM"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setLightToken({
+                                      id: t.id,
+                                      label: t.label,
+                                      light_enabled: !!t.light_enabled,
+                                      light_radius_bright: t.light_radius_bright ?? 0,
+                                      light_radius_dim: t.light_radius_dim ?? 0,
+                                      light_color: t.light_color ?? "#ffd27a",
+                                      light_angle: t.light_angle ?? 360,
+                                      light_direction: t.light_direction ?? 0,
+                                      vision_radius: t.vision_radius ?? 0,
+                                    })
+                                  }
+                                  className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-background px-2 text-[11px] font-semibold hover:bg-accent"
+                                  title="Visão e luz emitida"
+                                >
+                                  <Lightbulb className="h-3 w-3" />
+                                  Visão/Luz
+                                  {(t.vision_radius ?? 0) > 0 && (
+                                    <span className="opacity-60">·{t.vision_radius}</span>
+                                  )}
+                                  {t.light_enabled && <span className="opacity-60">·☼</span>}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setAppearanceToken({
+                                      id: t.id,
+                                      label: t.label,
+                                      aura1_radius: t.aura1_radius,
+                                      aura1_color: t.aura1_color,
+                                      aura2_radius: t.aura2_radius,
+                                      aura2_color: t.aura2_color,
+                                      tint_color: t.tint_color,
+                                      bar_label: t.bar_label,
+                                      bar_value: t.bar_value,
+                                      bar_max: t.bar_max,
+                                      bar_color: t.bar_color,
+                                    })
+                                  }
+                                  className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-background px-2 text-[11px] font-semibold hover:bg-accent"
+                                  title="Auras, tinting e barra customizada"
+                                >
+                                  <Palette className="h-3 w-3" />
+                                  Aparência
+                                </button>
+                              </>
+                            ) : undefined
+                          }
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
           </div>
-        );
-      })}
+        </div>
       </div>
-    </div>
-    </div>
-    <TokenAppearanceDialog
-      token={appearanceToken}
-      open={!!appearanceToken}
-      onOpenChange={(v) => { if (!v) setAppearanceToken(null); }}
-    />
-    <TokenLightDialog
-      init={lightToken}
-      open={!!lightToken}
-      onOpenChange={(v) => { if (!v) setLightToken(null); }}
-    />
+      <TokenAppearanceDialog
+        token={appearanceToken}
+        open={!!appearanceToken}
+        onOpenChange={(v) => {
+          if (!v) setAppearanceToken(null);
+        }}
+      />
+      <TokenLightDialog
+        init={lightToken}
+        open={!!lightToken}
+        onOpenChange={(v) => {
+          if (!v) setLightToken(null);
+        }}
+      />
     </>
   );
 }
@@ -2205,12 +2931,11 @@ function renderDrawing(
     <g key={d.id} opacity={opacity}>
       {children}
       {canDelete && (
-        <g
-          style={{ cursor: "pointer", pointerEvents: "auto" }}
-          onClick={() => onDelete(d.id)}
-        >
+        <g style={{ cursor: "pointer", pointerEvents: "auto" }} onClick={() => onDelete(d.id)}>
           <circle cx={cx} cy={cy} r={10} fill="hsl(0 84% 60%)" />
-          <text x={cx} y={cy + 4} fontSize={12} textAnchor="middle" fill="white" fontWeight="bold">×</text>
+          <text x={cx} y={cy + 4} fontSize={12} textAnchor="middle" fill="white" fontWeight="bold">
+            ×
+          </text>
         </g>
       )}
     </g>
@@ -2222,8 +2947,18 @@ function renderDrawing(
     const path = pts.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x * 1000} ${y * 1000}`).join(" ");
     const last = pts[pts.length - 1];
     return wrap(
-      <path d={path} stroke={stroke} strokeWidth={sw} fill="none" strokeLinecap="round" strokeLinejoin="round" strokeDasharray={dash} vectorEffect="non-scaling-stroke" />,
-      last[0] * 1000, last[1] * 1000,
+      <path
+        d={path}
+        stroke={stroke}
+        strokeWidth={sw}
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeDasharray={dash}
+        vectorEffect="non-scaling-stroke"
+      />,
+      last[0] * 1000,
+      last[1] * 1000,
     );
   }
   if (d.kind === "rect") {
@@ -2232,8 +2967,19 @@ function renderDrawing(
     const w = (d.geometry.w ?? 0) * 1000;
     const h = (d.geometry.h ?? 0) * 1000;
     return wrap(
-      <rect x={x} y={y} width={w} height={h} stroke={stroke} strokeWidth={sw} fill={fill} strokeDasharray={dash} vectorEffect="non-scaling-stroke" />,
-      x + w, y,
+      <rect
+        x={x}
+        y={y}
+        width={w}
+        height={h}
+        stroke={stroke}
+        strokeWidth={sw}
+        fill={fill}
+        strokeDasharray={dash}
+        vectorEffect="non-scaling-stroke"
+      />,
+      x + w,
+      y,
     );
   }
   if (d.kind === "circle") {
@@ -2241,8 +2987,18 @@ function renderDrawing(
     const cy = (d.geometry.cy ?? 0) * 1000;
     const r = (d.geometry.r ?? 0) * 1000;
     return wrap(
-      <circle cx={cx} cy={cy} r={r} stroke={stroke} strokeWidth={sw} fill={fill} strokeDasharray={dash} vectorEffect="non-scaling-stroke" />,
-      cx + r, cy,
+      <circle
+        cx={cx}
+        cy={cy}
+        r={r}
+        stroke={stroke}
+        strokeWidth={sw}
+        fill={fill}
+        strokeDasharray={dash}
+        vectorEffect="non-scaling-stroke"
+      />,
+      cx + r,
+      cy,
     );
   }
   if (d.kind === "line") {
@@ -2251,8 +3007,19 @@ function renderDrawing(
     const x2 = (d.geometry.x2 ?? 0) * 1000;
     const y2 = (d.geometry.y2 ?? 0) * 1000;
     return wrap(
-      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={stroke} strokeWidth={sw} strokeLinecap="round" strokeDasharray={dash} vectorEffect="non-scaling-stroke" />,
-      x2, y2,
+      <line
+        x1={x1}
+        y1={y1}
+        x2={x2}
+        y2={y2}
+        stroke={stroke}
+        strokeWidth={sw}
+        strokeLinecap="round"
+        strokeDasharray={dash}
+        vectorEffect="non-scaling-stroke"
+      />,
+      x2,
+      y2,
     );
   }
   if (d.kind === "text") {
@@ -2260,54 +3027,84 @@ function renderDrawing(
     const y = (d.geometry.y ?? 0) * 1000;
     const fs = d.geometry.fontSize ?? 16;
     return wrap(
-      <text x={x} y={y} fontSize={fs * 2} fill={stroke} fontWeight="bold" strokeDasharray={dash}>{d.text_content}</text>,
-      x + 40, y - 12,
+      <text x={x} y={y} fontSize={fs * 2} fill={stroke} fontWeight="bold" strokeDasharray={dash}>
+        {d.text_content}
+      </text>,
+      x + 40,
+      y - 12,
     );
   }
   return null;
 }
 
 function MapToolbar({
-  mode, setMode,
-  drawTool, setDrawTool,
-  drawColor, setDrawColor,
-  drawWidth, setDrawWidth,
-  drawLayer, setDrawLayer,
+  mode,
+  setMode,
+  drawTool,
+  setDrawTool,
+  drawColor,
+  setDrawColor,
+  drawWidth,
+  setDrawWidth,
+  drawLayer,
+  setDrawLayer,
   isNarrator,
-  showGMLayer, setShowGMLayer,
-  showBackgrounds, setShowBackgrounds,
-  showTokens, setShowTokens,
+  showGMLayer,
+  setShowGMLayer,
+  showBackgrounds,
+  setShowBackgrounds,
+  showTokens,
+  setShowTokens,
   onClearMine,
   isMobile,
   visibility,
-  fogTool, setFogTool,
-  wallTool, setWallTool,
+  fogTool,
+  setFogTool,
+  wallTool,
+  setWallTool,
   selectedWall,
   onUpdateWall,
   onDeleteWall,
-  onClearFog, onRevealAll, onClearWalls,
-  onToggleFog, onToggleLighting,
-  visEnabled, setVisEnabled,
+  onClearFog,
+  onRevealAll,
+  onClearWalls,
+  onToggleFog,
+  onToggleLighting,
+  visEnabled,
+  setVisEnabled,
   onAddBackground,
-  onDeleteSelectedBg, onSendBgBack, onBringBgFront, selectedBgId,
+  onDeleteSelectedBg,
+  onSendBgBack,
+  onBringBgFront,
+  selectedBgId,
   pageSwitcherSlot,
   toolbarSlot,
   collapsedToolbarSlot,
 }: {
-  mode: Mode; setMode: (m: Mode) => void;
-  drawTool: DrawKind; setDrawTool: (k: DrawKind) => void;
-  drawColor: string; setDrawColor: (c: string) => void;
-  drawWidth: number; setDrawWidth: (n: number) => void;
-  drawLayer: "drawing" | "gm"; setDrawLayer: (l: "drawing" | "gm") => void;
+  mode: Mode;
+  setMode: (m: Mode) => void;
+  drawTool: DrawKind;
+  setDrawTool: (k: DrawKind) => void;
+  drawColor: string;
+  setDrawColor: (c: string) => void;
+  drawWidth: number;
+  setDrawWidth: (n: number) => void;
+  drawLayer: "drawing" | "gm";
+  setDrawLayer: (l: "drawing" | "gm") => void;
   isNarrator: boolean;
-  showGMLayer: boolean; setShowGMLayer: (b: boolean) => void;
-  showBackgrounds: boolean; setShowBackgrounds: (b: boolean) => void;
-  showTokens: boolean; setShowTokens: (b: boolean) => void;
+  showGMLayer: boolean;
+  setShowGMLayer: (b: boolean) => void;
+  showBackgrounds: boolean;
+  setShowBackgrounds: (b: boolean) => void;
+  showTokens: boolean;
+  setShowTokens: (b: boolean) => void;
   onClearMine: () => void;
   isMobile?: boolean;
   visibility: Visibility;
-  fogTool: "reveal" | "hide"; setFogTool: (t: "reveal" | "hide") => void;
-  wallTool: WallTool; setWallTool: (t: WallTool) => void;
+  fogTool: "reveal" | "hide";
+  setFogTool: (t: "reveal" | "hide") => void;
+  wallTool: WallTool;
+  setWallTool: (t: WallTool) => void;
   selectedWall: Wall | null;
   onUpdateWall: (id: string, patch: Partial<Wall>) => void | Promise<void>;
   onDeleteWall: (id: string) => void | Promise<void>;
@@ -2316,7 +3113,8 @@ function MapToolbar({
   onClearWalls: () => void;
   onToggleFog: (v: boolean) => void;
   onToggleLighting: (v: boolean) => void;
-  visEnabled: boolean; setVisEnabled: (b: boolean) => void;
+  visEnabled: boolean;
+  setVisEnabled: (b: boolean) => void;
   onAddBackground: (url: string, options?: BackgroundAddOptions) => void | Promise<void>;
   onDeleteSelectedBg?: () => void;
   onSendBgBack?: () => void;
@@ -2330,12 +3128,18 @@ function MapToolbar({
 
   const modeIcon = (m: Mode) => {
     switch (m) {
-      case "select": return <MousePointer2 className="h-3.5 w-3.5" />;
-      case "ruler": return <Ruler className="h-3.5 w-3.5" />;
-      case "draw": return <Pencil className="h-3.5 w-3.5" />;
-      case "fog": return <CloudFog className="h-3.5 w-3.5" />;
-      case "walls": return <Box className="h-3.5 w-3.5" />;
-      case "background": return <ImageIcon className="h-3.5 w-3.5" />;
+      case "select":
+        return <MousePointer2 className="h-3.5 w-3.5" />;
+      case "ruler":
+        return <Ruler className="h-3.5 w-3.5" />;
+      case "draw":
+        return <Pencil className="h-3.5 w-3.5" />;
+      case "fog":
+        return <CloudFog className="h-3.5 w-3.5" />;
+      case "walls":
+        return <Box className="h-3.5 w-3.5" />;
+      case "background":
+        return <ImageIcon className="h-3.5 w-3.5" />;
     }
   };
 
@@ -2346,8 +3150,14 @@ function MapToolbar({
       onMouseDown={(e) => e.stopPropagation()}
     >
       {/* Header / toggle */}
-      <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"} gap-1 border-b border-border pb-1`}>
-        {!collapsed && <span className="px-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Ferramentas</span>}
+      <div
+        className={`flex items-center ${collapsed ? "justify-center" : "justify-between"} gap-1 border-b border-border pb-1`}
+      >
+        {!collapsed && (
+          <span className="px-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+            Ferramentas
+          </span>
+        )}
         <button
           type="button"
           onClick={() => setCollapsed((c) => !c)}
@@ -2360,7 +3170,14 @@ function MapToolbar({
 
       {collapsed ? (
         <div className="flex flex-col items-center gap-1">
-          {(["select", "ruler", "draw", ...(isNarrator ? ["fog", "walls", "background"] : [])] as Mode[]).map((m) => (
+          {(
+            [
+              "select",
+              "ruler",
+              "draw",
+              ...(isNarrator ? ["fog", "walls", "background"] : []),
+            ] as Mode[]
+          ).map((m) => (
             <ToolBtn key={m} active={mode === m} onClick={() => setMode(m)} title={modeTitle(m)}>
               {modeIcon(m)}
             </ToolBtn>
@@ -2380,38 +3197,122 @@ function MapToolbar({
             </div>
           )}
           <div className="flex flex-wrap gap-1">
-            <ToolBtn active={mode === "select"} onClick={() => setMode("select")} title="Selecionar (clique e arraste tokens)"><MousePointer2 className="h-3.5 w-3.5" /></ToolBtn>
-            <ToolBtn active={mode === "ruler"} onClick={() => setMode("ruler")} title="Régua (medir distância)"><Ruler className="h-3.5 w-3.5" /></ToolBtn>
-            <ToolBtn active={mode === "draw"} onClick={() => setMode("draw")} title="Desenhar"><Pencil className="h-3.5 w-3.5" /></ToolBtn>
+            <ToolBtn
+              active={mode === "select"}
+              onClick={() => setMode("select")}
+              title="Selecionar (clique e arraste tokens)"
+            >
+              <MousePointer2 className="h-3.5 w-3.5" />
+            </ToolBtn>
+            <ToolBtn
+              active={mode === "ruler"}
+              onClick={() => setMode("ruler")}
+              title="Régua (medir distância)"
+            >
+              <Ruler className="h-3.5 w-3.5" />
+            </ToolBtn>
+            <ToolBtn active={mode === "draw"} onClick={() => setMode("draw")} title="Desenhar">
+              <Pencil className="h-3.5 w-3.5" />
+            </ToolBtn>
             {isNarrator && (
               <>
-                <ToolBtn active={mode === "fog"} onClick={() => setMode("fog")} title="Fog of War (manual)"><CloudFog className="h-3.5 w-3.5" /></ToolBtn>
-                <ToolBtn active={mode === "walls"} onClick={() => setMode("walls")} title="Paredes (bloqueiam visão)"><Box className="h-3.5 w-3.5" /></ToolBtn>
-                <ToolBtn active={mode === "background"} onClick={() => setMode("background")} title="Backgrounds (mover/redimensionar/rotacionar imagens)"><ImageIcon className="h-3.5 w-3.5" /></ToolBtn>
+                <ToolBtn
+                  active={mode === "fog"}
+                  onClick={() => setMode("fog")}
+                  title="Fog of War (manual)"
+                >
+                  <CloudFog className="h-3.5 w-3.5" />
+                </ToolBtn>
+                <ToolBtn
+                  active={mode === "walls"}
+                  onClick={() => setMode("walls")}
+                  title="Paredes (bloqueiam visão)"
+                >
+                  <Box className="h-3.5 w-3.5" />
+                </ToolBtn>
+                <ToolBtn
+                  active={mode === "background"}
+                  onClick={() => setMode("background")}
+                  title="Backgrounds (mover/redimensionar/rotacionar imagens)"
+                >
+                  <ImageIcon className="h-3.5 w-3.5" />
+                </ToolBtn>
               </>
             )}
           </div>
           {mode === "draw" && (
             <>
               <div className="flex flex-wrap gap-1 border-t border-border pt-1">
-                <ToolBtn active={drawTool === "freehand"} onClick={() => setDrawTool("freehand")} title="Caneta livre"><Pencil className="h-3.5 w-3.5" /></ToolBtn>
-                <ToolBtn active={drawTool === "rect"} onClick={() => setDrawTool("rect")} title="Retângulo"><Square className="h-3.5 w-3.5" /></ToolBtn>
-                <ToolBtn active={drawTool === "circle"} onClick={() => setDrawTool("circle")} title="Círculo"><CircleIcon className="h-3.5 w-3.5" /></ToolBtn>
-                <ToolBtn active={drawTool === "line"} onClick={() => setDrawTool("line")} title="Linha"><Minus className="h-3.5 w-3.5" /></ToolBtn>
-                <ToolBtn active={drawTool === "text"} onClick={() => setDrawTool("text")} title="Texto"><TypeIcon className="h-3.5 w-3.5" /></ToolBtn>
+                <ToolBtn
+                  active={drawTool === "freehand"}
+                  onClick={() => setDrawTool("freehand")}
+                  title="Caneta livre"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </ToolBtn>
+                <ToolBtn
+                  active={drawTool === "rect"}
+                  onClick={() => setDrawTool("rect")}
+                  title="Retângulo"
+                >
+                  <Square className="h-3.5 w-3.5" />
+                </ToolBtn>
+                <ToolBtn
+                  active={drawTool === "circle"}
+                  onClick={() => setDrawTool("circle")}
+                  title="Círculo"
+                >
+                  <CircleIcon className="h-3.5 w-3.5" />
+                </ToolBtn>
+                <ToolBtn
+                  active={drawTool === "line"}
+                  onClick={() => setDrawTool("line")}
+                  title="Linha"
+                >
+                  <Minus className="h-3.5 w-3.5" />
+                </ToolBtn>
+                <ToolBtn
+                  active={drawTool === "text"}
+                  onClick={() => setDrawTool("text")}
+                  title="Texto"
+                >
+                  <TypeIcon className="h-3.5 w-3.5" />
+                </ToolBtn>
               </div>
               <div className="flex items-center gap-1 border-t border-border pt-1">
-                <input type="color" value={drawColor} onChange={(e) => setDrawColor(e.target.value)} className="h-6 w-7 cursor-pointer rounded border border-border bg-transparent" title="Cor" />
                 <input
-                  type="range" min={1} max={12} value={drawWidth}
+                  type="color"
+                  value={drawColor}
+                  onChange={(e) => setDrawColor(e.target.value)}
+                  className="h-6 w-7 cursor-pointer rounded border border-border bg-transparent"
+                  title="Cor"
+                />
+                <input
+                  type="range"
+                  min={1}
+                  max={12}
+                  value={drawWidth}
                   onChange={(e) => setDrawWidth(Number(e.target.value))}
-                  className="h-6 w-16" title={`Espessura: ${drawWidth}`}
+                  className="h-6 w-16"
+                  title={`Espessura: ${drawWidth}`}
                 />
               </div>
               {isNarrator && (
                 <div className="flex flex-wrap gap-1 border-t border-border pt-1">
-                  <ToolBtn active={drawLayer === "drawing"} onClick={() => setDrawLayer("drawing")} title="Desenhar na camada visível">Visível</ToolBtn>
-                  <ToolBtn active={drawLayer === "gm"} onClick={() => setDrawLayer("gm")} title="Desenhar só para o narrador">GM</ToolBtn>
+                  <ToolBtn
+                    active={drawLayer === "drawing"}
+                    onClick={() => setDrawLayer("drawing")}
+                    title="Desenhar na camada visível"
+                  >
+                    Visível
+                  </ToolBtn>
+                  <ToolBtn
+                    active={drawLayer === "gm"}
+                    onClick={() => setDrawLayer("gm")}
+                    title="Desenhar só para o narrador"
+                  >
+                    GM
+                  </ToolBtn>
                 </div>
               )}
             </>
@@ -2419,31 +3320,90 @@ function MapToolbar({
           {mode === "fog" && isNarrator && (
             <div className="flex flex-col gap-1 border-t border-border pt-1">
               <div className="flex flex-wrap gap-1">
-                <ToolBtn active={fogTool === "reveal"} onClick={() => setFogTool("reveal")} title="Pincel: revelar área">Revelar</ToolBtn>
-                <ToolBtn active={fogTool === "hide"} onClick={() => setFogTool("hide")} title="Pincel: ocultar área">Ocultar</ToolBtn>
+                <ToolBtn
+                  active={fogTool === "reveal"}
+                  onClick={() => setFogTool("reveal")}
+                  title="Pincel: revelar área"
+                >
+                  Revelar
+                </ToolBtn>
+                <ToolBtn
+                  active={fogTool === "hide"}
+                  onClick={() => setFogTool("hide")}
+                  title="Pincel: ocultar área"
+                >
+                  Ocultar
+                </ToolBtn>
               </div>
               <div className="flex flex-wrap gap-1">
-                <ToolBtn onClick={onRevealAll} title="Revelar mapa inteiro">Tudo</ToolBtn>
-                <ToolBtn onClick={onClearFog} title="Apagar toda a fog"><Trash2 className="h-3.5 w-3.5" /></ToolBtn>
+                <ToolBtn onClick={onRevealAll} title="Revelar mapa inteiro">
+                  Tudo
+                </ToolBtn>
+                <ToolBtn onClick={onClearFog} title="Apagar toda a fog">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </ToolBtn>
               </div>
             </div>
           )}
           {mode === "walls" && isNarrator && (
             <div className="flex flex-col gap-1 border-t border-border pt-1">
-              <div className="px-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Paredes & Fog</div>
+              <div className="px-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Paredes & Fog
+              </div>
               <div className="grid grid-cols-3 gap-1">
-                <ToolBtn active={wallTool === "select"} onClick={() => setWallTool("select")} title="Selecionar parede"><MousePointer2 className="h-3.5 w-3.5" /></ToolBtn>
-                <ToolBtn active={wallTool === "single"} onClick={() => setWallTool("single")} title="Parede unica: 2 cliques">Parede</ToolBtn>
-                <ToolBtn active={wallTool === "poly"} onClick={() => setWallTool("poly")} title="Linha continua. Enter fecha, Esc cancela">Poly</ToolBtn>
-                <ToolBtn active={wallTool === "vision"} onClick={() => setWallTool("vision")} title="Bloqueia visao, mas nao luz">Visao</ToolBtn>
-                <ToolBtn active={wallTool === "door"} onClick={() => setWallTool("door")} title="Porta abre/fecha ao clicar"><DoorClosed className="h-3.5 w-3.5" /></ToolBtn>
-                <ToolBtn active={wallTool === "window"} onClick={() => setWallTool("window")} title="Janela bloqueia visao, nao luz"><DoorOpen className="h-3.5 w-3.5" /></ToolBtn>
+                <ToolBtn
+                  active={wallTool === "select"}
+                  onClick={() => setWallTool("select")}
+                  title="Selecionar parede"
+                >
+                  <MousePointer2 className="h-3.5 w-3.5" />
+                </ToolBtn>
+                <ToolBtn
+                  active={wallTool === "single"}
+                  onClick={() => setWallTool("single")}
+                  title="Parede unica: 2 cliques"
+                >
+                  Parede
+                </ToolBtn>
+                <ToolBtn
+                  active={wallTool === "poly"}
+                  onClick={() => setWallTool("poly")}
+                  title="Linha continua. Enter fecha, Esc cancela"
+                >
+                  Poly
+                </ToolBtn>
+                <ToolBtn
+                  active={wallTool === "vision"}
+                  onClick={() => setWallTool("vision")}
+                  title="Bloqueia visao, mas nao luz"
+                >
+                  Visao
+                </ToolBtn>
+                <ToolBtn
+                  active={wallTool === "door"}
+                  onClick={() => setWallTool("door")}
+                  title="Porta abre/fecha ao clicar"
+                >
+                  <DoorClosed className="h-3.5 w-3.5" />
+                </ToolBtn>
+                <ToolBtn
+                  active={wallTool === "window"}
+                  onClick={() => setWallTool("window")}
+                  title="Janela bloqueia visao, nao luz"
+                >
+                  <DoorOpen className="h-3.5 w-3.5" />
+                </ToolBtn>
               </div>
               {selectedWall && (
                 <div className="space-y-1 rounded border border-border bg-background/70 p-1.5">
                   <div className="flex items-center justify-between text-[10px] font-bold uppercase text-muted-foreground">
                     <span>{selectedWall.kind ?? "wall"}</span>
-                    <button type="button" className="rounded p-1 hover:bg-accent" onClick={() => onDeleteWall(selectedWall.id)} title="Excluir parede">
+                    <button
+                      type="button"
+                      className="rounded p-1 hover:bg-accent"
+                      onClick={() => onDeleteWall(selectedWall.id)}
+                      title="Excluir parede"
+                    >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
@@ -2451,7 +3411,9 @@ function MapToolbar({
                     <input
                       type="checkbox"
                       checked={selectedWall.blocks_sight !== false}
-                      onChange={(e) => onUpdateWall(selectedWall.id, { blocks_sight: e.target.checked })}
+                      onChange={(e) =>
+                        onUpdateWall(selectedWall.id, { blocks_sight: e.target.checked })
+                      }
                     />
                     Bloqueia visao
                   </label>
@@ -2459,7 +3421,9 @@ function MapToolbar({
                     <input
                       type="checkbox"
                       checked={selectedWall.blocks_light !== false}
-                      onChange={(e) => onUpdateWall(selectedWall.id, { blocks_light: e.target.checked })}
+                      onChange={(e) =>
+                        onUpdateWall(selectedWall.id, { blocks_light: e.target.checked })
+                      }
                     />
                     Bloqueia luz
                   </label>
@@ -2467,49 +3431,95 @@ function MapToolbar({
                     <div className="flex flex-wrap gap-1">
                       <ToolBtn
                         active={!!selectedWall.is_open}
-                        onClick={() => onUpdateWall(selectedWall.id, { is_open: !selectedWall.is_open })}
+                        onClick={() =>
+                          onUpdateWall(selectedWall.id, { is_open: !selectedWall.is_open })
+                        }
                         title={selectedWall.is_open ? "Fechar" : "Abrir"}
                       >
-                        {selectedWall.is_open ? <DoorOpen className="h-3.5 w-3.5" /> : <DoorClosed className="h-3.5 w-3.5" />}
+                        {selectedWall.is_open ? (
+                          <DoorOpen className="h-3.5 w-3.5" />
+                        ) : (
+                          <DoorClosed className="h-3.5 w-3.5" />
+                        )}
                       </ToolBtn>
                       <ToolBtn
                         active={!!selectedWall.locked}
-                        onClick={() => onUpdateWall(selectedWall.id, { locked: !selectedWall.locked })}
+                        onClick={() =>
+                          onUpdateWall(selectedWall.id, { locked: !selectedWall.locked })
+                        }
                         title={selectedWall.locked ? "Destrancar" : "Trancar"}
                       >
-                        {selectedWall.locked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+                        {selectedWall.locked ? (
+                          <Lock className="h-3.5 w-3.5" />
+                        ) : (
+                          <Unlock className="h-3.5 w-3.5" />
+                        )}
                       </ToolBtn>
                     </div>
                   )}
                 </div>
               )}
-              <ToolBtn onClick={onClearWalls} title="Apagar todas as paredes"><Trash2 className="h-3.5 w-3.5" /></ToolBtn>
+              <ToolBtn onClick={onClearWalls} title="Apagar todas as paredes">
+                <Trash2 className="h-3.5 w-3.5" />
+              </ToolBtn>
             </div>
           )}
           {mode === "background" && isNarrator && (
             <div className="flex flex-col gap-1 border-t border-border pt-1">
-              <p className="px-1 text-[10px] text-muted-foreground">Clique numa imagem para mover/redimensionar/rotacionar</p>
+              <p className="px-1 text-[10px] text-muted-foreground">
+                Clique numa imagem para mover/redimensionar/rotacionar
+              </p>
               <BgUrlAdd onAdd={onAddBackground} />
               {selectedBgId && (
                 <div className="flex flex-wrap gap-1">
-                  {onBringBgFront && <ToolBtn onClick={onBringBgFront} title="Trazer para frente"><ArrowUp className="h-3.5 w-3.5" /></ToolBtn>}
-                  {onSendBgBack && <ToolBtn onClick={onSendBgBack} title="Enviar para trás"><ArrowDown className="h-3.5 w-3.5" /></ToolBtn>}
-                  {onDeleteSelectedBg && <ToolBtn onClick={onDeleteSelectedBg} title="Excluir background selecionado"><Trash2 className="h-3.5 w-3.5" /></ToolBtn>}
+                  {onBringBgFront && (
+                    <ToolBtn onClick={onBringBgFront} title="Trazer para frente">
+                      <ArrowUp className="h-3.5 w-3.5" />
+                    </ToolBtn>
+                  )}
+                  {onSendBgBack && (
+                    <ToolBtn onClick={onSendBgBack} title="Enviar para trás">
+                      <ArrowDown className="h-3.5 w-3.5" />
+                    </ToolBtn>
+                  )}
+                  {onDeleteSelectedBg && (
+                    <ToolBtn onClick={onDeleteSelectedBg} title="Excluir background selecionado">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </ToolBtn>
+                  )}
                 </div>
               )}
             </div>
           )}
           {isNarrator && (
             <div className="flex flex-wrap gap-1 border-t border-border pt-1">
-              <ToolBtn active={visibility.fogEnabled} onClick={() => onToggleFog(!visibility.fogEnabled)} title={visibility.fogEnabled ? "Desativar Fog of War" : "Ativar Fog of War"}>
+              <ToolBtn
+                active={visibility.fogEnabled}
+                onClick={() => onToggleFog(!visibility.fogEnabled)}
+                title={visibility.fogEnabled ? "Desativar Fog of War" : "Ativar Fog of War"}
+              >
                 <CloudFog className="h-3.5 w-3.5" />
               </ToolBtn>
-              <ToolBtn active={visibility.dynamicLighting} onClick={() => onToggleLighting(!visibility.dynamicLighting)} title={visibility.dynamicLighting ? "Desativar visão dinâmica" : "Ativar visão dinâmica"}>
+              <ToolBtn
+                active={visibility.dynamicLighting}
+                onClick={() => onToggleLighting(!visibility.dynamicLighting)}
+                title={
+                  visibility.dynamicLighting ? "Desativar visão dinâmica" : "Ativar visão dinâmica"
+                }
+              >
                 <Lightbulb className="h-3.5 w-3.5" />
               </ToolBtn>
               {(visibility.fogEnabled || visibility.dynamicLighting) && (
-                <ToolBtn active={!visEnabled} onClick={() => setVisEnabled(!visEnabled)} title={visEnabled ? "Esconder fog localmente (narrador)" : "Mostrar fog"}>
-                  {visEnabled ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                <ToolBtn
+                  active={!visEnabled}
+                  onClick={() => setVisEnabled(!visEnabled)}
+                  title={visEnabled ? "Esconder fog localmente (narrador)" : "Mostrar fog"}
+                >
+                  {visEnabled ? (
+                    <Eye className="h-3.5 w-3.5" />
+                  ) : (
+                    <EyeOff className="h-3.5 w-3.5" />
+                  )}
                 </ToolBtn>
               )}
             </div>
@@ -2517,18 +3527,33 @@ function MapToolbar({
           <div className="flex flex-wrap gap-1 border-t border-border pt-1">
             {isNarrator && (
               <>
-                <ToolBtn active={!showGMLayer} onClick={() => setShowGMLayer(!showGMLayer)} title={showGMLayer ? "Esconder camada GM" : "Mostrar camada GM"}>
+                <ToolBtn
+                  active={!showGMLayer}
+                  onClick={() => setShowGMLayer(!showGMLayer)}
+                  title={showGMLayer ? "Esconder camada GM" : "Mostrar camada GM"}
+                >
                   GM {showGMLayer ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                 </ToolBtn>
-                <ToolBtn active={!showBackgrounds} onClick={() => setShowBackgrounds(!showBackgrounds)} title={showBackgrounds ? "Esconder backgrounds" : "Mostrar backgrounds"}>
-                  Bg {showBackgrounds ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                <ToolBtn
+                  active={!showBackgrounds}
+                  onClick={() => setShowBackgrounds(!showBackgrounds)}
+                  title={showBackgrounds ? "Esconder backgrounds" : "Mostrar backgrounds"}
+                >
+                  Bg{" "}
+                  {showBackgrounds ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                 </ToolBtn>
-                <ToolBtn active={!showTokens} onClick={() => setShowTokens(!showTokens)} title={showTokens ? "Esconder tokens" : "Mostrar tokens"}>
+                <ToolBtn
+                  active={!showTokens}
+                  onClick={() => setShowTokens(!showTokens)}
+                  title={showTokens ? "Esconder tokens" : "Mostrar tokens"}
+                >
                   Tk {showTokens ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                 </ToolBtn>
               </>
             )}
-            <ToolBtn onClick={onClearMine} title="Apagar meus desenhos"><Eraser className="h-3.5 w-3.5" /></ToolBtn>
+            <ToolBtn onClick={onClearMine} title="Apagar meus desenhos">
+              <Eraser className="h-3.5 w-3.5" />
+            </ToolBtn>
           </div>
         </>
       )}
@@ -2538,16 +3563,32 @@ function MapToolbar({
 
 function modeTitle(m: Mode) {
   switch (m) {
-    case "select": return "Selecionar";
-    case "ruler": return "Régua";
-    case "draw": return "Desenhar";
-    case "fog": return "Fog of War";
-    case "walls": return "Paredes";
-    case "background": return "Backgrounds";
+    case "select":
+      return "Selecionar";
+    case "ruler":
+      return "Régua";
+    case "draw":
+      return "Desenhar";
+    case "fog":
+      return "Fog of War";
+    case "walls":
+      return "Paredes";
+    case "background":
+      return "Backgrounds";
   }
 }
 
-function ToolBtn({ active, onClick, title, children }: { active?: boolean; onClick: () => void; title: string; children: React.ReactNode }) {
+function ToolBtn({
+  active,
+  onClick,
+  title,
+  children,
+}: {
+  active?: boolean;
+  onClick: () => void;
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <button
       type="button"
@@ -2560,7 +3601,11 @@ function ToolBtn({ active, onClick, title, children }: { active?: boolean; onCli
   );
 }
 
-function BgUrlAdd({ onAdd }: { onAdd: (url: string, options?: BackgroundAddOptions) => void | Promise<void> }) {
+function BgUrlAdd({
+  onAdd,
+}: {
+  onAdd: (url: string, options?: BackgroundAddOptions) => void | Promise<void>;
+}) {
   const [url, setUrl] = useState("");
   const [cols, setCols] = useState(1);
   const [rows, setRows] = useState(1);
@@ -2573,10 +3618,18 @@ function BgUrlAdd({ onAdd }: { onAdd: (url: string, options?: BackgroundAddOptio
     setUrl("");
   }
   function handleFile(file: File) {
-    if (!file.type.startsWith("image/")) { toast.error("Selecione uma imagem"); return; }
-    if (file.size > 5_000_000) { toast.error("Imagem muito grande (>5MB)"); return; }
+    if (!file.type.startsWith("image/")) {
+      toast.error("Selecione uma imagem");
+      return;
+    }
+    if (file.size > 5_000_000) {
+      toast.error("Imagem muito grande (>5MB)");
+      return;
+    }
     const reader = new FileReader();
-    reader.onload = () => { void onAdd(String(reader.result), tileOptions); };
+    reader.onload = () => {
+      void onAdd(String(reader.result), tileOptions);
+    };
     reader.readAsDataURL(file);
   }
   return (
@@ -2627,7 +3680,11 @@ function BgUrlAdd({ onAdd }: { onAdd: (url: string, options?: BackgroundAddOptio
         type="file"
         accept="image/*"
         className="hidden"
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.currentTarget.value = ""; }}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleFile(f);
+          e.currentTarget.value = "";
+        }}
       />
       <button
         type="button"

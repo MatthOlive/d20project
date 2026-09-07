@@ -5,8 +5,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { DotEditor } from "@/components/DotEditor";
 import { AttrFourField, SkillNumberInput } from "@/components/AttrFourField";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,13 +40,29 @@ import { AutosaveStatus } from "@/components/AutosaveStatus";
 
 import { useDebouncedPatch } from "@/lib/use-debounced-patch";
 import { toast } from "sonner";
-import { Plus, Dices, Trash2, ImagePlus, RotateCcw, Sparkles, Zap, Maximize2, Copy, X as XIcon } from "lucide-react";
+import {
+  Plus,
+  Dices,
+  Trash2,
+  ImagePlus,
+  RotateCcw,
+  Sparkles,
+  Zap,
+  Maximize2,
+  Copy,
+  X as XIcon,
+} from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useGameSpdefUsesInsight } from "@/hooks/use-game-spdef-uses-insight";
 import { Progress } from "@/components/ui/progress";
 import { EffectIcons } from "@/components/EffectIcons";
 import { MoveCard } from "@/components/MoveCard";
-import { HpAndStatusBlock, AttackRollButton, GenericRollButton, painPenaltyFor } from "@/components/SheetRolls";
+import {
+  HpAndStatusBlock,
+  AttackRollButton,
+  GenericRollButton,
+  painPenaltyFor,
+} from "@/components/SheetRolls";
 import { SheetPermissionsDialog } from "@/components/SheetPermissionsDialog";
 import { TRAININGS_PER_RANK, RETRAIN_CAP } from "@/lib/contest";
 import {
@@ -52,7 +80,11 @@ import { applyPaldeaHisuiSpeciesBalance } from "@/lib/paldea-hisui-balance";
 import { pokemonAbilityEffect } from "@/lib/pokemon-ability-effects";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 
-type EvolutionMethod = { kind: "time" | "other" | "item"; speed?: "fast" | "medium" | "slow"; text?: string };
+type EvolutionMethod = {
+  kind: "time" | "other" | "item";
+  speed?: "fast" | "medium" | "slow";
+  text?: string;
+};
 
 type Species = {
   id: string;
@@ -157,8 +189,9 @@ function buildEvolvedStats({
   for (const key of keys) {
     const previousBase = previousSpecies.base_attrs?.[key] ?? 1;
     const nextBase = nextSpecies.base_attrs?.[key] ?? previousBase;
-    const hasTrackedInvestment = Object.prototype.hasOwnProperty.call(attrPoints ?? {}, key)
-      || Object.prototype.hasOwnProperty.call(attrBonus ?? {}, key);
+    const hasTrackedInvestment =
+      Object.prototype.hasOwnProperty.call(attrPoints ?? {}, key) ||
+      Object.prototype.hasOwnProperty.call(attrBonus ?? {}, key);
     const investment = hasTrackedInvestment
       ? (attrPoints?.[key] ?? 0) + (attrBonus?.[key] ?? 0)
       : (currentAttrs?.[key] ?? previousBase) - previousBase;
@@ -169,7 +202,8 @@ function buildEvolvedStats({
   const nextMaxHp = nextSpecies.base_hp + (isOvergrown ? 1 : 0) + (nextAttrs.vitality ?? 1);
   const previousHp = Math.max(0, Math.min(previousCurrentHp, previousMaxHp));
   const missingHp = Math.max(0, previousMaxHp - previousHp);
-  const nextCurrentHp = previousHp <= 0 ? 0 : Math.max(0, Math.min(nextMaxHp, nextMaxHp - missingHp));
+  const nextCurrentHp =
+    previousHp <= 0 ? 0 : Math.max(0, Math.min(nextMaxHp, nextMaxHp - missingHp));
 
   return {
     current_attrs: nextAttrs,
@@ -208,21 +242,37 @@ export function PokemonSheet({
   const [dynaMode, setDynaMode] = useState<null | "dynamax" | "gigantamax">(null);
 
   const queryKey = useMemo(() => ["pokemon", pokemonId], [pokemonId]);
-  const { data: pokemon, error: pokemonError, refetch: refetchPokemon } = useQuery({
+  const {
+    data: pokemon,
+    error: pokemonError,
+    refetch: refetchPokemon,
+  } = useQuery({
     queryKey,
     queryFn: async () => {
-      const { data, error } = await supabase.from("pokemon").select("*").eq("id", pokemonId).single();
+      const { data, error } = await supabase
+        .from("pokemon")
+        .select("*")
+        .eq("id", pokemonId)
+        .single();
       if (error) throw error;
       return data as Pokemon;
     },
   });
-  const { data: species, error: speciesError, refetch: refetchSpecies } = useQuery({
+  const {
+    data: species,
+    error: speciesError,
+    refetch: refetchSpecies,
+  } = useQuery({
     queryKey: ["species", pokemon?.species_id],
     enabled: !!pokemon?.species_id,
     staleTime: Number.POSITIVE_INFINITY,
     gcTime: 60 * 60 * 1_000,
     queryFn: async () => {
-      const { data, error } = await supabase.from("species").select("*").eq("id", pokemon!.species_id).single();
+      const { data, error } = await supabase
+        .from("species")
+        .select("*")
+        .eq("id", pokemon!.species_id)
+        .single();
       if (error) throw error;
       return applyPaldeaHisuiSpeciesBalance(data as Species);
     },
@@ -244,7 +294,10 @@ export function PokemonSheet({
   const { data: knownMoves = [] } = useQuery({
     queryKey: ["pokemon-moves", pokemonId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("pokemon_moves").select("moves(*)").eq("pokemon_id", pokemonId);
+      const { data, error } = await supabase
+        .from("pokemon_moves")
+        .select("moves(*)")
+        .eq("pokemon_id", pokemonId);
       if (error) throw error;
       return (data ?? []).map((r: { moves: Move }) => r.moves);
     },
@@ -256,19 +309,26 @@ export function PokemonSheet({
     staleTime: Number.POSITIVE_INFINITY,
     gcTime: 60 * 60 * 1_000,
     queryFn: async () => {
-      const { data, error } = await supabase.from("abilities").select("name, effect").in("name", speciesAbilityNames);
+      const { data, error } = await supabase
+        .from("abilities")
+        .select("name, effect")
+        .in("name", speciesAbilityNames);
       if (error) throw error;
       return (data ?? []) as { name: string; effect: string }[];
     },
   });
 
   const canEdit =
-    !!pokemon && (pokemon.owner_id === userId || isNarrator || (pokemon.allowed_editors ?? []).includes(userId));
+    !!pokemon &&
+    (pokemon.owner_id === userId || isNarrator || (pokemon.allowed_editors ?? []).includes(userId));
   const commit = useCallback(
     async (p: Partial<Pokemon>) => {
       const expectedVersion = qc.getQueryData<Pokemon>(queryKey)?.row_version;
       if (typeof expectedVersion !== "number") {
-        const { error } = await supabase.from("pokemon").update(p as never).eq("id", pokemonId);
+        const { error } = await supabase
+          .from("pokemon")
+          .update(p as never)
+          .eq("id", pokemonId);
         if (error) throw new Error(error.message);
         return;
       }
@@ -287,13 +347,19 @@ export function PokemonSheet({
         qc.setQueryData<Pokemon>(queryKey, { ...(latest.data as Pokemon), ...p });
         throw new Error("A ficha mudou em outra sessão. As alterações locais serão reaplicadas.");
       }
-      qc.setQueryData<Pokemon>(queryKey, (current) => current
-        ? { ...current, ...(data as unknown as Partial<Pokemon>) }
-        : current);
+      qc.setQueryData<Pokemon>(queryKey, (current) =>
+        current ? { ...current, ...(data as unknown as Partial<Pokemon>) } : current,
+      );
     },
     [pokemonId, qc, queryKey],
   );
-  const { patch, retry: retrySave, mergeServerPatch, saveState, saveError } = useDebouncedPatch<Pokemon>(queryKey, commit, 250, {
+  const {
+    patch,
+    retry: retrySave,
+    mergeServerPatch,
+    saveState,
+    saveError,
+  } = useDebouncedPatch<Pokemon>(queryKey, commit, 250, {
     storageKey: `d20:pending:pokemon:${userId}:${pokemonId}`,
     snapshotKey: `sheet:${userId}:pokemon:${pokemonId}`,
   });
@@ -326,7 +392,12 @@ export function PokemonSheet({
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "pokemon_moves", filter: `pokemon_id=eq.${pokemonId}` },
+        {
+          event: "*",
+          schema: "public",
+          table: "pokemon_moves",
+          filter: `pokemon_id=eq.${pokemonId}`,
+        },
         refreshMoves,
       )
       .subscribe((status) => {
@@ -354,7 +425,10 @@ export function PokemonSheet({
 
   useEffect(() => {
     if (heldItemDescFocusedRef.current) return;
-    setHeldItemDescDraft(((pokemon?.modifiers as Record<string, unknown> | undefined)?._held_item_desc as string) ?? "");
+    setHeldItemDescDraft(
+      ((pokemon?.modifiers as Record<string, unknown> | undefined)?._held_item_desc as string) ??
+        "",
+    );
   }, [pokemon?.id, pokemon?.modifiers]);
 
   useEffect(() => {
@@ -408,7 +482,15 @@ export function PokemonSheet({
     return (
       <div className="grid min-h-48 place-items-center gap-3 p-6 text-center text-sm">
         <p className="text-destructive">Não foi possível abrir a ficha: {pokemonError.message}</p>
-        <Button size="sm" variant="outline" onClick={() => { void refetchPokemon(); }}>Tentar novamente</Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            void refetchPokemon();
+          }}
+        >
+          Tentar novamente
+        </Button>
       </div>
     );
   }
@@ -416,8 +498,18 @@ export function PokemonSheet({
   if (speciesError) {
     return (
       <div className="grid min-h-48 place-items-center gap-3 p-6 text-center text-sm">
-        <p className="text-destructive">Não foi possível carregar a espécie: {speciesError.message}</p>
-        <Button size="sm" variant="outline" onClick={() => { void refetchSpecies(); }}>Tentar novamente</Button>
+        <p className="text-destructive">
+          Não foi possível carregar a espécie: {speciesError.message}
+        </p>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            void refetchSpecies();
+          }}
+        >
+          Tentar novamente
+        </Button>
       </div>
     );
   }
@@ -429,7 +521,9 @@ export function PokemonSheet({
       <div className="space-y-4 p-4">
         <section className="overflow-hidden rounded-xl border border-border bg-card">
           <div className="flex items-center gap-2 border-b-2 border-primary bg-primary/10 px-3 py-1.5">
-            <span className="truncate text-[12px] font-bold uppercase tracking-wider text-primary">{viewName}</span>
+            <span className="truncate text-[12px] font-bold uppercase tracking-wider text-primary">
+              {viewName}
+            </span>
           </div>
           <div className="flex flex-col items-center gap-3 p-6">
             <PokemonSpriteImage
@@ -440,14 +534,16 @@ export function PokemonSheet({
               spriteStyle={spriteStyle}
               alt={viewName}
               className="h-48 w-48 rounded-lg object-contain"
-              emptyFallback={(
+              emptyFallback={
                 <div className="grid h-48 w-48 place-items-center rounded-lg border border-dashed border-border text-xs text-muted-foreground">
                   Sem imagem
                 </div>
-              )}
+              }
             />
             <div className="text-lg font-bold">{viewName}</div>
-            <div className="text-xs text-muted-foreground">Você não tem permissão para ver detalhes desta ficha.</div>
+            <div className="text-xs text-muted-foreground">
+              Você não tem permissão para ver detalhes desta ficha.
+            </div>
           </div>
         </section>
       </div>
@@ -478,7 +574,8 @@ export function PokemonSheet({
     const ins = key === "insight" ? total : (newAttrs.insight ?? 1);
     const baseHp = species!.base_hp + (pokemon!.is_overgrown ? 1 : 0);
     const patchObj: Partial<Pokemon> = { current_attrs: newAttrs, hp: baseHp + vit, will: ins + 2 };
-    if (delta.points !== undefined) patchObj.attr_points = { ...pokemon!.attr_points, [key]: points };
+    if (delta.points !== undefined)
+      patchObj.attr_points = { ...pokemon!.attr_points, [key]: points };
     if (delta.bonus !== undefined) patchObj.attr_bonus = { ...pokemon!.attr_bonus, [key]: bonus };
     patch(patchObj);
   }
@@ -508,7 +605,11 @@ export function PokemonSheet({
       return;
     }
 
-    const { error } = await supabase.from("pokemon_moves").delete().eq("pokemon_id", pokemonId).eq("move_id", moveId);
+    const { error } = await supabase
+      .from("pokemon_moves")
+      .delete()
+      .eq("pokemon_id", pokemonId)
+      .eq("move_id", moveId);
 
     if (error) {
       toast.error(`O golpe não foi removido: ${error.message}`);
@@ -518,7 +619,9 @@ export function PokemonSheet({
     await qc.invalidateQueries({ queryKey: ["pokemon-moves", pokemonId] });
   }
 
-  const displayImage = pokemon.image_url ?? preferredPokemonSprite(species.name, species.sprite_url, pokemon.is_shiny, spriteStyle);
+  const displayImage =
+    pokemon.image_url ??
+    preferredPokemonSprite(species.name, species.sprite_url, pokemon.is_shiny, spriteStyle);
   const name = (nicknameFocusedRef.current ? nicknameDraft : pokemon.nickname) || species.name;
   const vit = pokemon.current_attrs.vitality ?? 1;
   const ins = pokemon.current_attrs.insight ?? 1;
@@ -557,14 +660,22 @@ export function PokemonSheet({
       {/* ============ BLOCO 1 — Identidade ============ */}
       <section className="overflow-hidden rounded-xl border border-border bg-card">
         <div className="flex items-center gap-2 border-b-2 border-primary bg-primary/10 px-3 py-1.5">
-          <span className="truncate text-[12px] font-bold uppercase tracking-wider text-primary">{name}</span>
+          <span className="truncate text-[12px] font-bold uppercase tracking-wider text-primary">
+            {name}
+          </span>
           <AutosaveStatus
             state={saveState}
             error={saveError}
-            onRetry={() => { void retrySave().catch(() => undefined); }}
+            onRetry={() => {
+              void retrySave().catch(() => undefined);
+            }}
           />
           <span className="ml-auto text-[11px] uppercase text-muted-foreground">Rank</span>
-          <Select value={pokemon.rank} onValueChange={(v) => canEdit && patch({ rank: v as Rank })} disabled={!canEdit}>
+          <Select
+            value={pokemon.rank}
+            onValueChange={(v) => canEdit && patch({ rank: v as Rank })}
+            disabled={!canEdit}
+          >
             <SelectTrigger className="h-6 w-28 text-xs">
               <SelectValue />
             </SelectTrigger>
@@ -631,15 +742,23 @@ export function PokemonSheet({
             </div>
             <div className="flex flex-wrap gap-1">
               {pokemon.is_shiny && (
-                <Badge className="border-none bg-yellow-400 text-yellow-950 hover:bg-yellow-400">✨ Shiny</Badge>
+                <Badge className="border-none bg-yellow-400 text-yellow-950 hover:bg-yellow-400">
+                  ✨ Shiny
+                </Badge>
               )}
               {pokemon.is_overgrown && (
-                <Badge className="border-none bg-emerald-500 text-white hover:bg-emerald-500">Overgrown · +1 HP</Badge>
+                <Badge className="border-none bg-emerald-500 text-white hover:bg-emerald-500">
+                  Overgrown · +1 HP
+                </Badge>
               )}
               {isNarrator && (
                 <div className="mt-1 flex w-full flex-wrap gap-1.5 rounded-md border border-dashed border-border bg-background/50 p-1.5">
                   <label className="flex cursor-pointer items-center gap-1 text-[10px]">
-                    <Checkbox checked={pokemon.is_shiny} onCheckedChange={(v) => patch({ is_shiny: !!v })} /> Shiny
+                    <Checkbox
+                      checked={pokemon.is_shiny}
+                      onCheckedChange={(v) => patch({ is_shiny: !!v })}
+                    />{" "}
+                    Shiny
                   </label>
                   <label className="flex cursor-pointer items-center gap-1 text-[10px]">
                     <Checkbox
@@ -665,7 +784,9 @@ export function PokemonSheet({
                 disabled={!canEdit}
                 value={nicknameDraft}
                 placeholder={species.name}
-                onFocus={() => { nicknameFocusedRef.current = true; }}
+                onFocus={() => {
+                  nicknameFocusedRef.current = true;
+                }}
                 onBlur={() => {
                   nicknameFocusedRef.current = false;
                   patch({ nickname: nicknameDraft.trim() || null });
@@ -676,7 +797,12 @@ export function PokemonSheet({
                 }}
                 className="h-9 text-base font-bold"
               />
-              <SheetPermissionsDialog kind="pokemon" entityId={pokemonId} gameId={_gameId} isNarrator={isNarrator} />
+              <SheetPermissionsDialog
+                kind="pokemon"
+                entityId={pokemonId}
+                gameId={_gameId}
+                isNarrator={isNarrator}
+              />
               {canEdit && (
                 <Button
                   size="icon"
@@ -747,7 +873,11 @@ export function PokemonSheet({
             <div className="grid gap-2 sm:grid-cols-3">
               <div>
                 <Label className="text-[10px] uppercase text-muted-foreground">Sex</Label>
-                <Select value={pokemon.sex ?? ""} onValueChange={(v) => patch({ sex: v || null })} disabled={!canEdit}>
+                <Select
+                  value={pokemon.sex ?? ""}
+                  onValueChange={(v) => patch({ sex: v || null })}
+                  disabled={!canEdit}
+                >
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue placeholder="—" />
                   </SelectTrigger>
@@ -784,10 +914,10 @@ export function PokemonSheet({
                 const spdefBonus = Number(mods._spdef_bonus ?? 0) || 0;
                 const updateBonus = (key: "_def_bonus" | "_spdef_bonus", v: number) =>
                   patch({
-                    modifiers: { ...(pokemon.modifiers as Record<string, unknown>), [key]: v } as unknown as Record<
-                      string,
-                      number
-                    >,
+                    modifiers: {
+                      ...(pokemon.modifiers as Record<string, unknown>),
+                      [key]: v,
+                    } as unknown as Record<string, number>,
                   });
                 return (
                   <>
@@ -804,7 +934,9 @@ export function PokemonSheet({
                     </span>
                     <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-0.5 font-bold text-primary">
                       SpDef {spDef + spdefBonus}{" "}
-                      <span className="text-[9px] uppercase opacity-70">({spDefUsesInsight ? "Ins" : "Vit"})</span>
+                      <span className="text-[9px] uppercase opacity-70">
+                        ({spDefUsesInsight ? "Ins" : "Vit"})
+                      </span>
                       <Input
                         type="number"
                         value={spdefBonus}
@@ -821,24 +953,32 @@ export function PokemonSheet({
               {canEdit && (
                 <EvolveButton
                   pokemonId={pokemonId}
-                  fromSprite={preferredPokemonSprite(species.name, species.sprite_url, pokemon.is_shiny, spriteStyle)}
+                  fromSprite={preferredPokemonSprite(
+                    species.name,
+                    species.sprite_url,
+                    pokemon.is_shiny,
+                    spriteStyle,
+                  )}
                   fromSpeciesId={species.id}
                   currentDexNumber={species.dex_number}
                   speciesName={species.name}
-                   evolutions={species.evolutions}
-                   previousSpecies={species}
-                   attrLimits={species.attr_limits ?? {}}
-                   currentAttrs={pokemon.current_attrs ?? {}}
-                   attrPoints={pokemon.attr_points ?? {}}
-                   attrBonus={pokemon.attr_bonus ?? {}}
-                   isOvergrown={pokemon.is_overgrown}
-                   isShiny={pokemon.is_shiny}
-                   maxHp={pokemon.hp}
-                   currentHp={pokemon.current_hp ?? pokemon.hp}
+                  evolutions={species.evolutions}
+                  previousSpecies={species}
+                  attrLimits={species.attr_limits ?? {}}
+                  currentAttrs={pokemon.current_attrs ?? {}}
+                  attrPoints={pokemon.attr_points ?? {}}
+                  attrBonus={pokemon.attr_bonus ?? {}}
+                  isOvergrown={pokemon.is_overgrown}
+                  isShiny={pokemon.is_shiny}
+                  maxHp={pokemon.hp}
+                  currentHp={pokemon.current_hp ?? pokemon.hp}
                   victories={pokemon.victories}
                   happiness={pokemon.happiness}
                   loyalty={pokemon.loyalty}
-                  baseSpeciesId={(pokemon.modifiers as Record<string, unknown>)?._base_species as string | undefined}
+                  baseSpeciesId={
+                    (pokemon.modifiers as Record<string, unknown>)?._base_species as
+                      string | undefined
+                  }
                   ownerTrainerId={pokemon.owner_trainer_id ?? null}
                   heldItem={pokemon.held_item}
                   spriteStyle={spriteStyle}
@@ -879,11 +1019,13 @@ export function PokemonSheet({
                 size="sm"
                 variant="outline"
                 className="h-7"
-                onClick={() => onRoll(`${name} · Clash (Str+Clash)`, clash, painPen, {
-                  characterKind: "pokemon",
-                  characterId: pokemonId,
-                  imageUrl: displayImage,
-                })}
+                onClick={() =>
+                  onRoll(`${name} · Clash (Str+Clash)`, clash, painPen, {
+                    characterKind: "pokemon",
+                    characterId: pokemonId,
+                    imageUrl: displayImage,
+                  })
+                }
               >
                 <Dices className="mr-1 h-3.5 w-3.5" /> Clash · {clash}d6
               </Button>
@@ -891,11 +1033,13 @@ export function PokemonSheet({
                 size="sm"
                 variant="outline"
                 className="h-7"
-                onClick={() => onRoll(`${name} · Evasion (Dex+Evasion)`, evasion, painPen, {
-                  characterKind: "pokemon",
-                  characterId: pokemonId,
-                  imageUrl: displayImage,
-                })}
+                onClick={() =>
+                  onRoll(`${name} · Evasion (Dex+Evasion)`, evasion, painPen, {
+                    characterKind: "pokemon",
+                    characterId: pokemonId,
+                    imageUrl: displayImage,
+                  })
+                }
               >
                 <Dices className="mr-1 h-3.5 w-3.5" /> Evasion · {evasion}d6
               </Button>
@@ -917,7 +1061,9 @@ export function PokemonSheet({
       {/* ============ BLOCO 2 — Status + Physical + Social ============ */}
       <section className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
         <div className="rounded-lg border border-border bg-card p-3 min-w-0">
-          <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Status problems</h4>
+          <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            Status problems
+          </h4>
           <HpAndStatusBlock
             current={curHp}
             max={maxHpEff}
@@ -952,6 +1098,25 @@ export function PokemonSheet({
                 />
               );
             })}
+            {[
+              ["clash_times", "Clash times"],
+              ["evasion_times", "Evasion times"],
+            ].map(([key, label]) => (
+              <AttrFourField
+                key={key}
+                label={label}
+                base={1}
+                points={0}
+                bonus={pokemon.attr_bonus?.[key] ?? 0}
+                baseEditable={false}
+                hidePoints
+                disabled={!canEdit}
+                onChange={(d) => {
+                  if (d.bonus !== undefined)
+                    patch({ attr_bonus: { ...pokemon.attr_bonus, [key]: d.bonus } });
+                }}
+              />
+            ))}
           </div>
         </div>
         <div className="rounded-lg border border-border bg-card p-3 min-w-0">
@@ -968,7 +1133,8 @@ export function PokemonSheet({
                 disabled={!canEdit}
                 cap={5}
                 onChange={(d) => {
-                  if (d.base !== undefined) patch({ social_attrs: { ...pokemon.social_attrs, [a]: d.base } });
+                  if (d.base !== undefined)
+                    patch({ social_attrs: { ...pokemon.social_attrs, [a]: d.base } });
                   if (d.points !== undefined)
                     patch({ social_attr_points: { ...pokemon.social_attr_points, [a]: d.points } });
                   if (d.bonus !== undefined)
@@ -1020,7 +1186,8 @@ export function PokemonSheet({
             const abilityEffect = pokemonAbilityEffect(a, detail?.effect);
             const hasChoice = species.abilities.length > 1;
             const mods = pokemon.modifiers as unknown as Record<string, unknown>;
-            const selected = (mods?._selected_ability as string | undefined) ?? species.abilities[0];
+            const selected =
+              (mods?._selected_ability as string | undefined) ?? species.abilities[0];
             const isSelected = selected === a;
             return (
               <div
@@ -1049,11 +1216,15 @@ export function PokemonSheet({
                   <div className="text-sm font-semibold">
                     {a}
                     {hasChoice && isSelected && (
-                      <span className="ml-2 text-[10px] uppercase tracking-wide text-primary">active</span>
+                      <span className="ml-2 text-[10px] uppercase tracking-wide text-primary">
+                        active
+                      </span>
                     )}
                   </div>
                   {abilityEffect && (
-                    <div className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">{abilityEffect}</div>
+                    <div className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">
+                      {abilityEffect}
+                    </div>
                   )}
                   {abilityEffect && <EffectIcons effect={abilityEffect} className="mt-1" />}
                 </div>
@@ -1068,7 +1239,9 @@ export function PokemonSheet({
             );
           })}
           {species.abilities.length === 0 && (
-            <div className="text-xs text-muted-foreground">No abilities listed for this species.</div>
+            <div className="text-xs text-muted-foreground">
+              No abilities listed for this species.
+            </div>
           )}
         </div>
       </section>
@@ -1157,17 +1330,23 @@ export function PokemonSheet({
             const accSkillVal = accSkill.value;
             const accPool = accAttrVal + accSkillVal;
             const cat = (m.category ?? "").toLowerCase();
-            const isStatus = cat === "support" || cat === "status" || m.power <= 0 || !m.damage_stat;
+            const isStatus =
+              cat === "support" || cat === "status" || m.power <= 0 || !m.damage_stat;
             const dmgPick = pickBestAttr(m.damage_stat ?? "strength");
             const dmgStat = dmgPick.name;
             const dmgAttrVal = dmgPick.value;
             const hasStab =
-              !isStatus && (species.types ?? []).some((t) => String(t).toLowerCase() === String(m.type).toLowerCase());
+              !isStatus &&
+              (species.types ?? []).some(
+                (t) => String(t).toLowerCase() === String(m.type).toLowerCase(),
+              );
             const stabBonus = hasStab ? 1 : 0;
             const dmgPool = isStatus ? 0 : m.power + dmgAttrVal + stabBonus;
             const isSpecial = cat === "special";
             const accuracyText = `${cap(accStat)}${m.accuracy_skill ? ` + ${accSkill.label}` : ""}`;
-            const damagePoolText = isStatus ? "—" : `${cap(dmgStat)} + ${m.power}${hasStab ? " + 1 STAB" : ""}`;
+            const damagePoolText = isStatus
+              ? "—"
+              : `${cap(dmgStat)} + ${m.power}${hasStab ? " + 1 STAB" : ""}`;
             return (
               <MoveCard
                 key={m.id}
@@ -1235,7 +1414,9 @@ export function PokemonSheet({
             <Label className="text-[10px] uppercase text-muted-foreground">Held item</Label>
             <Input
               value={heldItemDraft}
-              onFocus={() => { heldItemFocusedRef.current = true; }}
+              onFocus={() => {
+                heldItemFocusedRef.current = true;
+              }}
               onBlur={() => {
                 heldItemFocusedRef.current = false;
                 patch({ held_item: heldItemDraft.trim() || null });
@@ -1247,7 +1428,9 @@ export function PokemonSheet({
             <Label className="text-[10px] uppercase text-muted-foreground">Descrição do item</Label>
             <Textarea
               value={heldItemDescDraft}
-              onFocus={() => { heldItemDescFocusedRef.current = true; }}
+              onFocus={() => {
+                heldItemDescFocusedRef.current = true;
+              }}
               onBlur={() => {
                 heldItemDescFocusedRef.current = false;
                 patch({
@@ -1308,7 +1491,9 @@ export function PokemonSheet({
           <Label className="text-[10px] uppercase text-muted-foreground">Notes</Label>
           <Textarea
             value={notesDraft}
-            onFocus={() => { notesFocusedRef.current = true; }}
+            onFocus={() => {
+              notesFocusedRef.current = true;
+            }}
             onBlur={() => {
               notesFocusedRef.current = false;
               patch({ notes: notesDraft });
@@ -1374,7 +1559,9 @@ function TypeEffectivenessBox({ types }: { types: string[] }) {
   );
   const Row = ({ label, items, tone }: { label: string; items: string[]; tone: string }) => (
     <div className="flex items-start gap-2">
-      <span className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${tone}`}>
+      <span
+        className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${tone}`}
+      >
         {label}
       </span>
       <div className="flex flex-wrap gap-1">
@@ -1389,14 +1576,26 @@ function TypeEffectivenessBox({ types }: { types: string[] }) {
   return (
     <section className="overflow-hidden rounded-lg border border-border bg-card">
       <div className="border-b-2 border-primary bg-primary/10 px-3 py-1">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-primary">Efetividade de Tipos</span>
+        <span className="text-[11px] font-bold uppercase tracking-wider text-primary">
+          Efetividade de Tipos
+        </span>
       </div>
       <div className="space-y-1.5 p-3">
         <Row label="Super efetivo (+1)" items={eff.weak1} tone="bg-red-500/15 text-red-600" />
-        {eff.weak2.length > 0 && <Row label="Super efetivo (+2)" items={eff.weak2} tone="bg-red-500/25 text-red-700" />}
-        <Row label="Não muito efetivo (-1)" items={eff.resist1} tone="bg-emerald-500/15 text-emerald-600" />
+        {eff.weak2.length > 0 && (
+          <Row label="Super efetivo (+2)" items={eff.weak2} tone="bg-red-500/25 text-red-700" />
+        )}
+        <Row
+          label="Não muito efetivo (-1)"
+          items={eff.resist1}
+          tone="bg-emerald-500/15 text-emerald-600"
+        />
         {eff.resist2.length > 0 && (
-          <Row label="Não muito efetivo (-2)" items={eff.resist2} tone="bg-emerald-500/25 text-emerald-700" />
+          <Row
+            label="Não muito efetivo (-2)"
+            items={eff.resist2}
+            tone="bg-emerald-500/25 text-emerald-700"
+          />
         )}
         <Row label="Imunidades" items={eff.immune} tone="bg-muted text-muted-foreground" />
       </div>
@@ -1421,7 +1620,9 @@ function SkillGroup({
 }) {
   return (
     <div className="rounded-md border border-border bg-background p-2">
-      <div className={`mb-2 inline-block rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${tint}`}>
+      <div
+        className={`mb-2 inline-block rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${tint}`}
+      >
         {title}
       </div>
       <div className="space-y-1.5">
@@ -1430,7 +1631,11 @@ function SkillGroup({
           return (
             <div key={s} className="flex items-center justify-between gap-2">
               <span className="text-xs">{s}</span>
-              <SkillNumberInput value={v} onChange={(n) => onChange({ [s]: n })} disabled={!canEdit} />
+              <SkillNumberInput
+                value={v}
+                onChange={(n) => onChange({ [s]: n })}
+                disabled={!canEdit}
+              />
             </div>
           );
         })}
@@ -1462,11 +1667,11 @@ function PokemonImage({
         spriteStyle={spriteStyle}
         alt={species.name}
         className="h-24 w-24 rounded-xl border border-border bg-muted object-contain"
-        emptyFallback={(
+        emptyFallback={
           <div className="flex h-24 w-24 items-center justify-center rounded-xl border border-dashed border-border bg-muted text-xs text-muted-foreground">
             No image
           </div>
-        )}
+        }
       />
       {canEdit && (
         <div className="flex w-full flex-wrap gap-1.5">
@@ -1524,7 +1729,8 @@ function AddMoveDialog({
           size="sm"
           variant="outline"
           onClick={() => {
-            if (atCap) toast.error(`This Pokémon has reached the maximum number of moves (${moveCap}).`);
+            if (atCap)
+              toast.error(`This Pokémon has reached the maximum number of moves (${moveCap}).`);
           }}
           disabled={atCap}
         >
@@ -1577,7 +1783,13 @@ function AddMoveDialog({
   );
 }
 
-type Nature = { id: string; name: string; keywords: string; description: string; confidence: number };
+type Nature = {
+  id: string;
+  name: string;
+  keywords: string;
+  description: string;
+  confidence: number;
+};
 
 function NatureSelect({
   value,
@@ -1693,15 +1905,22 @@ function EvolveButton({
   const isMegaForm = !!baseSpeciesId;
   const isMegaName = (n: string) => /\bmega\b/i.test(n);
   const megaEvos = useMemo(() => evolutions.filter((e) => isMegaName(e)), [evolutions]);
-  const rawEvolutionCandidates = useMemo(() => evolutions.filter((e) => !isMegaName(e)), [evolutions]);
+  const rawEvolutionCandidates = useMemo(
+    () => evolutions.filter((e) => !isMegaName(e)),
+    [evolutions],
+  );
   const { data: speciesCatalog = [] } = useQuery({
     queryKey: ["species-evolution-catalog"],
     queryFn: async () => {
       const { fetchAllPaged } = await import("@/lib/supabase-paged");
-      return await fetchAllPaged<Pick<Species, "id" | "name" | "dex_number">>("species", "id,name,dex_number", {
-        orderBy: "name",
-        ascending: true,
-      });
+      return await fetchAllPaged<Pick<Species, "id" | "name" | "dex_number">>(
+        "species",
+        "id,name,dex_number",
+        {
+          orderBy: "name",
+          ascending: true,
+        },
+      );
     },
     staleTime: Number.POSITIVE_INFINITY,
     gcTime: 60 * 60 * 1_000,
@@ -1711,7 +1930,8 @@ function EvolveButton({
       rawEvolutionCandidates.filter((targetName) => {
         const targetSpecies = findEvolutionSpecies(speciesCatalog, targetName);
         if (!targetSpecies) return false;
-        if (canonicalEvolutionName(targetSpecies.name) === canonicalEvolutionName(speciesName)) return false;
+        if (canonicalEvolutionName(targetSpecies.name) === canonicalEvolutionName(speciesName))
+          return false;
         if (
           currentDexNumber != null &&
           targetSpecies.dex_number != null &&
@@ -1759,7 +1979,11 @@ function EvolveButton({
     queryKey: ["trainer-bag-evo", ownerTrainerId],
     enabled: !!ownerTrainerId,
     queryFn: async () => {
-      const { data } = await supabase.from("trainers").select("bag_list").eq("id", ownerTrainerId!).maybeSingle();
+      const { data } = await supabase
+        .from("trainers")
+        .select("bag_list")
+        .eq("id", ownerTrainerId!)
+        .maybeSingle();
       const list = (data?.bag_list ?? []) as Array<{ name: string; qty: number }>;
       return list.map((i) => i.name);
     },
@@ -1778,7 +2002,10 @@ function EvolveButton({
     return out;
   }, [currentAttrs, attrLimits]);
   const gates: EvolutionGate[] = useMemo(
-    () => allRules.map((r) => evaluateEvolution(r, { victories, happiness, loyalty, inventoryItems, attrs: attrCtx })),
+    () =>
+      allRules.map((r) =>
+        evaluateEvolution(r, { victories, happiness, loyalty, inventoryItems, attrs: attrCtx }),
+      ),
     [allRules, victories, happiness, loyalty, inventoryItems, attrCtx],
   );
 
@@ -1786,11 +2013,14 @@ function EvolveButton({
   const eligibleGates = useMemo(() => gates.filter((g) => g.ready || g.alwaysShow), [gates]);
   const hasEligibleNormalRule = eligibleGates.some((g) => !isMegaName(g.rule.to));
 
-  const [target, setTarget] = useState<string>(mode === "evolve" ? (normalEvos[0] ?? "") : (megaEvos[0] ?? ""));
+  const [target, setTarget] = useState<string>(
+    mode === "evolve" ? (normalEvos[0] ?? "") : (megaEvos[0] ?? ""),
+  );
   useEffect(() => {
     if (mode === "evolve") {
       // Prefer first eligible evolution target if any.
-      const first = eligibleGates.find((g) => !isMegaName(g.rule.to))?.rule.to ?? normalEvos[0] ?? "";
+      const first =
+        eligibleGates.find((g) => !isMegaName(g.rule.to))?.rule.to ?? normalEvos[0] ?? "";
       setTarget(first);
     } else if (mode === "mega") setTarget(megaEvos[0] ?? "");
   }, [mode, normalEvos, megaEvos, eligibleGates]);
@@ -1803,7 +2033,11 @@ function EvolveButton({
     queryKey: ["species-by-id", targetSpeciesIdentity?.id],
     enabled: !!targetSpeciesIdentity?.id && open && !isMegaForm,
     queryFn: async () => {
-      const { data, error } = await supabase.from("species").select("*").eq("id", targetSpeciesIdentity!.id).single();
+      const { data, error } = await supabase
+        .from("species")
+        .select("*")
+        .eq("id", targetSpeciesIdentity!.id)
+        .single();
       if (error) throw error;
       return applyPaldeaHisuiSpeciesBalance(data as Species);
     },
@@ -1812,7 +2046,11 @@ function EvolveButton({
     queryKey: ["species-by-id", baseSpeciesId],
     enabled: !!baseSpeciesId && open,
     queryFn: async () => {
-      const { data } = await supabase.from("species").select("*").eq("id", baseSpeciesId!).maybeSingle();
+      const { data } = await supabase
+        .from("species")
+        .select("*")
+        .eq("id", baseSpeciesId!)
+        .maybeSingle();
       return data ? applyPaldeaHisuiSpeciesBalance(data as Species) : null;
     },
   });
@@ -1836,7 +2074,10 @@ function EvolveButton({
 
   // The selected route controls readiness, the displayed condition and item consumption.
   const selectedGate = useMemo(
-    () => targetGates.find((gate) => evolutionRuleKey(gate.rule) === selectedRuleKey) ?? targetGates[0] ?? null,
+    () =>
+      targetGates.find((gate) => evolutionRuleKey(gate.rule) === selectedRuleKey) ??
+      targetGates[0] ??
+      null,
     [selectedRuleKey, targetGates],
   );
 
@@ -1866,10 +2107,8 @@ function EvolveButton({
     clearInterval(iv);
     setShowEvolved(true);
     const newMods: Record<string, string> = {
-      ...(((await supabase.from("pokemon").select("modifiers").eq("id", pokemonId).single()).data?.modifiers as Record<
-        string,
-        string
-      >) ?? {}),
+      ...(((await supabase.from("pokemon").select("modifiers").eq("id", pokemonId).single()).data
+        ?.modifiers as Record<string, string>) ?? {}),
     };
     if (newBaseSpecies === null) delete newMods._base_species;
     else if (newBaseSpecies) newMods._base_species = newBaseSpecies;
@@ -1906,8 +2145,9 @@ function EvolveButton({
       selectedGate.rule.items.length > 0
     ) {
       const consume = selectedGate.rule.items.find((it) =>
-        inventoryItems.some((inventoryItem) =>
-          canonicalEvolutionItemName(inventoryItem) === canonicalEvolutionItemName(it),
+        inventoryItems.some(
+          (inventoryItem) =>
+            canonicalEvolutionItemName(inventoryItem) === canonicalEvolutionItemName(it),
         ),
       );
       if (consume) {
@@ -1916,9 +2156,11 @@ function EvolveButton({
           .select("bag_list")
           .eq("id", ownerTrainerId)
           .maybeSingle();
-        const bag = ((tData?.bag_list ?? []) as Array<{ name: string; qty: number }>).map((i) => ({ ...i }));
-        const idx = bag.findIndex((i) =>
-          canonicalEvolutionItemName(i.name) === canonicalEvolutionItemName(consume),
+        const bag = ((tData?.bag_list ?? []) as Array<{ name: string; qty: number }>).map((i) => ({
+          ...i,
+        }));
+        const idx = bag.findIndex(
+          (i) => canonicalEvolutionItemName(i.name) === canonicalEvolutionItemName(consume),
         );
         if (idx >= 0) {
           bag[idx].qty = (bag[idx].qty ?? 1) - 1;
@@ -1937,13 +2179,21 @@ function EvolveButton({
     qc.invalidateQueries({ queryKey: ["species", next.id] });
   }
 
-  const nextSprite = mode === "revert"
-    ? preferredPokemonSprite(baseSpecies?.name, baseSpecies?.sprite_url, isShiny, spriteStyle)
-    : preferredPokemonSprite(targetSpecies?.name ?? target, targetSpecies?.sprite_url, isShiny, spriteStyle);
+  const nextSprite =
+    mode === "revert"
+      ? preferredPokemonSprite(baseSpecies?.name, baseSpecies?.sprite_url, isShiny, spriteStyle)
+      : preferredPokemonSprite(
+          targetSpecies?.name ?? target,
+          targetSpecies?.sprite_url,
+          isShiny,
+          spriteStyle,
+        );
   const nextName = mode === "revert" ? (baseSpecies?.name ?? "base form") : target;
   const showingNextSprite = showEvolved || toggle;
   const animationSpecies = showingNextSprite
-    ? (mode === "revert" ? baseSpecies : targetSpecies)
+    ? mode === "revert"
+      ? baseSpecies
+      : targetSpecies
     : previousSpecies;
   const displayedSprite = showingNextSprite ? nextSprite : fromSprite;
   if (!isMegaForm && !hasNormal && !hasMega) return null;
@@ -1952,7 +2202,8 @@ function EvolveButton({
   const showEvolveButton = mode !== "evolve" || hasEligibleNormalRule;
 
   // Inline method description above the button (covers all gates).
-  const inlineDescription = mode === "evolve" && gates.length > 0 ? gates.map((g) => g.description).join(" | ") : null;
+  const inlineDescription =
+    mode === "evolve" && gates.length > 0 ? gates.map((g) => g.description).join(" | ") : null;
 
   return (
     <>
@@ -1989,7 +2240,9 @@ function EvolveButton({
                     <p className="font-semibold">Método e condição de evolução</p>
                     <p className="text-muted-foreground">{selectedGate.description}</p>
                     {!selectedGate.ready && !selectedGate.alwaysShow && (
-                      <p className="mt-1 text-[11px] text-destructive">Condição ainda não cumprida.</p>
+                      <p className="mt-1 text-[11px] text-destructive">
+                        Condição ainda não cumprida.
+                      </p>
                     )}
                   </div>
                 )}
@@ -2061,9 +2314,11 @@ function EvolveButton({
                   onClick={() => transform(false)}
                   className="w-full"
                   disabled={
-                    (mode === "evolve" && (!targetSpecies || (!!selectedGate && !selectedGate.ready && !selectedGate.alwaysShow)))
-                    || (mode === "mega" && !targetSpecies)
-                    || (mode === "revert" && !baseSpecies)
+                    (mode === "evolve" &&
+                      (!targetSpecies ||
+                        (!!selectedGate && !selectedGate.ready && !selectedGate.alwaysShow))) ||
+                    (mode === "mega" && !targetSpecies) ||
+                    (mode === "revert" && !baseSpecies)
                   }
                 >
                   <Icon className="mr-1.5 h-4 w-4" /> {label}
@@ -2080,13 +2335,15 @@ function EvolveButton({
                   spriteStyle={spriteStyle}
                   alt=""
                   className={`h-48 w-48 object-contain transition-all duration-200 ${showEvolved ? "drop-shadow-[0_0_30px_hsl(var(--primary))]" : "brightness-200 contrast-150"}`}
-                  emptyFallback={(
+                  emptyFallback={
                     <div className="flex h-48 w-48 items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground">
                       No sprite
                     </div>
-                  )}
+                  }
                 />
-                <p className="text-sm font-bold">{showEvolved ? `Now ${nextName}!` : `${label}ing…`}</p>
+                <p className="text-sm font-bold">
+                  {showEvolved ? `Now ${nextName}!` : `${label}ing…`}
+                </p>
                 {showEvolved && (
                   <Button onClick={() => setOpen(false)} className="w-full">
                     Done
@@ -2165,7 +2422,11 @@ function MegaEvolveSubButton({
     queryKey: ["species-by-id", megaSpeciesIdentity?.id],
     enabled: !!megaSpeciesIdentity?.id && open,
     queryFn: async () => {
-      const { data, error } = await supabase.from("species").select("*").eq("id", megaSpeciesIdentity!.id).single();
+      const { data, error } = await supabase
+        .from("species")
+        .select("*")
+        .eq("id", megaSpeciesIdentity!.id)
+        .single();
       if (error) throw error;
       return applyPaldeaHisuiSpeciesBalance(data as Species);
     },
@@ -2182,10 +2443,8 @@ function MegaEvolveSubButton({
     clearInterval(iv);
     setShowEvolved(true);
     const newMods: Record<string, string> = {
-      ...(((await supabase.from("pokemon").select("modifiers").eq("id", pokemonId).single()).data?.modifiers as Record<
-        string,
-        string
-      >) ?? {}),
+      ...(((await supabase.from("pokemon").select("modifiers").eq("id", pokemonId).single()).data
+        ?.modifiers as Record<string, string>) ?? {}),
     };
     newMods._base_species = fromSpeciesId;
     const evolvedStats = buildEvolvedStats({
@@ -2214,7 +2473,12 @@ function MegaEvolveSubButton({
     qc.invalidateQueries({ queryKey: ["pokemon", pokemonId] });
     qc.invalidateQueries({ queryKey: ["species", megaSpecies.id] });
   }
-  const megaSprite = preferredPokemonSprite(megaSpecies?.name, megaSpecies?.sprite_url, isShiny, spriteStyle);
+  const megaSprite = preferredPokemonSprite(
+    megaSpecies?.name,
+    megaSpecies?.sprite_url,
+    isShiny,
+    spriteStyle,
+  );
   const showingMegaSprite = showEvolved || toggle;
   const sprite = showingMegaSprite ? megaSprite : fromSprite;
   const animationSpecies = showingMegaSprite ? megaSpecies : previousSpecies;
@@ -2277,11 +2541,11 @@ function MegaEvolveSubButton({
               spriteStyle={spriteStyle}
               alt=""
               className={`h-48 w-48 object-contain transition-all duration-200 ${showEvolved ? "drop-shadow-[0_0_30px_hsl(var(--primary))]" : "brightness-200 contrast-150"}`}
-              emptyFallback={(
+              emptyFallback={
                 <div className="flex h-48 w-48 items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground">
                   No sprite
                 </div>
-              )}
+              }
             />
             <p className="text-sm font-bold">{showEvolved ? `Now ${target}!` : "Mega Evolving…"}</p>
             {showEvolved && (

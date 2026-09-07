@@ -210,7 +210,7 @@ export function useDebouncedPatch<T extends object>(
       if (document.visibilityState === "hidden") handlePageHide();
     };
     const periodicFlush = window.setInterval(() => {
-      if (Object.keys(pending.current).length > 0 && navigator.onLine !== false) {
+      if (Object.keys(pending.current).length > 0) {
         retryCount.current = 0;
         void flushRef.current().catch(() => undefined);
       }

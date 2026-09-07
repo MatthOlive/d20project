@@ -4,7 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { ChevronDown, ChevronUp, Dices } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -17,11 +23,7 @@ import {
 } from "@/lib/pokerole";
 import { useGameSpdefUsesInsight } from "@/hooks/use-game-spdef-uses-insight";
 import { useGameEffectivenessFlat } from "@/hooks/use-game-effectiveness-flat";
-import type {
-  MoveReactionTarget,
-  MoveRollMessage,
-  MoveRollTarget,
-} from "@/components/MoveCard";
+import type { MoveReactionTarget, MoveRollMessage, MoveRollTarget } from "@/components/MoveCard";
 import { painPenaltyFor } from "@/components/SheetRolls";
 import {
   resolveMoveAccuracy,
@@ -95,14 +97,25 @@ export function parseMoveExtras(effect: string | null | undefined): {
   const chance: { count: number; label: string }[] = [];
   const extra: { count: number; label: string }[] = [];
   if (!effect) return { chance, extra };
-  const numWord: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8 };
+  const numWord: Record<string, number> = {
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    seven: 7,
+    eight: 8,
+  };
   const toN = (s: string) => (/^\d+$/.test(s) ? parseInt(s, 10) : (numWord[s.toLowerCase()] ?? 0));
 
-  const chanceRe = /roll\s+(\d+|one|two|three|four|five|six|seven|eight)\s+chance\s+dice?\s*(?:to\s+([^.—-]+))?/gi;
+  const chanceRe =
+    /roll\s+(\d+|one|two|three|four|five|six|seven|eight)\s+chance\s+dice?\s*(?:to\s+([^.—-]+))?/gi;
   let m: RegExpExecArray | null;
   while ((m = chanceRe.exec(effect))) {
     const n = toN(m[1]);
-    if (n > 0) chance.push({ count: n, label: (m[2] ?? "effect").trim().replace(/\s+/g, " ").slice(0, 80) });
+    if (n > 0)
+      chance.push({ count: n, label: (m[2] ?? "effect").trim().replace(/\s+/g, " ").slice(0, 80) });
   }
   const extraRe =
     /add\s+(\d+|one|two|three|four|five|six|seven|eight)\s+extra\s+dice?\s+to\s+(?:the\s+)?damage\s+pool/gi;
@@ -154,7 +167,9 @@ function RollNumberInput({
   }
 
   function step(delta: number) {
-    onValueChange(String(typeof min === "number" ? Math.max(min, current + delta) : current + delta));
+    onValueChange(
+      String(typeof min === "number" ? Math.max(min, current + delta) : current + delta),
+    );
   }
 
   return (
@@ -229,7 +244,11 @@ export function computeMoveStats(
   const attrValue = (raw: string): number => {
     const key = raw.toLowerCase().trim();
     if ((SOCIAL_ATTRS as readonly string[]).includes(key)) {
-      return (p.social_attrs?.[key] ?? 1) + (p.social_attr_points?.[key] ?? 0) + (p.social_attr_bonus?.[key] ?? 0);
+      return (
+        (p.social_attrs?.[key] ?? 1) +
+        (p.social_attr_points?.[key] ?? 0) +
+        (p.social_attr_bonus?.[key] ?? 0)
+      );
     }
     return p.current_attrs?.[key] ?? p.base_attrs?.[key] ?? 1;
   };
@@ -249,15 +268,19 @@ export function computeMoveStats(
   const accSkill = resolveSkillValue(move.accuracy_skill, p.skills ?? {});
   const accPool = accPick.value + accSkill.value;
   const catLower = (move.category ?? "").toLowerCase();
-  const isStatus = catLower === "support" || catLower === "status" || move.power <= 0 || !move.damage_stat;
+  const isStatus =
+    catLower === "support" || catLower === "status" || move.power <= 0 || !move.damage_stat;
   const dmgPick = pickBestAttr(move.damage_stat ?? "strength");
   const hasStab =
-    !isStatus && (speciesTypes ?? []).some((t) => String(t).toLowerCase() === String(move.type).toLowerCase());
+    !isStatus &&
+    (speciesTypes ?? []).some((t) => String(t).toLowerCase() === String(move.type).toLowerCase());
   const stabBonus = hasStab ? 1 : 0;
   const dmgPool = isStatus ? 0 : move.power + dmgPick.value + stabBonus;
   const isSpecial = catLower === "special";
   const accuracyText = `${cap(accPick.name)}${move.accuracy_skill ? ` + ${accSkill.label}` : ""}`;
-  const damagePoolText = isStatus ? "—" : `${cap(dmgPick.name)} + ${move.power}${hasStab ? " + 1 STAB" : ""}`;
+  const damagePoolText = isStatus
+    ? "—"
+    : `${cap(dmgPick.name)} + ${move.power}${hasStab ? " + 1 STAB" : ""}`;
   return { accPool, dmgPool, isStatus, isSpecial, hasStab, accuracyText, damagePoolText };
 }
 
@@ -281,6 +304,8 @@ type TargetInfo = {
   types: string[];
   clashPool: number;
   evadePool: number;
+  clashTimes: number;
+  evasionTimes: number;
   painPenalty: number;
 };
 
@@ -297,6 +322,8 @@ type CombatTargetRow = {
   target_types: string[] | null;
   clash_pool: number;
   evade_pool: number;
+  clash_times?: number;
+  evasion_times?: number;
   current_hp: number;
   max_hp: number;
 };
@@ -322,7 +349,7 @@ function useCurrentMapPage(gameId: string, userId: string, enabled: boolean) {
       const member = memberRes.data as { viewing_page_id: string | null } | null;
       return game.narrator_id === userId
         ? game.active_page_id
-        : member?.viewing_page_id ?? game.active_page_id;
+        : (member?.viewing_page_id ?? game.active_page_id);
     },
   });
 }
@@ -344,11 +371,12 @@ function useTargetsForGame(gameId: string, pageId: string | null | undefined, en
     },
   });
   const tokens = useMemo(
-    () => (tokensQ.data ?? []).filter(
-      (token) =>
-        (token.layer ?? "tokens") === "tokens" &&
-        (token.character_kind === "pokemon" || token.character_kind === "trainer"),
-    ),
+    () =>
+      (tokensQ.data ?? []).filter(
+        (token) =>
+          (token.layer ?? "tokens") === "tokens" &&
+          (token.character_kind === "pokemon" || token.character_kind === "trainer"),
+      ),
     [tokensQ.data],
   );
   const ids = tokens
@@ -365,7 +393,9 @@ function useTargetsForGame(gameId: string, pageId: string | null | undefined, en
         p_page_id: pageId!,
       });
       if (error) throw new Error(error.message);
-      const rowsByTokenId = new Map((data ?? []).map((row) => [row.token_id, row]));
+      const rowsByTokenId = new Map(
+        ((data ?? []) as CombatTargetRow[]).map((row) => [row.token_id, row]),
+      );
       const map = new Map<string, TargetInfo>();
       for (const t of tokens) {
         const row = rowsByTokenId.get(t.id);
@@ -376,17 +406,19 @@ function useTargetsForGame(gameId: string, pageId: string | null | undefined, en
           name: row.target_name || t.label,
           kind: row.character_kind,
           controllerIds: [
-            ...new Set([
-              row.character_owner_id,
-              row.token_owner_id,
-              ...(row.allowed_editors ?? []),
-            ].filter(Boolean)),
+            ...new Set(
+              [row.character_owner_id, row.token_owner_id, ...(row.allowed_editors ?? [])].filter(
+                Boolean,
+              ),
+            ),
           ],
           vit: row.vitality,
           ins: row.insight,
           types: row.target_types ?? [],
           clashPool: row.clash_pool,
           evadePool: row.evade_pool,
+          clashTimes: Math.max(0, row.clash_times ?? 1),
+          evasionTimes: Math.max(0, row.evasion_times ?? 1),
           painPenalty: painPenaltyFor(row.current_hp, row.max_hp),
         });
       }
@@ -470,18 +502,19 @@ export function MoveRollDialog({
     targetSelectionEnabled,
   );
   const targetGroups = useMemo(
-    () => [
-      {
-        key: "pokemon",
-        label: "Pokémon",
-        tokens: tokens.filter((token) => token.character_kind === "pokemon"),
-      },
-      {
-        key: "trainer",
-        label: "Treinadores",
-        tokens: tokens.filter((token) => token.character_kind === "trainer"),
-      },
-    ].filter((group) => group.tokens.length > 0),
+    () =>
+      [
+        {
+          key: "pokemon",
+          label: "Pokémon",
+          tokens: tokens.filter((token) => token.character_kind === "pokemon"),
+        },
+        {
+          key: "trainer",
+          label: "Treinadores",
+          tokens: tokens.filter((token) => token.character_kind === "trainer"),
+        },
+      ].filter((group) => group.tokens.length > 0),
     [tokens],
   );
   const extras = useMemo(() => parseMoveExtras(move.effect), [move.effect]);
@@ -496,7 +529,10 @@ export function MoveRollDialog({
     queryFn: async () => {
       const query = supabase.from("game_engine_sessions" as never) as never as {
         select: (columns: string) => {
-          eq: (column: string, value: string) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => {
             maybeSingle: () => Promise<{
               data: EngineSession | null;
               error: { message: string } | null;
@@ -547,7 +583,10 @@ export function MoveRollDialog({
   const extraDmgBonus = extras.extra.reduce((acc, e, i) => acc + (extraOn[i] ? e.count : 0), 0);
   const hasTargets = selectedTokenIds.length > 0;
   const selectedTargetsReady = selectedTokenIds.every((tokenId) => infoMap.has(tokenId));
-  const baseDmgPool = Math.max(0, dmgPool + dmgBonus + extraDmgBonus - (hasTargets ? 0 : targetDef));
+  const baseDmgPool = Math.max(
+    0,
+    dmgPool + dmgBonus + extraDmgBonus - (hasTargets ? 0 : targetDef),
+  );
   const finalAccPoolBeforePain = Math.max(0, accPool + accBonus);
   const finalAccPool = Math.max(0, finalAccPoolBeforePain - painPenalty);
   const thresholds = resolveMoveAccuracy(0, actions, critMargin);
@@ -606,17 +645,21 @@ export function MoveRollDialog({
           const target = infoMap.get(selectedTokenId);
           const requestId = requestIdByToken.get(selectedTokenId);
           if (!target || !requestId) return [];
-          return [{
-            requestId,
-            tokenId: target.id,
-            characterId: target.characterId,
-            characterKind: target.kind,
-            name: target.name,
-            controllerIds: target.controllerIds,
-            clashPool: target.clashPool,
-            evadePool: target.evadePool,
-            painPenalty: target.painPenalty,
-          }];
+          return [
+            {
+              requestId,
+              tokenId: target.id,
+              characterId: target.characterId,
+              characterKind: target.kind,
+              name: target.name,
+              controllerIds: target.controllerIds,
+              clashPool: target.clashPool,
+              evadePool: target.evadePool,
+              clashTimes: target.clashTimes,
+              evasionTimes: target.evasionTimes,
+              painPenalty: target.painPenalty,
+            },
+          ];
         })
       : [];
 
@@ -639,7 +682,9 @@ export function MoveRollDialog({
           const effDicePool = effectivenessFlat ? 0 : eff.delta;
           const tgtPool = Math.max(0, dmgPoolAfterPain + effDicePool - def);
           const rolled = eff.immune ? { dice: [] as number[], successes: 0 } : rollD6(tgtPool);
-          const successesFlatAdj = effectivenessFlat ? Math.max(0, rolled.successes + eff.delta) : rolled.successes;
+          const successesFlatAdj = effectivenessFlat
+            ? Math.max(0, rolled.successes + eff.delta)
+            : rolled.successes;
           const finalDamage = eff.immune ? 0 : Math.max(1, successesFlatAdj);
 
           targets.push({
@@ -749,10 +794,14 @@ export function MoveRollDialog({
           } as unknown as never,
         });
         if (resolutionError) {
-          toast.error(`A acurácia foi enviada, mas o restante do move falhou: ${resolutionError.message}`);
+          toast.error(
+            `A acurácia foi enviada, mas o restante do move falhou: ${resolutionError.message}`,
+          );
         }
       } else if (atomicResolution.error) {
-        toast.error(`A acurácia foi enviada, mas o restante do move falhou: ${atomicResolution.error.message}`);
+        toast.error(
+          `A acurácia foi enviada, mas o restante do move falhou: ${atomicResolution.error.message}`,
+        );
       }
     }
     if (characterId) {
@@ -792,15 +841,20 @@ export function MoveRollDialog({
           <DialogTitle>
             {move.name}
             {hasStab ? (
-              <span className="ml-2 rounded bg-success/20 px-1.5 py-0.5 text-xs font-bold text-success">STAB +1</span>
+              <span className="ml-2 rounded bg-success/20 px-1.5 py-0.5 text-xs font-bold text-success">
+                STAB +1
+              </span>
             ) : null}
           </DialogTitle>
         </DialogHeader>
         {move.effect && <p className="text-sm text-muted-foreground">{move.effect}</p>}
         <p className="text-[11px] italic text-muted-foreground">
-          Ordem: 1) Acurácia → 2) Dano{extras.chance.length > 0 ? " → 3) Chance Dice (apenas 6 contam)" : ""}.
+          Ordem: 1) Acurácia → 2) Dano
+          {extras.chance.length > 0 ? " → 3) Chance Dice (apenas 6 contam)" : ""}.
           {painPenalty > 0 ? ` Pain Penalty −${painPenalty} dado(s) em Acurácia & Dano.` : ""}{" "}
-          {effectivenessFlat ? "Efetividade: regra da casa (+/− sucessos)." : "Efetividade: RAW (+/− dados na pool)."}
+          {effectivenessFlat
+            ? "Efetividade: regra da casa (+/− sucessos)."
+            : "Efetividade: RAW (+/− dados na pool)."}
         </p>
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
@@ -830,7 +884,9 @@ export function MoveRollDialog({
                 />
               </div>
               <div>
-                <Label className="text-[10px] text-muted-foreground">Ações já feitas no turno</Label>
+                <Label className="text-[10px] text-muted-foreground">
+                  Ações já feitas no turno
+                </Label>
                 <RollNumberInput
                   min={0}
                   value={actionsText}
@@ -840,8 +896,8 @@ export function MoveRollDialog({
               </div>
             </div>
             <p className="mt-1.5 text-[10px] text-muted-foreground">
-              Acertar: <b>{requiredSuccesses}</b> sucesso(s). Crítico: <b>{critRequired}</b> sucesso(s). Crítico
-              adiciona 1 dado extra ao dano.
+              Acertar: <b>{requiredSuccesses}</b> sucesso(s). Crítico: <b>{critRequired}</b>{" "}
+              sucesso(s). Crítico adiciona 1 dado extra ao dano.
             </p>
           </div>
 
@@ -865,86 +921,100 @@ export function MoveRollDialog({
                 <div className="rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
                   O alvo e a defesa serão calculados automaticamente pela batalha.
                 </div>
-              ) : <><div className="rounded-md border border-border bg-muted/30 p-2">
-                <Label className="text-xs font-semibold">Alvos no campo (opcional)</Label>
-                <p className="text-[10px] text-muted-foreground">
-                  Selecione um ou mais tokens. O dano é calculado por alvo usando {isSpecial ? "Sp.Def" : "Def"} e tipo.
-                </p>
-                <div className="mt-2 max-h-40 space-y-1 overflow-y-auto">
-                  {tokens.length === 0 && <p className="text-[11px] text-muted-foreground">Nenhum token no campo.</p>}
-                  {targetGroups.map((group) => (
-                    <section key={group.key} className="space-y-1" aria-label={group.label}>
-                      <div className="sticky top-0 z-10 flex items-center justify-between bg-muted px-2 py-1 text-[10px] font-bold uppercase text-muted-foreground">
-                        <span>{group.label}</span>
-                        <span>{group.tokens.length}</span>
-                      </div>
-                      {group.tokens.map((tk) => {
-                        const info = infoMap.get(tk.id);
-                        const checked = selectedTokenIds.includes(tk.id);
-                        const def = info ? defValueFor(info) : null;
-                        const mult = info ? damageMultiplierFor(move.type as string, info.types) : 1;
-                        const eff = damageDeltaFromMultiplier(mult);
-                        return (
-                          <label
-                            key={tk.id}
-                            className="flex items-center gap-2 rounded border border-border bg-card/50 p-1.5 text-xs"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={(ev) =>
-                                setSelectedTokenIds((arr) =>
-                                  ev.target.checked ? [...arr, tk.id] : arr.filter((x) => x !== tk.id),
-                                )
-                              }
-                            />
-                            <span className="flex-1 truncate font-semibold">{tk.label}</span>
-                            {info && (
-                              <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                                <span>
-                                  {isSpecial ? "SpDef" : "Def"} {def}
-                                </span>
-                                <span className="rounded bg-muted px-1">{eff.label}</span>
-                              </span>
-                            )}
-                            {!info && !targetInfoLoading && (
-                              <span className="text-[10px] font-semibold text-destructive">
-                                Dados indisponíveis
-                              </span>
-                            )}
-                          </label>
-                        );
-                      })}
-                    </section>
-                  ))}
-                </div>
-                {hasTargets && !selectedTargetsReady && targetInfoLoading && (
-                  <p className="mt-1 text-[10px] font-semibold text-muted-foreground">Carregando dados dos alvos…</p>
-                )}
-                {targetInfoError && (
-                  <p className="mt-1 text-[10px] font-semibold text-destructive">
-                    Não foi possível carregar Defesa e tipo dos alvos. Atualize a mesa após aplicar a migração do banco.
-                  </p>
-                )}
-              </div>
-
-              {!hasTargets && (
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <Label className="text-xs">{defLabel} manual</Label>
-                    <p className="text-[11px] text-muted-foreground">
-                      Pool de dano base: <b>{baseDmgPool}d6</b> (Def reduz dados)
-                      {painPenalty > 0 ? ` · −${painPenalty} dado(s) por dor` : ""}
+              ) : (
+                <>
+                  <div className="rounded-md border border-border bg-muted/30 p-2">
+                    <Label className="text-xs font-semibold">Alvos no campo (opcional)</Label>
+                    <p className="text-[10px] text-muted-foreground">
+                      Selecione um ou mais tokens. O dano é calculado por alvo usando{" "}
+                      {isSpecial ? "Sp.Def" : "Def"} e tipo.
                     </p>
+                    <div className="mt-2 max-h-40 space-y-1 overflow-y-auto">
+                      {tokens.length === 0 && (
+                        <p className="text-[11px] text-muted-foreground">Nenhum token no campo.</p>
+                      )}
+                      {targetGroups.map((group) => (
+                        <section key={group.key} className="space-y-1" aria-label={group.label}>
+                          <div className="sticky top-0 z-10 flex items-center justify-between bg-muted px-2 py-1 text-[10px] font-bold uppercase text-muted-foreground">
+                            <span>{group.label}</span>
+                            <span>{group.tokens.length}</span>
+                          </div>
+                          {group.tokens.map((tk) => {
+                            const info = infoMap.get(tk.id);
+                            const checked = selectedTokenIds.includes(tk.id);
+                            const def = info ? defValueFor(info) : null;
+                            const mult = info
+                              ? damageMultiplierFor(move.type as string, info.types)
+                              : 1;
+                            const eff = damageDeltaFromMultiplier(mult);
+                            return (
+                              <label
+                                key={tk.id}
+                                className="flex items-center gap-2 rounded border border-border bg-card/50 p-1.5 text-xs"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={(ev) =>
+                                    setSelectedTokenIds((arr) =>
+                                      ev.target.checked
+                                        ? [...arr, tk.id]
+                                        : arr.filter((x) => x !== tk.id),
+                                    )
+                                  }
+                                />
+                                <span className="flex-1 truncate font-semibold">{tk.label}</span>
+                                {info && (
+                                  <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                    <span>
+                                      {isSpecial ? "SpDef" : "Def"} {def}
+                                    </span>
+                                    <span className="rounded bg-muted px-1">{eff.label}</span>
+                                  </span>
+                                )}
+                                {!info && !targetInfoLoading && (
+                                  <span className="text-[10px] font-semibold text-destructive">
+                                    Dados indisponíveis
+                                  </span>
+                                )}
+                              </label>
+                            );
+                          })}
+                        </section>
+                      ))}
+                    </div>
+                    {hasTargets && !selectedTargetsReady && targetInfoLoading && (
+                      <p className="mt-1 text-[10px] font-semibold text-muted-foreground">
+                        Carregando dados dos alvos…
+                      </p>
+                    )}
+                    {targetInfoError && (
+                      <p className="mt-1 text-[10px] font-semibold text-destructive">
+                        Não foi possível carregar Defesa e tipo dos alvos. Atualize a mesa após
+                        aplicar a migração do banco.
+                      </p>
+                    )}
                   </div>
-                  <RollNumberInput
-                    min={0}
-                    value={targetDefText}
-                    onValueChange={setTargetDefText}
-                    className="h-9 w-20"
-                  />
-                </div>
-              )}</>}
+
+                  {!hasTargets && (
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <Label className="text-xs">{defLabel} manual</Label>
+                        <p className="text-[11px] text-muted-foreground">
+                          Pool de dano base: <b>{baseDmgPool}d6</b> (Def reduz dados)
+                          {painPenalty > 0 ? ` · −${painPenalty} dado(s) por dor` : ""}
+                        </p>
+                      </div>
+                      <RollNumberInput
+                        min={0}
+                        value={targetDefText}
+                        onValueChange={setTargetDefText}
+                        className="h-9 w-20"
+                      />
+                    </div>
+                  )}
+                </>
+              )}
             </>
           )}
           {extras.extra.length > 0 && (
@@ -956,7 +1026,9 @@ export function MoveRollDialog({
                     <input
                       type="checkbox"
                       checked={extraOn[i] ?? false}
-                      onChange={(ev) => setExtraOn((arr) => arr.map((v, k) => (k === i ? ev.target.checked : v)))}
+                      onChange={(ev) =>
+                        setExtraOn((arr) => arr.map((v, k) => (k === i ? ev.target.checked : v)))
+                      }
                       className="mt-0.5"
                     />
                     <span>
@@ -984,7 +1056,8 @@ export function MoveRollDialog({
             className="w-full"
             disabled={isSubmitting || (hasTargets && !selectedTargetsReady)}
           >
-            <Dices className="mr-1.5 h-4 w-4" /> {isSubmitting ? "Enviando…" : "Rolar & Enviar Card"}
+            <Dices className="mr-1.5 h-4 w-4" />{" "}
+            {isSubmitting ? "Enviando…" : "Rolar & Enviar Card"}
           </Button>
         </div>
       </DialogContent>

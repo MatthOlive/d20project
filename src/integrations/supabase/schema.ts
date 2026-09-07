@@ -144,6 +144,13 @@ type DigiRoleTechniqueRow = {
   source_page: number | null;
 };
 
+type DigiRoleSpeciesTechniqueRow = {
+  species_id: string;
+  technique_id: string;
+  is_signature: boolean;
+  created_at: string;
+};
+
 type DigiRoleTamerRow = {
   id: string;
   game_id: string;
@@ -154,6 +161,7 @@ type DigiRoleTamerRow = {
   age: number;
   rank: string;
   attrs: Json;
+  attr_points: Json;
   skills: Json;
   notoriety: Json;
   hp_current: number;
@@ -180,6 +188,7 @@ type DigiRoleDigimonRow = {
   folder: string | null;
   rank: string;
   attrs: Json;
+  attr_points: Json;
   skills: Json;
   hp_current: number;
   ds_current: number;
@@ -318,6 +327,7 @@ type AdditionalTables = {
   >;
   digirole_species: Table<DigiRoleSpeciesRow>;
   digirole_techniques: Table<DigiRoleTechniqueRow>;
+  digirole_species_techniques: Table<DigiRoleSpeciesTechniqueRow>;
   digirole_tamers: Table<DigiRoleTamerRow>;
   digirole_digimons: Table<DigiRoleDigimonRow>;
   digirole_digimon_techniques: Table<DigiRoleDigimonTechniqueRow>;

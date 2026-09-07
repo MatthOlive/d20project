@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as DigiroleImageRouteImport } from './routes/digirole-image'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
@@ -30,6 +31,11 @@ const AppRoute = AppRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DigiroleImageRoute = DigiroleImageRouteImport.update({
+  id: '/digirole-image',
+  path: '/digirole-image',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HealthRoute = HealthRouteImport.update({
@@ -61,6 +67,7 @@ const AppGamesGameIdRoute = AppGamesGameIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/digirole-image': typeof DigiroleImageRoute
   '/health': typeof HealthRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/dashboard': typeof AppDashboardRoute
@@ -70,6 +77,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/digirole-image': typeof DigiroleImageRoute
   '/health': typeof HealthRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/dashboard': typeof AppDashboardRoute
@@ -81,6 +89,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
+  '/digirole-image': typeof DigiroleImageRoute
   '/health': typeof HealthRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_app/dashboard': typeof AppDashboardRoute
@@ -92,6 +101,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/digirole-image'
     | '/health'
     | '/sitemap.xml'
     | '/dashboard'
@@ -101,6 +111,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/digirole-image'
     | '/health'
     | '/sitemap.xml'
     | '/dashboard'
@@ -111,6 +122,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_app'
     | '/auth'
+    | '/digirole-image'
     | '/health'
     | '/sitemap.xml'
     | '/_app/dashboard'
@@ -122,6 +134,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   AuthRoute: typeof AuthRoute
+  DigiroleImageRoute: typeof DigiroleImageRoute
   HealthRoute: typeof HealthRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   JoinInviteCodeRoute: typeof JoinInviteCodeRoute
@@ -148,6 +161,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/digirole-image': {
+      id: '/digirole-image'
+      path: '/digirole-image'
+      fullPath: '/digirole-image'
+      preLoaderRoute: typeof DigiroleImageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/health': {
@@ -204,6 +224,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   AuthRoute: AuthRoute,
+  DigiroleImageRoute: DigiroleImageRoute,
   HealthRoute: HealthRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   JoinInviteCodeRoute: JoinInviteCodeRoute,

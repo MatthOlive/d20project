@@ -15,7 +15,11 @@ type Stat = {
 type Defenses = { def: number; spDef: number; spDefUsesInsight: boolean };
 
 export function TokenStatsBar({
-  kind, id, gameId, editable, expanded,
+  kind,
+  id,
+  gameId,
+  editable,
+  expanded,
 }: {
   kind: "trainer" | "pokemon" | "t20" | "digirole_tamer" | "digirole_digimon";
   id: string;
@@ -27,7 +31,8 @@ export function TokenStatsBar({
   if (kind === "digirole_tamer" || kind === "digirole_digimon") {
     return <DigiRoleStats kind={kind} id={id} editable={editable} expanded={expanded} />;
   }
-  if (kind === "trainer") return <TrainerStats id={id} gameId={gameId} editable={editable} expanded={expanded} />;
+  if (kind === "trainer")
+    return <TrainerStats id={id} gameId={gameId} editable={editable} expanded={expanded} />;
   return <PokemonStats id={id} gameId={gameId} editable={editable} expanded={expanded} />;
 }
 
@@ -49,70 +54,139 @@ function DigiRoleStats({
     queryFn: async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase.from(table as never) as any)
-        .select(kind === "digirole_tamer"
-          ? "attrs,hp_current,ds_current,condensed_count"
-          : "attrs,hp_current,ds_current,stabilized_forms,species:species_id(hp_base)")
+        .select(
+          kind === "digirole_tamer"
+            ? "attrs,attr_points,bonuses,hp_current,ds_current,condensed_count,hybrid_state"
+            : "attrs,attr_points,bonuses,hp_current,ds_current,stabilized_forms,species:species_id(hp_base)",
+        )
         .eq("id", id)
         .single();
       if (error) throw error;
       return data as {
         attrs: Record<string, number>;
+        attr_points: Record<string, number>;
+        bonuses: Record<string, number>;
         hp_current: number;
         ds_current: number;
         condensed_count?: number;
         stabilized_forms?: number;
+        hybrid_state?: { speciesId?: string } | null;
         species?: { hp_base: number } | null;
       };
     },
   });
+  const hybridSpeciesId = kind === "digirole_tamer" ? data?.hybrid_state?.speciesId : null;
+  const { data: hybridSpecies = null } = useQuery({
+    queryKey: ["token-digirole-stats-hybrid", hybridSpeciesId],
+    enabled: !!hybridSpeciesId,
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase.from("digirole_species" as never) as any)
+        .select("base_attrs,hp_base")
+        .eq("id", hybridSpeciesId)
+        .single();
+      if (error) throw error;
+      return data as { base_attrs: Record<string, number>; hp_base: number };
+    },
+  });
   if (!data) return null;
   const currentData = data;
-  const vit = currentData.attrs?.vitality ?? 1;
-  const wis = currentData.attrs?.wisdom ?? 1;
-  const spr = currentData.attrs?.spirit ?? 1;
-  const hpMax = kind === "digirole_tamer" ? 3 + vit : (currentData.species?.hp_base ?? 3) + vit;
-  const dsMax = kind === "digirole_tamer"
-    ? (currentData.condensed_count ?? 0) + 2 + spr
-    : 2 + spr + (currentData.stabilized_forms ?? 1);
+  const baseAttrs = hybridSpecies?.base_attrs ?? currentData.attrs ?? {};
+  const totalAttr = (key: string) =>
+    (baseAttrs[key] ?? 1) +
+    (currentData.attr_points?.[key] ?? 0) +
+    (currentData.bonuses?.[key] ?? 0);
+  const vit = totalAttr("vitality");
+  const wis = totalAttr("wisdom");
+  const spr = totalAttr("spirit");
+  const hpBase =
+    kind === "digirole_tamer" ? (hybridSpecies?.hp_base ?? 3) : (currentData.species?.hp_base ?? 3);
+  const hpMax = hpBase + vit + (currentData.bonuses?.hp ?? 0);
+  const dsMax =
+    kind === "digirole_tamer"
+      ? (currentData.condensed_count ?? 0) + 2 + spr + (currentData.bonuses?.ds ?? 0)
+      : 2 + spr + (currentData.stabilized_forms ?? 1) + (currentData.bonuses?.ds ?? 0);
 
   async function patch(field: "hp_current" | "ds_current", value: number) {
     const key = ["token-digirole-stats", kind, id] as const;
     const previous = currentData[field];
-    qc.setQueryData(key, (old: typeof currentData | undefined) => old ? { ...old, [field]: value } : old);
+    qc.setQueryData(key, (old: typeof currentData | undefined) =>
+      old ? { ...old, [field]: value } : old,
+    );
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = await (supabase.from(table as never) as any).update({ [field]: value }).eq("id", id).select("id").maybeSingle();
+      const result = await (supabase.from(table as never) as any)
+        .update({ [field]: value })
+        .eq("id", id)
+        .select("id")
+        .maybeSingle();
       if (result.error) throw result.error;
       if (!result.data) throw new Error("Você não tem permissão para alterar esta ficha.");
-      qc.setQueryData([kind === "digirole_tamer" ? "digirole-tamer" : "digirole-digimon", id], (old: Record<string, unknown> | undefined) => old ? { ...old, [field]: value } : old);
+      qc.setQueryData(
+        [kind === "digirole_tamer" ? "digirole-tamer" : "digirole-digimon", id],
+        (old: Record<string, unknown> | undefined) => (old ? { ...old, [field]: value } : old),
+      );
     } catch (error) {
-      qc.setQueryData(key, (old: typeof currentData | undefined) => old ? { ...old, [field]: previous } : old);
+      qc.setQueryData(key, (old: typeof currentData | undefined) =>
+        old ? { ...old, [field]: previous } : old,
+      );
       toast.error(error instanceof Error ? error.message : "Não foi possível salvar o valor.");
     }
   }
   return (
     <StatsRow
       stats={[
-        { label: "HP", cur: data.hp_current, max: hpMax, color: "#22c55e", onChange: (value) => void patch("hp_current", value) },
-        { label: "DS", cur: data.ds_current, max: dsMax, color: "#06b6d4", onChange: (value) => void patch("ds_current", value) },
+        {
+          label: "HP",
+          cur: data.hp_current,
+          max: hpMax,
+          color: "#22c55e",
+          onChange: (value) => void patch("hp_current", value),
+        },
+        {
+          label: "DS",
+          cur: data.ds_current,
+          max: dsMax,
+          color: "#06b6d4",
+          onChange: (value) => void patch("ds_current", value),
+        },
       ]}
-      defenses={{ def: vit, spDef: wis, spDefUsesInsight: true }}
+      defenses={{
+        def: vit + (currentData.bonuses?.defense ?? 0),
+        spDef: wis + (currentData.bonuses?.resistance ?? 0),
+        spDefUsesInsight: true,
+      }}
       editable={editable && expanded}
     />
   );
 }
 
-function T20Stats({ id, editable, expanded }: { id: string; editable: boolean; expanded: boolean }) {
+function T20Stats({
+  id,
+  editable,
+  expanded,
+}: {
+  id: string;
+  editable: boolean;
+  expanded: boolean;
+}) {
   const qc = useQueryClient();
   const { data } = useQuery({
     queryKey: ["token-t20-stats", id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("t20_characters")
+      const { data, error } = await supabase
+        .from("t20_characters")
         .select("hp_current,hp_max,mp_current,mp_max,defense")
         .eq("id", id)
         .single();
       if (error) throw error;
-      return data as { hp_current: number; hp_max: number; mp_current: number; mp_max: number; defense: number };
+      return data as {
+        hp_current: number;
+        hp_max: number;
+        mp_current: number;
+        mp_max: number;
+        defense: number;
+      };
     },
   });
   if (!data) return null;
@@ -120,22 +194,25 @@ function T20Stats({ id, editable, expanded }: { id: string; editable: boolean; e
   async function patch(field: "hp_current" | "mp_current", value: number) {
     const key = ["token-t20-stats", id] as const;
     const previous = qc.getQueryData<typeof data>(key)?.[field];
-    qc.setQueryData(["token-t20-stats", id], (old: typeof data) => old ? { ...old, [field]: value } : old);
+    qc.setQueryData(["token-t20-stats", id], (old: typeof data) =>
+      old ? { ...old, [field]: value } : old,
+    );
     try {
       const update = field === "hp_current" ? { hp_current: value } : { mp_current: value };
-      const { data: saved, error } = await supabase.from("t20_characters")
+      const { data: saved, error } = await supabase
+        .from("t20_characters")
         .update(update)
         .eq("id", id)
         .select("hp_current,mp_current")
         .maybeSingle();
       if (error) throw error;
       if (!saved) throw new Error("A alteração foi recusada pelas permissões desta ficha.");
-      qc.setQueryData(key, (old: typeof data) => old ? { ...old, ...saved } : old);
+      qc.setQueryData(key, (old: typeof data) => (old ? { ...old, ...saved } : old));
       qc.setQueryData(["t20-character", id], (old: Record<string, unknown> | undefined) =>
         old ? { ...old, [field]: value } : old,
       );
     } catch (error) {
-      qc.setQueryData(key, (old: typeof data) => old ? { ...old, [field]: previous } : old);
+      qc.setQueryData(key, (old: typeof data) => (old ? { ...old, [field]: previous } : old));
       toast.error(error instanceof Error ? error.message : "Não foi possível salvar o valor.");
     }
   }
@@ -143,8 +220,20 @@ function T20Stats({ id, editable, expanded }: { id: string; editable: boolean; e
   return (
     <StatsRow
       stats={[
-        { label: "PV", cur: data.hp_current ?? data.hp_max, max: data.hp_max ?? 0, color: "#22c55e", onChange: (n) => patch("hp_current", n) },
-        { label: "PM", cur: data.mp_current ?? data.mp_max, max: data.mp_max ?? 0, color: "#3b82f6", onChange: (n) => patch("mp_current", n) },
+        {
+          label: "PV",
+          cur: data.hp_current ?? data.hp_max,
+          max: data.hp_max ?? 0,
+          color: "#22c55e",
+          onChange: (n) => patch("hp_current", n),
+        },
+        {
+          label: "PM",
+          cur: data.mp_current ?? data.mp_max,
+          max: data.mp_max ?? 0,
+          color: "#3b82f6",
+          onChange: (n) => patch("mp_current", n),
+        },
       ]}
       defenses={{ def: data.defense ?? 10, spDef: 0, spDefUsesInsight: false }}
       editable={editable && expanded}
@@ -152,9 +241,17 @@ function T20Stats({ id, editable, expanded }: { id: string; editable: boolean; e
   );
 }
 
-
-
-function TrainerStats({ id, gameId, editable, expanded }: { id: string; gameId?: string; editable: boolean; expanded: boolean }) {
+function TrainerStats({
+  id,
+  gameId,
+  editable,
+  expanded,
+}: {
+  id: string;
+  gameId?: string;
+  editable: boolean;
+  expanded: boolean;
+}) {
   const qc = useQueryClient();
   const { data } = useQuery({
     queryKey: ["token-trainer-stats", id],
@@ -180,7 +277,11 @@ function TrainerStats({ id, gameId, editable, expanded }: { id: string; gameId?:
     queryKey: ["nature-confidence", data?.nature ?? null],
     enabled: !!data?.nature,
     queryFn: async () => {
-      const { data: n } = await supabase.from("natures").select("confidence").eq("name", data!.nature!).maybeSingle();
+      const { data: n } = await supabase
+        .from("natures")
+        .select("confidence")
+        .eq("name", data!.nature!)
+        .maybeSingle();
       return (n?.confidence as number | undefined) ?? null;
     },
   });
@@ -199,8 +300,12 @@ function TrainerStats({ id, gameId, editable, expanded }: { id: string; gameId?:
   async function patch(field: "current_hp" | "current_will" | "confidence", value: number) {
     const key = ["token-trainer-stats", id] as const;
     const previous = qc.getQueryData<typeof data>(key)?.[field];
-    qc.setQueryData(key, (old: typeof data) => old ? { ...old, [field]: value } : old);
-    const upd = { [field]: value } as { current_hp?: number; current_will?: number; confidence?: number };
+    qc.setQueryData(key, (old: typeof data) => (old ? { ...old, [field]: value } : old));
+    const upd = { [field]: value } as {
+      current_hp?: number;
+      current_will?: number;
+      confidence?: number;
+    };
     try {
       const { data: saved, error } = await supabase
         .from("trainers")
@@ -210,12 +315,12 @@ function TrainerStats({ id, gameId, editable, expanded }: { id: string; gameId?:
         .maybeSingle();
       if (error) throw error;
       if (!saved) throw new Error("Você não tem permissão para alterar esta ficha.");
-      qc.setQueryData(key, (old: typeof data) => old ? { ...old, ...saved } : old);
+      qc.setQueryData(key, (old: typeof data) => (old ? { ...old, ...saved } : old));
       qc.setQueryData(["trainer", id], (old: Record<string, unknown> | undefined) =>
         old ? { ...old, [field]: value } : old,
       );
     } catch (error) {
-      qc.setQueryData(key, (old: typeof data) => old ? { ...old, [field]: previous } : old);
+      qc.setQueryData(key, (old: typeof data) => (old ? { ...old, [field]: previous } : old));
       toast.error(error instanceof Error ? error.message : "Não foi possível salvar o valor.");
     }
   }
@@ -223,9 +328,27 @@ function TrainerStats({ id, gameId, editable, expanded }: { id: string; gameId?:
   return (
     <StatsRow
       stats={[
-        { label: "HP", cur: curHp, max: hpMax, color: "#22c55e", onChange: (n) => patch("current_hp", n) },
-        { label: "Will", cur: curWill, max: willMax, color: "#3b82f6", onChange: (n) => patch("current_will", n) },
-        { label: "Conf", cur: conf, max: confMax, color: "#ef4444", onChange: (n) => patch("confidence", n) },
+        {
+          label: "HP",
+          cur: curHp,
+          max: hpMax,
+          color: "#22c55e",
+          onChange: (n) => patch("current_hp", n),
+        },
+        {
+          label: "Will",
+          cur: curWill,
+          max: willMax,
+          color: "#3b82f6",
+          onChange: (n) => patch("current_will", n),
+        },
+        {
+          label: "Conf",
+          cur: conf,
+          max: confMax,
+          color: "#ef4444",
+          onChange: (n) => patch("confidence", n),
+        },
       ]}
       defenses={{ def, spDef, spDefUsesInsight }}
       editable={editable && expanded}
@@ -233,7 +356,17 @@ function TrainerStats({ id, gameId, editable, expanded }: { id: string; gameId?:
   );
 }
 
-function PokemonStats({ id, gameId, editable, expanded }: { id: string; gameId?: string; editable: boolean; expanded: boolean }) {
+function PokemonStats({
+  id,
+  gameId,
+  editable,
+  expanded,
+}: {
+  id: string;
+  gameId?: string;
+  editable: boolean;
+  expanded: boolean;
+}) {
   const qc = useQueryClient();
   const { data } = useQuery({
     queryKey: ["token-pokemon-stats", id],
@@ -260,14 +393,18 @@ function PokemonStats({ id, gameId, editable, expanded }: { id: string; gameId?:
     queryKey: ["nature-confidence", data?.nature ?? null],
     enabled: !!data?.nature,
     queryFn: async () => {
-      const { data: n } = await supabase.from("natures").select("confidence").eq("name", data!.nature!).maybeSingle();
+      const { data: n } = await supabase
+        .from("natures")
+        .select("confidence")
+        .eq("name", data!.nature!)
+        .maybeSingle();
       return (n?.confidence as number | undefined) ?? null;
     },
   });
   const spDefUsesInsight = useGameSpdefUsesInsight(gameId);
   if (!data) return null;
   const hpMax = data.hp ?? 0;
-  const willMax = data.will ?? ((data.current_attrs?.insight ?? 1) + 2);
+  const willMax = data.will ?? (data.current_attrs?.insight ?? 1) + 2;
   const curHp = data.current_hp ?? hpMax;
   const curWill = data.current_will ?? willMax;
   const conf = data.confidence ?? 0;
@@ -283,8 +420,12 @@ function PokemonStats({ id, gameId, editable, expanded }: { id: string; gameId?:
   async function patch(field: "current_hp" | "current_will" | "confidence", value: number) {
     const key = ["token-pokemon-stats", id] as const;
     const previous = qc.getQueryData<typeof data>(key)?.[field];
-    qc.setQueryData(key, (old: typeof data) => old ? { ...old, [field]: value } : old);
-    const upd = { [field]: value } as { current_hp?: number; current_will?: number; confidence?: number };
+    qc.setQueryData(key, (old: typeof data) => (old ? { ...old, [field]: value } : old));
+    const upd = { [field]: value } as {
+      current_hp?: number;
+      current_will?: number;
+      confidence?: number;
+    };
     try {
       const { data: saved, error } = await supabase
         .from("pokemon")
@@ -294,12 +435,12 @@ function PokemonStats({ id, gameId, editable, expanded }: { id: string; gameId?:
         .maybeSingle();
       if (error) throw error;
       if (!saved) throw new Error("Você não tem permissão para alterar esta ficha.");
-      qc.setQueryData(key, (old: typeof data) => old ? { ...old, ...saved } : old);
+      qc.setQueryData(key, (old: typeof data) => (old ? { ...old, ...saved } : old));
       qc.setQueryData(["pokemon", id], (old: Record<string, unknown> | undefined) =>
         old ? { ...old, [field]: value } : old,
       );
     } catch (error) {
-      qc.setQueryData(key, (old: typeof data) => old ? { ...old, [field]: previous } : old);
+      qc.setQueryData(key, (old: typeof data) => (old ? { ...old, [field]: previous } : old));
       toast.error(error instanceof Error ? error.message : "Não foi possível salvar o valor.");
     }
   }
@@ -307,9 +448,27 @@ function PokemonStats({ id, gameId, editable, expanded }: { id: string; gameId?:
   return (
     <StatsRow
       stats={[
-        { label: "HP", cur: curHp, max: hpMax, color: "#22c55e", onChange: (n) => patch("current_hp", n) },
-        { label: "Will", cur: curWill, max: willMax, color: "#3b82f6", onChange: (n) => patch("current_will", n) },
-        { label: "Conf", cur: conf, max: confMax, color: "#ef4444", onChange: (n) => patch("confidence", n) },
+        {
+          label: "HP",
+          cur: curHp,
+          max: hpMax,
+          color: "#22c55e",
+          onChange: (n) => patch("current_hp", n),
+        },
+        {
+          label: "Will",
+          cur: curWill,
+          max: willMax,
+          color: "#3b82f6",
+          onChange: (n) => patch("current_will", n),
+        },
+        {
+          label: "Conf",
+          cur: conf,
+          max: confMax,
+          color: "#ef4444",
+          onChange: (n) => patch("confidence", n),
+        },
       ]}
       defenses={{ def, spDef, spDefUsesInsight }}
       editable={editable && expanded}
@@ -317,7 +476,15 @@ function PokemonStats({ id, gameId, editable, expanded }: { id: string; gameId?:
   );
 }
 
-function StatsRow({ stats, defenses, editable }: { stats: Stat[]; defenses?: Defenses; editable: boolean }) {
+function StatsRow({
+  stats,
+  defenses,
+  editable,
+}: {
+  stats: Stat[];
+  defenses?: Defenses;
+  editable: boolean;
+}) {
   return (
     <div
       className="pointer-events-auto flex flex-col gap-1 rounded-md border border-border bg-card/95 px-2 py-1.5 shadow-md backdrop-blur"
@@ -359,7 +526,9 @@ function StatsRow({ stats, defenses, editable }: { stats: Stat[]; defenses?: Def
           <span className="flex items-baseline gap-1">
             <span className="uppercase tracking-wider text-muted-foreground">SpDef</span>
             <span className="tabular-nums">{defenses.spDef}</span>
-            <span className="text-[8px] uppercase opacity-60">({defenses.spDefUsesInsight ? "Ins" : "Vit"})</span>
+            <span className="text-[8px] uppercase opacity-60">
+              ({defenses.spDefUsesInsight ? "Ins" : "Vit"})
+            </span>
           </span>
         </div>
       )}
@@ -389,7 +558,9 @@ function StatInput({ value, onCommit }: { value: number; onCommit: (value: numbe
       value={draft}
       onClick={(event) => event.stopPropagation()}
       onPointerDown={(event) => event.stopPropagation()}
-      onFocus={() => { focused.current = true; }}
+      onFocus={() => {
+        focused.current = true;
+      }}
       onChange={(event) => setDraft(event.target.value)}
       onBlur={commit}
       onKeyDown={(event) => {

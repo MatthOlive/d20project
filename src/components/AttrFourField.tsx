@@ -13,6 +13,7 @@ export function AttrFourField({
   bonus,
   baseEditable,
   hideBase,
+  hidePoints,
   disabled,
   cap,
   showCapInTotal,
@@ -24,6 +25,7 @@ export function AttrFourField({
   bonus: number;
   baseEditable: boolean;
   hideBase?: boolean;
+  hidePoints?: boolean;
   disabled?: boolean;
   cap?: number;
   /** When true, the Total cell shows "X/cap". */
@@ -38,8 +40,17 @@ export function AttrFourField({
     return n;
   };
   return (
-    <div className={`grid items-center gap-1.5 rounded-md bg-background px-2 py-1 ${hideBase ? "grid-cols-[1fr_repeat(3,46px)]" : "grid-cols-[1fr_repeat(4,46px)]"}`}>
-
+    <div
+      className={`grid items-center gap-1.5 rounded-md bg-background px-2 py-1 ${
+        hideBase
+          ? hidePoints
+            ? "grid-cols-[1fr_repeat(2,46px)]"
+            : "grid-cols-[1fr_repeat(3,46px)]"
+          : hidePoints
+            ? "grid-cols-[1fr_repeat(3,46px)]"
+            : "grid-cols-[1fr_repeat(4,46px)]"
+      }`}
+    >
       <span className="text-xs font-medium uppercase">{label}</span>
       {!hideBase && (
         <Cell title="Base">
@@ -52,15 +63,17 @@ export function AttrFourField({
           />
         </Cell>
       )}
-      <Cell title="Pontos">
-        <Input
-          type="number"
-          value={points ?? 0}
-          disabled={disabled}
-          onChange={(e) => onChange({ points: clamp(parseInt(e.target.value) || 0) })}
-          className="h-6 px-1 text-center text-xs"
-        />
-      </Cell>
+      {!hidePoints && (
+        <Cell title="Pontos">
+          <Input
+            type="number"
+            value={points ?? 0}
+            disabled={disabled}
+            onChange={(e) => onChange({ points: clamp(parseInt(e.target.value) || 0) })}
+            className="h-6 px-1 text-center text-xs"
+          />
+        </Cell>
+      )}
       <Cell title="Bônus">
         <Input
           type="number"
@@ -73,7 +86,8 @@ export function AttrFourField({
 
       <Cell title={showCapInTotal && cap !== undefined ? `Total / Max (${cap})` : "Total"}>
         <div className="flex h-6 items-center justify-center rounded-md border border-primary/40 bg-primary/10 px-1 text-[11px] font-bold text-primary tabular-nums">
-          {total}{showCapInTotal && cap !== undefined ? <span className="opacity-60">/{cap}</span> : null}
+          {total}
+          {showCapInTotal && cap !== undefined ? <span className="opacity-60">/{cap}</span> : null}
         </div>
       </Cell>
     </div>

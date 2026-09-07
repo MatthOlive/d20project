@@ -47,10 +47,23 @@ function isReactionMessage(value: FlowMessage["roll_data"]): value is MoveReacti
 
 function participantForTarget(session: EngineSession | null, target: MoveReactionTarget) {
   if (!session || session.status !== "running" || session.state.phase !== "turns") return null;
-  return session.state.participants.find((participant) =>
-    (participant.tokenId && participant.tokenId === target.tokenId) ||
-    (participant.characterId === target.characterId && participant.kind === target.characterKind),
-  ) ?? null;
+  return (
+    session.state.participants.find(
+      (participant) =>
+        (participant.tokenId && participant.tokenId === target.tokenId) ||
+        (participant.characterId === target.characterId &&
+          participant.kind === target.characterKind),
+    ) ?? null
+  );
+}
+
+function reactionUsage(participant: EngineParticipant | null, round: number) {
+  if (!participant || Number(participant.metadata.reactionRound) !== round)
+    return { clash: 0, evasion: 0 };
+  return {
+    clash: Math.max(0, Number(participant.metadata.clashUsed) || 0),
+    evasion: Math.max(0, Number(participant.metadata.evasionUsed) || 0),
+  };
 }
 
 async function applyDamageToTarget(
@@ -79,7 +92,8 @@ async function applyDamageToTarget(
       .maybeSingle();
     if (updateError) throw updateError;
     if (!saved) throw new Error("Você não tem permissão para aplicar dano a esta ficha.");
-    const mergeHp = (old: Record<string, unknown> | undefined) => old ? { ...old, current_hp: nextHp } : old;
+    const mergeHp = (old: Record<string, unknown> | undefined) =>
+      old ? { ...old, current_hp: nextHp } : old;
     queryClient.setQueriesData({ queryKey: ["token-pokemon", target.characterId] }, mergeHp);
     queryClient.setQueryData(["token-pokemon-stats", target.characterId], mergeHp);
     queryClient.setQueryData(["pokemon", target.characterId], mergeHp);
@@ -103,12 +117,14 @@ async function applyDamageToTarget(
       .maybeSingle();
     if (updateError) throw updateError;
     if (!saved) throw new Error("Você não tem permissão para aplicar dano a esta ficha.");
-    const mergeHp = (old: Record<string, unknown> | undefined) => old ? { ...old, current_hp: nextHp } : old;
+    const mergeHp = (old: Record<string, unknown> | undefined) =>
+      old ? { ...old, current_hp: nextHp } : old;
     queryClient.setQueriesData({ queryKey: ["token-trainer", target.characterId] }, mergeHp);
     queryClient.setQueryData(["token-trainer-stats", target.characterId], mergeHp);
     queryClient.setQueryData(["trainer", target.characterId], mergeHp);
   } else {
-    const tableName = target.characterKind === "digirole_tamer" ? "digirole_tamers" : "digirole_digimons";
+    const tableName =
+      target.characterKind === "digirole_tamer" ? "digirole_tamers" : "digirole_digimons";
     // DigiRole tables are introduced by the local system migration.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const source = supabase.from(tableName as never) as any;
@@ -116,25 +132,33 @@ async function applyDamageToTarget(
     if (currentResult.error) throw currentResult.error;
     const currentHp = Math.max(0, Number(currentResult.data?.hp_current ?? 0));
     const nextHp = Math.max(0, currentHp - amount);
-    const saved = await source.update({ hp_current: nextHp }).eq("id", target.characterId).select("hp_current").maybeSingle();
+    const saved = await source
+      .update({ hp_current: nextHp })
+      .eq("id", target.characterId)
+      .select("hp_current")
+      .maybeSingle();
     if (saved.error) throw saved.error;
     if (!saved.data) throw new Error("Você não tem permissão para aplicar dano a esta ficha.");
-    const mergeHp = (old: Record<string, unknown> | undefined) => old ? { ...old, hp_current: nextHp } : old;
-    queryClient.setQueryData([target.characterKind === "digirole_tamer" ? "digirole-tamer" : "digirole-digimon", target.characterId], mergeHp);
-    queryClient.setQueryData(["token-digirole-stats", target.characterKind, target.characterId], mergeHp);
+    const mergeHp = (old: Record<string, unknown> | undefined) =>
+      old ? { ...old, hp_current: nextHp } : old;
+    queryClient.setQueryData(
+      [
+        target.characterKind === "digirole_tamer" ? "digirole-tamer" : "digirole-digimon",
+        target.characterId,
+      ],
+      mergeHp,
+    );
+    queryClient.setQueryData(
+      ["token-digirole-stats", target.characterKind, target.characterId],
+      mergeHp,
+    );
   }
 
   void queryClient.invalidateQueries({ queryKey: ["mrd-target-info", gameId] });
   void queryClient.invalidateQueries({ queryKey: ["digirole-target-info", gameId] });
 }
 
-export function MoveReactionCoordinator({
-  gameId,
-  userId,
-}: {
-  gameId: string;
-  userId: string;
-}) {
+export function MoveReactionCoordinator({ gameId, userId }: { gameId: string; userId: string }) {
   const queryClient = useQueryClient();
   const [submitting, setSubmitting] = useState(false);
   const finalizingRef = useRef(new Set<string>());
@@ -159,24 +183,32 @@ export function MoveReactionCoordinator({
     const map = new Map<string, MoveReactionResponse>();
     for (const message of messages) {
       if (!isReactionMessage(message.roll_data)) continue;
-      if (!map.has(message.roll_data.requestId)) map.set(message.roll_data.requestId, message.roll_data);
+      if (!map.has(message.roll_data.requestId))
+        map.set(message.roll_data.requestId, message.roll_data);
     }
     return map;
   }, [messages]);
 
-  const resolvedIds = useMemo(() => new Set(
-    messages.flatMap((message) =>
-      isMoveMessage(message.roll_data) && message.roll_data.phase === "resolution" && message.roll_data.resolutionId
-        ? [message.roll_data.resolutionId]
-        : [],
-    ),
-  ), [messages]);
+  const resolvedIds = useMemo(
+    () =>
+      new Set(
+        messages.flatMap((message) =>
+          isMoveMessage(message.roll_data) &&
+          message.roll_data.phase === "resolution" &&
+          message.roll_data.resolutionId
+            ? [message.roll_data.resolutionId]
+            : [],
+        ),
+      ),
+    [messages],
+  );
 
   const pendingReaction = useMemo<PendingReaction | null>(() => {
     for (const source of messages) {
       if (!isMoveMessage(source.roll_data)) continue;
       const move = source.roll_data;
-      if (move.phase !== "accuracy" || !move.resolutionId || resolvedIds.has(move.resolutionId)) continue;
+      if (move.phase !== "accuracy" || !move.resolutionId || resolvedIds.has(move.resolutionId))
+        continue;
       if (move.accuracy.isHit === false) continue;
       for (const target of move.reactionTargets ?? []) {
         if (!target.controllerIds.includes(userId)) continue;
@@ -196,7 +228,9 @@ export function MoveReactionCoordinator({
       if (finalizingRef.current.has(resolutionId)) continue;
       const targets = move.reactionTargets ?? [];
       if (move.accuracy.isHit === false || targets.length === 0) continue;
-      const responses = targets.map((target) => reactionByRequest.get(target.requestId)).filter(Boolean) as MoveReactionResponse[];
+      const responses = targets
+        .map((target) => reactionByRequest.get(target.requestId))
+        .filter(Boolean) as MoveReactionResponse[];
       if (responses.length !== targets.length) continue;
 
       finalizingRef.current.add(resolutionId);
@@ -213,13 +247,17 @@ export function MoveReactionCoordinator({
         if (atomicResolution && !atomicResolution.error) {
           void queryClient.invalidateQueries({ queryKey: ["mrd-target-info", gameId] });
           if (move.attacker?.characterId) {
-            void queryClient.invalidateQueries({ queryKey: [move.attacker.characterKind, move.attacker.characterId] });
+            void queryClient.invalidateQueries({
+              queryKey: [move.attacker.characterKind, move.attacker.characterId],
+            });
           }
           return;
         }
         if (atomicResolution?.error && !isAtomicCombatRpcUnavailable(atomicResolution.error)) {
           finalizingRef.current.delete(resolutionId);
-          toast.error(`As reações terminaram, mas o dano não pôde ser publicado: ${atomicResolution.error.message}`);
+          toast.error(
+            `As reações terminaram, mas o dano não pôde ser publicado: ${atomicResolution.error.message}`,
+          );
           return;
         }
 
@@ -245,15 +283,25 @@ export function MoveReactionCoordinator({
         if (
           attackerDamage > 0 &&
           attacker?.characterId &&
-          (attacker.characterKind === "pokemon" || attacker.characterKind === "trainer" || attacker.characterKind === "digirole_tamer" || attacker.characterKind === "digirole_digimon")
+          (attacker.characterKind === "pokemon" ||
+            attacker.characterKind === "trainer" ||
+            attacker.characterKind === "digirole_tamer" ||
+            attacker.characterKind === "digirole_digimon")
         ) {
           try {
-            await applyDamageToTarget(queryClient, gameId, {
-              characterId: attacker.characterId,
-              characterKind: attacker.characterKind,
-            }, attackerDamage);
+            await applyDamageToTarget(
+              queryClient,
+              gameId,
+              {
+                characterId: attacker.characterId,
+                characterKind: attacker.characterKind,
+              },
+              attackerDamage,
+            );
           } catch (damageError) {
-            toast.error(`O Clash foi registrado, mas o dano em ${move.pokemonName} não pôde ser aplicado: ${damageError instanceof Error ? damageError.message : String(damageError)}`);
+            toast.error(
+              `O Clash foi registrado, mas o dano em ${move.pokemonName} não pôde ser aplicado: ${damageError instanceof Error ? damageError.message : String(damageError)}`,
+            );
           }
         }
       })();
@@ -266,12 +314,26 @@ export function MoveReactionCoordinator({
     if (!move.resolutionId) return;
     setSubmitting(true);
     try {
-      const session = queryClient.getQueryData<EngineSession | null>(["game-engine-session", gameId]) ?? null;
+      const session =
+        queryClient.getQueryData<EngineSession | null>(["game-engine-session", gameId]) ?? null;
       const participant: EngineParticipant | null = participantForTarget(session, target);
+      const usage = reactionUsage(participant, session?.state.round ?? 0);
+      const limit =
+        choice === "clash"
+          ? Math.max(0, target.clashTimes ?? 1)
+          : Math.max(0, target.evasionTimes ?? 1);
+      const used = choice === "clash" ? usage.clash : usage.evasion;
+      if (choice !== "none" && used >= limit) {
+        toast.error(
+          `Todas as reações de ${choice === "clash" ? "Clash" : "Evasion"} desta rodada já foram usadas.`,
+        );
+        return;
+      }
       const actionsBefore = Math.max(0, participant?.actionsUsed ?? 0);
       const moveSuccesses = Math.max(0, move.accuracy.successes);
       const required = moveSuccesses + actionsBefore;
-      const rawPool = choice === "clash" ? target.clashPool : choice === "evade" ? target.evadePool : 0;
+      const rawPool =
+        choice === "clash" ? target.clashPool : choice === "evade" ? target.evadePool : 0;
       const pool = Math.max(0, rawPool - target.painPenalty);
       if (choice !== "none" && pool < required) {
         toast.error(`A pool precisa ter pelo menos ${required} dado(s) para esta reação.`);
@@ -295,27 +357,35 @@ export function MoveReactionCoordinator({
         required,
         succeeded: choice !== "none" && rolled.successes >= required,
       };
-      const rawDamageTarget = move.damage?.targets?.find((damageTarget) =>
-        damageTarget.requestId === target.requestId || damageTarget.tokenId === target.tokenId,
+      const rawDamageTarget = move.damage?.targets?.find(
+        (damageTarget) =>
+          damageTarget.requestId === target.requestId || damageTarget.tokenId === target.tokenId,
       );
       const resolvedDamageTarget = rawDamageTarget
         ? adjustedDamageTargets([rawDamageTarget], [response])?.[0]
         : null;
       response.appliedDamage = Math.max(0, resolvedDamageTarget?.finalDamage ?? 0);
       response.attackerDamage = choice === "clash" && response.succeeded ? 1 : 0;
-      const atomicReaction = move.system === "digirole"
-        ? null
-        : await submitAtomicMoveReaction(
-            gameId,
-            pendingReaction.source.id,
-            response as unknown as Record<string, unknown>,
-          );
-      if (!atomicReaction || (atomicReaction.error && isAtomicCombatRpcUnavailable(atomicReaction.error))) {
+      const atomicReaction =
+        move.system === "digirole"
+          ? null
+          : await submitAtomicMoveReaction(
+              gameId,
+              pendingReaction.source.id,
+              response as unknown as Record<string, unknown>,
+            );
+      if (
+        !atomicReaction ||
+        (atomicReaction.error && isAtomicCombatRpcUnavailable(atomicReaction.error))
+      ) {
         const { error } = await supabase.from("chat_messages").insert({
           game_id: gameId,
           user_id: userId,
           kind: "move_reaction",
-          body: choice === "none" ? `${target.name} não reagiu` : `${target.name} usou ${choice === "clash" ? "Clash" : "Evade"}`,
+          body:
+            choice === "none"
+              ? `${target.name} não reagiu`
+              : `${target.name} usou ${choice === "clash" ? "Clash" : "Evade"}`,
           roll_data: response as unknown as never,
         });
         if (error) throw error;
@@ -323,13 +393,17 @@ export function MoveReactionCoordinator({
           try {
             await applyDamageToTarget(queryClient, gameId, target, response.appliedDamage);
           } catch (damageError) {
-            toast.error(`A reação foi registrada, mas o dano não pôde ser aplicado: ${damageError instanceof Error ? damageError.message : String(damageError)}`);
+            toast.error(
+              `A reação foi registrada, mas o dano não pôde ser aplicado: ${damageError instanceof Error ? damageError.message : String(damageError)}`,
+            );
           }
         }
       } else if (atomicReaction.error) {
         throw new Error(atomicReaction.error.message);
       } else {
-        void queryClient.invalidateQueries({ queryKey: [target.characterKind, target.characterId] });
+        void queryClient.invalidateQueries({
+          queryKey: [target.characterKind, target.characterId],
+        });
         void queryClient.invalidateQueries({ queryKey: ["mrd-target-info", gameId] });
       }
       if (choice !== "none") {
@@ -352,51 +426,88 @@ export function MoveReactionCoordinator({
 
   const target = pendingReaction?.target;
   const move = pendingReaction?.move;
-  const session = queryClient.getQueryData<EngineSession | null>(["game-engine-session", gameId]) ?? null;
+  const session =
+    queryClient.getQueryData<EngineSession | null>(["game-engine-session", gameId]) ?? null;
   const participant = target ? participantForTarget(session, target) : null;
   const actionsBefore = Math.max(0, participant?.actionsUsed ?? 0);
   const required = Math.max(0, move?.accuracy.successes ?? 0) + actionsBefore;
   const clashPool = target ? Math.max(0, target.clashPool - target.painPenalty) : 0;
   const evadePool = target ? Math.max(0, target.evadePool - target.painPenalty) : 0;
+  const usage = reactionUsage(participant, session?.state.round ?? 0);
+  const clashLimit = Math.max(0, target?.clashTimes ?? 1);
+  const evasionLimit = Math.max(0, target?.evasionTimes ?? 1);
+  const clashAvailable = usage.clash < clashLimit && clashPool >= required;
+  const evasionAvailable = usage.evasion < evasionLimit && evadePool >= required;
+  const noReactionAvailable = !!pendingReaction && !clashAvailable && !evasionAvailable;
+
+  useEffect(() => {
+    if (!noReactionAvailable || submitting) return;
+    void respond("none");
+    // `respond` is declared in this component and the request id is the stable trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noReactionAvailable, pendingReaction?.target.requestId, submitting]);
 
   return (
-    <Dialog open={!!pendingReaction} onOpenChange={() => undefined}>
-      <DialogContent className="max-w-md" onEscapeKeyDown={(event) => event.preventDefault()} onPointerDownOutside={(event) => event.preventDefault()}>
+    <Dialog open={!!pendingReaction && !noReactionAvailable} onOpenChange={() => undefined}>
+      <DialogContent
+        className="max-w-md"
+        onEscapeKeyDown={(event) => event.preventDefault()}
+        onPointerDownOutside={(event) => event.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>{target?.name}: como deseja reagir?</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm">
-            <p><b>{move?.card.name}</b> obteve <b>{move?.accuracy.successes ?? 0}</b> sucesso(s).</p>
+            <p>
+              <b>{move?.card.name}</b> obteve <b>{move?.accuracy.successes ?? 0}</b> sucesso(s).
+            </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Dificuldade da reação: {move?.accuracy.successes ?? 0} do move + {actionsBefore} ação(ões) = <b>{required}</b>.
+              Dificuldade da reação: {move?.accuracy.successes ?? 0} do move + {actionsBefore}{" "}
+              ação(ões) = <b>{required}</b>.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <Button
               type="button"
               variant="outline"
-              disabled={submitting || clashPool < required}
+              disabled={submitting || !clashAvailable}
               onClick={() => void respond("clash")}
               className="h-auto flex-col gap-1 py-3"
             >
               <Swords className="h-5 w-5" />
               Clash · {clashPool}d6
-              {clashPool < required && <span className="text-[10px] text-muted-foreground">Pool insuficiente</span>}
+              <span className="text-[10px] text-muted-foreground">
+                {Math.max(0, clashLimit - usage.clash)}/{clashLimit} restante(s)
+              </span>
+              {clashPool < required && (
+                <span className="text-[10px] text-muted-foreground">Pool insuficiente</span>
+              )}
             </Button>
             <Button
               type="button"
               variant="outline"
-              disabled={submitting || evadePool < required}
+              disabled={submitting || !evasionAvailable}
               onClick={() => void respond("evade")}
               className="h-auto flex-col gap-1 py-3"
             >
               <Shield className="h-5 w-5" />
               Evade · {evadePool}d6
-              {evadePool < required && <span className="text-[10px] text-muted-foreground">Pool insuficiente</span>}
+              <span className="text-[10px] text-muted-foreground">
+                {Math.max(0, evasionLimit - usage.evasion)}/{evasionLimit} restante(s)
+              </span>
+              {evadePool < required && (
+                <span className="text-[10px] text-muted-foreground">Pool insuficiente</span>
+              )}
             </Button>
           </div>
-          <Button type="button" variant="secondary" className="w-full" disabled={submitting} onClick={() => void respond("none")}>
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full"
+            disabled={submitting}
+            onClick={() => void respond("none")}
+          >
             Não fazer nada
           </Button>
         </div>

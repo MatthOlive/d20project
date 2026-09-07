@@ -40,6 +40,8 @@ export type MoveReactionTarget = {
   controllerIds: string[];
   clashPool: number;
   evadePool: number;
+  clashTimes?: number;
+  evasionTimes?: number;
   painPenalty: number;
 };
 
@@ -85,7 +87,13 @@ export type MoveRollMessage = {
     successes: number;
     penalty: number;
     isHit?: boolean;
-    crit?: { margin: number; actions: number; required: number; critRequired: number; isCrit: boolean };
+    crit?: {
+      margin: number;
+      actions: number;
+      required: number;
+      critRequired: number;
+      isCrit: boolean;
+    };
   };
   damage: {
     pool: number;
@@ -137,10 +145,16 @@ export function MoveCard({
   const tcol = TYPE_COLORS[data.type as keyof typeof TYPE_COLORS] ?? { bg: "#888", fg: "#fff" };
   return (
     <div
-      className={cn("overflow-hidden rounded-lg border-2 shadow-sm bg-card text-card-foreground", className)}
+      className={cn(
+        "overflow-hidden rounded-lg border-2 shadow-sm bg-card text-card-foreground",
+        className,
+      )}
       style={{ borderColor: tcol.bg }}
     >
-      <div className="flex items-center justify-between gap-2 p-2 text-white" style={{ backgroundColor: tcol.bg }}>
+      <div
+        className="flex items-center justify-between gap-2 p-2 text-white"
+        style={{ backgroundColor: tcol.bg }}
+      >
         <div className="flex flex-col min-w-0">
           <span className="text-sm font-bold tracking-wide uppercase truncate">{data.name}</span>
           <div className="mt-0.5 flex flex-wrap items-center gap-1">
@@ -166,9 +180,16 @@ export function MoveCard({
       </div>
 
       <div className="p-2.5 space-y-2 text-xs">
-        <div className={cn("grid gap-2 border-b pb-2", damageSlot !== null ? "grid-cols-2" : "grid-cols-1")}>
+        <div
+          className={cn(
+            "grid gap-2 border-b pb-2",
+            damageSlot !== null ? "grid-cols-2" : "grid-cols-1",
+          )}
+        >
           <div>
-            <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Accuracy</span>
+            <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              Accuracy
+            </span>
             <div className="mt-0.5 font-medium flex items-center gap-1.5 flex-wrap min-h-5">
               {accuracySlot || data.accuracyText}
             </div>
@@ -188,8 +209,12 @@ export function MoveCard({
         {damageDetailsSlot && <div className="border-b pb-2">{damageDetailsSlot}</div>}
 
         <div>
-          <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Effect</span>
-          <p className="mt-1 text-muted-foreground leading-relaxed whitespace-pre-wrap">{data.effect}</p>
+          <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            Effect
+          </span>
+          <p className="mt-1 text-muted-foreground leading-relaxed whitespace-pre-wrap">
+            {data.effect}
+          </p>
         </div>
 
         {chanceSlot && <div className="border-t pt-2 space-y-1">{chanceSlot}</div>}
@@ -215,10 +240,14 @@ export function MoveRollResultCard({
   const chance = message.chance ?? [];
   const chanceSuccesses = chance.reduce((sum, item) => sum + item.successes, 0);
   const hasDamageBubble = !!message.damage && !message.damage.isStatus && !hasTargets;
-  const tcol = TYPE_COLORS[message.card.type as keyof typeof TYPE_COLORS] ?? { bg: "#888", fg: "#fff" };
+  const tcol = TYPE_COLORS[message.card.type as keyof typeof TYPE_COLORS] ?? {
+    bg: "#888",
+    fg: "#fff",
+  };
   const requiredSuccesses = crit?.required ?? 1;
   const isHit = message.accuracy.isHit ?? message.accuracy.successes >= requiredSuccesses;
-  const showAccuracy = message.phase !== "resolution";
+  // A resolved move remains a single, complete card: accuracy first, then resolution.
+  const showAccuracy = true;
   const showResolution = message.phase !== "accuracy";
 
   return (
@@ -226,9 +255,14 @@ export function MoveRollResultCard({
       className="w-full max-w-[410px] overflow-hidden rounded-xl border bg-card text-card-foreground shadow-lg"
       style={{ borderColor: tcol.bg }}
     >
-      <div className="relative px-4 pb-3 pt-3 text-white" style={{ backgroundColor: tcol.bg, color: tcol.fg }}>
+      <div
+        className="relative px-4 pb-3 pt-3 text-white"
+        style={{ backgroundColor: tcol.bg, color: tcol.fg }}
+      >
         <div className="pr-24">
-          <h3 className="truncate text-2xl font-black uppercase leading-none tracking-wide">{message.card.name}</h3>
+          <h3 className="truncate text-2xl font-black uppercase leading-none tracking-wide">
+            {message.card.name}
+          </h3>
           <div className="mt-2 flex max-w-full flex-wrap gap-1">
             <span className="rounded bg-black/25 px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none tracking-wider">
               {message.card.type}
@@ -246,66 +280,70 @@ export function MoveRollResultCard({
           </div>
         </div>
         <div className="absolute right-3 top-3 flex flex-col items-center">
-          <span className="text-[10px] font-black uppercase leading-none tracking-[0.24em] opacity-85">Power</span>
+          <span className="text-[10px] font-black uppercase leading-none tracking-[0.24em] opacity-85">
+            Power
+          </span>
           <div className="mt-1 flex h-14 w-14 items-center justify-center rounded-full border-2 border-white/80 bg-background text-3xl font-black leading-none text-foreground shadow-sm">
             {message.card.power}
           </div>
         </div>
       </div>
 
-      {showAccuracy && <section className="border-b border-border px-4 py-3">
-        <SectionPill accent={tcol.bg}>Accuracy</SectionPill>
-        <div className="mt-3 grid grid-cols-[104px_1fr] items-center gap-3">
-          <ResultCircle
-            label="Success"
-            value={message.accuracy.successes}
-            dice={message.accuracy.dice}
-            chanceDice={message.accuracy.chance}
-            accent={tcol.bg}
-            foreground={tcol.fg}
-          />
-          <div className="space-y-2 text-right text-sm uppercase tracking-wide text-muted-foreground">
-            <p className="flex items-center justify-end gap-3">
-              <span>Needed</span>
-              <span className="min-w-8 rounded-md bg-muted px-2 py-1 text-center text-xl font-black text-foreground">
-                {crit?.required ?? 1}
-              </span>
-            </p>
-            <p className="flex items-center justify-end gap-3">
-              <span>Critical</span>
-              <span className="min-w-8 rounded-md bg-muted px-2 py-1 text-center text-xl font-black text-foreground">
-                {crit?.critRequired ?? 4}
-              </span>
-            </p>
+      {showAccuracy && (
+        <section className="border-b border-border px-4 py-3">
+          <SectionPill accent={tcol.bg}>Accuracy</SectionPill>
+          <div className="mt-3 grid grid-cols-[104px_1fr] items-center gap-3">
+            <ResultCircle
+              label="Success"
+              value={message.accuracy.successes}
+              dice={message.accuracy.dice}
+              chanceDice={message.accuracy.chance}
+              accent={tcol.bg}
+              foreground={tcol.fg}
+            />
+            <div className="space-y-2 text-right text-sm uppercase tracking-wide text-muted-foreground">
+              <p className="flex items-center justify-end gap-3">
+                <span>Needed</span>
+                <span className="min-w-8 rounded-md bg-muted px-2 py-1 text-center text-xl font-black text-foreground">
+                  {crit?.required ?? 1}
+                </span>
+              </p>
+              <p className="flex items-center justify-end gap-3">
+                <span>Critical</span>
+                <span className="min-w-8 rounded-md bg-muted px-2 py-1 text-center text-xl font-black text-foreground">
+                  {crit?.critRequired ?? 4}
+                </span>
+              </p>
+            </div>
           </div>
-        </div>
-        <p
-          className={cn(
-            "mt-2 rounded-md px-2 py-1 text-center text-sm font-black uppercase",
-            isHit
-              ? "bg-success/15 text-success"
-              : "bg-destructive/15 text-destructive",
-          )}
-        >
-          {isHit ? "Acerto" : "Erro"}
-        </p>
-        {crit?.isCrit && (
-          <p className="mt-2 rounded-md bg-amber-400/15 px-2 py-1 text-center text-sm font-black uppercase text-amber-500">
-            Critical Hit +1 dado
+          <p
+            className={cn(
+              "mt-2 rounded-md px-2 py-1 text-center text-sm font-black uppercase",
+              isHit ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive",
+            )}
+          >
+            {isHit ? "Acerto" : "Erro"}
           </p>
-        )}
-      </section>}
+          {crit?.isCrit && (
+            <p className="mt-2 rounded-md bg-amber-400/15 px-2 py-1 text-center text-sm font-black uppercase text-amber-500">
+              Critical Hit +1 dado
+            </p>
+          )}
+        </section>
+      )}
 
       {message.phase === "accuracy" && (
         <section className="px-4 py-3">
-          <p className={cn(
-            "rounded-lg border px-3 py-2 text-center text-xs font-bold",
-            resolutionComplete
-              ? "border-success/30 bg-success/10 text-success"
-              : isHit && (message.reactionTargets?.length ?? 0) > 0
-                ? "border-primary/30 bg-primary/10 text-primary"
-                : "border-border bg-muted/35 text-muted-foreground",
-          )}>
+          <p
+            className={cn(
+              "rounded-lg border px-3 py-2 text-center text-xs font-bold",
+              resolutionComplete
+                ? "border-success/30 bg-success/10 text-success"
+                : isHit && (message.reactionTargets?.length ?? 0) > 0
+                  ? "border-primary/30 bg-primary/10 text-primary"
+                  : "border-border bg-muted/35 text-muted-foreground",
+            )}
+          >
             {resolutionComplete
               ? "Reações concluídas. Dano e efeitos foram resolvidos abaixo."
               : !isHit
@@ -317,82 +355,110 @@ export function MoveRollResultCard({
         </section>
       )}
 
-      {showResolution && (hasTargets ? (
-        <section className="border-b border-border px-4 py-3">
-          <div className="grid grid-cols-[1fr_52px_86px_44px] items-end gap-2">
-            <SectionPill accent={tcol.bg} className="col-span-1">Per Target</SectionPill>
-            <span className="text-center text-[10px] font-bold uppercase leading-tight text-muted-foreground">Def / SpDef</span>
-            <span className="text-center text-[10px] font-bold uppercase leading-tight text-muted-foreground">Type</span>
-            <span className="text-center text-[10px] font-bold uppercase leading-tight text-muted-foreground">Dmg</span>
-          </div>
-          <div className="mt-2 overflow-hidden rounded-lg border border-border">
-            {targets.map((target, index) => (
-              <div
-                key={`${target.name}-${index}`}
-                className={cn(
-                  "grid grid-cols-[1fr_52px_86px_44px] items-center gap-2 px-2 py-2 text-xs",
-                  index % 2 === 0 ? "bg-muted/30" : "bg-card",
-                )}
-              >
-                <span className="truncate font-bold">{target.name}</span>
-                <span className="text-center font-mono text-sm font-bold tabular-nums">{target.def}</span>
-                <span className="text-center text-[10px] font-semibold uppercase leading-tight text-muted-foreground">
-                  {target.immune ? "Immune" : target.effLabel}
-                </span>
-                <TargetDamageResult target={target} />
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : hasDamageBubble ? (
-        <section className="border-b border-border px-4 py-3">
-          <SectionPill accent={tcol.bg}>Damage</SectionPill>
-          <div className="mt-3 rounded-xl border border-border bg-muted/35 px-3 py-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-xs font-black uppercase tracking-wide text-foreground">Damage roll</p>
-                <p className="truncate text-[11px] uppercase text-muted-foreground">
-                  {message.card.damagePoolText}
-                  {message.damage?.critBonus ? ` + ${message.damage.critBonus} crit die` : ""}
-                </p>
-              </div>
-              <ResultBadge
-                label="DMG"
-                value={message.damage?.successes ?? 0}
-                dice={message.damage?.dice ?? []}
-                accent={tcol.bg}
-                foreground={tcol.fg}
-              />
+      {showResolution &&
+        (hasTargets ? (
+          <section className="border-b border-border px-4 py-3">
+            <div className="grid grid-cols-[1fr_52px_86px_44px] items-end gap-2">
+              <SectionPill accent={tcol.bg} className="col-span-1">
+                Per Target
+              </SectionPill>
+              <span className="text-center text-[10px] font-bold uppercase leading-tight text-muted-foreground">
+                {message.system === "digirole" ? "DEF / RES" : "Def / SpDef"}
+              </span>
+              <span className="text-center text-[10px] font-bold uppercase leading-tight text-muted-foreground">
+                Type
+              </span>
+              <span className="text-center text-[10px] font-bold uppercase leading-tight text-muted-foreground">
+                Dmg
+              </span>
             </div>
-          </div>
-        </section>
-      ) : null)}
+            <div className="mt-2 overflow-hidden rounded-lg border border-border">
+              {targets.map((target, index) => (
+                <div
+                  key={`${target.name}-${index}`}
+                  className={cn(
+                    "grid grid-cols-[1fr_52px_86px_44px] items-center gap-2 px-2 py-2 text-xs",
+                    index % 2 === 0 ? "bg-muted/30" : "bg-card",
+                  )}
+                >
+                  <span className="truncate font-bold">{target.name}</span>
+                  <span className="text-center font-mono text-sm font-bold tabular-nums">
+                    {target.def}
+                  </span>
+                  <span className="text-center text-[10px] font-semibold uppercase leading-tight text-muted-foreground">
+                    {target.immune ? "Immune" : target.effLabel}
+                  </span>
+                  <TargetDamageResult target={target} system={message.system} />
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : hasDamageBubble ? (
+          <section className="border-b border-border px-4 py-3">
+            <SectionPill accent={tcol.bg}>Damage</SectionPill>
+            <div className="mt-3 rounded-xl border border-border bg-muted/35 px-3 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-black uppercase tracking-wide text-foreground">
+                    Damage roll
+                  </p>
+                  <p className="truncate text-[11px] uppercase text-muted-foreground">
+                    {message.card.damagePoolText}
+                    {message.damage?.critBonus ? ` + ${message.damage.critBonus} crit die` : ""}
+                  </p>
+                </div>
+                <ResultBadge
+                  label="DMG"
+                  value={message.damage?.successes ?? 0}
+                  dice={message.damage?.dice ?? []}
+                  accent={tcol.bg}
+                  foreground={tcol.fg}
+                />
+              </div>
+            </div>
+          </section>
+        ) : null)}
 
       {showResolution && (message.reactions?.length ?? 0) > 0 && (
         <section className="border-b border-border px-4 py-3">
           <SectionPill accent={tcol.bg}>Reações</SectionPill>
           <div className="mt-2 space-y-2">
             {message.reactions?.map((reaction) => (
-              <div key={reaction.requestId} className="rounded-lg border border-border bg-muted/30 px-3 py-2">
+              <div
+                key={reaction.requestId}
+                className="rounded-lg border border-border bg-muted/30 px-3 py-2"
+              >
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate text-xs font-black uppercase text-foreground">{reaction.targetName}</p>
+                    <p className="truncate text-xs font-black uppercase text-foreground">
+                      {reaction.targetName}
+                    </p>
                     <p className="text-[11px] text-muted-foreground">
                       {reaction.choice === "none"
                         ? "Não reagiu"
                         : `${reaction.choice === "clash" ? "Clash" : "Evade"}: ${reaction.moveSuccesses} do move + ${reaction.actionsBefore} ação(ões) = ${reaction.required}`}
                     </p>
                     <div className="mt-1 flex flex-wrap gap-1 text-[11px] font-black uppercase">
-                      <span className={cn(
-                        "rounded px-1.5 py-0.5",
-                        (reaction.appliedDamage ?? targets.find((target) => target.requestId === reaction.requestId)?.finalDamage ?? 0) === 0
-                          ? "bg-success/15 text-success"
-                          : "bg-destructive/15 text-destructive",
-                      )}>
-                        {reaction.targetName}: {Math.max(
+                      <span
+                        className={cn(
+                          "rounded px-1.5 py-0.5",
+                          (reaction.appliedDamage ??
+                            targets.find((target) => target.requestId === reaction.requestId)
+                              ?.finalDamage ??
+                            0) === 0
+                            ? "bg-success/15 text-success"
+                            : "bg-destructive/15 text-destructive",
+                        )}
+                      >
+                        {reaction.targetName}:{" "}
+                        {Math.max(
                           0,
-                          reaction.appliedDamage ?? targets.find((target) => target.requestId === reaction.requestId)?.finalDamage ?? 0,
-                        )} dano
+                          reaction.appliedDamage ??
+                            targets.find((target) => target.requestId === reaction.requestId)
+                              ?.finalDamage ??
+                            0,
+                        )}{" "}
+                        dano
                       </span>
                       {reaction.choice === "clash" && reaction.succeeded && (
                         <span className="rounded bg-destructive/15 px-1.5 py-0.5 text-destructive">
@@ -402,10 +468,14 @@ export function MoveRollResultCard({
                     </div>
                   </div>
                   {reaction.choice !== "none" && (
-                    <span className={cn(
-                      "shrink-0 rounded-full px-2 py-1 text-xs font-black",
-                      reaction.succeeded ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive",
-                    )}>
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-full px-2 py-1 text-xs font-black",
+                        reaction.succeeded
+                          ? "bg-success/15 text-success"
+                          : "bg-destructive/15 text-destructive",
+                      )}
+                    >
                       {reaction.successes} · {reaction.succeeded ? "Sucesso" : "Falhou"}
                     </span>
                   )}
@@ -425,9 +495,16 @@ export function MoveRollResultCard({
                 {message.reaction.choice === "clash" ? "Clash" : "Evasion"}
               </p>
               <p className="mt-0.5 text-[11px] text-muted-foreground">
-                Ação {message.reaction.actionNumber ?? 1} · pool mínima {message.reaction.minimumPool ?? message.reaction.required} · precisava igualar {message.reaction.required} sucesso(s)
+                Ação {message.reaction.actionNumber ?? 1} · pool mínima{" "}
+                {message.reaction.minimumPool ?? message.reaction.required} · precisava igualar{" "}
+                {message.reaction.required} sucesso(s)
               </p>
-              <p className={cn("mt-1 text-xs font-bold", message.reaction.succeeded ? "text-success" : "text-destructive")}>
+              <p
+                className={cn(
+                  "mt-1 text-xs font-bold",
+                  message.reaction.succeeded ? "text-success" : "text-destructive",
+                )}
+              >
                 {message.reaction.succeeded
                   ? message.reaction.choice === "clash"
                     ? "Sucesso: ambos sofreram 1 de dano"
@@ -454,38 +531,51 @@ export function MoveRollResultCard({
         </section>
       )}
 
-      {showResolution && <section className="px-4 py-3">
-        <SectionPill accent={tcol.bg}>Effect</SectionPill>
-        <div className={cn("mt-3 gap-3", chance.length > 0 ? "grid grid-cols-[104px_1fr]" : "block")}>
-          {chance.length > 0 ? (
-            <ResultCircle
-              label="Success"
-              value={chanceSuccesses}
-              dice={chance.flatMap((item) => item.dice)}
-              highlight={(die) => die === 6}
-              accent={tcol.bg}
-              foreground={tcol.fg}
-            />
-          ) : null}
-          <div className="space-y-1 text-sm leading-relaxed text-muted-foreground">
-            {message.card.effect ? (
-              <p className="whitespace-pre-wrap">{message.card.effect}</p>
-            ) : (
-              <p>Sem efeito adicional.</p>
-            )}
-            {chance.map((item, index) => (
-              <p key={`${item.label}-${index}`} className="text-xs font-semibold uppercase text-foreground">
-                {item.label}: {item.successes} success
-              </p>
-            ))}
+      {showResolution && (
+        <section className="px-4 py-3">
+          <SectionPill accent={tcol.bg}>Effect</SectionPill>
+          <div
+            className={cn("mt-3 gap-3", chance.length > 0 ? "grid grid-cols-[104px_1fr]" : "block")}
+          >
+            {chance.length > 0 ? (
+              <ResultCircle
+                label="Success"
+                value={chanceSuccesses}
+                dice={chance.flatMap((item) => item.dice)}
+                highlight={(die) => die === 6}
+                accent={tcol.bg}
+                foreground={tcol.fg}
+              />
+            ) : null}
+            <div className="space-y-1 text-sm leading-relaxed text-muted-foreground">
+              {message.card.effect ? (
+                <p className="whitespace-pre-wrap">{message.card.effect}</p>
+              ) : (
+                <p>Sem efeito adicional.</p>
+              )}
+              {chance.map((item, index) => (
+                <p
+                  key={`${item.label}-${index}`}
+                  className="text-xs font-semibold uppercase text-foreground"
+                >
+                  {item.label}: {item.successes} success
+                </p>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>}
+        </section>
+      )}
     </div>
   );
 }
 
-function TargetDamageResult({ target }: { target: MoveRollTarget }) {
+function TargetDamageResult({
+  target,
+  system,
+}: {
+  target: MoveRollTarget;
+  system?: MoveRollMessage["system"];
+}) {
   const dice = target.dice ?? [];
   const pool = target.pool ?? dice.length;
   const basePool = target.basePool;
@@ -510,12 +600,16 @@ function TargetDamageResult({ target }: { target: MoveRollTarget }) {
           <span className="text-lg font-black tabular-nums">{target.finalDamage}</span>
         </div>
         {target.immune ? (
-          <p className="font-semibold text-muted-foreground">O alvo é imune a este tipo de golpe.</p>
+          <p className="font-semibold text-muted-foreground">
+            O alvo é imune a este tipo de golpe.
+          </p>
         ) : (
           <>
             {typeof basePool === "number" && (
               <p>
-                Pool base: <b>{basePool}d6</b> − {target.defStat === "spdef" ? "Sp.Def" : "Def"} {target.def}
+                Pool base: <b>{basePool}d6</b> −{" "}
+                {target.defStat === "spdef" ? (system === "digirole" ? "RES" : "Sp.Def") : "Def"}{" "}
+                {target.def}
                 {target.effectivenessMode === "dice" && target.effDelta !== 0
                   ? ` ${target.effDelta > 0 ? "+" : "−"} ${Math.abs(target.effDelta)} dado(s)`
                   : ""}
@@ -603,7 +697,9 @@ function ResultCircle({
     <HoverCard openDelay={80} closeDelay={80}>
       <HoverCardTrigger asChild>
         <span className="inline-flex cursor-help flex-col items-center">
-          <span className="text-[11px] font-black uppercase leading-none tracking-[0.18em] text-muted-foreground">{label}</span>
+          <span className="text-[11px] font-black uppercase leading-none tracking-[0.18em] text-muted-foreground">
+            {label}
+          </span>
           <span
             className="mt-1 flex h-20 w-20 items-center justify-center rounded-full border-2 bg-background text-5xl font-black leading-none shadow-sm"
             style={accent ? { borderColor: accent, color: accent } : undefined}
@@ -657,17 +753,33 @@ function DiceHoverContent({
   const isHit = highlight ?? ((die: number) => die >= 4);
   return (
     <HoverCardContent side="top" align="center" className="w-auto max-w-[280px] p-2">
-      <DiceGroup label={chanceDice.length > 0 ? "Dados normais" : "Dados rolados"} dice={dice} highlight={isHit} />
+      <DiceGroup
+        label={chanceDice.length > 0 ? "Dados normais" : "Dados rolados"}
+        dice={dice}
+        highlight={isHit}
+      />
       {chanceDice.length > 0 && (
         <div className="mt-2 border-t pt-2">
-          <DiceGroup label="Chance Dice (somente 6)" dice={chanceDice} highlight={(die) => die === 6} />
+          <DiceGroup
+            label="Chance Dice (somente 6)"
+            dice={chanceDice}
+            highlight={(die) => die === 6}
+          />
         </div>
       )}
     </HoverCardContent>
   );
 }
 
-function DiceGroup({ label, dice, highlight }: { label: string; dice: number[]; highlight: (die: number) => boolean }) {
+function DiceGroup({
+  label,
+  dice,
+  highlight,
+}: {
+  label: string;
+  dice: number[];
+  highlight: (die: number) => boolean;
+}) {
   return (
     <>
       <span className="mb-1 block text-[11px] font-semibold text-muted-foreground">{label}:</span>
@@ -748,7 +860,9 @@ export function SuccessHover({
           Dados Rolados:
         </span>
         {dice.length === 0 ? (
-          <span className="text-muted-foreground italic text-[11px]">{emptyText || "Nenhum dado."}</span>
+          <span className="text-muted-foreground italic text-[11px]">
+            {emptyText || "Nenhum dado."}
+          </span>
         ) : (
           <span className="flex flex-wrap gap-1">
             {dice.map((d, i) => (
