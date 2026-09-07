@@ -13,8 +13,11 @@ export function transparentDigiRoleImageUrl(value: string | null | undefined) {
   if (!value || value.startsWith("/digirole-image?")) return value ?? null;
   try {
     const url = new URL(value, "http://localhost");
-    if (!AUTOMATIC_IMAGE_HOSTS.has(url.hostname)) return value;
-    return `/digirole-image?src=${encodeURIComponent(url.href)}`;
+    // Desktop/Tauri builds do not expose the web server route used by the
+    // browser preview. Official image hosts are safe to load directly and
+    // this keeps the installed app independent from that route.
+    if (AUTOMATIC_IMAGE_HOSTS.has(url.hostname)) return url.href;
+    return value;
   } catch {
     return value;
   }
