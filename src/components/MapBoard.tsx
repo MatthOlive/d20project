@@ -198,6 +198,10 @@ const DEFAULT_GRID: GridSettings = {
   unitLabel: "m",
 };
 const DEFAULT_VIS: Visibility = { fogEnabled: false, dynamicLighting: false };
+const FOG_WORLD_MIN = -1000;
+const FOG_WORLD_SIZE = 2000;
+const FOG_SVG_MIN = FOG_WORLD_MIN * 1000;
+const FOG_SVG_SIZE = FOG_WORLD_SIZE * 1000;
 const WALL_SCHEMA_COLUMNS = ["kind", "is_open", "locked", "blocks_sight", "blocks_light"];
 
 function isSchemaCacheColumnError(
@@ -1297,10 +1301,10 @@ export function MapBoard({
     const { error } = await (supabase.from("fog_regions" as never).insert({
       game_id: gameId,
       page_id: pageId,
-      x: 0,
-      y: 0,
-      w: 1,
-      h: 1,
+      x: FOG_WORLD_MIN,
+      y: FOG_WORLD_MIN,
+      w: FOG_WORLD_SIZE,
+      h: FOG_WORLD_SIZE,
       revealed: true,
       author_id: userId,
     } as never) as unknown as Promise<{ error: { message: string } | null }>);
@@ -2437,14 +2441,21 @@ export function MapBoard({
             {/* Fog of War + Dynamic Lighting */}
             {fogActive && visEnabled && (
               <svg
-                className="pointer-events-none absolute inset-0 h-full w-full"
+                className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
                 viewBox="0 0 1000 1000"
                 preserveAspectRatio="none"
               >
                 <defs>
-                  <mask id={`fog-mask-${gameId}`}>
+                  <mask
+                    id={`fog-mask-${gameId}`}
+                    maskUnits="userSpaceOnUse"
+                    x={FOG_SVG_MIN}
+                    y={FOG_SVG_MIN}
+                    width={FOG_SVG_SIZE}
+                    height={FOG_SVG_SIZE}
+                  >
                     {/* Start fully covered */}
-                    <rect x="0" y="0" width="1000" height="1000" fill="white" />
+                    <rect x={FOG_SVG_MIN} y={FOG_SVG_MIN} width={FOG_SVG_SIZE} height={FOG_SVG_SIZE} fill="white" />
                     {/* Subtract revealed regions (manual fog) */}
                     {visibility.fogEnabled &&
                       fogRegions
@@ -2485,8 +2496,15 @@ export function MapBoard({
                           />
                         ))}
                   </mask>
-                  <mask id={`fog-memory-mask-${gameId}`}>
-                    <rect x="0" y="0" width="1000" height="1000" fill="black" />
+                  <mask
+                    id={`fog-memory-mask-${gameId}`}
+                    maskUnits="userSpaceOnUse"
+                    x={FOG_SVG_MIN}
+                    y={FOG_SVG_MIN}
+                    width={FOG_SVG_SIZE}
+                    height={FOG_SVG_SIZE}
+                  >
+                    <rect x={FOG_SVG_MIN} y={FOG_SVG_MIN} width={FOG_SVG_SIZE} height={FOG_SVG_SIZE} fill="black" />
                     {savedExploredPaths.map((d, i) => (
                       <path key={`memory-soft-${i}`} d={d} fill="white" />
                     ))}
@@ -2494,10 +2512,10 @@ export function MapBoard({
                 </defs>
                 {savedExploredPaths.length > 0 && !isNarrator && (
                   <rect
-                    x="0"
-                    y="0"
-                    width="1000"
-                    height="1000"
+                    x={FOG_SVG_MIN}
+                    y={FOG_SVG_MIN}
+                    width={FOG_SVG_SIZE}
+                    height={FOG_SVG_SIZE}
                     fill="#000000"
                     opacity={0.28}
                     mask={`url(#fog-memory-mask-${gameId})`}
@@ -2510,10 +2528,10 @@ export function MapBoard({
                   const op = isNarrator ? Math.min(0.5, playerDark) : playerDark;
                   return (
                     <rect
-                      x="0"
-                      y="0"
-                      width="1000"
-                      height="1000"
+                      x={FOG_SVG_MIN}
+                      y={FOG_SVG_MIN}
+                      width={FOG_SVG_SIZE}
+                      height={FOG_SVG_SIZE}
                       fill="#000000"
                       opacity={op}
                       mask={`url(#fog-mask-${gameId})`}

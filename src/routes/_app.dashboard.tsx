@@ -14,7 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Users, Crown, Sparkles, Trash2, CheckSquare, X } from "lucide-react";
+import { Plus, Users, Crown, Sparkles, Trash2, CheckSquare, Settings2, X } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useT, LANGS, type Lang } from "@/lib/i18n";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -46,7 +46,7 @@ function Dashboard() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("games")
-        .select("id,name,background_url,narrator_id,created_at,language,system,narrator_type,game_members(user_id,role)")
+        .select("*,game_members(user_id,role,display_name)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -60,6 +60,46 @@ function Dashboard() {
   const [system, setSystem] = useState<string>("pokerole");
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [editingGame, setEditingGame] = useState<{
+    id: string;
+    name: string;
+    system: string | null;
+    narrator_id: string;
+    owner_id?: string | null;
+    game_members?: Array<{ user_id: string; role: string; display_name: string | null }>;
+  } | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editSystem, setEditSystem] = useState("pokerole");
+  const [editOwnerId, setEditOwnerId] = useState("");
+  const [editNarratorId, setEditNarratorId] = useState("");
+
+  function openGameSettings(game: NonNullable<typeof editingGame>) {
+    setEditingGame(game);
+    setEditName(game.name);
+    setEditSystem(game.system || "pokerole");
+    setEditOwnerId(game.owner_id || game.narrator_id);
+    setEditNarratorId(game.narrator_id);
+  }
+
+  const updateGameSettings = useMutation({
+    mutationFn: async () => {
+      if (!editingGame) return;
+      const { error } = await supabase.rpc("update_game_dashboard_settings" as never, {
+        p_game_id: editingGame.id,
+        p_name: editName.trim(),
+        p_system: editSystem,
+        p_owner_id: editOwnerId,
+        p_narrator_id: editNarratorId,
+      } as never);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      setEditingGame(null);
+      await qc.invalidateQueries({ queryKey: ["games"] });
+      toast.success("Configurações da mesa atualizadas.");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
 
   const createGame = useMutation({
     mutationFn: async (gameName: string) => {
@@ -221,7 +261,9 @@ function Dashboard() {
           <p className="text-sm text-muted-foreground">{t("loading")}</p>
         ) : games && games.length > 0 ? (
           games.map((g) => {
-            const isOwner = g.narrator_id === user?.id;
+            const ownerId = (g as { owner_id?: string | null }).owner_id || g.narrator_id;
+            const isOwner = ownerId === user?.id;
+            const canManage = isOwner || g.narrator_id === user?.id;
             const memberCount = g.game_members?.length ?? 0;
             const systemLabel = RPG_SYSTEMS.find((s) => s.id === (g as { system?: string }).system)?.label ?? "PokéRole 2.0";
             const card = (
@@ -230,6 +272,18 @@ function Dashboard() {
                   <div className="absolute left-2 top-2 z-10 rounded-md bg-background/90 p-1 backdrop-blur">
                     <Checkbox checked={selected.has(g.id)} onCheckedChange={() => toggleSel(g.id)} />
                   </div>
+                )}
+                {canManage && !selectMode && (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      openGameSettings(g as NonNullable<typeof editingGame>);
+                    }}
+                    className="absolute right-10 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-background/90 text-foreground shadow transition hover:bg-accent"
+                    title={`Configurações de ${g.name}`}
+                    aria-label={`Configurações de ${g.name}`}
+                  ><Settings2 className="h-3.5 w-3.5" /></button>
                 )}
                 {isOwner && !selectMode && (
                   <button
@@ -290,6 +344,66 @@ function Dashboard() {
           </Card>
         )}
       </div>
+
+      <Dialog open={!!editingGame} onOpenChange={(next) => !next && setEditingGame(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Configurações da mesa</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-game-name">Nome da mesa</Label>
+              <Input id="edit-game-name" value={editName} onChange={(event) => setEditName(event.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Sistema de RPG</Label>
+              <Select value={editSystem} onValueChange={setEditSystem}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {RPG_SYSTEMS.map((item) => (
+                    <SelectItem key={item.id} value={item.id} disabled={!item.available}>
+                      {item.label}{!item.available ? " — em breve" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Dono</Label>
+              <Select value={editOwnerId} onValueChange={setEditOwnerId}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {(editingGame?.game_members ?? []).map((member) => (
+                    <SelectItem key={member.user_id} value={member.user_id}>
+                      {member.display_name || member.user_id.slice(0, 8)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Mestre</Label>
+              <Select value={editNarratorId} onValueChange={setEditNarratorId}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {(editingGame?.game_members ?? []).map((member) => (
+                    <SelectItem key={member.user_id} value={member.user_id}>
+                      {member.display_name || member.user_id.slice(0, 8)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingGame(null)}>Cancelar</Button>
+            <Button
+              disabled={!editName.trim() || !editOwnerId || !editNarratorId || updateGameSettings.isPending}
+              onClick={() => updateGameSettings.mutate()}
+            >
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
