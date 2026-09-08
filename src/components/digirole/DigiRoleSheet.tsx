@@ -2344,6 +2344,8 @@ function DigiRoleDigimonSheet({
   const [draft, setDraft] = useState<DigimonSheet | null>(null);
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [catalogSearch, setCatalogSearch] = useState("");
+  const [catalogFilter, setCatalogFilter] = useState<"signature" | "inventory" | "grade" | null>(null);
+  const [catalogField, setCatalogField] = useState("all");
   const [autoFilling, setAutoFilling] = useState(false);
   useEffect(() => {
     if (query.data) setDraft(query.data);
@@ -2511,6 +2513,7 @@ function DigiRoleDigimonSheet({
     .flatMap((item) => {
       const technique = inventoryTechniqueById.get(item.technique_id!);
       if (!technique) return [];
+      if (catalogField !== "all" && technique.field !== catalogField) return [];
       if (
         catalogSearch.trim() &&
         !technique.name.toLocaleLowerCase("pt-BR").includes(catalogSearch.trim().toLocaleLowerCase("pt-BR"))
@@ -2519,6 +2522,12 @@ function DigiRoleDigimonSheet({
       }
       return [{ item, technique }];
     });
+  const catalogFields = Array.from(
+    new Set([
+      ...availableTechniques.map((technique) => technique.field),
+      ...(inventoryTechniquesQuery.data ?? []).map((technique) => technique.field),
+    ].filter(Boolean)),
+  ).sort((left, right) => left.localeCompare(right));
 
   async function patch(values: Partial<DigimonSheet>) {
     setDraft((current) => (current ? { ...current, ...values } : current));
@@ -2791,15 +2800,15 @@ function DigiRoleDigimonSheet({
         return;
       }
       await queryClient.invalidateQueries({
-        queryKey: ["digirole-technique-inventory", draft.tamer_id],
+        queryKey: ["digirole-technique-inventory", draft?.tamer_id],
       });
-      await queryClient.invalidateQueries({ queryKey: ["digirole-tamer", draft.tamer_id] });
+      await queryClient.invalidateQueries({ queryKey: ["digirole-tamer", draft?.tamer_id] });
     }
     setCatalogOpen(false);
     void techniqueQuery.refetch();
   }
   async function unequip(technique: Technique) {
-    if (!draft.tamer_id || !linkedTamerQuery.data) {
+    if (!draft?.tamer_id || !linkedTamerQuery.data) {
       toast.error("Vincule este Digimon a um Tamer para guardar a técnica no inventário.");
       return;
     }
@@ -2836,9 +2845,9 @@ function DigiRoleDigimonSheet({
       return toast.error(messageOf(result.error));
     }
     await queryClient.invalidateQueries({
-      queryKey: ["digirole-technique-inventory", draft.tamer_id],
+      queryKey: ["digirole-technique-inventory", draft?.tamer_id],
     });
-    await queryClient.invalidateQueries({ queryKey: ["digirole-tamer", draft.tamer_id] });
+    await queryClient.invalidateQueries({ queryKey: ["digirole-tamer", draft?.tamer_id] });
     toast.success(`${technique.name} foi guardada no inventário do Tamer.`);
     void techniqueQuery.refetch();
   }
@@ -3119,7 +3128,15 @@ function DigiRoleDigimonSheet({
             </p>
           </div>
           {canEdit && (
-            <Button size="sm" variant="outline" onClick={() => setCatalogOpen(true)}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setCatalogFilter(null);
+                setCatalogField("all");
+                setCatalogOpen(true);
+              }}
+            >
               <Plus className="mr-1 h-3.5 w-3.5" /> Adicionar
             </Button>
           )}
@@ -3246,8 +3263,47 @@ function DigiRoleDigimonSheet({
                 className="mt-1 h-8 text-foreground"
               />
             </label>
-          ))}
-        </div>
+              ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 border-b border-border pb-2">
+            <span className="mr-1 text-[10px] font-black uppercase text-muted-foreground">
+              Fields
+            </span>
+            <button
+              type="button"
+              title="Todos os Fields"
+              aria-label="Todos os Fields"
+              onClick={() => setCatalogField("all")}
+              className={`flex h-8 min-w-8 items-center justify-center rounded-full border px-2 text-[10px] font-black transition ${
+                catalogField === "all"
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border text-muted-foreground hover:bg-accent"
+              }`}
+            >
+              ALL
+            </button>
+            {catalogFields.map((field) => (
+              <button
+                key={field}
+                type="button"
+                title={`Field ${field}`}
+                aria-label={`Field ${field}`}
+                onClick={() => setCatalogField(field)}
+                className={`flex h-8 min-w-8 items-center justify-center rounded-full border px-2 text-[10px] font-black transition ${
+                  catalogField === field
+                    ? "border-foreground ring-2 ring-foreground/25"
+                    : "border-border hover:bg-accent"
+                }`}
+                style={{
+                  backgroundColor: `${digiRoleFieldColor(field)}26`,
+                  borderColor: catalogField === field ? digiRoleFieldColor(field) : undefined,
+                  color: digiRoleFieldColor(field),
+                }}
+              >
+                {field}
+              </button>
+            ))}
+          </div>
         <p className="mt-2 text-[10px] text-muted-foreground">
           Pontos disponíveis: {draft.unspent_attr_points ?? 0} de Atributos ·{" "}
           {draft.unspent_skill_points ?? 0} de Perícias
@@ -3287,13 +3343,31 @@ function DigiRoleDigimonSheet({
             placeholder="Procurar técnicas..."
             autoFocus
           />
-          <div className="min-h-0 space-y-4 overflow-y-scroll pr-2 [scrollbar-gutter:stable]">
+          <div className="grid grid-cols-3 gap-1 rounded-lg border border-border bg-muted/30 p-1">
+            {([
+              ["signature", "Técnicas assinaturas"],
+              ["inventory", "Técnicas no inventário"],
+              ["grade", "Por Grau"],
+            ] as const).map(([value, label]) => (
+              <Button
+                key={value}
+                type="button"
+                size="sm"
+                variant={catalogFilter === value ? "default" : "ghost"}
+                className="min-w-0 px-2 text-[11px]"
+                onClick={() => setCatalogFilter((current) => (current === value ? null : value))}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+          <div className="min-h-0 space-y-4 overflow-y-scroll pt-3 pr-2 [scrollbar-gutter:stable]">
             {!techniqueCatalogReady && (
               <p className="py-4 text-center text-xs text-muted-foreground">
                 Conferindo graus e assinaturas...
               </p>
             )}
-            <section>
+            {catalogFilter === "inventory" && <section>
               <h3 className="mb-2 text-xs font-black uppercase text-muted-foreground">
                 Técnicas no inventário
               </h3>
@@ -3337,15 +3411,18 @@ function DigiRoleDigimonSheet({
                   Nenhuma técnica disponível no inventário do Tamer.
                 </p>
               )}
-            </section>
-            <section>
+            </section>}
+            {(catalogFilter === "signature" || catalogFilter === "grade") && <section>
               <h3 className="mb-2 text-xs font-black uppercase text-muted-foreground">
-                Técnicas aprendíveis
+                {catalogFilter === "signature" ? "Técnicas assinaturas" : "Técnicas por Grau"}
               </h3>
               {TECHNIQUE_GRADES.map((grade) => {
-                const techniques = availableTechniques.filter(
-                  (technique) => technique.grade.trim().toUpperCase() === grade,
-                );
+                const techniques = availableTechniques.filter((technique) => {
+                  const isSignature = speciesTechniqueLinks.get(technique.id)?.is_signature === true;
+                  if (catalogField !== "all" && technique.field !== catalogField) return false;
+                  if (catalogFilter === "signature") return isSignature;
+                  return !isSignature && technique.grade.trim().toUpperCase() === grade;
+                });
                 if (techniques.length === 0) return null;
                 return (
                   <div key={grade} className="mb-3 space-y-1">
@@ -3383,7 +3460,7 @@ function DigiRoleDigimonSheet({
                   </div>
                 );
               })}
-            </section>
+            </section>}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCatalogOpen(false)}>
