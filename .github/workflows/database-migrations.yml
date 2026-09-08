@@ -42,6 +42,15 @@ jobs:
       - name: Link production project
         run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
 
+      - name: Align existing migration history
+        shell: bash
+        run: |
+          versions=$(find supabase/migrations -maxdepth 1 -type f -name '*.sql' -printf '%f\n' \
+            | sed -E 's/^([0-9]+)_.*/\1/' \
+            | grep -v '^20260915130000$' \
+            | tr '\n' ' ')
+          supabase migration repair --status applied $versions
+
       - name: Preview migration plan
         run: supabase db push --include-all --dry-run
 
