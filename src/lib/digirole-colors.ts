@@ -7,6 +7,8 @@ const DIGI_ATTRIBUTE_COLORS: Record<string, string> = {
   virus: "#ef4444",
   no: "#8b8f97",
   none: "#8b8f97",
+  fr: "#f59e0b",
+  free: "#f59e0b",
   un: "#c084fc",
   unknown: "#c084fc",
   uk: "#c084fc",

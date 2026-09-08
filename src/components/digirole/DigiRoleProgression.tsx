@@ -495,7 +495,7 @@ function evolutionRequirement(
     .replace(/^[·:;|\-\s]+/, "")
     .trim();
   if (!requirement) return "Sem requisito adicional descrito";
-  return requirement.length > 220 ? `${requirement.slice(0, 217)}...` : requirement;
+  return requirement;
 }
 
 type EvolutionTechnique = { grade: string; field: string };

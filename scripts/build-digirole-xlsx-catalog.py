@@ -32,6 +32,10 @@ def key(value):
     return text(value).casefold()
 
 
+def csv_values(value):
+    return [part.strip() for part in text(value).split(",") if part.strip()]
+
+
 sheet_rows = {
     name: [row for row in workbook[name].iter_rows(min_row=5, values_only=True) if text(row[0])]
     for name in ("Fichas RPG", "Técnicas RPG", "Evoluções RPG")
@@ -58,7 +62,9 @@ for row in forms:
         "source_name": name,
         "name": canonical_name(name, stage),
         "stage": stage,
-        "available_fields": [part.strip() for part in text(row[10]).split(",") if part.strip()],
+        "digi_attribute": text(row[14]) or "No",
+        "fields": ["Unclassified"] if stage == "In-Training I" else (csv_values(row[15])[:2] or ["Unclassified"]),
+        "available_fields": csv_values(row[10]),
         "hp_base": int(row[8] or 3),
         "suggested_hp": int(row[9] or 0) or None,
         "stabilization_victories": int(row[13] or 0),
@@ -74,7 +80,12 @@ for row in forms:
 
 def resolve_species(name, stage):
     stage_name = text(stage)
-    direct = species_by_identity.get((key(name), stage_name))
+    aliases = {
+        "pyokomon": "Yokomon",
+        "goromon": "Tumblemon",
+    }
+    resolved_name = aliases.get(key(name), text(name))
+    direct = species_by_identity.get((key(resolved_name), stage_name))
     if direct:
         return direct
     suffix = f" ({stage_name})"
@@ -86,20 +97,47 @@ def resolve_species(name, stage):
 
 routes_by_source = defaultdict(list)
 route_count = 0
+skipped_routes = []
 for row in sheet_rows["Evoluções RPG"]:
     source_species = resolve_species(row[0], row[1])
     target_species = resolve_species(row[2], row[3])
     if not source_species or not target_species:
+        skipped_routes.append(
+            {
+                "source": text(row[0]),
+                "source_stage": text(row[1]),
+                "target": text(row[2]),
+                "target_stage": text(row[3]),
+            }
+        )
         continue
-    requirements = [text(value) for value in row[6:15] if text(value)]
-    fulfillment = text(row[15])
-    requirement_text = " | ".join(requirements)
+    requirements = [text(value) for value in row[6:14] if text(value)]
+    fulfillment = text(row[14]) if len(row) > 14 else ""
+    costs = [f"PE {int(row[4] or 0)}", f"Custo DS {int(row[5] or 0)}"]
+    requirement_text = " | ".join([*costs, *requirements])
     if fulfillment:
         requirement_text = f"{requirement_text} | {fulfillment}" if requirement_text else fulfillment
     routes_by_source[source_species["name"]].append(
         f'{target_species["name"]}: {requirement_text}'
     )
     route_count += 1
+
+# Canonical English catalog names for Pyokomon and Goromon are Yokomon and
+# Tumblemon. Keep these requested regressions even when the source sheet omits
+# them.
+supplemental_routes = (
+    ("Biyomon", "Rookie", "Pyokomon", "In-Training II"),
+    ("Sandmon", "In-Training I", "Goromon", "In-Training II"),
+)
+for source_name, source_stage, target_name, target_stage in supplemental_routes:
+    source_species = resolve_species(source_name, source_stage)
+    target_species = resolve_species(target_name, target_stage)
+    if not source_species or not target_species:
+        continue
+    route = f'{target_species["name"]}: PE 2 | Custo DS 1 | Rank = {target_stage}'
+    if route not in routes_by_source[source_species["name"]]:
+        routes_by_source[source_species["name"]].append(route)
+        route_count += 1
 
 
 technique_candidates = []
@@ -174,16 +212,9 @@ links = []
 for item in species_by_identity.values():
     technique_keys = species_technique_keys[item["name"]]
     signature_names = [technique_identity[value][0] for value in technique_keys]
-    signature_fields = []
-    for mechanical_key in technique_keys:
-        field = mechanical[mechanical_key]["field"]
-        if field and field not in signature_fields:
-            signature_fields.append(field)
-    primary_fields = signature_fields[:2] or item["available_fields"][:1] or ["Neutra"]
     species.append(
         {
             **item,
-            "fields": primary_fields,
             "signature_technique": signature_names[0] if signature_names else None,
             "evolution_text": " ; ".join(routes_by_source[item["name"]]),
         }
@@ -216,20 +247,21 @@ where lower(btrim(existing.name)) = lower(btrim(imported.source_name))
   and not exists (select 1 from public.digirole_species occupied where lower(btrim(occupied.name))=lower(btrim(imported.name)));
 
 update public.digirole_species existing set
-  stage=imported.stage, fields=imported.fields, available_fields=imported.available_fields,
+  stage=imported.stage, digi_attribute=imported.digi_attribute,
+  fields=imported.fields, available_fields=imported.available_fields,
   hp_base=imported.hp_base, suggested_hp=imported.suggested_hp,
   stabilization_text=case when imported.stabilization_victories=0 then 'Automática.' else imported.stabilization_victories||' vitórias nesta forma.' end,
   stabilization_victories=imported.stabilization_victories,
   base_attrs=imported.base_attrs || jsonb_build_object('charisma',coalesce(nullif(existing.base_attrs->>'charisma','')::integer,1)),
   signature_technique=imported.signature_technique, evolution_text=imported.evolution_text, updated_at=now()
-from jsonb_to_recordset((select payload from _digirole_species_import)) as imported(name text,stage text,fields text[],available_fields text[],hp_base integer,suggested_hp integer,stabilization_victories integer,base_attrs jsonb,signature_technique text,evolution_text text)
+from jsonb_to_recordset((select payload from _digirole_species_import)) as imported(name text,stage text,digi_attribute text,fields text[],available_fields text[],hp_base integer,suggested_hp integer,stabilization_victories integer,base_attrs jsonb,signature_technique text,evolution_text text)
 where lower(btrim(existing.name))=lower(btrim(imported.name));
 
-insert into public.digirole_species(name,stage,fields,available_fields,hp_base,suggested_hp,stabilization_text,stabilization_victories,base_attrs,signature_technique,evolution_text)
-select imported.name,imported.stage,imported.fields,imported.available_fields,imported.hp_base,imported.suggested_hp,
+insert into public.digirole_species(name,stage,digi_attribute,fields,available_fields,hp_base,suggested_hp,stabilization_text,stabilization_victories,base_attrs,signature_technique,evolution_text)
+select imported.name,imported.stage,imported.digi_attribute,imported.fields,imported.available_fields,imported.hp_base,imported.suggested_hp,
   case when imported.stabilization_victories=0 then 'Automática.' else imported.stabilization_victories||' vitórias nesta forma.' end,
   imported.stabilization_victories,imported.base_attrs||'{{"charisma":1}}'::jsonb,imported.signature_technique,imported.evolution_text
-from jsonb_to_recordset((select payload from _digirole_species_import)) as imported(name text,stage text,fields text[],available_fields text[],hp_base integer,suggested_hp integer,stabilization_victories integer,base_attrs jsonb,signature_technique text,evolution_text text)
+from jsonb_to_recordset((select payload from _digirole_species_import)) as imported(name text,stage text,digi_attribute text,fields text[],available_fields text[],hp_base integer,suggested_hp integer,stabilization_victories integer,base_attrs jsonb,signature_technique text,evolution_text text)
 where not exists(select 1 from public.digirole_species existing where lower(btrim(existing.name))=lower(btrim(imported.name)));
 
 update public.digirole_species_techniques link set is_signature=false
@@ -384,4 +416,18 @@ for values in chunks(links, 400):
 
 (manual_dir / f"{part_number:02d}_finalize.sql").write_text(finalize_sql, encoding="utf-8")
 
-print(json.dumps({"species": len(species), "techniques": len(techniques), "links": len(links), "routes": route_count, "destination": str(destination), "manual_parts": part_number, "manual_directory": str(manual_dir)}, ensure_ascii=False))
+print(
+    json.dumps(
+        {
+            "species": len(species),
+            "techniques": len(techniques),
+            "links": len(links),
+            "routes": route_count,
+            "skipped_routes": skipped_routes,
+            "destination": str(destination),
+            "manual_parts": part_number,
+            "manual_directory": str(manual_dir),
+        },
+        ensure_ascii=False,
+    )
+)
