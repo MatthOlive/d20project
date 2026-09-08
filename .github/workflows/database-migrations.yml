@@ -42,6 +42,14 @@ jobs:
       - name: Link production project
         run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
 
+      - name: Repair removed remote migration history
+        run: >-
+          supabase migration repair --status reverted
+          20260907203741
+          20260907203914
+          20260907205711
+          20260907205724
+
       - name: Preview migration plan
         run: supabase db push --include-all --dry-run
 
