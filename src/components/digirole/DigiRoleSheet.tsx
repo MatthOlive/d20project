@@ -2428,6 +2428,16 @@ function DigiRoleDigimonSheet({
     queryFn: fetchDigiRoleSignatureTechniqueIds,
     staleTime: 5 * 60 * 1000,
   });
+  const speciesSignatureTechniquesQuery = useQuery({
+    queryKey: ["digirole-species-signature-techniques", draft?.species_id, draft?.species?.signature_technique],
+    enabled: catalogOpen && !!draft?.species_id && !!draft?.species,
+    queryFn: () =>
+      fetchDigiRoleSpeciesTechniques({
+        speciesId: draft!.species_id!,
+        signatureName: draft!.species!.signature_technique,
+        speciesName: draft!.species!.name,
+      }),
+  });
   if (query.isLoading || !draft)
     return <div className="p-5 text-sm text-muted-foreground">Carregando Digimon...</div>;
   if (query.error)
@@ -2483,10 +2493,11 @@ function DigiRoleDigimonSheet({
   const techniqueCatalogReady =
     !catalogQuery.isLoading &&
     !speciesTechniqueQuery.isLoading &&
-    !signatureTechniquesQuery.isLoading;
+    !signatureTechniquesQuery.isLoading &&
+    !speciesSignatureTechniquesQuery.isLoading;
   const availableTechniques = techniqueCatalogReady
     ? dedupeDigiRoleTechniques(
-        (catalogQuery.data ?? [])
+        [...(catalogQuery.data ?? []), ...(speciesSignatureTechniquesQuery.data ?? [])]
           .filter((technique) => !learnedTechniqueIds.has(technique.id))
           .filter((technique) =>
             techniqueIsAvailable(
@@ -2591,15 +2602,23 @@ function DigiRoleDigimonSheet({
       const spentSkills = Object.values(skills).reduce((sum, value) => sum + value, 0);
       const effective = attrsWithBonuses(draft.attrs, attrPoints, draft.bonuses ?? {});
 
-      const [catalogResult, speciesLinks, signatureIds] = await Promise.all([
+      const [catalogResult, speciesLinks, signatureIds, speciesSignatures] = await Promise.all([
         table("digirole_techniques").select("*").order("name").limit(1200),
         fetchDigiRoleSpeciesTechniqueLinks(species.id),
         fetchDigiRoleSignatureTechniqueIds(),
+        fetchDigiRoleSpeciesTechniques({
+          speciesId: species.id,
+          signatureName: species.signature_technique,
+          speciesName: species.name,
+        }),
       ]);
       if (catalogResult.error) throw catalogResult.error;
       const linkMap = new Map(speciesLinks.map((link) => [link.technique_id, link]));
       const signatureSet = new Set(signatureIds);
-      const allowed = ((catalogResult.data ?? []) as Technique[]).filter((technique) =>
+      const allowed = dedupeDigiRoleTechniques([
+        ...(((catalogResult.data ?? []) as Technique[])),
+        ...speciesSignatures,
+      ]).filter((technique) =>
         techniqueIsAvailable(technique, species, draft.rank, linkMap, signatureSet),
       );
       const signatures = allowed.filter(
@@ -3333,7 +3352,7 @@ function DigiRoleDigimonSheet({
       </section>
 
       <Dialog open={catalogOpen} onOpenChange={setCatalogOpen}>
-        <DialogContent className="grid h-[min(85vh,46rem)] max-w-2xl grid-rows-[auto_auto_minmax(0,1fr)_auto] overflow-hidden">
+        <DialogContent className="grid h-[min(85vh,46rem)] max-w-2xl grid-rows-[auto_auto_auto_minmax(0,1fr)_auto] overflow-hidden">
           <DialogHeader>
             <DialogTitle>Adicionar técnica</DialogTitle>
           </DialogHeader>
@@ -3413,9 +3432,13 @@ function DigiRoleDigimonSheet({
               )}
             </section>}
             {(catalogFilter === "signature" || catalogFilter === "grade") && <section>
-              <h3 className="mb-2 text-xs font-black uppercase text-muted-foreground">
+              <button
+                type="button"
+                className="mb-2 text-left text-xs font-black uppercase text-muted-foreground hover:text-foreground"
+                onClick={() => setCatalogFilter((current) => (current === catalogFilter ? null : catalogFilter))}
+              >
                 {catalogFilter === "signature" ? "Técnicas assinaturas" : "Técnicas por Grau"}
-              </h3>
+              </button>
               {TECHNIQUE_GRADES.map((grade) => {
                 const techniques = availableTechniques.filter((technique) => {
                   const isSignature = speciesTechniqueLinks.get(technique.id)?.is_signature === true;
