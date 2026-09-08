@@ -120,12 +120,21 @@ type BaseSheet = {
   equipment: Record<string, { name?: string; effects?: string; damagePool?: string }>;
 };
 
+type InventoryItem = {
+  name: string;
+  quantity: number;
+  description?: string;
+  item_type?: "technique";
+  technique_id?: string;
+  grade?: string;
+};
+
 type TamerSheet = BaseSheet & {
   name: string;
   age: number;
   notoriety: DigiRoleNumbers;
   condensed_count: number;
-  inventory: Array<{ name: string; quantity: number; description?: string }>;
+  inventory: InventoryItem[];
   achievements: Array<{ rank?: string; name: string; complete?: boolean }>;
   hybrid_state: {
     speciesId?: string;
@@ -196,6 +205,7 @@ type Technique = {
 };
 
 const ROMAN_GRADE: Record<string, number> = { I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6, VII: 7 };
+const TECHNIQUE_GRADES = ["I", "II", "III", "IV", "V", "VI", "VII"] as const;
 
 const MAX_TECHNIQUE_GRADE_BY_STAGE: Record<string, number> = {
   "In-Training I": 1,
@@ -2380,6 +2390,31 @@ function DigiRoleDigimonSheet({
       return (result.data ?? []) as Technique[];
     },
   });
+  const linkedTamerQuery = useQuery({
+    queryKey: ["digirole-technique-inventory", draft?.tamer_id],
+    enabled: !!draft?.tamer_id,
+    queryFn: async (): Promise<{ id: string; inventory: InventoryItem[] }> => {
+      const result = await table("digirole_tamers")
+        .select("id,inventory")
+        .eq("id", draft!.tamer_id!)
+        .single();
+      if (result.error) throw result.error;
+      const row = result.data as unknown as { id: string; inventory: InventoryItem[] | null };
+      return { id: row.id, inventory: row.inventory ?? [] };
+    },
+  });
+  const inventoryTechniqueIds = (linkedTamerQuery.data?.inventory ?? [])
+    .filter((item) => item.item_type === "technique" && item.technique_id && item.quantity > 0)
+    .map((item) => item.technique_id!);
+  const inventoryTechniquesQuery = useQuery({
+    queryKey: ["digirole-inventory-techniques", inventoryTechniqueIds],
+    enabled: catalogOpen && inventoryTechniqueIds.length > 0,
+    queryFn: async (): Promise<Technique[]> => {
+      const result = await table("digirole_techniques").select("*").in("id", inventoryTechniqueIds);
+      if (result.error) throw result.error;
+      return (result.data ?? []) as Technique[];
+    },
+  });
   const speciesTechniqueQuery = useQuery({
     queryKey: ["digirole-species-techniques", draft?.species_id],
     enabled: !!draft?.species_id,
@@ -2399,7 +2434,9 @@ function DigiRoleDigimonSheet({
     isNarrator || draft.owner_id === userId || (draft.allowed_editors ?? []).includes(userId);
   const species = draft.species;
   const name = draft.nickname || species?.name || "Digimon";
-  const sheetColor = digiRoleSheetColor(species?.fields, species?.digi_attribute);
+  const normalizedSpeciesFields =
+    species?.stage === "In-Training I" ? ["Unclassified"] : species?.fields;
+  const sheetColor = digiRoleSheetColor(normalizedSpeciesFields, species?.digi_attribute);
   const attributeColor = digiRoleAttributeColor(species?.digi_attribute);
   const effectiveAttrs = attrsWithBonuses(
     draft.attrs,
@@ -2460,6 +2497,28 @@ function DigiRoleDigimonSheet({
           ),
       )
     : [];
+  const inventoryTechniqueById = new Map(
+    (inventoryTechniquesQuery.data ?? []).map((technique) => [technique.id, technique]),
+  );
+  const inventoryTechniqueEntries = (linkedTamerQuery.data?.inventory ?? [])
+    .filter(
+      (item) =>
+        item.item_type === "technique" &&
+        item.technique_id &&
+        item.quantity > 0 &&
+        !learnedTechniqueIds.has(item.technique_id),
+    )
+    .flatMap((item) => {
+      const technique = inventoryTechniqueById.get(item.technique_id!);
+      if (!technique) return [];
+      if (
+        catalogSearch.trim() &&
+        !technique.name.toLocaleLowerCase("pt-BR").includes(catalogSearch.trim().toLocaleLowerCase("pt-BR"))
+      ) {
+        return [];
+      }
+      return [{ item, technique }];
+    });
 
   async function patch(values: Partial<DigimonSheet>) {
     setDraft((current) => (current ? { ...current, ...values } : current));
@@ -2695,8 +2754,12 @@ function DigiRoleDigimonSheet({
       return null;
     }
   }
-  async function learn(technique: Technique) {
-    const source = speciesTechniqueLinks.get(technique.id)?.is_signature ? "signature" : "learned";
+  async function learn(technique: Technique, inventoryItem?: InventoryItem) {
+    const source = inventoryItem
+      ? "learned"
+      : speciesTechniqueLinks.get(technique.id)?.is_signature
+        ? "signature"
+        : "learned";
     if (source !== "signature" && genericTechniqueCount >= genericLimit) {
       toast.error(`Limite de ${genericLimit} técnicas genéricas atingido (2 + Sabedoria).`);
       return;
@@ -2707,15 +2770,76 @@ function DigiRoleDigimonSheet({
       source,
     });
     if (result.error) return toast.error(messageOf(result.error));
+    if (inventoryItem && linkedTamerQuery.data) {
+      const previousInventory = linkedTamerQuery.data.inventory;
+      const nextInventory = previousInventory
+        .map((item) =>
+          item.technique_id === inventoryItem.technique_id
+            ? { ...item, quantity: Math.max(0, item.quantity - 1) }
+            : item,
+        )
+        .filter((item) => item.quantity > 0);
+      const inventoryResult = await table("digirole_tamers")
+        .update({ inventory: nextInventory })
+        .eq("id", linkedTamerQuery.data.id);
+      if (inventoryResult.error) {
+        await table("digirole_digimon_techniques")
+          .delete()
+          .eq("digimon_id", id)
+          .eq("technique_id", technique.id);
+        toast.error(messageOf(inventoryResult.error));
+        return;
+      }
+      await queryClient.invalidateQueries({
+        queryKey: ["digirole-technique-inventory", draft.tamer_id],
+      });
+      await queryClient.invalidateQueries({ queryKey: ["digirole-tamer", draft.tamer_id] });
+    }
     setCatalogOpen(false);
     void techniqueQuery.refetch();
   }
-  async function forget(techniqueId: string) {
+  async function unequip(technique: Technique) {
+    if (!draft.tamer_id || !linkedTamerQuery.data) {
+      toast.error("Vincule este Digimon a um Tamer para guardar a técnica no inventário.");
+      return;
+    }
+    const previousInventory = linkedTamerQuery.data.inventory;
+    const existingIndex = previousInventory.findIndex(
+      (item) => item.item_type === "technique" && item.technique_id === technique.id,
+    );
+    const techniqueItem: InventoryItem = {
+      name: technique.name,
+      quantity: 1,
+      description: `Técnica DigiRole · Grau ${technique.grade || "-"} · ${technique.field || "Neutra"}`,
+      item_type: "technique",
+      technique_id: technique.id,
+      grade: technique.grade,
+    };
+    const nextInventory =
+      existingIndex < 0
+        ? [...previousInventory, techniqueItem]
+        : previousInventory.map((item, index) =>
+            index === existingIndex ? { ...item, quantity: item.quantity + 1 } : item,
+          );
+    const inventoryResult = await table("digirole_tamers")
+      .update({ inventory: nextInventory })
+      .eq("id", linkedTamerQuery.data.id);
+    if (inventoryResult.error) return toast.error(messageOf(inventoryResult.error));
     const result = await table("digirole_digimon_techniques")
       .delete()
       .eq("digimon_id", id)
-      .eq("technique_id", techniqueId);
-    if (result.error) return toast.error(messageOf(result.error));
+      .eq("technique_id", technique.id);
+    if (result.error) {
+      await table("digirole_tamers")
+        .update({ inventory: previousInventory })
+        .eq("id", linkedTamerQuery.data.id);
+      return toast.error(messageOf(result.error));
+    }
+    await queryClient.invalidateQueries({
+      queryKey: ["digirole-technique-inventory", draft.tamer_id],
+    });
+    await queryClient.invalidateQueries({ queryKey: ["digirole-tamer", draft.tamer_id] });
+    toast.success(`${technique.name} foi guardada no inventário do Tamer.`);
     void techniqueQuery.refetch();
   }
   return (
@@ -2798,7 +2922,7 @@ function DigiRoleDigimonSheet({
               <Badge className="text-[10px] text-white" style={{ backgroundColor: attributeColor }}>
                 {species?.digi_attribute || "None"}
               </Badge>
-              {(species?.fields?.length ? species.fields : ["Neutra"]).map((field) => (
+              {(normalizedSpeciesFields?.length ? normalizedSpeciesFields : ["Neutra"]).map((field) => (
                 <Badge
                   key={field}
                   className="text-[10px] text-white"
@@ -3033,14 +3157,14 @@ function DigiRoleDigimonSheet({
                       {technique.ds_cost} DS
                     </p>
                   </div>
-                  {canEdit && technique.learnedSource !== "signature" && (
+                  {canEdit && (
                     <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-7 w-7"
-                      onClick={() => void forget(technique.id)}
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2 text-[10px]"
+                      onClick={() => void unequip(technique)}
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      Unequip
                     </Button>
                   )}
                 </div>
@@ -3163,39 +3287,103 @@ function DigiRoleDigimonSheet({
             placeholder="Procurar técnicas..."
             autoFocus
           />
-          <div className="min-h-0 space-y-1 overflow-y-scroll pr-2 [scrollbar-gutter:stable]">
+          <div className="min-h-0 space-y-4 overflow-y-scroll pr-2 [scrollbar-gutter:stable]">
             {!techniqueCatalogReady && (
               <p className="py-4 text-center text-xs text-muted-foreground">
                 Conferindo graus e assinaturas...
               </p>
             )}
-            {availableTechniques.map((technique) => {
-              const signature = speciesTechniqueLinks.get(technique.id)?.is_signature === true;
-              const genericBlocked = !signature && genericTechniqueCount >= genericLimit;
-              return (
-                <button
-                  key={technique.id}
-                  type="button"
-                  disabled={genericBlocked}
-                  onClick={() => void learn(technique)}
-                  className="flex w-full items-center gap-2 rounded border border-border px-3 py-2 text-left hover:bg-accent disabled:cursor-not-allowed disabled:opacity-45"
-                  style={{
-                    borderLeftColor: digiRoleFieldColor(technique.field),
-                    borderLeftWidth: 3,
-                  }}
-                >
-                  <span className="min-w-0 flex-1">
-                    <strong className="block truncate text-xs">{technique.name}</strong>
-                    <span className="block truncate text-[10px] text-muted-foreground">
-                      {signature ? "Assinatura" : "Genérica"} · Grau {technique.grade || "-"} ·{" "}
-                      {technique.field} · {technique.category}
-                      {genericBlocked ? " · limite atingido" : ""}
-                    </span>
-                  </span>
-                  <Plus className="h-4 w-4" />
-                </button>
-              );
-            })}
+            <section>
+              <h3 className="mb-2 text-xs font-black uppercase text-muted-foreground">
+                Técnicas no inventário
+              </h3>
+              {TECHNIQUE_GRADES.map((grade) => {
+                const entries = inventoryTechniqueEntries.filter(
+                  ({ technique }) => technique.grade.trim().toUpperCase() === grade,
+                );
+                if (entries.length === 0) return null;
+                return (
+                  <div key={grade} className="mb-3 space-y-1">
+                    <h4 className="text-[10px] font-black uppercase text-muted-foreground">
+                      Grau {grade}
+                    </h4>
+                    {entries.map(({ item, technique }) => (
+                      <button
+                        key={technique.id}
+                        type="button"
+                        disabled={genericTechniqueCount >= genericLimit}
+                        onClick={() => void learn(technique, item)}
+                        className="flex w-full items-center gap-2 rounded border border-border px-3 py-2 text-left hover:bg-accent disabled:cursor-not-allowed disabled:opacity-45"
+                        style={{
+                          borderLeftColor: digiRoleFieldColor(technique.field),
+                          borderLeftWidth: 3,
+                        }}
+                      >
+                        <span className="min-w-0 flex-1">
+                          <strong className="block truncate text-xs">{technique.name}</strong>
+                          <span className="block truncate text-[10px] text-muted-foreground">
+                            {item.quantity} no inventário · {technique.field} · {technique.category}
+                            {genericTechniqueCount >= genericLimit ? " · limite atingido" : ""}
+                          </span>
+                        </span>
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    ))}
+                  </div>
+                );
+              })}
+              {!linkedTamerQuery.isLoading && inventoryTechniqueEntries.length === 0 && (
+                <p className="text-[10px] text-muted-foreground">
+                  Nenhuma técnica disponível no inventário do Tamer.
+                </p>
+              )}
+            </section>
+            <section>
+              <h3 className="mb-2 text-xs font-black uppercase text-muted-foreground">
+                Técnicas aprendíveis
+              </h3>
+              {TECHNIQUE_GRADES.map((grade) => {
+                const techniques = availableTechniques.filter(
+                  (technique) => technique.grade.trim().toUpperCase() === grade,
+                );
+                if (techniques.length === 0) return null;
+                return (
+                  <div key={grade} className="mb-3 space-y-1">
+                    <h4 className="text-[10px] font-black uppercase text-muted-foreground">
+                      Grau {grade}
+                    </h4>
+                    {techniques.map((technique) => {
+                      const signature =
+                        speciesTechniqueLinks.get(technique.id)?.is_signature === true;
+                      const genericBlocked = !signature && genericTechniqueCount >= genericLimit;
+                      return (
+                        <button
+                          key={technique.id}
+                          type="button"
+                          disabled={genericBlocked}
+                          onClick={() => void learn(technique)}
+                          className="flex w-full items-center gap-2 rounded border border-border px-3 py-2 text-left hover:bg-accent disabled:cursor-not-allowed disabled:opacity-45"
+                          style={{
+                            borderLeftColor: digiRoleFieldColor(technique.field),
+                            borderLeftWidth: 3,
+                          }}
+                        >
+                          <span className="min-w-0 flex-1">
+                            <strong className="block truncate text-xs">{technique.name}</strong>
+                            <span className="block truncate text-[10px] text-muted-foreground">
+                              {signature ? "Assinatura" : "Genérica"} · Grau {technique.grade || "-"} ·{" "}
+                              {technique.field} · {technique.category}
+                              {genericBlocked ? " · limite atingido" : ""}
+                            </span>
+                          </span>
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </section>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCatalogOpen(false)}>
