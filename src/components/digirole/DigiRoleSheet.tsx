@@ -2551,6 +2551,27 @@ function DigiRoleDigimonSheet({
       .maybeSingle();
     if (result.error) toast.error(messageOf(result.error));
   }
+
+  async function setFormVictories(value: number) {
+    const victories = Math.max(0, value);
+    setDraft((current) => (current ? { ...current, victories } : current));
+    const result = await (supabase as any).rpc("set_digirole_form_victories", {
+      p_digimon_id: id,
+      p_victories: victories,
+    });
+    if (result.error) {
+      toast.error(messageOf(result.error));
+      await query.refetch();
+      return;
+    }
+    const data = result.data as { newlyStabilized?: boolean } | null;
+    if (data?.newlyStabilized) toast.success(`${name} teve a forma estabilizada.`);
+    await Promise.all([
+      query.refetch(),
+      queryClient.invalidateQueries({ queryKey: ["digirole-forms", id] }),
+      queryClient.invalidateQueries({ queryKey: ["digirole-files", gameId] }),
+    ]);
+  }
   async function updateAttributePoints(attr_points: DigiRoleNumbers) {
     const current = draft;
     if (!current) return;
@@ -3151,7 +3172,7 @@ function DigiRoleDigimonSheet({
               size="sm"
               variant="outline"
               onClick={() => {
-                setCatalogFilter(null);
+                setCatalogFilter("grade");
                 setCatalogField("all");
                 setCatalogOpen(true);
               }}
@@ -3276,52 +3297,18 @@ function DigiRoleDigimonSheet({
               {field.replaceAll("_", " ")}
               <Input
                 type="number"
+                min={0}
                 value={draft[field]}
                 readOnly={!canEdit}
-                onChange={(event) => void patch({ [field]: asNumber(event.target.value) })}
+                onChange={(event) => {
+                  const value = asNumber(event.target.value);
+                  if (field === "victories") void setFormVictories(value);
+                  else void patch({ [field]: value });
+                }}
                 className="mt-1 h-8 text-foreground"
               />
             </label>
               ))}
-          </div>
-          <div className="flex flex-wrap items-center gap-2 border-b border-border pb-2">
-            <span className="mr-1 text-[10px] font-black uppercase text-muted-foreground">
-              Fields
-            </span>
-            <button
-              type="button"
-              title="Todos os Fields"
-              aria-label="Todos os Fields"
-              onClick={() => setCatalogField("all")}
-              className={`flex h-8 min-w-8 items-center justify-center rounded-full border px-2 text-[10px] font-black transition ${
-                catalogField === "all"
-                  ? "border-foreground bg-foreground text-background"
-                  : "border-border text-muted-foreground hover:bg-accent"
-              }`}
-            >
-              ALL
-            </button>
-            {catalogFields.map((field) => (
-              <button
-                key={field}
-                type="button"
-                title={`Field ${field}`}
-                aria-label={`Field ${field}`}
-                onClick={() => setCatalogField(field)}
-                className={`flex h-8 min-w-8 items-center justify-center rounded-full border px-2 text-[10px] font-black transition ${
-                  catalogField === field
-                    ? "border-foreground ring-2 ring-foreground/25"
-                    : "border-border hover:bg-accent"
-                }`}
-                style={{
-                  backgroundColor: `${digiRoleFieldColor(field)}26`,
-                  borderColor: catalogField === field ? digiRoleFieldColor(field) : undefined,
-                  color: digiRoleFieldColor(field),
-                }}
-              >
-                {field}
-              </button>
-            ))}
           </div>
         <p className="mt-2 text-[10px] text-muted-foreground">
           Pontos disponíveis: {draft.unspent_attr_points ?? 0} de Atributos ·{" "}
@@ -3352,7 +3339,7 @@ function DigiRoleDigimonSheet({
       </section>
 
       <Dialog open={catalogOpen} onOpenChange={setCatalogOpen}>
-        <DialogContent className="grid h-[min(85vh,46rem)] max-w-2xl grid-rows-[auto_auto_auto_minmax(0,1fr)_auto] overflow-hidden">
+        <DialogContent className="grid h-[min(85vh,46rem)] max-w-2xl grid-rows-[auto_auto_auto_auto_minmax(0,1fr)_auto] overflow-hidden">
           <DialogHeader>
             <DialogTitle>Adicionar técnica</DialogTitle>
           </DialogHeader>
@@ -3362,6 +3349,45 @@ function DigiRoleDigimonSheet({
             placeholder="Procurar técnicas..."
             autoFocus
           />
+          <div className="flex flex-wrap items-center gap-2 border-b border-border py-2">
+            <span className="mr-1 text-[10px] font-black uppercase text-muted-foreground">
+              Filtrar por Field
+            </span>
+            <button
+              type="button"
+              title="Todos os Fields"
+              aria-label="Todos os Fields"
+              onClick={() => setCatalogField("all")}
+              className={`flex h-8 min-w-8 items-center justify-center rounded-full border px-2 text-[10px] font-black transition ${
+                catalogField === "all"
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border text-muted-foreground hover:bg-accent"
+              }`}
+            >
+              ALL
+            </button>
+            {catalogFields.map((field) => (
+              <button
+                key={field}
+                type="button"
+                title={`Mostrar técnicas do Field ${field}`}
+                aria-label={`Mostrar técnicas do Field ${field}`}
+                onClick={() => setCatalogField(field)}
+                className={`flex h-8 min-w-8 items-center justify-center rounded-full border px-2 text-[10px] font-black transition ${
+                  catalogField === field
+                    ? "border-foreground ring-2 ring-foreground/25"
+                    : "border-border hover:bg-accent"
+                }`}
+                style={{
+                  backgroundColor: `${digiRoleFieldColor(field)}26`,
+                  borderColor: catalogField === field ? digiRoleFieldColor(field) : undefined,
+                  color: digiRoleFieldColor(field),
+                }}
+              >
+                {field}
+              </button>
+            ))}
+          </div>
           <div className="grid grid-cols-3 gap-1 rounded-lg border border-border bg-muted/30 p-1">
             {([
               ["signature", "Técnicas assinaturas"],

@@ -473,6 +473,19 @@ const FORM_STAGE_ORDER: Record<string, number> = {
   "Mega+": 6,
 };
 
+const EVOLUTION_CATALOG_FILTERS = [
+  "available",
+  "In-Training I",
+  "In-Training II",
+  "Rookie",
+  "Champion",
+  "Ultimate",
+  "Mega",
+  "Mega+",
+] as const;
+
+type EvolutionCatalogFilter = (typeof EVOLUTION_CATALOG_FILTERS)[number];
+
 function evolutionRequirement(
   evolutionText: string | null,
   target: SpeciesSummary,
@@ -722,6 +735,7 @@ export function DigiRoleEvolutionPanel({
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [catalogFilter, setCatalogFilter] = useState<EvolutionCatalogFilter>("available");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const formsQuery = useQuery({
@@ -828,6 +842,36 @@ export function DigiRoleEvolutionPanel({
     unlocked,
   ]);
   const selected = candidates.find((entry) => entry.id === selectedId) ?? null;
+
+  function candidateRequirement(entry: SpeciesSummary) {
+    const currentStage =
+      (catalogQuery.data ?? []).find((species) => species.id === currentSpeciesId)?.stage ?? rank;
+    const isPreviousForm =
+      (FORM_STAGE_ORDER[entry.stage] ?? 99) < (FORM_STAGE_ORDER[currentStage] ?? 99);
+    return isPreviousForm
+      ? `Forma anterior ligada a ${currentSpeciesName}`
+      : evolutionRequirement(evolutionText, entry, catalogQuery.data ?? []);
+  }
+
+  function candidateStatus(entry: SpeciesSummary) {
+    return evaluateEvolutionRequirement(candidateRequirement(entry), entry, {
+      rank,
+      pe,
+      attrs,
+      skills,
+      bond,
+      battles,
+      victories,
+      trainingSuccesses,
+      techniques: techniquesQuery.data ?? [],
+    });
+  }
+
+  const filteredCandidates = candidates.filter((entry) =>
+    catalogFilter === "available"
+      ? candidateStatus(entry).met
+      : entry.stage === catalogFilter,
+  );
 
   async function refreshAll() {
     await Promise.all([
@@ -1010,7 +1054,15 @@ export function DigiRoleEvolutionPanel({
           </span>
         </div>
         {canEdit && (
-          <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setCatalogFilter("available");
+              setSelectedId(null);
+              setOpen(true);
+            }}
+          >
             <Plus className="mr-1 h-3.5 w-3.5" /> Desbloquear
           </Button>
         )}
@@ -1098,28 +1150,28 @@ export function DigiRoleEvolutionPanel({
             placeholder="Procurar forma no catálogo..."
             autoFocus
           />
+          <div className="flex shrink-0 gap-1 overflow-x-auto pb-1 [scrollbar-gutter:stable]">
+            {EVOLUTION_CATALOG_FILTERS.map((filter) => (
+              <Button
+                key={filter}
+                type="button"
+                size="sm"
+                variant={catalogFilter === filter ? "default" : "outline"}
+                className="shrink-0 px-3 text-[10px]"
+                onClick={() => {
+                  setCatalogFilter(filter);
+                  setSelectedId(null);
+                }}
+              >
+                {filter === "available" ? "Disponível" : filter}
+              </Button>
+            ))}
+          </div>
           <div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
-            {candidates.map((entry) => {
+            {filteredCandidates.map((entry) => {
               const active = selectedId === entry.id;
-              const currentStage =
-                (catalogQuery.data ?? []).find((species) => species.id === currentSpeciesId)
-                  ?.stage ?? rank;
-              const isPreviousForm =
-                (FORM_STAGE_ORDER[entry.stage] ?? 99) < (FORM_STAGE_ORDER[currentStage] ?? 99);
-              const requirement = isPreviousForm
-                ? `Forma anterior ligada a ${currentSpeciesName}`
-                : evolutionRequirement(evolutionText, entry, catalogQuery.data ?? []);
-              const status = evaluateEvolutionRequirement(requirement, entry, {
-                rank,
-                pe,
-                attrs,
-                skills,
-                bond,
-                battles,
-                victories,
-                trainingSuccesses,
-                techniques: techniquesQuery.data ?? [],
-              });
+              const requirement = candidateRequirement(entry);
+              const status = candidateStatus(entry);
               return (
                 <button
                   type="button"
@@ -1157,9 +1209,11 @@ export function DigiRoleEvolutionPanel({
                 </button>
               );
             })}
-            {!catalogQuery.isLoading && candidates.length === 0 && (
+            {!catalogQuery.isLoading && filteredCandidates.length === 0 && (
               <p className="py-8 text-center text-xs text-muted-foreground">
-                Nenhuma forma encontrada na rota evolutiva.
+                {catalogFilter === "available"
+                  ? "Nenhuma forma disponível com os requisitos atuais."
+                  : `Nenhuma forma ${catalogFilter} encontrada nesta rota evolutiva.`}
               </p>
             )}
           </div>
