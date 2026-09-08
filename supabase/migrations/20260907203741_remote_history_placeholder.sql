@@ -1,0 +1,1 @@
+-- Temporary placeholder used only to restore remote migration history.
