@@ -919,11 +919,12 @@ export function GameEnginePanel({
             </section>
 
             {isNarrator && (
-              <div className="grid grid-cols-2 gap-2">
+              <div>
                 {session.status === "paused" ? (
                   <Button
                     size="sm"
                     variant="secondary"
+                    className="w-full"
                     disabled={engine.isBusy}
                     onClick={() =>
                       void run(() => engine.commit({ type: "resume" }), "Motor retomado.")
@@ -935,6 +936,7 @@ export function GameEnginePanel({
                   <Button
                     size="sm"
                     variant="secondary"
+                    className="w-full"
                     disabled={engine.isBusy}
                     onClick={() =>
                       void run(() => engine.commit({ type: "pause" }), "Motor pausado.")
@@ -943,16 +945,6 @@ export function GameEnginePanel({
                     <CirclePause className="mr-1 h-3.5 w-3.5" /> Pausar
                   </Button>
                 )}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={engine.isBusy}
-                  onClick={() =>
-                    void run(() => engine.commit({ type: "finish" }), "Encontro encerrado.")
-                  }
-                >
-                  <Flag className="mr-1 h-3.5 w-3.5" /> Encerrar
-                </Button>
               </div>
             )}
           </div>
@@ -974,6 +966,21 @@ export function GameEnginePanel({
           </section>
         )}
       </div>
+      {isNarrator && (
+        <div className="shrink-0 border-t border-border p-3">
+          <Button
+            className="w-full"
+            size="sm"
+            variant="outline"
+            disabled={engine.isBusy}
+            onClick={() =>
+              void run(() => engine.commit({ type: "finish" }), "Encontro encerrado.")
+            }
+          >
+            <Flag className="mr-1 h-3.5 w-3.5" /> Finalizar encontro
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

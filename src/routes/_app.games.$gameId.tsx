@@ -607,7 +607,7 @@ function GameRoom() {
       {isGameOwner && (
         <div className="grid grid-cols-2 gap-1">
           <InviteButton url={inviteUrl} />
-          <GameSettingsButton gameId={gameId} />
+          <GameSettingsButton gameId={gameId} systemId={gameSystem} />
         </div>
       )}
       <Button
@@ -4136,7 +4136,7 @@ function AbilitiesCompendium() {
   );
 }
 
-function GameSettingsButton({ gameId }: { gameId: string }) {
+function GameSettingsButton({ gameId, systemId }: { gameId: string; systemId: string }) {
   const qc = useQueryClient();
   const savedSpdefIns = useGameSpdefUsesInsight(gameId);
   const savedSpriteStyle = useGameSpriteStyle(gameId);
@@ -4296,6 +4296,7 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
           <DialogTitle>Configurações do Jogo</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          <div className={systemId === "digirole" ? "hidden" : "contents"}>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label className="text-xs">Chance de Shiny (%)</Label>
@@ -4377,6 +4378,7 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
               </p>
             </div>
           </div>
+          </div>
           <div className="rounded-md border border-border bg-card p-3 space-y-2">
             <div className="text-xs font-bold uppercase tracking-wider text-primary">
               Grid do mapa
@@ -4456,7 +4458,7 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
               Usado pela régua para mostrar distância (ex.: 1.5 m por célula).
             </p>
           </div>
-          <div>
+          <div className={systemId === "digirole" ? "hidden" : undefined}>
             <div className="mb-1 flex items-center justify-between">
               <Label className="text-xs font-bold uppercase tracking-wider">
                 Contest · Reaction deck weights
