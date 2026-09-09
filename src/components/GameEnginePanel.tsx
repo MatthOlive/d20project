@@ -145,8 +145,9 @@ export function GameEnginePanel({
   const engine = useGameEngine({ gameId, actor: { userId, isNarrator } });
 
   function actionEntries(participant: EngineParticipant) {
-    if (!Array.isArray(participant.metadata.actions)) return [];
-    return participant.metadata.actions.filter(
+    const actions = participant.metadata?.actions;
+    if (!Array.isArray(actions)) return [];
+    return actions.filter(
       (entry): entry is { type: string; label: string | null; recordedAt?: string } =>
         !!entry && typeof entry === "object" && "type" in entry,
     );
@@ -202,7 +203,7 @@ export function GameEnginePanel({
         characterId: token.character_id,
       });
     }
-    for (const participant of engine.session?.state.participants ?? []) {
+    for (const participant of engine.session?.state?.participants ?? []) {
       if (!participant.characterId) continue;
       refs.set(`${participant.kind}:${participant.characterId}`, {
         kind: participant.kind,
@@ -210,7 +211,7 @@ export function GameEnginePanel({
       });
     }
     return [...refs.values()];
-  }, [engine.session?.state.participants, tokens]);
+  }, [engine.session?.state?.participants, tokens]);
 
   const { data: characters = EMPTY_CHARACTER_DATA } = useQuery({
     queryKey: [

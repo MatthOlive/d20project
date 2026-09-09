@@ -46,7 +46,7 @@ function isReactionMessage(value: FlowMessage["roll_data"]): value is MoveReacti
 }
 
 function participantForTarget(session: EngineSession | null, target: MoveReactionTarget) {
-  if (!session || session.status !== "running" || session.state.phase !== "turns") return null;
+  if (!session || session.status !== "running" || session.state?.phase !== "turns") return null;
   return (
     session.state.participants.find(
       (participant) =>
@@ -58,11 +58,11 @@ function participantForTarget(session: EngineSession | null, target: MoveReactio
 }
 
 function reactionUsage(participant: EngineParticipant | null, round: number) {
-  if (!participant || Number(participant.metadata.reactionRound) !== round)
+  if (!participant || Number(participant.metadata?.reactionRound) !== round)
     return { clash: 0, evasion: 0 };
   return {
-    clash: Math.max(0, Number(participant.metadata.clashUsed) || 0),
-    evasion: Math.max(0, Number(participant.metadata.evasionUsed) || 0),
+    clash: Math.max(0, Number(participant.metadata?.clashUsed) || 0),
+    evasion: Math.max(0, Number(participant.metadata?.evasionUsed) || 0),
   };
 }
 
@@ -317,7 +317,7 @@ export function MoveReactionCoordinator({ gameId, userId }: { gameId: string; us
       const session =
         queryClient.getQueryData<EngineSession | null>(["game-engine-session", gameId]) ?? null;
       const participant: EngineParticipant | null = participantForTarget(session, target);
-      const usage = reactionUsage(participant, session?.state.round ?? 0);
+      const usage = reactionUsage(participant, session?.state?.round ?? 0);
       const limit =
         choice === "clash"
           ? Math.max(0, target.clashTimes ?? 1)
@@ -433,7 +433,7 @@ export function MoveReactionCoordinator({ gameId, userId }: { gameId: string; us
   const required = Math.max(0, move?.accuracy.successes ?? 0) + actionsBefore;
   const clashPool = target ? Math.max(0, target.clashPool - target.painPenalty) : 0;
   const evadePool = target ? Math.max(0, target.evadePool - target.painPenalty) : 0;
-  const usage = reactionUsage(participant, session?.state.round ?? 0);
+  const usage = reactionUsage(participant, session?.state?.round ?? 0);
   const clashLimit = Math.max(0, target?.clashTimes ?? 1);
   const evasionLimit = Math.max(0, target?.evasionTimes ?? 1);
   const clashAvailable = usage.clash < clashLimit && clashPool >= required;
