@@ -101,8 +101,18 @@ export function digiRoleDigimonHpMax(hpBase: number, attrs: DigiRoleNumbers): nu
   return Math.max(1, Math.trunc(hpBase)) + Math.max(0, Math.trunc(attrs.vitality ?? 1));
 }
 
-export function digiRoleTamerDsMax(attrs: DigiRoleNumbers, condensedCount = 0): number {
-  return Math.max(0, Math.trunc(condensedCount)) + 2 + Math.max(0, Math.trunc(attrs.spirit ?? 1));
+export function digiRoleTamerDsMax(
+  attrs: DigiRoleNumbers,
+  condensedCount = 0,
+  rank: string = "In-Training I",
+): number {
+  const rankIndex = Math.max(0, DIGIROLE_STAGES.indexOf(rank as DigiRoleStage));
+  return (
+    4 +
+    Math.max(0, Math.trunc(attrs.wisdom ?? 1)) +
+    Math.max(0, Math.trunc(condensedCount)) +
+    (rankIndex + 1) * 2
+  );
 }
 
 export function digiRoleDigimonDsMax(attrs: DigiRoleNumbers, stabilizedForms = 1): number {

@@ -56,7 +56,7 @@ function DigiRoleStats({
       const { data, error } = await (supabase.from(table as never) as any)
         .select(
           kind === "digirole_tamer"
-            ? "attrs,attr_points,bonuses,hp_current,ds_current,condensed_count,hybrid_state"
+            ? "attrs,attr_points,bonuses,hp_current,ds_current,condensed_count,hybrid_state,rank"
             : "attrs,attr_points,bonuses,hp_current,ds_current,stabilized_forms,species:species_id(hp_base)",
         )
         .eq("id", id)
@@ -71,6 +71,7 @@ function DigiRoleStats({
         condensed_count?: number;
         stabilized_forms?: number;
         hybrid_state?: { speciesId?: string } | null;
+        rank?: string;
         species?: { hp_base: number } | null;
       };
     },
@@ -104,7 +105,18 @@ function DigiRoleStats({
   const hpMax = hpBase + vit + (currentData.bonuses?.hp ?? 0);
   const dsMax =
     kind === "digirole_tamer"
-      ? (currentData.condensed_count ?? 0) + 2 + spr + (currentData.bonuses?.ds ?? 0)
+      ? 4 +
+        totalAttr("wisdom") +
+        (currentData.condensed_count ?? 0) +
+        Math.max(
+          0,
+          ["In-Training I", "In-Training II", "Rookie", "Champion", "Ultimate", "Mega", "Mega+"].indexOf(
+            currentData.rank ?? "In-Training I",
+          ),
+        ) *
+          2 +
+        2 +
+        (currentData.bonuses?.ds ?? 0)
       : 2 + spr + (currentData.stabilized_forms ?? 1) + (currentData.bonuses?.ds ?? 0);
 
   async function patch(field: "hp_current" | "ds_current", value: number) {

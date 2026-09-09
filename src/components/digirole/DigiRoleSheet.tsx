@@ -1455,7 +1455,7 @@ function DigiRoleTamerSheet({
   const hpMax = hybridSpecies
     ? digiRoleDigimonHpMax(hybridSpecies.hp_base, effectiveAttrs)
     : digiRoleTamerHpMax(effectiveAttrs);
-  const dsMax = digiRoleTamerDsMax(effectiveAttrs, draft.condensed_count);
+  const dsMax = digiRoleTamerDsMax(effectiveAttrs, draft.condensed_count, draft.rank);
   const initiativePool =
     digiRoleInitiativePool(effectiveAttrs, draft.skills) + (draft.bonuses?.initiative ?? 0);
   const clashPool = actionPool(

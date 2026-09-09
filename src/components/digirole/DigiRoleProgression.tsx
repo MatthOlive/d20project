@@ -539,17 +539,6 @@ type EvolutionRequirementContext = {
   techniques: EvolutionTechnique[];
 };
 
-function requiredRankForEvolutionStage(stage: string) {
-  if (stage === "Armor" || stage === "Hybrid") return "Champion";
-  if (stage === "Jogress") return "Ultimate";
-  return stage;
-}
-
-function evolutionRankMet(rank: string, targetStage: string) {
-  const requiredRank = requiredRankForEvolutionStage(targetStage);
-  return (FORM_STAGE_ORDER[rank] ?? -1) >= (FORM_STAGE_ORDER[requiredRank] ?? Number.MAX_VALUE);
-}
-
 const ATTRIBUTE_REQUIREMENTS: Record<string, { id: string; label: string }> = {
   STR: { id: "strength", label: "Força" },
   DEX: { id: "dexterity", label: "Destreza" },
@@ -614,11 +603,6 @@ function evaluateEvolutionRequirement(
   const normalized = normalizedRequirement(text);
   const requirements: Array<{ label: string; met: boolean }> = [];
   const cost = evolutionPeCost(target.stage);
-  const requiredRank = requiredRankForEvolutionStage(target.stage);
-  const rankCheck = {
-    label: `Rank ${requiredRank}`,
-    met: evolutionRankMet(context.rank, target.stage),
-  };
   const peCheck = { label: `${cost} PE`, met: context.pe >= cost };
 
   for (const [short, attr] of Object.entries(ATTRIBUTE_REQUIREMENTS)) {
@@ -696,7 +680,6 @@ function evaluateEvolutionRequirement(
       ? !/MISSAO|ITEM.CHAVE|CONDICAO NARRATIVA|TRANSFORMACAO ESPECIAL/.test(normalized)
       : Boolean(principal?.met) && metSecondary >= requiredSecondary;
   const checks = [
-    rankCheck,
     peCheck,
     ...(principal
       ? [{ ...principal, label: `Principal: ${principal.label}` }]
@@ -709,7 +692,7 @@ function evaluateEvolutionRequirement(
   return {
     cost,
     checks,
-    met: rankCheck.met && peCheck.met && routeMet,
+    met: peCheck.met && routeMet,
   };
 }
 
@@ -955,12 +938,6 @@ export function DigiRoleEvolutionPanel({
   }
 
   async function transform(form: ArchiveForm) {
-    if (!evolutionRankMet(rank, form.species.stage)) {
-      toast.error(
-        `Aumente o rank deste Digimon para ${requiredRankForEvolutionStage(form.species.stage)} antes de Digievoluir.`,
-      );
-      return;
-    }
     setBusy(true);
     try {
       const [beforeResult, targetResult] = await Promise.all([
@@ -1020,11 +997,10 @@ export function DigiRoleEvolutionPanel({
       const data = result.data as {
         digimonDsCost?: number;
         tamerDsCost?: number;
-        maintenanceDs?: number;
       } | null;
       const totalCost = (data?.digimonDsCost ?? 0) + (data?.tamerDsCost ?? 0);
       toast.success(
-        `${form.species.name} ativado${totalCost ? ` por ${totalCost} DS` : ""}${data?.maintenanceDs ? ` · manutenção ${data.maintenanceDs} DS` : ""}.`,
+        `${form.species.name} ativado${totalCost ? ` por ${totalCost} DS` : ""}.`,
       );
       await refreshAll();
     } catch (error) {
@@ -1095,7 +1071,6 @@ export function DigiRoleEvolutionPanel({
             (FORM_STAGE_ORDER[form.species.stage] ?? 99) < (FORM_STAGE_ORDER[activeStage] ?? 99)
               ? "Regressão"
               : "Digievoluir";
-          const rankReady = evolutionRankMet(rank, form.species.stage);
           return (
             <div
               key={form.species_id}
@@ -1107,11 +1082,6 @@ export function DigiRoleEvolutionPanel({
                   {form.species.stage} · {formPe} PE · {formBattles} batalhas · {formVictories}/
                   {required} vitórias
                 </span>
-                {!active && !rankReady && (
-                  <span className="block text-[9px] font-semibold text-destructive">
-                    Requer Rank {requiredRankForEvolutionStage(form.species.stage)}
-                  </span>
-                )}
               </span>
               {form.stabilized && (
                 <Badge variant="secondary" className="text-[9px]">
@@ -1125,12 +1095,8 @@ export function DigiRoleEvolutionPanel({
                   <Button
                     size="sm"
                     variant="ghost"
-                    disabled={busy || !rankReady}
-                    title={
-                      rankReady
-                        ? action
-                        : `Requer Rank ${requiredRankForEvolutionStage(form.species.stage)}`
-                    }
+                    disabled={busy}
+                    title={action}
                     onClick={() => void transform(form)}
                   >
                     <ArrowRightLeft className="mr-1 h-3.5 w-3.5" /> {action}
