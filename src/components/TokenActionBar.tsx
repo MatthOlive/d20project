@@ -1485,13 +1485,15 @@ function PokemonBar({
       const { data, error } = await supabase
         .from("pokemon")
         .select(
-          "current_attrs, social_attrs, social_attr_points, social_attr_bonus, attr_bonus, skills, rank, image_url, hp, current_hp, status, is_shiny, species:species_id(abilities, base_attrs, name, sprite_url, types)",
+          "current_attrs, attr_points, attr_bonus, social_attrs, social_attr_points, social_attr_bonus, skills, rank, image_url, hp, current_hp, status, is_shiny, species:species_id(abilities, base_attrs, attr_limits, name, sprite_url, types)",
         )
         .eq("id", id)
         .single();
       if (error) throw error;
       return data as {
         current_attrs: Record<string, number>;
+        attr_points: Record<string, number>;
+        attr_bonus: Record<string, number>;
         social_attrs: Record<string, number>;
         social_attr_points: Record<string, number>;
         social_attr_bonus: Record<string, number>;
@@ -1504,6 +1506,7 @@ function PokemonBar({
         species: {
           abilities: string[];
           base_attrs: Record<string, number>;
+          attr_limits: Record<string, number>;
           name?: string | null;
           sprite_url: string | null;
           types: string[];
@@ -1771,11 +1774,13 @@ function MovesButton({
   label: string;
   pokemonData: {
     current_attrs: Record<string, number>;
+    attr_points: Record<string, number>;
+    attr_bonus: Record<string, number>;
     social_attrs: Record<string, number>;
     social_attr_points: Record<string, number>;
     social_attr_bonus: Record<string, number>;
     skills: Record<string, number>;
-    species: { base_attrs: Record<string, number>; types: string[] };
+    species: { base_attrs: Record<string, number>; attr_limits: Record<string, number>; types: string[] };
   };
   gameId: string;
   userId: string;
@@ -1807,11 +1812,14 @@ function MovesButton({
               m,
               {
                 current_attrs: pokemonData.current_attrs,
+                attr_points: pokemonData.attr_points,
+                attr_bonus: pokemonData.attr_bonus,
                 social_attrs: pokemonData.social_attrs,
                 social_attr_points: pokemonData.social_attr_points,
                 social_attr_bonus: pokemonData.social_attr_bonus,
                 skills: pokemonData.skills,
                 base_attrs: pokemonData.species?.base_attrs,
+                attr_limits: pokemonData.species?.attr_limits,
               },
               types,
             );

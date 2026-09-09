@@ -1962,8 +1962,14 @@ function FilesPanel({
   }
 
   function folderTargetFromPoint(clientX: number, clientY: number): string | null | undefined {
-    const el = document.elementFromPoint(clientX, clientY) as HTMLElement | null;
-    const target = el?.closest("[data-file-folder-target]") as HTMLElement | null;
+    const target = document
+      .elementsFromPoint(clientX, clientY)
+      .map((element) =>
+        element instanceof HTMLElement
+          ? element.closest<HTMLElement>("[data-file-folder-target]")
+          : null,
+      )
+      .find(Boolean);
     if (!target) return undefined;
     const path = target.dataset.fileFolderTarget;
     return path === "__root__" ? null : (path ?? undefined);

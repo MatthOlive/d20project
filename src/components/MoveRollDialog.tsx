@@ -233,6 +233,9 @@ export function computeMoveStats(
   move: MoveData,
   p: {
     current_attrs?: Record<string, number> | null;
+    attr_points?: Record<string, number> | null;
+    attr_bonus?: Record<string, number> | null;
+    attr_limits?: Record<string, number> | null;
     social_attrs?: Record<string, number> | null;
     social_attr_points?: Record<string, number> | null;
     social_attr_bonus?: Record<string, number> | null;
@@ -250,7 +253,13 @@ export function computeMoveStats(
         (p.social_attr_bonus?.[key] ?? 0)
       );
     }
-    return p.current_attrs?.[key] ?? p.base_attrs?.[key] ?? 1;
+    const current = p.current_attrs?.[key] ?? p.base_attrs?.[key] ?? 1;
+    const base = p.base_attrs?.[key] ?? 1;
+    const points = p.attr_points?.[key] ?? 0;
+    const bonus = p.attr_bonus?.[key] ?? 0;
+    const distributed = Math.min(base + points, Math.max(p.attr_limits?.[key] ?? 5, base));
+    // Compatibility with older records that already included bonuses in current_attrs.
+    return current > distributed ? current : distributed + bonus;
   };
   const pickBestAttr = (raw: string): { name: string; value: number } => {
     const parts = raw

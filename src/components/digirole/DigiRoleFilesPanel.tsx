@@ -4,6 +4,7 @@ import {
   CheckSquare,
   ChevronDown,
   ChevronRight,
+  ChevronUp,
   Dices,
   FolderPlus,
   MoreHorizontal,
@@ -148,7 +149,31 @@ export function DigiRoleFilesPanel({
       return [];
     }
   });
-  const pointerDrag = useCharacterPointerDrag();
+  const [folderOrder, setFolderOrder] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(`digirole-folder-order:${gameId}`) ?? "[]");
+    } catch {
+      return [];
+    }
+  });
+  const pointerDrag = useCharacterPointerDrag({
+    onDrop: (payload, clientX, clientY) => {
+      const target = document
+        .elementsFromPoint(clientX, clientY)
+        .map((element) =>
+          element instanceof HTMLElement
+            ? element.closest<HTMLElement>("[data-digirole-folder-target]")
+            : null,
+        )
+        .find(Boolean);
+      if (!target) return false;
+      const folder = target.dataset.digiroleFolderTarget;
+      if (folder === undefined) return false;
+      if (payload.kind !== "digirole_tamer" && payload.kind !== "digirole_digimon") return false;
+      void moveFile(payload.kind, payload.id, folder === "__root__" ? null : folder);
+      return true;
+    },
+  });
 
   useEffect(() => {
     localStorage.setItem(`digirole-folders:${gameId}`, JSON.stringify(collapsed));
@@ -156,6 +181,9 @@ export function DigiRoleFilesPanel({
   useEffect(() => {
     localStorage.setItem(`digirole-extra-folders:${gameId}`, JSON.stringify(extraFolders));
   }, [extraFolders, gameId]);
+  useEffect(() => {
+    localStorage.setItem(`digirole-folder-order:${gameId}`, JSON.stringify(folderOrder));
+  }, [folderOrder, gameId]);
 
   const routesQuery = useQuery({
     queryKey: ["digirole-routes", gameId],
@@ -292,8 +320,17 @@ export function DigiRoleFilesPanel({
             .map((entry) => entry.folder)
             .filter((folder): folder is string => !!folder),
         ]),
-      ].sort((left, right) => left.localeCompare(right, "pt-BR")),
-    [extraFolders, filesQuery.data],
+      ].sort((left, right) => {
+        const leftOrder = folderOrder.indexOf(left);
+        const rightOrder = folderOrder.indexOf(right);
+        if (leftOrder >= 0 || rightOrder >= 0) {
+          if (leftOrder < 0) return 1;
+          if (rightOrder < 0) return -1;
+          return leftOrder - rightOrder;
+        }
+        return left.localeCompare(right, "pt-BR");
+      }),
+    [extraFolders, filesQuery.data, folderOrder],
   );
   const fileEntries = useMemo(() => {
     const query = fileSearch.trim().toLocaleLowerCase("pt-BR");
@@ -328,6 +365,40 @@ export function DigiRoleFilesPanel({
     const result = await table(target).update({ folder }).eq("id", id);
     if (result.error) return toast.error(messageOf(result.error));
     await queryClient.invalidateQueries({ queryKey: ["digirole-files", gameId] });
+  }
+
+  function reorderFolder(folder: string, direction: -1 | 1) {
+    const ordered = [...folders];
+    const index = ordered.indexOf(folder);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= ordered.length) return;
+    [ordered[index], ordered[target]] = [ordered[target], ordered[index]];
+    setFolderOrder(ordered);
+  }
+
+  async function deleteFolder(folder: string) {
+    const entries = fileEntries.filter((entry) => entry.row.folder === folder);
+    const message = entries.length
+      ? `Excluir a pasta "${folder}"? ${entries.length} ficha${entries.length === 1 ? " será movida" : "s serão movidas"} para Sem pasta.`
+      : `Excluir a pasta "${folder}"?`;
+    if (!confirm(message)) return;
+    const results = await Promise.all(
+      entries.map((entry) => {
+        const target = entry.kind === "digirole_tamer" ? "digirole_tamers" : "digirole_digimons";
+        return table(target).update({ folder: null }).eq("id", entry.row.id);
+      }),
+    );
+    const error = results.find((result) => result.error)?.error;
+    if (error) return toast.error(messageOf(error));
+    setExtraFolders((current) => current.filter((entry) => entry !== folder));
+    setFolderOrder((current) => current.filter((entry) => entry !== folder));
+    setCollapsed((current) => {
+      const next = { ...current };
+      delete next[folder];
+      return next;
+    });
+    await queryClient.invalidateQueries({ queryKey: ["digirole-files", gameId] });
+    toast.success("Pasta removida");
   }
 
   async function deleteFiles(keys: string[]) {
@@ -674,24 +745,64 @@ export function DigiRoleFilesPanel({
           const entries = fileEntries.filter((entry) => entry.row.folder === folder);
           if (!folder && !entries.length) return null;
           return (
-            <section key={key} className="rounded-md border border-border/70 p-1.5">
-              <button
-                type="button"
-                className="flex w-full items-center gap-1 px-1 py-1 text-left"
-                onClick={() => setCollapsed((current) => ({ ...current, [key]: !current[key] }))}
-              >
-                {collapsed[key] ? (
-                  <ChevronRight className="h-3.5 w-3.5" />
-                ) : (
-                  <ChevronDown className="h-3.5 w-3.5" />
+            <section
+              key={key}
+              data-digirole-folder-target={folder ?? "__root__"}
+              className="rounded-md border border-border/70 p-1.5"
+            >
+              <div className="flex items-center gap-0.5">
+                <button
+                  type="button"
+                  className="flex min-w-0 flex-1 items-center gap-1 px-1 py-1 text-left"
+                  onClick={() => setCollapsed((current) => ({ ...current, [key]: !current[key] }))}
+                >
+                  {collapsed[key] ? (
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  ) : (
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  )}
+                  <span className="min-w-0 flex-1 truncate text-[10px] font-black uppercase text-muted-foreground">
+                    {folder ?? "Sem pasta"}
+                  </span>
+                  <Badge variant="secondary" className="h-5 px-1.5 text-[9px]">
+                    {entries.length}
+                  </Badge>
+                </button>
+                {folder && (
+                  <>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6"
+                      title="Mover pasta para cima"
+                      onClick={() => reorderFolder(folder, -1)}
+                    >
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6"
+                      title="Mover pasta para baixo"
+                      onClick={() => reorderFolder(folder, 1)}
+                    >
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                      title="Excluir pasta"
+                      onClick={() => void deleteFolder(folder)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </>
                 )}
-                <span className="min-w-0 flex-1 truncate text-[10px] font-black uppercase text-muted-foreground">
-                  {folder ?? "Sem pasta"}
-                </span>
-                <Badge variant="secondary" className="h-5 px-1.5 text-[9px]">
-                  {entries.length}
-                </Badge>
-              </button>
+              </div>
               {!collapsed[key] && (
                 <div className="mt-1 space-y-1">
                   {entries.map((entry) => (

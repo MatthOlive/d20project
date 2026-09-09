@@ -8,7 +8,9 @@ import {
 } from "react";
 import { CHARACTER_POINTER_DROP_EVENT, type DragCharacterPayload } from "@/components/MapBoard";
 
-export function useCharacterPointerDrag() {
+export function useCharacterPointerDrag(options?: {
+  onDrop?: (payload: DragCharacterPayload, clientX: number, clientY: number) => boolean;
+}) {
   const dragRef = useRef<{
     payload: DragCharacterPayload;
     pointerId: number;
@@ -17,6 +19,8 @@ export function useCharacterPointerDrag() {
     active: boolean;
   } | null>(null);
   const suppressClickRef = useRef(false);
+  const onDropRef = useRef(options?.onDrop);
+  onDropRef.current = options?.onDrop;
   const [preview, setPreview] = useState<{ label: string; x: number; y: number } | null>(null);
 
   useEffect(() => {
@@ -36,6 +40,7 @@ export function useCharacterPointerDrag() {
       setPreview(null);
       if (!drag.active) return false;
       suppressClickRef.current = true;
+      if (onDropRef.current?.(drag.payload, clientX, clientY)) return true;
       window.dispatchEvent(new CustomEvent(CHARACTER_POINTER_DROP_EVENT, {
         cancelable: true,
         detail: { payload: drag.payload, clientX, clientY },

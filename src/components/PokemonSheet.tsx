@@ -567,8 +567,10 @@ export function PokemonSheet({
     const limit = species!.attr_limits[key] ?? 5;
     const points = delta.points !== undefined ? delta.points : (pokemon!.attr_points?.[key] ?? 0);
     const bonus = delta.bonus !== undefined ? delta.bonus : (pokemon!.attr_bonus?.[key] ?? 0);
-    const totalRaw = base + points + bonus;
-    const total = Math.min(totalRaw, Math.max(limit, base));
+    // Attribute points are capped; bonuses are applied after the cap.
+    // This allows a capped attribute (for example 5) to roll as 6 with a +1 bonus.
+    const distributed = Math.min(base + points, Math.max(limit, base));
+    const total = distributed + bonus;
     const newAttrs = { ...pokemon!.current_attrs, [key]: total };
     const vit = key === "vitality" ? total : (newAttrs.vitality ?? 1);
     const ins = key === "insight" ? total : (newAttrs.insight ?? 1);
@@ -1309,7 +1311,13 @@ export function PokemonSheet({
                   (pokemon.social_attr_bonus?.[key] ?? 0)
                 );
               }
-              return pokemon.current_attrs?.[key] ?? 1;
+              const current = pokemon.current_attrs?.[key] ?? 1;
+              const base = species.base_attrs?.[key] ?? 1;
+              const points = pokemon.attr_points?.[key] ?? 0;
+              const bonus = pokemon.attr_bonus?.[key] ?? 0;
+              const distributed = Math.min(base + points, Math.max(species.attr_limits?.[key] ?? 5, base));
+              // Older records may have stored the bonus in current_attrs already.
+              return current > distributed ? current : distributed + bonus;
             };
             const pickBestAttr = (raw: string): { name: string; value: number } => {
               const parts = raw
