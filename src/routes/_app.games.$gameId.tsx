@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { formatGameInviteCode } from "@/lib/game-invites";
 import { fetchAllPaged } from "@/lib/supabase-paged";
 import { readLocalGameSnapshot, writeLocalGameSnapshot } from "@/lib/local-game-cache";
 import { useAuth } from "@/hooks/use-auth";
@@ -556,11 +557,6 @@ function GameRoom() {
     },
     enabled: !!isGameOwner,
   });
-  const inviteUrl =
-    typeof window !== "undefined" && inviteCode
-      ? `${window.location.origin}/join/${inviteCode}`
-      : "";
-
   // Character creation lives in <FilesPanel>.
 
   if (gameError)
@@ -590,7 +586,7 @@ function GameRoom() {
             userId={user.id}
             isNarrator={isNarrator}
             aiNarrator={game.narrator_type === "ai"}
-            inviteUrl={inviteUrl}
+            inviteCode={inviteCode ?? ""}
           />
         </Suspense>
       </PanelErrorBoundary>
@@ -606,7 +602,7 @@ function GameRoom() {
       </Button>
       {isGameOwner && (
         <div className="grid grid-cols-2 gap-1">
-          <InviteButton url={inviteUrl} />
+          <InviteButton code={inviteCode ?? ""} />
           <GameSettingsButton gameId={gameId} systemId={gameSystem} />
         </div>
       )}
@@ -1145,28 +1141,32 @@ function RightOverlayPanel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function InviteButton({ url }: { url: string }) {
+function InviteButton({ code }: { code: string }) {
   const [open, setOpen] = useState(false);
+  const formattedCode = formatGameInviteCode(code);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm" variant="secondary">
-          Invite
+          Código
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Invite players</DialogTitle>
+          <DialogTitle>Código da mesa</DialogTitle>
         </DialogHeader>
-        <p className="text-sm text-muted-foreground">Share this link. Anyone signed in can join.</p>
+        <p className="text-sm text-muted-foreground">
+          Envie este código aos jogadores. Eles podem usá-lo no botão Participar do dashboard.
+        </p>
         <div className="flex gap-2">
-          <Input value={url} readOnly />
+          <Input value={formattedCode} readOnly className="font-mono text-base font-bold tracking-wider" />
           <Button
-            aria-label="Copy invite link"
-            title="Copy invite link"
+            aria-label="Copiar código da mesa"
+            title="Copiar código da mesa"
+            disabled={!formattedCode}
             onClick={() => {
-              navigator.clipboard.writeText(url);
-              toast.success("Invite link copied");
+              void navigator.clipboard.writeText(formattedCode);
+              toast.success("Código da mesa copiado.");
             }}
           >
             <Copy className="h-4 w-4" />

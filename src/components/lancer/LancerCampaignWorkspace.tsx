@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { formatGameInviteCode } from "@/lib/game-invites";
 import { ChatPanel } from "@/components/ChatPanel";
 import { OnlinePresence } from "@/components/OnlinePresence";
 import { Button } from "@/components/ui/button";
@@ -68,7 +69,7 @@ type LancerCampaignWorkspaceProps = {
   userId: string;
   isNarrator: boolean;
   aiNarrator: boolean;
-  inviteUrl: string;
+  inviteCode: string;
 };
 
 const ENTITY_LABELS: Record<LancerEntityKind, string> = {
@@ -203,7 +204,7 @@ export function LancerCampaignWorkspace({
   userId,
   isNarrator,
   aiNarrator,
-  inviteUrl,
+  inviteCode,
 }: LancerCampaignWorkspaceProps) {
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
@@ -418,16 +419,16 @@ export function LancerCampaignWorkspace({
                 <Settings2 className="h-4 w-4" />
               </Button>
             )}
-            {isNarrator && inviteUrl && (
+            {isNarrator && inviteCode && (
               <Button
                 size="sm"
                 variant="secondary"
                 onClick={() => {
-                  void navigator.clipboard.writeText(inviteUrl);
-                  toast.success("Convite copiado.");
+                  void navigator.clipboard.writeText(formatGameInviteCode(inviteCode));
+                  toast.success(`Código ${formatGameInviteCode(inviteCode)} copiado.`);
                 }}
               >
-                <Copy className="mr-1.5 h-3.5 w-3.5" /> Convite
+                <Copy className="mr-1.5 h-3.5 w-3.5" /> Código
               </Button>
             )}
           </div>

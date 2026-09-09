@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,11 +14,12 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Users, Crown, Sparkles, Trash2, CheckSquare, Settings2, X } from "lucide-react";
+import { Plus, Users, Crown, Sparkles, Trash2, CheckSquare, Settings2, X, KeyRound } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useT, LANGS, type Lang } from "@/lib/i18n";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { SettingsDialog, RPG_SYSTEMS } from "@/components/SettingsDialog";
+import { formatGameInviteCode, normalizeGameInviteCode } from "@/lib/game-invites";
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: Dashboard,
@@ -39,6 +40,7 @@ export const Route = createFileRoute("/_app/dashboard")({
 function Dashboard() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const { t } = useT();
 
   const { data: games, isLoading } = useQuery({
@@ -54,6 +56,8 @@ function Dashboard() {
   });
 
   const [open, setOpen] = useState(false);
+  const [joinOpen, setJoinOpen] = useState(false);
+  const [joinCode, setJoinCode] = useState("");
   const [name, setName] = useState("");
   const [narratorType, setNarratorType] = useState<"human" | "ai">("human");
   const [language, setLanguage] = useState<Lang>("pt-BR");
@@ -148,6 +152,26 @@ function Dashboard() {
       toast.success("Game created!");
     },
     onError: (e: Error) => toast.error(e.message),
+  });
+
+  const joinGame = useMutation({
+    mutationFn: async () => {
+      const code = normalizeGameInviteCode(joinCode);
+      if (!code) throw new Error("Digite o código da mesa.");
+      const { data, error } = await supabase.rpc("join_game_by_invite", { _code: code });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : null;
+      if (!row) throw new Error("Código de mesa inválido.");
+      return row;
+    },
+    onSuccess: async (game) => {
+      setJoinOpen(false);
+      setJoinCode("");
+      await qc.invalidateQueries({ queryKey: ["games"] });
+      toast.success(`Você entrou em ${game.game_name}.`);
+      navigate({ to: "/games/$gameId", params: { gameId: game.game_id } });
+    },
+    onError: (error: Error) => toast.error(error.message || "Não foi possível entrar na mesa."),
   });
 
   async function deleteGame(id: string, gameName: string) {
@@ -251,6 +275,58 @@ function Dashboard() {
                   {t("create")}
                 </Button>
               </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <Dialog
+            open={joinOpen}
+            onOpenChange={(next) => {
+              setJoinOpen(next);
+              if (!next) setJoinCode("");
+            }}
+          >
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <KeyRound className="mr-1.5 h-4 w-4" /> Participar
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <form
+                className="space-y-4"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (!joinGame.isPending) joinGame.mutate();
+                }}
+              >
+                <DialogHeader>
+                  <DialogTitle>Participar de uma mesa</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-2">
+                  <Label htmlFor="join-game-code">Código da mesa</Label>
+                  <Input
+                    id="join-game-code"
+                    value={formatGameInviteCode(joinCode)}
+                    onChange={(event) => setJoinCode(normalizeGameInviteCode(event.target.value))}
+                    placeholder="ABCD-1234-EF56-7890"
+                    className="font-mono uppercase"
+                    autoComplete="off"
+                    autoFocus
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Peça o código ao mestre da mesa.
+                  </p>
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setJoinOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={!normalizeGameInviteCode(joinCode) || joinGame.isPending}
+                  >
+                    {joinGame.isPending ? "Entrando..." : "Entrar na mesa"}
+                  </Button>
+                </DialogFooter>
+              </form>
             </DialogContent>
           </Dialog>
         </div>
