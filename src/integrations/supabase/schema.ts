@@ -415,6 +415,20 @@ type AdditionalFunctions = {
   unlock_digirole_form: { Args: UnknownArgs; Returns: Json };
   transform_digirole_form: { Args: UnknownArgs; Returns: Json };
   record_digirole_form_victory: { Args: UnknownArgs; Returns: Json };
+  set_digirole_form_victories: {
+    Args: { p_digimon_id: string; p_victories: number };
+    Returns: Json;
+  };
+  update_game_dashboard_settings: {
+    Args: {
+      p_game_id: string;
+      p_name: string;
+      p_system: string;
+      p_owner_id: string;
+      p_narrator_id: string;
+    };
+    Returns: GeneratedDatabase["public"]["Tables"]["games"]["Row"];
+  };
   start_game_engine_session: {
     Args: {
       p_game_id: string;

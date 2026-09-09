@@ -2555,7 +2555,7 @@ function DigiRoleDigimonSheet({
   async function setFormVictories(value: number) {
     const victories = Math.max(0, value);
     setDraft((current) => (current ? { ...current, victories } : current));
-    const result = await (supabase as any).rpc("set_digirole_form_victories", {
+    const result = await supabase.rpc("set_digirole_form_victories", {
       p_digimon_id: id,
       p_victories: victories,
     });

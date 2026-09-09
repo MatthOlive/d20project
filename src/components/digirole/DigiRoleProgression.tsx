@@ -182,7 +182,7 @@ export function DigiRoleScanPanel({
   async function condense(entry: ScanEntry) {
     if (
       !entry.species ||
-      !confirm(`Consumir ${entry.percentage}% de Data e condensar ${entry.species.name}?`)
+      !confirm(`Consumir ${entry.percentage}% de Data e criar uma ficha de ${entry.species.name}?`)
     )
       return;
     setBusy(true);
@@ -193,13 +193,29 @@ export function DigiRoleScanPanel({
         p_nickname: null,
       });
       if (result.error) throw result.error;
-      const data = result.data as { bonus?: number } | null;
+      const data = result.data as { digimonId?: string; bonus?: number } | null;
+      if (!data?.digimonId) throw new Error("A criação não retornou a ficha do Digimon.");
+
+      const assignment = await callRpc("assign_digimon_to_tamer", {
+        p_digimon_id: data.digimonId,
+        p_tamer_id: tamerId,
+        p_team_slot: 0,
+      });
+      const assignedSlot = assignment.error
+        ? null
+        : typeof assignment.data === "number"
+          ? assignment.data
+          : null;
       toast.success(
-        `${entry.species.name} condensado${data?.bonus ? ` com +${data.bonus} ponto(s) de Atributo Base` : ""}.`,
+        `${entry.species.name} criado e adicionado ${assignedSlot ? `ao Time (espaço ${assignedSlot})` : "à Nuvem"}${data.bonus ? ` com +${data.bonus} ponto(s) de Atributo Base` : ""}.`,
       );
+      if (assignment.error) {
+        toast.warning("A ficha foi criada na Nuvem, mas não foi possível ocupar automaticamente o Time.");
+      }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["digirole-scans", tamerId] }),
         queryClient.invalidateQueries({ queryKey: ["digirole-tamer", tamerId] }),
+        queryClient.invalidateQueries({ queryKey: ["digirole-roster", tamerId] }),
         queryClient.invalidateQueries({ queryKey: ["digirole-files", gameId] }),
       ]);
     } catch (error) {
@@ -224,9 +240,16 @@ export function DigiRoleScanPanel({
           </Button>
         )}
       </div>
-      <div className="space-y-2">
+      <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
         {(scanQuery.data ?? []).map((entry) => (
-          <div key={entry.species_id} className="rounded-md border border-border p-2.5">
+          <button
+            key={entry.species_id}
+            type="button"
+            disabled={!canEdit || entry.percentage < 100 || busy}
+            onClick={() => void condense(entry)}
+            title={entry.percentage >= 100 ? `Criar ${entry.species?.name ?? "Digimon"}` : undefined}
+            className="block w-full rounded-md border border-border p-2.5 text-left transition enabled:cursor-pointer enabled:hover:border-primary enabled:hover:bg-primary/5 disabled:cursor-default"
+          >
             <div className="mb-1.5 flex items-center gap-2">
               <Database className="h-4 w-4 text-primary" />
               <strong className="min-w-0 flex-1 truncate text-xs">
@@ -234,18 +257,13 @@ export function DigiRoleScanPanel({
               </strong>
               <span className="text-xs font-black tabular-nums">{entry.percentage}%</span>
               {canEdit && entry.percentage >= 100 && (
-                <Button
-                  size="sm"
-                  className="h-7"
-                  disabled={busy}
-                  onClick={() => void condense(entry)}
-                >
-                  Condensar
-                </Button>
+                <span className="rounded bg-primary px-2 py-1 text-[10px] font-black text-primary-foreground">
+                  Criar Digimon
+                </span>
               )}
             </div>
             <Progress value={entry.percentage / 2} className="h-1.5" />
-          </div>
+          </button>
         ))}
         {!scanQuery.isLoading && (scanQuery.data?.length ?? 0) === 0 && (
           <p className="text-xs text-muted-foreground">Nenhum Data coletado.</p>
@@ -253,7 +271,7 @@ export function DigiRoleScanPanel({
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[85vh] max-w-xl overflow-hidden">
+        <DialogContent className="flex max-h-[85vh] max-w-xl flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>Data Scan</DialogTitle>
           </DialogHeader>
@@ -263,7 +281,7 @@ export function DigiRoleScanPanel({
             placeholder="Procurar Digimon visível..."
             autoFocus
           />
-          <div className="min-h-0 space-y-1 overflow-y-auto">
+          <div className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain pr-1">
             {targets.map((target) => {
               const active = target.id === targetId;
               return (
