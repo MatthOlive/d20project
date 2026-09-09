@@ -1097,21 +1097,6 @@ function DigiRoleDataScanButton({
       return member.data?.viewing_page_id ?? game.data?.active_page_id ?? null;
     },
   });
-  const scannedQuery = useQuery({
-    queryKey: ["token-digirole-scanned-subjects", tamerId],
-    enabled: open,
-    queryFn: async (): Promise<Set<string>> => {
-      const result = await digiRoleTable("digirole_scan_data")
-        .select("scanned_subject_ids")
-        .eq("tamer_id", tamerId);
-      if (result.error) throw result.error;
-      return new Set(
-        (result.data ?? []).flatMap(
-          (entry: { scanned_subject_ids?: string[] | null }) => entry.scanned_subject_ids ?? [],
-        ),
-      );
-    },
-  });
   const targetsQuery = useQuery<DigiRoleScanTarget[]>({
     queryKey: ["token-digirole-scan-targets", gameId, pageQuery.data],
     enabled: open && !!pageQuery.data,
@@ -1152,7 +1137,7 @@ function DigiRoleDataScanButton({
   });
   const normalized = search.trim().toLocaleLowerCase("pt-BR");
   const targets = (targetsQuery.data ?? []).filter((target) => {
-    if (!target.species || scannedQuery.data?.has(target.id)) return false;
+    if (!target.species) return false;
     return (
       !normalized ||
       `${target.nickname ?? ""} ${target.species.name}`
@@ -1245,7 +1230,7 @@ function DigiRoleDataScanButton({
           })}
           {!targetsQuery.isLoading && targets.length === 0 && (
             <p className="p-3 text-xs text-muted-foreground">
-              Nenhum Digimon ainda não escaneado possui token nesta página.
+              Nenhum Digimon possui token nesta página.
             </p>
           )}
         </div>

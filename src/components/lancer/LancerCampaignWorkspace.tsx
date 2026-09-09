@@ -17,7 +17,9 @@ import {
   PackageOpen,
   Plus,
   Radio,
+  Settings2,
   Shield,
+  Trash2,
   UserRound,
   Users,
   Wrench,
@@ -205,6 +207,8 @@ export function LancerCampaignWorkspace({
 }: LancerCampaignWorkspaceProps) {
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [clearingChat, setClearingChat] = useState(false);
   const [entityType, setEntityType] = useState<LancerEntityKind>("pilot");
   const [entityName, setEntityName] = useState("");
   const [callsign, setCallsign] = useState("");
@@ -373,6 +377,18 @@ export function LancerCampaignWorkspace({
     void queryClient.invalidateQueries({ queryKey: ["lancer-compendium", gameId] });
     void queryClient.invalidateQueries({ queryKey: ["lancer-events", gameId] });
   };
+  const clearChatHistory = async () => {
+    if (!window.confirm("Apagar permanentemente todo o histórico do chat desta mesa?")) return;
+    setClearingChat(true);
+    const { error } = await supabase.from("chat_messages").delete().eq("game_id", gameId);
+    setClearingChat(false);
+    if (error) {
+      toast.error(`Não foi possível apagar o chat: ${error.message}`);
+      return;
+    }
+    queryClient.setQueryData(["chat", gameId], []);
+    toast.success("Histórico do chat apagado.");
+  };
 
   return (
     <div className="h-screen overflow-hidden bg-[#090d12] text-foreground">
@@ -391,6 +407,17 @@ export function LancerCampaignWorkspace({
             <Badge variant="outline" className="rounded-sm border-amber-400/40 text-amber-300">
               {isNarrator ? "GM" : "Pilot"}
             </Badge>
+            {isNarrator && (
+              <Button
+                size="icon"
+                variant="outline"
+                className="h-9 w-9 rounded-md"
+                title="Configurações da mesa"
+                onClick={() => setSettingsOpen(true)}
+              >
+                <Settings2 className="h-4 w-4" />
+              </Button>
+            )}
             {isNarrator && inviteUrl && (
               <Button
                 size="sm"
@@ -631,6 +658,31 @@ export function LancerCampaignWorkspace({
               Criar
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent className="max-w-md rounded-md border-cyan-400/25 bg-[#0c1219]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 uppercase">
+              <Settings2 className="h-4 w-4 text-cyan-300" /> Configurações da mesa
+            </DialogTitle>
+          </DialogHeader>
+          <div className="border border-destructive/40 bg-destructive/5 p-4">
+            <div className="font-bold">Histórico do chat</div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Remove permanentemente todas as mensagens e rolagens registradas nesta mesa.
+            </p>
+            <Button
+              type="button"
+              variant="destructive"
+              className="mt-4"
+              disabled={clearingChat}
+              onClick={() => void clearChatHistory()}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              {clearingChat ? "Apagando..." : "Apagar histórico do chat"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
       <LancerEntityEditor

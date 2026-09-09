@@ -51,9 +51,20 @@ function retain(gameId: string, queryClient: QueryClient, listener: Listener) {
           const incoming = payload.new as SharedChatMessage;
           entry?.queryClient.setQueryData<SharedChatMessage[]>(["chat", gameId], (current) => {
             if ((current ?? []).some((message) => message.id === incoming.id)) return current ?? [];
-            return [...(current ?? []), incoming].slice(-250);
+            return [...(current ?? []), incoming];
           });
           for (const callback of entry?.listeners ?? []) callback(incoming);
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "chat_messages",
+        },
+        () => {
+          void entry?.queryClient.invalidateQueries({ queryKey: ["chat", gameId] });
         },
       )
       .subscribe((status) => {

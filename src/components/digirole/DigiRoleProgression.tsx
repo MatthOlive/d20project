@@ -140,20 +140,16 @@ export function DigiRoleScanPanel({
       );
     },
   });
-  const scannedIds = useMemo(
-    () => new Set((scanQuery.data ?? []).flatMap((entry) => entry.scanned_subject_ids)),
-    [scanQuery.data],
-  );
   const targets = useMemo(() => {
     const normalized = search.trim().toLocaleLowerCase("pt-BR");
     return (targetsQuery.data ?? []).filter((target) => {
-      if (!target.species_id || scannedIds.has(target.id)) return false;
+      if (!target.species_id) return false;
       const label = `${target.nickname ?? ""} ${target.species?.name ?? ""}`.toLocaleLowerCase(
         "pt-BR",
       );
       return !normalized || label.includes(normalized);
     });
-  }, [scannedIds, search, targetsQuery.data]);
+  }, [search, targetsQuery.data]);
   const selected = targets.find((entry) => entry.id === targetId) ?? null;
 
   async function scan() {
@@ -291,7 +287,7 @@ export function DigiRoleScanPanel({
             })}
             {!targetsQuery.isLoading && targets.length === 0 && (
               <p className="p-3 text-xs text-muted-foreground">
-                Nenhum Digimon ainda não escaneado possui token nesta página.
+                Nenhum Digimon possui token nesta página.
               </p>
             )}
           </div>

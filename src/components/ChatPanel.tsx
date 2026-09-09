@@ -68,15 +68,25 @@ export function ChatPanel({
   const { data: messages = [] } = useQuery({
     queryKey: ["chat", gameId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("chat_messages")
-        .select("*")
-        .eq("game_id", gameId)
-        .order("created_at", { ascending: true })
-        .limit(200);
-      if (error) throw error;
-      return (data ?? []) as Msg[];
+      const history: Msg[] = [];
+      const pageSize = 1_000;
+      for (let page = 0; page < 50; page += 1) {
+        const from = page * pageSize;
+        const { data, error } = await supabase
+          .from("chat_messages")
+          .select("*")
+          .eq("game_id", gameId)
+          .order("created_at", { ascending: true })
+          .order("id", { ascending: true })
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        const rows = (data ?? []) as Msg[];
+        history.push(...rows);
+        if (rows.length < pageSize) break;
+      }
+      return history;
     },
+    staleTime: Number.POSITIVE_INFINITY,
   });
 
   const profileIds = useMemo(

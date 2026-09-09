@@ -866,8 +866,12 @@ function GameRoom() {
               <MacroBar gameId={gameId} userId={user.id} />
             </PanelErrorBoundary>
           </div>
-          {mobileTab === "chat" && (
-            <div className="h-full overflow-hidden">
+          <div
+            className={`h-full overflow-hidden ${
+              mobileTab === "chat" ? "relative visible" : "pointer-events-none invisible absolute inset-0"
+            }`}
+            aria-hidden={mobileTab !== "chat"}
+          >
               <div className="p-2">
                 <OnlinePresence gameId={gameId} userId={user.id} isNarrator={isNarrator} />
               </div>
@@ -881,8 +885,7 @@ function GameRoom() {
                   />
                 </Suspense>
               </PanelErrorBoundary>
-            </div>
-          )}
+          </div>
           {mobileTab === "files" && (
             <div className="h-full overflow-auto p-3">
               <PanelErrorBoundary scope="mobile-files" resetKey={gameId}>
@@ -1112,8 +1115,11 @@ function RightOverlayPanel({ children }: { children: React.ReactNode }) {
   }, []);
   return (
     <div className="pointer-events-none absolute right-3 top-3 bottom-3 z-30 flex items-start gap-1">
-      {open && (
-        <div className="pointer-events-auto relative h-full" style={{ width }}>
+      <div
+        className={`${open ? "pointer-events-auto" : "pointer-events-none invisible"} relative h-full`}
+        style={{ width }}
+        aria-hidden={!open}
+      >
           <div
             className="absolute -left-1 top-0 bottom-0 z-10 w-1.5 cursor-ew-resize bg-transparent hover:bg-primary/40"
             onMouseDown={(e) => {
@@ -1123,8 +1129,7 @@ function RightOverlayPanel({ children }: { children: React.ReactNode }) {
             title="Drag to resize"
           />
           <div className="h-full opacity-95">{children}</div>
-        </div>
-      )}
+      </div>
       <button
         className="pointer-events-auto mt-1 rounded-l-md bg-card/95 px-1.5 py-2 text-xs shadow backdrop-blur hover:bg-accent"
         onClick={() => setOpen((v) => !v)}
@@ -4149,6 +4154,7 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
   const [gridOpacity, setGridOpacity] = useState(30);
   const [gridUnitM, setGridUnitM] = useState(1.5);
   const [gridUnitLabel, setGridUnitLabel] = useState("m");
+  const [clearingChat, setClearingChat] = useState(false);
   const [weights, setWeights] = useState<Record<string, number>>(() => {
     const m: Record<string, number> = {};
     for (const c of REACTION_DECK) m[c.id] = c.defaultWeight;
@@ -4256,6 +4262,26 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
     qc.invalidateQueries({ queryKey: ["game", gameId] });
     qc.invalidateQueries({ queryKey: ["characters", gameId] });
     setOpen(false);
+  }
+
+  async function clearChatHistory() {
+    if (
+      !window.confirm(
+        "Apagar todo o histórico do chat desta mesa? Mensagens, rolagens e cards não poderão ser recuperados.",
+      )
+    )
+      return;
+    setClearingChat(true);
+    try {
+      const { error } = await supabase.from("chat_messages").delete().eq("game_id", gameId);
+      if (error) throw error;
+      qc.setQueryData(["chat", gameId], []);
+      toast.success("Histórico do chat apagado");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível apagar o chat");
+    } finally {
+      setClearingChat(false);
+    }
   }
 
   return (
@@ -4465,6 +4491,27 @@ function GameSettingsButton({ gameId }: { gameId: string }) {
                 falha.
               </p>
             </div>
+          </div>
+          <div className="rounded-md border border-destructive/50 bg-destructive/5 p-3">
+            <div className="mb-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-destructive">
+                Histórico do chat
+              </Label>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Apaga permanentemente mensagens, rolagens e cards desta mesa para todos os
+                participantes.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              disabled={clearingChat}
+              onClick={() => void clearChatHistory()}
+            >
+              <Trash2 className="mr-1 h-4 w-4" />
+              {clearingChat ? "Apagando..." : "Apagar histórico do chat"}
+            </Button>
           </div>
         </div>
         <DialogFooter>
