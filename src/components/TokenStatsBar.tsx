@@ -106,7 +106,7 @@ function DigiRoleStats({
   const dsMax =
     kind === "digirole_tamer"
       ? 4 +
-        totalAttr("wisdom") +
+        totalAttr("spirit") +
         (currentData.condensed_count ?? 0) +
         Math.max(
           0,

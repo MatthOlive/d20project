@@ -109,7 +109,7 @@ export function digiRoleTamerDsMax(
   const rankIndex = Math.max(0, DIGIROLE_STAGES.indexOf(rank as DigiRoleStage));
   return (
     4 +
-    Math.max(0, Math.trunc(attrs.wisdom ?? 1)) +
+    Math.max(0, Math.trunc(attrs.spirit ?? 1)) +
     Math.max(0, Math.trunc(condensedCount)) +
     (rankIndex + 1) * 2
   );
