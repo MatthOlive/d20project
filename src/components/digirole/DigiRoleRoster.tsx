@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { CharacterDragPreview, useCharacterPointerDrag } from "@/hooks/use-character-pointer-drag";
 import { useDigiRoleRoster, type DigiRoleRosterEntry } from "@/hooks/use-digirole-roster";
-import { transparentDigiRoleImageUrl } from "@/lib/digi-api";
+import { DigiRoleImage } from "@/components/digirole/DigiRoleImage";
 
 type ShopItem = {
   id: string;
@@ -98,8 +98,9 @@ export function DigiRoleRoster({
         className="flex min-w-0 cursor-pointer items-center gap-3 rounded-md border border-border bg-card p-3 text-left transition hover:bg-accent"
       >
         {payload.imageUrl ? (
-          <img
-            src={transparentDigiRoleImageUrl(payload.imageUrl) ?? payload.imageUrl}
+          <DigiRoleImage
+            src={payload.imageUrl}
+            speciesName={digimon.species?.name}
             alt=""
             draggable={false}
             className="h-14 w-14 shrink-0 object-contain"

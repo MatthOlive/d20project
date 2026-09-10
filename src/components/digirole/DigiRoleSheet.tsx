@@ -57,7 +57,8 @@ import {
 } from "@/components/digirole/DigiRoleProgression";
 import { DigiRoleTechniqueRollDialog } from "@/components/digirole/DigiRoleTechniqueRollDialog";
 import { emitEngineActionRolled } from "@/lib/game-engine/action-events";
-import { fetchDigiApiImage, transparentDigiRoleImageUrl } from "@/lib/digi-api";
+import { fetchDigiApiImage } from "@/lib/digi-api";
+import { DigiRoleImage } from "@/components/digirole/DigiRoleImage";
 import {
   digiRoleAttributeColor,
   digiRoleFieldColor,
@@ -1234,8 +1235,9 @@ function HybridEvolutionDialog({
                 className="flex w-full items-center gap-3 rounded border border-border p-2 text-left enabled:hover:bg-accent disabled:opacity-40"
               >
                 {species.image_url ? (
-                  <img
-                    src={transparentDigiRoleImageUrl(species.image_url) ?? species.image_url}
+                  <DigiRoleImage
+                    src={species.image_url}
+                    speciesName={species.name}
                     alt=""
                     className="h-12 w-12 object-contain"
                   />
@@ -1739,8 +1741,9 @@ function DigiRoleTamerSheet({
               }}
             >
               {image ? (
-                <img
-                  src={transparentDigiRoleImageUrl(image) ?? image}
+                <DigiRoleImage
+                  src={image}
+                  speciesName={digimon?.species?.name}
                   alt=""
                   draggable={false}
                   className="h-8 w-8 object-contain"
@@ -1805,15 +1808,9 @@ function DigiRoleTamerSheet({
               <div className="grid gap-3 p-3 sm:grid-cols-[160px_1fr]">
                 <div className="space-y-2">
                   {hybridSpecies?.image_url || draft.image_url ? (
-                    <img
-                      src={
-                        transparentDigiRoleImageUrl(
-                          hybridSpecies?.image_url ?? draft.image_url ?? "",
-                        ) ??
-                        hybridSpecies?.image_url ??
-                        draft.image_url ??
-                        ""
-                      }
+                    <DigiRoleImage
+                      src={hybridSpecies?.image_url ?? draft.image_url ?? ""}
+                      speciesName={hybridSpecies?.name}
                       alt={hybridSpecies?.name ?? draft.name}
                       className="h-40 w-40 rounded-lg bg-muted/30 object-contain"
                     />
@@ -2213,12 +2210,9 @@ function DigiRoleTamerSheet({
                           onClick={() => void assignDigimon(entry.id, active.slot)}
                         >
                           {!entry.image_hidden && (entry.image_url || entry.species?.image_url) ? (
-                            <img
-                              src={
-                                transparentDigiRoleImageUrl(
-                                  entry.image_url || entry.species?.image_url,
-                                ) ?? ""
-                              }
+                            <DigiRoleImage
+                              src={entry.image_url || entry.species?.image_url || ""}
+                              speciesName={entry.species?.name}
                               alt=""
                               className="h-8 w-8 object-contain"
                             />
@@ -2944,8 +2938,9 @@ function DigiRoleDigimonSheet({
         <div className="grid gap-3 p-3 sm:grid-cols-[160px_1fr]">
           <div className="space-y-2">
             {displayImage ? (
-              <img
-                src={transparentDigiRoleImageUrl(displayImage) ?? displayImage}
+              <DigiRoleImage
+                src={displayImage}
+                speciesName={species?.name}
                 alt={name}
                 className="h-40 w-40 rounded-lg bg-muted/30 object-contain"
               />

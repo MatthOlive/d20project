@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { transparentDigiRoleImageUrl } from "@/lib/digi-api";
+import { DigiRoleImage } from "@/components/digirole/DigiRoleImage";
 import {
   createEngineState,
   currentEngineParticipant,
@@ -544,9 +544,7 @@ export function GameEnginePanel({
         ? characters.get(`${participant.kind}:${participant.characterId}`)?.imageUrl
         : null) ||
       null;
-    return participant.kind === "digirole_digimon"
-      ? transparentDigiRoleImageUrl(imageUrl)
-      : imageUrl;
+    return imageUrl;
   };
   const mayControlCurrent = mayControlEngineParticipant(current, { userId, isNarrator });
   const allInitiativesReady =
@@ -615,7 +613,7 @@ export function GameEnginePanel({
                     }
                   />
                   {participantImageUrl(participant) ? (
-                    <img
+                    <DigiRoleImage
                       src={participantImageUrl(participant)!}
                       alt=""
                       className="h-8 w-8 object-contain"
@@ -723,7 +721,7 @@ export function GameEnginePanel({
                     className="flex items-center gap-2 rounded-md border border-border px-2 py-2"
                   >
                     {imageUrl ? (
-                      <img src={imageUrl} alt="" className="h-8 w-8 object-contain" />
+                      <DigiRoleImage src={imageUrl} alt="" className="h-8 w-8 object-contain" />
                     ) : (
                       <div className="h-8 w-8 rounded bg-muted" />
                     )}
@@ -781,7 +779,7 @@ export function GameEnginePanel({
               <section className="space-y-3">
                 <div className="flex items-center gap-3">
                   {participantImageUrl(current) ? (
-                    <img
+                    <DigiRoleImage
                       src={participantImageUrl(current)!}
                       alt=""
                       className="h-12 w-12 object-contain"
@@ -891,7 +889,7 @@ export function GameEnginePanel({
                     >
                       <span className="w-4 text-center text-[10px] font-bold">{index + 1}</span>
                       {imageUrl ? (
-                        <img
+                        <DigiRoleImage
                           src={imageUrl}
                           alt=""
                           className="h-8 w-8 shrink-0 rounded-md bg-background/60 object-contain"

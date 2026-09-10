@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useGameSpriteStyle } from "@/hooks/use-game-sprite-style";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { TrainerAppearanceImage } from "@/components/TrainerAppearance";
-import { transparentDigiRoleImageUrl } from "@/lib/digi-api";
+import { DigiRoleImage } from "@/components/digirole/DigiRoleImage";
 
 /**
  * Reads the live character image + status conditions for a token. Subscribes
@@ -31,7 +31,7 @@ function useCharacter(kind: TokenCharacterKind, id: string, enabled: boolean) {
         const { data, error } = await (supabase.from(table as never) as any)
           .select(
             kind === "digirole_digimon"
-              ? "image_url,image_hidden,conditions,species:species_id(image_url)"
+              ? "image_url,image_hidden,conditions,species:species_id(name,image_url)"
               : "image_url,conditions,hybrid_state",
           )
           .eq("id", id)
@@ -60,7 +60,7 @@ function useCharacter(kind: TokenCharacterKind, id: string, enabled: boolean) {
           image_url: imageUrl,
           suppress_fallback: kind === "digirole_tamer" ? !imageUrl : !!data?.image_hidden,
           status: data?.conditions ?? [],
-          species_name: hybridName,
+          species_name: hybridName ?? data?.species?.name ?? null,
           species_sprite_url: null,
           is_shiny: false,
         };
@@ -170,7 +170,7 @@ export function TokenAvatar({
   }
   const sourceImage = data?.suppress_fallback ? null : (data?.image_url ?? fallbackImage);
   const isDigiRoleCreature = kind === "digirole_digimon" || !!data?.species_name;
-  const img = isDigiRoleCreature ? transparentDigiRoleImageUrl(sourceImage) : sourceImage;
+  const img = sourceImage;
   if (kind === "trainer" && img) {
     return (
       <TrainerAppearanceImage
@@ -181,12 +181,21 @@ export function TokenAvatar({
     );
   }
   return img ? (
+    isDigiRoleCreature ? (
+      <DigiRoleImage
+        src={img}
+        speciesName={data?.species_name}
+        alt={label}
+        className="h-full w-full rounded-none object-contain"
+        draggable={false}
+      />
+    ) : (
     <img
       src={img}
       alt={label}
       className={`h-full w-full ${isDigiRoleCreature ? "rounded-none object-contain" : `object-cover ${variant === "handout" ? "rounded-none" : "rounded-full"}`}`}
       draggable={false}
-    />
+    />)
   ) : (
     <span className="text-xs font-bold">{label.slice(0, 2).toUpperCase()}</span>
   );

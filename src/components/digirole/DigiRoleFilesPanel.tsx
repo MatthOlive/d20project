@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { transparentDigiRoleImageUrl } from "@/lib/digi-api";
+import { DigiRoleImage } from "@/components/digirole/DigiRoleImage";
 import {
   Select,
   SelectContent,
@@ -579,6 +579,7 @@ export function DigiRoleFilesPanel({
     window,
     payload,
     subtitle,
+    speciesName,
     folder,
     previousId,
     nextId,
@@ -586,6 +587,7 @@ export function DigiRoleFilesPanel({
     window: DigiRoleWindow;
     payload: DragCharacterPayload;
     subtitle: string;
+    speciesName?: string | null;
     folder: string | null;
     previousId?: string;
     nextId?: string;
@@ -633,8 +635,9 @@ export function DigiRoleFilesPanel({
           className="flex min-w-0 flex-1 items-center gap-2 px-2 py-2 text-left"
         >
           {payload.imageUrl ? (
-            <img
-              src={transparentDigiRoleImageUrl(payload.imageUrl) ?? payload.imageUrl}
+            <DigiRoleImage
+              src={payload.imageUrl}
+              speciesName={speciesName}
               alt=""
               className="h-9 w-9 shrink-0 object-contain"
             />
@@ -871,6 +874,7 @@ export function DigiRoleFilesPanel({
                       window={{ kind: entry.kind, id: entry.row.id, title: entry.label }}
                       payload={dragPayload(entry.kind, entry.row)}
                       subtitle={entry.subtitle}
+                      speciesName={"species" in entry.row ? entry.row.species?.name : null}
                       folder={entry.row.folder}
                       previousId={entries[index - 1]?.row.id}
                       nextId={entries[index + 1]?.row.id}

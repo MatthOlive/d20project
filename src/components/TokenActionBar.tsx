@@ -50,7 +50,7 @@ import {
   fetchDigiRoleSpeciesTechniques,
 } from "@/lib/digirole-techniques";
 import { digiRoleFieldColor } from "@/lib/digirole-colors";
-import { transparentDigiRoleImageUrl } from "@/lib/digi-api";
+import { DigiRoleImage } from "@/components/digirole/DigiRoleImage";
 import { emitEngineActionRolled } from "@/lib/game-engine/action-events";
 
 type TokenKind = "trainer" | "pokemon" | "t20" | "digirole_tamer" | "digirole_digimon";
@@ -919,8 +919,9 @@ function DigiRoleHybridButton({
                 className="flex w-full items-center gap-3 rounded border border-border p-2 text-left enabled:hover:bg-accent disabled:opacity-40"
               >
                 {species.image_url ? (
-                  <img
-                    src={transparentDigiRoleImageUrl(species.image_url) ?? species.image_url}
+                  <DigiRoleImage
+                    src={species.image_url}
+                    speciesName={species.name}
                     alt=""
                     className="h-12 w-12 object-contain"
                   />
@@ -1208,11 +1209,9 @@ function DigiRoleDataScanButton({
                 className={`flex w-full items-center gap-2 rounded border px-3 py-2 text-left ${active ? "border-primary bg-primary/10" : "border-border hover:bg-accent"}`}
               >
                 {target.species?.image_url && (
-                  <img
-                    src={
-                      transparentDigiRoleImageUrl(target.species.image_url) ??
-                      target.species.image_url
-                    }
+                  <DigiRoleImage
+                    src={target.species.image_url}
+                    speciesName={target.species.name}
                     alt=""
                     className="h-10 w-10 object-contain"
                   />
