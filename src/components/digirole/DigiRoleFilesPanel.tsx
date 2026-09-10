@@ -74,6 +74,7 @@ type TamerRow = {
   image_url: string | null;
   rank: string;
   folder: string | null;
+  file_order: number;
   allowed_editors: string[];
   allowed_viewers: string[];
 };
@@ -98,6 +99,7 @@ type DigimonRow = {
   rank: string;
   image_hidden: boolean;
   folder: string | null;
+  file_order: number;
   allowed_editors: string[];
   allowed_viewers: string[];
   species: SpeciesRow | null;
@@ -207,14 +209,16 @@ export function DigiRoleFilesPanel({
     queryFn: async () => {
       const [tamers, digimons] = await Promise.all([
         table("digirole_tamers")
-          .select("id,name,owner_id,image_url,rank,folder,allowed_editors,allowed_viewers")
+          .select("id,name,owner_id,image_url,rank,folder,file_order,allowed_editors,allowed_viewers")
           .eq("game_id", gameId)
+          .order("file_order")
           .order("created_at"),
         table("digirole_digimons")
           .select(
-            "id,nickname,owner_id,image_url,image_hidden,rank,folder,allowed_editors,allowed_viewers,species:species_id(id,name,stage,digi_attribute,fields,hp_base,base_attrs,signature_technique,image_url)",
+            "id,nickname,owner_id,image_url,image_hidden,rank,folder,file_order,allowed_editors,allowed_viewers,species:species_id(id,name,stage,digi_attribute,fields,hp_base,base_attrs,signature_technique,image_url)",
           )
           .eq("game_id", gameId)
+          .order("file_order")
           .order("created_at"),
       ]);
       if (tamers.error) throw tamers.error;
@@ -354,7 +358,7 @@ export function DigiRoleFilesPanel({
   }, [fileSearch, filesQuery.data]);
 
   function createFolder() {
-    const folder = newFolder.trim().replace(/^\/+|\/+$/g, "");
+    const folder = newFolder.trim().replace(/\\/g, "/").replace(/\/+/g, "/").replace(/^\/+|\/+$/g, "");
     if (!folder) return;
     setExtraFolders((current) => (current.includes(folder) ? current : [...current, folder]));
     setNewFolder("");
@@ -362,8 +366,31 @@ export function DigiRoleFilesPanel({
 
   async function moveFile(kind: DigiRoleWindow["kind"], id: string, folder: string | null) {
     const target = kind === "digirole_tamer" ? "digirole_tamers" : "digirole_digimons";
-    const result = await table(target).update({ folder }).eq("id", id);
+    const siblingOrders = fileEntries
+      .filter((entry) => entry.row.folder === folder && entry.kind === kind)
+      .map((entry) => entry.row.file_order ?? 0);
+    const file_order = siblingOrders.length ? Math.max(...siblingOrders) + 1 : 0;
+    const result = await table(target).update({ folder, file_order }).eq("id", id);
     if (result.error) return toast.error(messageOf(result.error));
+    await queryClient.invalidateQueries({ queryKey: ["digirole-files", gameId] });
+  }
+
+  async function reorderFile(
+    kind: DigiRoleWindow["kind"],
+    folder: string | null,
+    currentId: string,
+    targetId: string,
+  ) {
+    const current = fileEntries.find((entry) => entry.kind === kind && entry.row.id === currentId);
+    const target = fileEntries.find((entry) => entry.kind === kind && entry.row.id === targetId);
+    if (!current || !target || current.row.folder !== folder || target.row.folder !== folder) return;
+    const tableName = kind === "digirole_tamer" ? "digirole_tamers" : "digirole_digimons";
+    const results = await Promise.all([
+      table(tableName).update({ file_order: target.row.file_order }).eq("id", currentId),
+      table(tableName).update({ file_order: current.row.file_order }).eq("id", targetId),
+    ]);
+    const error = results.find((entry) => entry.error)?.error;
+    if (error) return toast.error(messageOf(error));
     await queryClient.invalidateQueries({ queryKey: ["digirole-files", gameId] });
   }
 
@@ -553,11 +580,15 @@ export function DigiRoleFilesPanel({
     payload,
     subtitle,
     folder,
+    previousId,
+    nextId,
   }: {
     window: DigiRoleWindow;
     payload: DragCharacterPayload;
     subtitle: string;
     folder: string | null;
+    previousId?: string;
+    nextId?: string;
   }) {
     const key = `${window.kind}:${window.id}`;
     return (
@@ -617,6 +648,30 @@ export function DigiRoleFilesPanel({
             <span className="block truncate text-[10px] text-muted-foreground">{subtitle}</span>
           </span>
         </button>
+        <div className="flex shrink-0 flex-col">
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-5 w-6"
+            disabled={!previousId}
+            title="Mover ficha para cima"
+            onClick={() => previousId && void reorderFile(window.kind, folder, window.id, previousId)}
+          >
+            <ChevronUp className="h-3 w-3" />
+          </Button>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-5 w-6"
+            disabled={!nextId}
+            title="Mover ficha para baixo"
+            onClick={() => nextId && void reorderFile(window.kind, folder, window.id, nextId)}
+          >
+            <ChevronDown className="h-3 w-3" />
+          </Button>
+        </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button size="icon" variant="ghost" className="h-7 w-7">
@@ -703,7 +758,7 @@ export function DigiRoleFilesPanel({
           onKeyDown={(event) => {
             if (event.key === "Enter") createFolder();
           }}
-          placeholder="Nova pasta"
+          placeholder="Nova pasta ou subpasta (ex.: Campanha/NPCs)"
           className="h-8"
         />
         <Button
@@ -742,7 +797,12 @@ export function DigiRoleFilesPanel({
       <div className="min-h-0 max-h-[calc(100vh-22rem)] space-y-2 overflow-y-auto pr-1">
         {[null, ...folders].map((folder) => {
           const key = folder ?? "__unfiled__";
-          const entries = fileEntries.filter((entry) => entry.row.folder === folder);
+              const entries = fileEntries
+                .filter((entry) => entry.row.folder === folder)
+                .sort((left, right) =>
+                  (left.row.file_order ?? 0) - (right.row.file_order ?? 0) ||
+                  left.label.localeCompare(right.label, "pt-BR"),
+                );
           if (!folder && !entries.length) return null;
           return (
             <section
@@ -805,13 +865,15 @@ export function DigiRoleFilesPanel({
               </div>
               {!collapsed[key] && (
                 <div className="mt-1 space-y-1">
-                  {entries.map((entry) => (
+                  {entries.map((entry, index) => (
                     <FileButton
                       key={`${entry.kind}:${entry.row.id}`}
                       window={{ kind: entry.kind, id: entry.row.id, title: entry.label }}
                       payload={dragPayload(entry.kind, entry.row)}
                       subtitle={entry.subtitle}
                       folder={entry.row.folder}
+                      previousId={entries[index - 1]?.row.id}
+                      nextId={entries[index + 1]?.row.id}
                     />
                   ))}
                   {entries.length === 0 && (
