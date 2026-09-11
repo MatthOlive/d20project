@@ -128,6 +128,37 @@ function clampEffectiveness(delta: number): -1 | 0 | 1 {
   return delta > 0 ? 1 : delta < 0 ? -1 : 0;
 }
 
+function normalizeTypeLabel(value: string | null | undefined): string {
+  const aliases: Record<string, string> = {
+    va: "Va",
+    vaccine: "Va",
+    vi: "Vi",
+    virus: "Vi",
+    da: "Da",
+    data: "Da",
+    uk: "Uk",
+    unknown: "Uk",
+    no: "No",
+    none: "No",
+    neutra: "No",
+    neutral: "No",
+  };
+  return aliases[(value ?? "").trim().toLocaleLowerCase("pt-BR")] ?? value ?? "-";
+}
+
+function typeRelationSymbol(delta: number): ">" | "<" | "=" {
+  return delta > 0 ? ">" : delta < 0 ? "<" : "=";
+}
+
+function fieldRelationText(attackerField: string, defenderFields: string[]) {
+  return defenderFields.map((field) => {
+    const delta = clampEffectiveness(
+      digiRoleFieldAccuracyModifier(attackerField, [field]),
+    );
+    return { field, delta, symbol: typeRelationSymbol(delta) };
+  });
+}
+
 function useCurrentPage(gameId: string, userId: string, enabled: boolean) {
   return useQuery({
     queryKey: ["current-map-page", gameId, userId],
@@ -394,7 +425,10 @@ export function DigiRoleTechniqueRollDialog({
     selectedInfo.length > 0
       ? Math.min(
           ...selectedInfo.map((target) =>
-            clampEffectiveness(digiRoleFieldAccuracyModifier(technique.field, target.fields)),
+            target.fields.reduce(
+              (total, field) => total + digiRoleFieldAccuracyModifier(technique.field, [field]),
+              0,
+            ),
           ),
         )
       : 0;
@@ -708,11 +742,18 @@ export function DigiRoleTechniqueRollDialog({
                 {group.rows.map((token) => {
                   const info = targets.info.get(token.id);
                   const fieldDelta = info
-                    ? clampEffectiveness(digiRoleFieldAccuracyModifier(technique.field, info.fields))
+                    ? info.fields.reduce(
+                        (total, field) =>
+                          total + digiRoleFieldAccuracyModifier(technique.field, [field]),
+                        0,
+                      )
                     : 0;
                   const typeDelta = info
                     ? digiRoleAttributeModifier(digiAttribute, info.digiAttribute)
                     : 0;
+                  const fieldRelations = info ? fieldRelationText(technique.field, info.fields) : [];
+                  const attackerType = normalizeTypeLabel(digiAttribute);
+                  const defenderType = normalizeTypeLabel(info?.digiAttribute);
                   return (
                     <label
                       key={token.id}
@@ -734,11 +775,31 @@ export function DigiRoleTechniqueRollDialog({
                       {info && (
                         <span className="flex flex-wrap items-center justify-end gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
                           <span>{energy ? `RES ${info.res}` : `DEF ${info.def}`}</span>
-                          <span className={fieldDelta > 0 ? "text-emerald-500" : fieldDelta < 0 ? "text-destructive" : undefined}>
-                            Field {effectivenessLabel(fieldDelta)} {fieldDelta > 0 ? "+1 Acc" : fieldDelta < 0 ? "-1 Acc" : "0 Acc"}
+                          <span className="flex flex-wrap gap-x-1">
+                            <span>Field</span>{" "}
+                            {fieldRelations.length > 0
+                              ? fieldRelations.map((relation, index) => (
+                                  <span
+                                    key={`${token.id}-field-${relation.field}`}
+                                    className={
+                                      relation.delta > 0
+                                        ? "text-emerald-500"
+                                        : relation.delta < 0
+                                          ? "text-destructive"
+                                          : "text-muted-foreground"
+                                    }
+                                  >
+                                    {technique.field} {relation.symbol} {relation.field}
+                                    {index < fieldRelations.length - 1 ? ";" : ""}
+                                  </span>
+                                ))
+                              : <span className="text-muted-foreground">{technique.field} = -</span>}
+                            <span className={fieldDelta > 0 ? "text-emerald-500" : fieldDelta < 0 ? "text-destructive" : "text-muted-foreground"}>
+                              ({fieldDelta > 0 ? "+" : ""}{fieldDelta} dados Acc)
+                            </span>
                           </span>
-                          <span className={typeDelta > 0 ? "text-emerald-500" : typeDelta < 0 ? "text-destructive" : undefined}>
-                            Type {effectivenessLabel(typeDelta)} {typeDelta > 0 ? "+1 dano" : typeDelta < 0 ? "-1 dano" : "0 dano"}
+                          <span className={typeDelta > 0 ? "text-emerald-500" : typeDelta < 0 ? "text-destructive" : "text-muted-foreground"}>
+                            Type {attackerType} {typeRelationSymbol(typeDelta)} {defenderType} ({typeDelta > 0 ? "+" : ""}{typeDelta} dano)
                           </span>
                         </span>
                       )}

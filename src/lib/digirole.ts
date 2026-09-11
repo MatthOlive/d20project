@@ -170,9 +170,27 @@ export function digiRoleAttributeModifier(
   attacker: string | null | undefined,
   defender: string | null | undefined,
 ): -1 | 0 | 1 {
-  const attack = attacker === "No" ? "None" : attacker;
-  const defend = defender === "No" ? "None" : defender;
-  if (!attack || !defend || (attack === defend && attack !== "None")) return 0;
+  const normalize = (value: string | null | undefined) => {
+    const key = (value ?? "").trim().toLocaleLowerCase("pt-BR");
+    const aliases: Record<string, string> = {
+      va: "Vaccine",
+      vaccine: "Vaccine",
+      vi: "Virus",
+      virus: "Virus",
+      da: "Data",
+      data: "Data",
+      uk: "Unknown",
+      unknown: "Unknown",
+      no: "None",
+      none: "None",
+      neutra: "None",
+      neutral: "None",
+    };
+    return aliases[key] ?? value;
+  };
+  const attack = normalize(attacker);
+  const defend = normalize(defender);
+  if (!attack || !defend || attack === defend) return 0;
   if (attack === "None") return -1;
   if (attack === "Unknown") return 1;
   if (defend === "Unknown") return 0;
