@@ -2340,6 +2340,7 @@ function DigiRoleDigimonSheet({
   const [catalogSearch, setCatalogSearch] = useState("");
   const [catalogFilter, setCatalogFilter] = useState<"signature" | "inventory" | "grade" | null>(null);
   const [catalogField, setCatalogField] = useState("all");
+  const [masterTechniqueMode, setMasterTechniqueMode] = useState(false);
   const [autoFilling, setAutoFilling] = useState(false);
   useEffect(() => {
     if (query.data) setDraft(query.data);
@@ -2530,9 +2531,12 @@ function DigiRoleDigimonSheet({
   const catalogFields = Array.from(
     new Set([
       ...availableTechniques.map((technique) => technique.field),
+      ...(isNarrator ? (catalogQuery.data ?? []).map((technique) => technique.field) : []),
       ...(inventoryTechniquesQuery.data ?? []).map((technique) => technique.field),
     ].filter(Boolean)),
   ).sort((left, right) => left.localeCompare(right));
+  const techniqueCatalogForDisplay =
+    isNarrator && masterTechniqueMode ? (catalogQuery.data ?? []) : availableTechniques;
 
   async function patch(values: Partial<DigimonSheet>) {
     setDraft((current) => (current ? { ...current, ...values } : current));
@@ -2803,7 +2807,7 @@ function DigiRoleDigimonSheet({
       : speciesTechniqueLinks.get(technique.id)?.is_signature
         ? "signature"
         : "learned";
-    if (source !== "signature" && genericTechniqueCount >= genericLimit) {
+    if (!isNarrator && source !== "signature" && genericTechniqueCount >= genericLimit) {
       toast.error(`Limite de ${genericLimit} técnicas genéricas atingido (2 + Sabedoria).`);
       return;
     }
@@ -3275,6 +3279,7 @@ function DigiRoleDigimonSheet({
           victories={draft.victories}
           trainingSuccesses={draft.training_successes}
           canEdit={canEdit}
+          isNarrator={isNarrator}
           onUpdated={() => Promise.all([query.refetch(), techniqueQuery.refetch()])}
         />
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
@@ -3401,6 +3406,19 @@ function DigiRoleDigimonSheet({
               </Button>
             ))}
           </div>
+          {isNarrator && (
+            <Button
+              type="button"
+              variant={masterTechniqueMode ? "default" : "outline"}
+              className="w-full border-amber-500/60 text-[11px] text-amber-600"
+              onClick={() => {
+                setMasterTechniqueMode((current) => !current);
+                setCatalogFilter("grade");
+              }}
+            >
+              Mestre: {masterTechniqueMode ? "todas as técnicas ativas" : "mostrar todas as técnicas"}
+            </Button>
+          )}
           <div className="min-h-0 space-y-4 overflow-y-scroll pt-3 pr-2 [scrollbar-gutter:stable]">
             {!techniqueCatalogReady && (
               <p className="py-4 text-center text-xs text-muted-foreground">
@@ -3461,9 +3479,10 @@ function DigiRoleDigimonSheet({
                 {catalogFilter === "signature" ? "Técnicas assinaturas" : "Técnicas por Grau"}
               </button>
               {TECHNIQUE_GRADES.map((grade) => {
-                const techniques = availableTechniques.filter((technique) => {
+                const techniques = techniqueCatalogForDisplay.filter((technique) => {
                   const isSignature = speciesTechniqueLinks.get(technique.id)?.is_signature === true;
                   if (catalogField !== "all" && technique.field !== catalogField) return false;
+                  if (masterTechniqueMode) return technique.grade.trim().toUpperCase() === grade;
                   if (catalogFilter === "signature") return isSignature;
                   return !isSignature && technique.grade.trim().toUpperCase() === grade;
                 });
@@ -3476,7 +3495,7 @@ function DigiRoleDigimonSheet({
                     {techniques.map((technique) => {
                       const signature =
                         speciesTechniqueLinks.get(technique.id)?.is_signature === true;
-                      const genericBlocked = !signature && genericTechniqueCount >= genericLimit;
+                      const genericBlocked = !isNarrator && !signature && genericTechniqueCount >= genericLimit;
                       return (
                         <button
                           key={technique.id}
@@ -3492,7 +3511,11 @@ function DigiRoleDigimonSheet({
                           <span className="min-w-0 flex-1">
                             <strong className="block truncate text-xs">{technique.name}</strong>
                             <span className="block truncate text-[10px] text-muted-foreground">
-                              {signature ? "Assinatura" : "Genérica"} · Grau {technique.grade || "-"} ·{" "}
+                              {isNarrator && masterTechniqueMode
+                                ? "Mestre"
+                                : signature
+                                  ? "Assinatura"
+                                  : "Genérica"} · Grau {technique.grade || "-"} ·{" "}
                               {technique.field} · {technique.category}
                               {genericBlocked ? " · limite atingido" : ""}
                             </span>

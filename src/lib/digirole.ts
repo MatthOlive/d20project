@@ -172,9 +172,10 @@ export function digiRoleAttributeModifier(
 ): -1 | 0 | 1 {
   const attack = attacker === "No" ? "None" : attacker;
   const defend = defender === "No" ? "None" : defender;
-  if (!attack || !defend || attack === defend) return 0;
-  if (attack === "Unknown" && ["Vaccine", "Virus", "Data", "None"].includes(defend)) return 1;
-  if (defend === "Unknown" && ["Vaccine", "Virus", "Data", "None"].includes(attack)) return -1;
+  if (!attack || !defend || (attack === defend && attack !== "None")) return 0;
+  if (attack === "None") return -1;
+  if (attack === "Unknown") return 1;
+  if (defend === "Unknown") return 0;
   const beats: Record<string, string> = { Vaccine: "Virus", Virus: "Data", Data: "Vaccine" };
   if (beats[attack] === defend || (["Vaccine", "Virus", "Data"].includes(attack) && defend === "None")) return 1;
   if (beats[defend] === attack || (["Vaccine", "Virus", "Data"].includes(defend) && attack === "None")) return -1;

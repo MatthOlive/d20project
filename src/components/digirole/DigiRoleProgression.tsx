@@ -711,6 +711,7 @@ export function DigiRoleEvolutionPanel({
   victories,
   trainingSuccesses,
   canEdit,
+  isNarrator,
   onUpdated,
 }: {
   gameId: string;
@@ -727,6 +728,7 @@ export function DigiRoleEvolutionPanel({
   victories: number;
   trainingSuccesses: number;
   canEdit: boolean;
+  isNarrator: boolean;
   onUpdated: () => Promise<unknown> | void;
 }) {
   const queryClient = useQueryClient();
@@ -814,6 +816,7 @@ export function DigiRoleEvolutionPanel({
     return (catalogQuery.data ?? [])
       .filter((entry) => !unlocked.has(entry.id) && entry.id !== currentSpeciesId)
       .filter((entry) => {
+        if (isNarrator) return true;
         const isNextForm = route.includes(entry.name.toLocaleUpperCase("pt-BR"));
         const isPreviousForm =
           (FORM_STAGE_ORDER[entry.stage] ?? 99) < currentOrder &&
@@ -837,6 +840,7 @@ export function DigiRoleEvolutionPanel({
     rank,
     search,
     unlocked,
+    isNarrator,
   ]);
   const selected = candidates.find((entry) => entry.id === selectedId) ?? null;
 
@@ -865,9 +869,11 @@ export function DigiRoleEvolutionPanel({
   }
 
   const filteredCandidates = candidates.filter((entry) =>
-    catalogFilter === "available"
-      ? candidateStatus(entry).met
-      : entry.stage === catalogFilter,
+    isNarrator
+      ? catalogFilter === "available" || entry.stage === catalogFilter
+      : catalogFilter === "available"
+        ? candidateStatus(entry).met
+        : entry.stage === catalogFilter,
   );
 
   async function refreshAll() {
@@ -910,7 +916,7 @@ export function DigiRoleEvolutionPanel({
       trainingSuccesses,
       techniques: techniquesQuery.data ?? [],
     });
-    if (!status.met) {
+    if (!isNarrator && !status.met) {
       toast.error("Esta forma ainda possui requisitos pendentes.");
       return;
     }
@@ -920,7 +926,7 @@ export function DigiRoleEvolutionPanel({
         p_digimon_id: digimonId,
         p_species_id: selected.id,
         p_requirements_confirmed: true,
-        p_force: false,
+        p_force: isNarrator,
       });
       if (result.error) throw result.error;
       const data = result.data as { cost?: number } | null;
@@ -1131,6 +1137,20 @@ export function DigiRoleEvolutionPanel({
             autoFocus
           />
           <div className="flex shrink-0 gap-1 overflow-x-auto pb-1 [scrollbar-gutter:stable]">
+            {isNarrator && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="shrink-0 border-amber-500/60 px-3 text-[10px] text-amber-600"
+                onClick={() => {
+                  setCatalogFilter("available");
+                  setSelectedId(null);
+                }}
+              >
+                Mestre: todas as formas
+              </Button>
+            )}
             {EVOLUTION_CATALOG_FILTERS.map((filter) => (
               <Button
                 key={filter}
@@ -1175,7 +1195,9 @@ export function DigiRoleEvolutionPanel({
                       {requirement || "Sem requisito adicional descrito"}
                     </span>
                     <span className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[9px]">
-                      {status.checks.map((check) => (
+                      {isNarrator ? (
+                        <span className="text-amber-600">Mestre: requisitos ignorados</span>
+                      ) : status.checks.map((check) => (
                         <span
                           key={`${entry.id}-${check.label}`}
                           className={check.met ? "text-emerald-500" : "text-destructive"}

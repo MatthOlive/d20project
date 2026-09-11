@@ -120,6 +120,14 @@ function isEnergy(category: string): boolean {
   return /energia|energy/i.test(category);
 }
 
+function effectivenessLabel(delta: number): string {
+  return delta > 0 ? "Vantagem" : delta < 0 ? "Desvantagem" : "Nulo";
+}
+
+function clampEffectiveness(delta: number): -1 | 0 | 1 {
+  return delta > 0 ? 1 : delta < 0 ? -1 : 0;
+}
+
 function useCurrentPage(gameId: string, userId: string, enabled: boolean) {
   return useQuery({
     queryKey: ["current-map-page", gameId, userId],
@@ -386,7 +394,7 @@ export function DigiRoleTechniqueRollDialog({
     selectedInfo.length > 0
       ? Math.min(
           ...selectedInfo.map((target) =>
-            digiRoleFieldAccuracyModifier(technique.field, target.fields),
+            clampEffectiveness(digiRoleFieldAccuracyModifier(technique.field, target.fields)),
           ),
         )
       : 0;
@@ -446,23 +454,23 @@ export function DigiRoleTechniqueRollDialog({
         if (selectedInfo.length > 0) {
           damageTargets = selectedInfo.map((target) => {
             const defense = energy ? target.res : target.def;
-            const pool = Math.max(0, damagePool + damageBonus - defense);
-            const rolled = rollDigiRole(pool, 0);
             const typeDelta = digiRoleAttributeModifier(digiAttribute, target.digiAttribute);
-            const finalDamage = Math.max(1, rolled.successes + typeDelta);
+            const pool = Math.max(0, damagePool + damageBonus + typeDelta - defense);
+            const rolled = rollDigiRole(pool, 0);
+            const finalDamage = Math.max(1, rolled.successes);
             return {
               requestId: requestIds.get(target.tokenId),
               tokenId: target.tokenId,
               name: target.name,
               def: defense,
               defStat: energy ? "spdef" : "def",
-              effLabel: typeDelta > 0 ? "Vantagem +1" : typeDelta < 0 ? "Desvantagem -1" : "Neutro",
+              effLabel: `${effectivenessLabel(typeDelta)} ${typeDelta > 0 ? "+1" : typeDelta < 0 ? "-1" : "0"} dado`,
               effDelta: typeDelta,
               immune: false,
               finalDamage,
               dice: rolled.dice,
               successes: rolled.successes,
-              basePool: Math.max(0, damagePool + damageBonus),
+              basePool: Math.max(0, damagePool + damageBonus + typeDelta),
               pool,
               effectivenessMode: "successes",
             };
@@ -699,6 +707,12 @@ export function DigiRoleTechniqueRollDialog({
               <div className="space-y-1">
                 {group.rows.map((token) => {
                   const info = targets.info.get(token.id);
+                  const fieldDelta = info
+                    ? clampEffectiveness(digiRoleFieldAccuracyModifier(technique.field, info.fields))
+                    : 0;
+                  const typeDelta = info
+                    ? digiRoleAttributeModifier(digiAttribute, info.digiAttribute)
+                    : 0;
                   return (
                     <label
                       key={token.id}
@@ -718,12 +732,14 @@ export function DigiRoleTechniqueRollDialog({
                         {info?.name ?? token.label}
                       </strong>
                       {info && (
-                        <span className="text-[10px] text-muted-foreground">
-                          {energy ? `RES ${info.res}` : `DEF ${info.def}`} ·{" "}
-                          {digiRoleFieldAccuracyModifier(technique.field, info.fields) >= 0
-                            ? "+"
-                            : ""}
-                          {digiRoleFieldAccuracyModifier(technique.field, info.fields)} Acc
+                        <span className="flex flex-wrap items-center justify-end gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
+                          <span>{energy ? `RES ${info.res}` : `DEF ${info.def}`}</span>
+                          <span className={fieldDelta > 0 ? "text-emerald-500" : fieldDelta < 0 ? "text-destructive" : undefined}>
+                            Field {effectivenessLabel(fieldDelta)} {fieldDelta > 0 ? "+1 Acc" : fieldDelta < 0 ? "-1 Acc" : "0 Acc"}
+                          </span>
+                          <span className={typeDelta > 0 ? "text-emerald-500" : typeDelta < 0 ? "text-destructive" : undefined}>
+                            Type {effectivenessLabel(typeDelta)} {typeDelta > 0 ? "+1 dano" : typeDelta < 0 ? "-1 dano" : "0 dano"}
+                          </span>
                         </span>
                       )}
                     </label>
