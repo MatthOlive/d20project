@@ -416,7 +416,7 @@ export function DigiRoleTechniqueRollDialog({
   const actions = Math.max(0, actionsUsed);
   const required = actions + 1;
   const criticalRequired = Math.max(1, 3 + required - criticalBonus);
-  const criticalFailureRequired = 3 + required;
+  const criticalFailureRequired = 3;
   const energy = isEnergy(technique.category);
   const selectedReady = selected.every((tokenId) => targets.info.has(tokenId));
   const selectedInfo = selected
@@ -463,7 +463,8 @@ export function DigiRoleTechniqueRollDialog({
     try {
       const accuracy = rollDigiRole(finalAccuracyPool, finalAccuracyPool <= 0 ? 1 : 0);
       const accuracyOnes = accuracy.dice.filter((die) => die === 1).length;
-      const isCriticalFailure = accuracyOnes >= criticalFailureRequired;
+      const isCriticalFailure = accuracyOnes >= criticalFailureRequired &&
+        ![...accuracy.dice, ...accuracy.chance].some((die) => die >= 4);
       const isHit = !isCriticalFailure && accuracy.successes >= required;
       const isCritical = isHit && accuracy.successes >= criticalRequired;
       const resolutionId = crypto.randomUUID();
