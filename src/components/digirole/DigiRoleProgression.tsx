@@ -589,7 +589,7 @@ const EVOLUTION_REQUIREMENTS_BY_STAGE: Record<string, number> = {
   "In-Training II": 1,
   Rookie: 2,
   Champion: 3,
-  Ultimate: 4,
+  Ultimate: 5,
   Mega: Number.POSITIVE_INFINITY,
 };
 
@@ -688,7 +688,7 @@ function evaluateEvolutionRequirement(
       : []),
     ...secondary.map((check, index) => ({
       ...check,
-      label: `${check.label} · secundário ${index + 1}/8`,
+      label: `${check.label} · secundário ${index + 1}/${secondary.length}`,
     })),
     ...((context.dataUnits ?? 0) > 0
       ? [{ label: `Data · ${context.dataUnits} requisito(s)`, met: true }]
@@ -974,6 +974,8 @@ export function DigiRoleEvolutionPanel({
   async function transform(form: ArchiveForm) {
     setBusy(true);
     try {
+      const before = await table("digirole_digimons").select("hp_current,ds_current,attr_points,bonuses,stabilized_forms,rank").eq("id", digimonId).single();
+      if (before.error) throw before.error;
       const targetResult = await table("digirole_species")
           .select("id,name,stage,hp_base,base_attrs,signature_technique,image_url")
           .eq("id", form.species_id)
@@ -985,7 +987,7 @@ export function DigiRoleEvolutionPanel({
         p_species_id: form.species_id,
       });
       if (result.error) throw result.error;
-      const currentStage = (catalogQuery.data ?? []).find((entry) => entry.id === currentSpeciesId)?.stage ?? rank;
+      const currentStage = (formsQuery.data ?? []).find((entry) => entry.species_id === currentSpeciesId)?.species.stage ?? rank;
       const movingUp = (FORM_STAGE_ORDER[form.species.stage] ?? 99) > (FORM_STAGE_ORDER[currentStage] ?? 99);
       const targetImage =
         (targetResult.data?.image_url as string | null | undefined) ||
@@ -1001,13 +1003,16 @@ export function DigiRoleEvolutionPanel({
         attrs: targetAttrs,
       };
       if (targetImage) transformedValues.image_url = targetImage;
+      const effective = Object.fromEntries(Object.entries(targetAttrs).map(([key, value]) =>
+        [key, value + (before.data.attr_points?.[key] ?? 0) + (before.data.bonuses?.[key] ?? 0)]));
+      const hpMaximum = digiRoleDigimonHpMax(Number(targetResult.data?.hp_base ?? 3), effective, before.data.rank) + (before.data.bonuses?.hp ?? 0);
+      const dsMaximum = digiRoleDigimonDsMax(effective, before.data.stabilized_forms, before.data.rank) + (before.data.bonuses?.ds ?? 0);
       if (movingUp) {
-        transformedValues.hp_current = digiRoleDigimonHpMax(
-          Number(targetResult.data?.hp_base ?? 3),
-          targetAttrs,
-          form.species.stage,
-        );
-        transformedValues.ds_current = digiRoleDigimonDsMax(targetAttrs, 1, form.species.stage);
+        transformedValues.hp_current = hpMaximum;
+        transformedValues.ds_current = dsMaximum;
+      } else {
+        transformedValues.hp_current = Math.min(before.data.hp_current, hpMaximum);
+        transformedValues.ds_current = Math.min(before.data.ds_current, dsMaximum);
       }
       const updated = await table("digirole_digimons")
         .update(transformedValues)

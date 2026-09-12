@@ -2112,7 +2112,7 @@ function DigiRoleTamerSheet({
               tamerId={id}
               canEdit={canEdit}
               scanPool={(effectiveAttrs.wisdom ?? 0) + (draft.skills.Science ?? 0)}
-              onRoll={(label, pool) => roll(label, pool)}
+              onRoll={(label, pool) => roll(label, pool, "move")}
             />
             <section className="m-4 mt-0 rounded-xl border border-border bg-card p-4">
               <h3 className="mb-2 text-xs font-black uppercase text-muted-foreground">Progresso</h3>

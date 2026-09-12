@@ -1163,6 +1163,7 @@ function DigiRoleDataScanButton({
         tokenId,
         label: `${tamerName} · Data Scan · ${selected.nickname || selected.species.name}`,
         pool: scanPool,
+        actionType: "move",
       });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const result = await (supabase as any).rpc("record_digirole_scan", {

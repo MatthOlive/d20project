@@ -237,10 +237,11 @@ export function MoveReactionCoordinator({ gameId, userId }: { gameId: string; us
       const damage = move.damage
         ? { ...move.damage, targets: adjustedDamageTargets(move.damage.targets, responses) }
         : null;
-      const attackerDamage = responses.reduce(
+      const clashDamage = responses.reduce(
         (total, response) => total + (response.choice === "clash" && response.succeeded ? 1 : 0),
         0,
       );
+      const attackerDamage = move.system === "digirole" ? Math.min(1, clashDamage) : clashDamage;
       void (async () => {
         const isDigiRole = move.system === "digirole";
         const atomicResolution = isDigiRole ? null : await finalizeAtomicMove(gameId, source.id);
