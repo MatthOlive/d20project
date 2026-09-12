@@ -83,6 +83,9 @@ export function GameEngineActionBridge({
             };
       const updated = await commitRef.current(command);
       sessionRef.current = updated;
+      if (detail.actionType === "move" && detail.label.startsWith("Digievolução")) {
+        sessionRef.current = await commitRef.current({ type: "advance_turn" });
+      }
     }
 
     function onActionRolled(event: Event) {

@@ -1455,8 +1455,8 @@ function DigiRoleTamerSheet({
     draft.bonuses ?? {},
   );
   const hpMax = hybridSpecies
-    ? digiRoleDigimonHpMax(hybridSpecies.hp_base, effectiveAttrs)
-    : digiRoleTamerHpMax(effectiveAttrs);
+    ? digiRoleDigimonHpMax(hybridSpecies.hp_base, effectiveAttrs, draft.rank)
+    : digiRoleTamerHpMax(effectiveAttrs, draft.rank);
   const dsMax = digiRoleTamerDsMax(effectiveAttrs, draft.condensed_count, draft.rank);
   const initiativePool =
     digiRoleInitiativePool(effectiveAttrs, draft.skills) + (draft.bonuses?.initiative ?? 0);
@@ -1492,7 +1492,7 @@ function DigiRoleTamerSheet({
     draft.bonuses ?? {},
     draft.skills,
     "dexterity",
-    "Weapons",
+    "Aim",
   );
 
   async function patch(values: Partial<TamerSheet>) {
@@ -1598,7 +1598,7 @@ function DigiRoleTamerSheet({
       tamer.bonuses ?? {},
       tamer.skills,
       attr,
-      "Weapons",
+      label === "Shoot" ? "Aim" : "Weapons",
     );
     const accuracyResult = await roll(`${tamer.name} · ${label} · Accuracy`, accuracy, "move");
     if (!accuracyResult) return;
@@ -2450,8 +2450,8 @@ function DigiRoleDigimonSheet({
     draft.attr_points ?? {},
     draft.bonuses ?? {},
   );
-  const hpMax = digiRoleDigimonHpMax(species?.hp_base ?? 3, effectiveAttrs);
-  const dsMax = digiRoleDigimonDsMax(effectiveAttrs, draft.stabilized_forms);
+  const hpMax = digiRoleDigimonHpMax(species?.hp_base ?? 3, effectiveAttrs, draft.rank);
+  const dsMax = digiRoleDigimonDsMax(effectiveAttrs, draft.stabilized_forms, draft.rank);
   const displayImage = draft.image_hidden ? null : draft.image_url || species?.image_url || null;
   const initiativePool =
     digiRoleInitiativePool(effectiveAttrs, draft.skills) + (draft.bonuses?.initiative ?? 0);
@@ -2661,8 +2661,8 @@ function DigiRoleDigimonSheet({
           skills,
           unspent_attr_points: Math.max(0, budget.attrPoints - spentAttrs),
           unspent_skill_points: Math.max(0, budget.skillPoints - spentSkills),
-          hp_current: digiRoleDigimonHpMax(species.hp_base, effective),
-          ds_current: digiRoleDigimonDsMax(effective, draft.stabilized_forms),
+          hp_current: digiRoleDigimonHpMax(species.hp_base, effective, draft.rank),
+          ds_current: digiRoleDigimonDsMax(effective, draft.stabilized_forms, draft.rank),
         })
         .eq("id", id);
       if (updated.error) throw updated.error;
@@ -3280,6 +3280,7 @@ function DigiRoleDigimonSheet({
           trainingSuccesses={draft.training_successes}
           canEdit={canEdit}
           isNarrator={isNarrator}
+          tamerId={draft.tamer_id}
           onUpdated={() => Promise.all([query.refetch(), techniqueQuery.refetch()])}
         />
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">

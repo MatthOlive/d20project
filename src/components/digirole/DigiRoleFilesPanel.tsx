@@ -509,8 +509,8 @@ export function DigiRoleFilesPanel({
     mutationFn: async () => {
       if (!selectedSpecies) throw new Error("Escolha uma espécie.");
       const attrs = { ...defaultDigiRoleAttrs(), ...selectedSpecies.base_attrs };
-      const hp = digiRoleDigimonHpMax(selectedSpecies.hp_base, attrs);
-      const ds = digiRoleDigimonDsMax(attrs, 1);
+      const hp = digiRoleDigimonHpMax(selectedSpecies.hp_base, attrs, selectedSpecies.stage);
+      const ds = digiRoleDigimonDsMax(attrs, 1, selectedSpecies.stage);
       const resolvedImage =
         selectedSpecies.image_url || (await fetchDigiApiImage(selectedSpecies.name));
       if (resolvedImage && !selectedSpecies.image_url) {

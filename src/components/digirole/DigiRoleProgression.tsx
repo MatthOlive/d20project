@@ -19,6 +19,8 @@ import { syncDigiRoleSignatureTechniques } from "@/lib/digirole-techniques";
 import {
   DIGIROLE_SKILL_GROUPS,
   DIGIROLE_TRAINING_REQUIRED,
+  digiRoleDigimonDsMax,
+  digiRoleDigimonHpMax,
   nextDigiRoleRank,
   type DigiRoleNumbers,
   type DigiRoleRoll,
@@ -537,6 +539,7 @@ type EvolutionRequirementContext = {
   victories: number;
   trainingSuccesses: number;
   techniques: EvolutionTechnique[];
+  dataUnits?: number;
 };
 
 const ATTRIBUTE_REQUIREMENTS: Record<string, { id: string; label: string }> = {
@@ -583,11 +586,11 @@ function gradeNumber(value: string) {
 }
 
 const EVOLUTION_REQUIREMENTS_BY_STAGE: Record<string, number> = {
-  "In-Training II": 2,
-  Rookie: 3,
-  Champion: 4,
-  Ultimate: 5,
-  Mega: 9,
+  "In-Training II": 1,
+  Rookie: 2,
+  Champion: 3,
+  Ultimate: 4,
+  Mega: Number.POSITIVE_INFINITY,
 };
 
 function requiredEvolutionRequirements(stage: string, available: number) {
@@ -671,10 +674,9 @@ function evaluateEvolutionRequirement(
     });
   }
 
-  const required = requiredEvolutionRequirements(target.stage, requirements.length);
   const [principal, ...secondary] = requirements;
-  const requiredSecondary = Math.max(0, required - (principal ? 1 : 0));
-  const metSecondary = secondary.filter((check) => check.met).length;
+  const requiredSecondary = requiredEvolutionRequirements(target.stage, secondary.length);
+  const metSecondary = secondary.filter((check) => check.met).length + Math.max(0, context.dataUnits ?? 0);
   const routeMet =
     requirements.length === 0
       ? !/MISSAO|ITEM.CHAVE|CONDICAO NARRATIVA|TRANSFORMACAO ESPECIAL/.test(normalized)
@@ -688,6 +690,9 @@ function evaluateEvolutionRequirement(
       ...check,
       label: `${check.label} · secundário ${index + 1}/8`,
     })),
+    ...((context.dataUnits ?? 0) > 0
+      ? [{ label: `Data · ${context.dataUnits} requisito(s)`, met: true }]
+      : []),
   ];
   return {
     cost,
@@ -712,6 +717,7 @@ export function DigiRoleEvolutionPanel({
   trainingSuccesses,
   canEdit,
   isNarrator,
+  tamerId,
   onUpdated,
 }: {
   gameId: string;
@@ -729,6 +735,7 @@ export function DigiRoleEvolutionPanel({
   trainingSuccesses: number;
   canEdit: boolean;
   isNarrator: boolean;
+  tamerId?: string | null;
   onUpdated: () => Promise<unknown> | void;
 }) {
   const queryClient = useQueryClient();
@@ -737,6 +744,16 @@ export function DigiRoleEvolutionPanel({
   const [catalogFilter, setCatalogFilter] = useState<EvolutionCatalogFilter>("available");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [dataPercent, setDataPercent] = useState(0);
+  const tamerInventoryQuery = useQuery({
+    queryKey: ["digirole-evolution-data", tamerId],
+    enabled: open && !!tamerId,
+    queryFn: async (): Promise<Array<{ name: string; quantity?: number }>> => {
+      const result = await table("digirole_tamers").select("inventory").eq("id", tamerId).single();
+      if (result.error) throw result.error;
+      return (result.data?.inventory ?? []) as Array<{ name: string; quantity?: number }>;
+    },
+  });
   const formsQuery = useQuery({
     queryKey: ["digirole-forms", digimonId],
     queryFn: async (): Promise<ArchiveForm[]> => {
@@ -855,6 +872,9 @@ export function DigiRoleEvolutionPanel({
   }
 
   function candidateStatus(entry: SpeciesSummary) {
+    const hasDataItem = (tamerInventoryQuery.data ?? []).some((item) =>
+      item.quantity !== 0 && normalizedRequirement(item.name).includes(normalizedRequirement(entry.name)),
+    );
     return evaluateEvolutionRequirement(candidateRequirement(entry), entry, {
       rank,
       pe,
@@ -865,6 +885,7 @@ export function DigiRoleEvolutionPanel({
       victories,
       trainingSuccesses,
       techniques: techniquesQuery.data ?? [],
+      dataUnits: hasDataItem ? Math.floor(Math.max(0, dataPercent) / 20) : 0,
     });
   }
 
@@ -915,6 +936,9 @@ export function DigiRoleEvolutionPanel({
       victories,
       trainingSuccesses,
       techniques: techniquesQuery.data ?? [],
+      dataUnits: (tamerInventoryQuery.data ?? []).some((item) =>
+        item.quantity !== 0 && normalizedRequirement(item.name).includes(normalizedRequirement(selected.name)),
+      ) ? Math.floor(Math.max(0, dataPercent) / 20) : 0,
     });
     if (!isNarrator && !status.met) {
       toast.error("Esta forma ainda possui requisitos pendentes.");
@@ -947,27 +971,22 @@ export function DigiRoleEvolutionPanel({
     setBusy(true);
     try {
       const [beforeResult, targetResult] = await Promise.all([
-        table("digirole_digimons").select("attrs").eq("id", digimonId).single(),
+        table("digirole_digimons").select("id").eq("id", digimonId).single(),
         table("digirole_species")
-          .select("id,name,base_attrs,signature_technique,image_url")
+          .select("id,name,stage,hp_base,base_attrs,signature_technique,image_url")
           .eq("id", form.species_id)
           .single(),
       ]);
       if (beforeResult.error) throw beforeResult.error;
       if (targetResult.error) throw targetResult.error;
-      const previousAttrs = (beforeResult.data?.attrs ?? {}) as Record<string, number>;
       const targetAttrs = (targetResult.data?.base_attrs ?? {}) as Record<string, number>;
       const result = await callRpc("transform_digirole_form", {
         p_digimon_id: digimonId,
         p_species_id: form.species_id,
       });
       if (result.error) throw result.error;
-      const afterResult = await table("digirole_digimons")
-        .select("attrs,hp_current")
-        .eq("id", digimonId)
-        .single();
-      if (afterResult.error) throw afterResult.error;
-      const currentAttrs = (afterResult.data?.attrs ?? {}) as Record<string, number>;
+      const currentStage = (catalogQuery.data ?? []).find((entry) => entry.id === currentSpeciesId)?.stage ?? rank;
+      const movingUp = (FORM_STAGE_ORDER[form.species.stage] ?? 99) > (FORM_STAGE_ORDER[currentStage] ?? 99);
       const targetImage =
         (targetResult.data?.image_url as string | null | undefined) ||
         (await fetchDigiApiImage(targetResult.data?.name as string));
@@ -979,15 +998,16 @@ export function DigiRoleEvolutionPanel({
       }
       const transformedValues: Record<string, unknown> = {
         image_hidden: false,
+        attrs: targetAttrs,
       };
       if (targetImage) transformedValues.image_url = targetImage;
-      if (JSON.stringify(currentAttrs) !== JSON.stringify(targetAttrs)) {
-        const vitalityDelta = (targetAttrs.vitality ?? 1) - (previousAttrs.vitality ?? 1);
-        transformedValues.attrs = targetAttrs;
-        transformedValues.hp_current = Math.max(
-          0,
-          (afterResult.data?.hp_current ?? 0) + vitalityDelta,
+      if (movingUp) {
+        transformedValues.hp_current = digiRoleDigimonHpMax(
+          Number(targetResult.data?.hp_base ?? 3),
+          targetAttrs,
+          form.species.stage,
         );
+        transformedValues.ds_current = digiRoleDigimonDsMax(targetAttrs, 1, form.species.stage);
       }
       const updated = await table("digirole_digimons")
         .update(transformedValues)
@@ -1005,6 +1025,13 @@ export function DigiRoleEvolutionPanel({
         tamerDsCost?: number;
       } | null;
       const totalCost = (data?.digimonDsCost ?? 0) + (data?.tamerDsCost ?? 0);
+      if (movingUp) window.dispatchEvent(new CustomEvent("d20-engine-action-rolled", { detail: {
+        gameId,
+        characterId: digimonId,
+        characterKind: "digirole_digimon",
+        actionType: "move",
+        label: `Digievolução: ${form.species.name}`,
+      }}));
       toast.success(
         `${form.species.name} ativado${totalCost ? ` por ${totalCost} DS` : ""}.`,
       );
@@ -1136,6 +1163,18 @@ export function DigiRoleEvolutionPanel({
             placeholder="Procurar forma no catálogo..."
             autoFocus
           />
+          <label className="text-xs font-semibold text-muted-foreground">
+            Data
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              value={dataPercent}
+              onChange={(event) => setDataPercent(Number(event.target.value) || 0)}
+              placeholder="0"
+            />
+            <span className="mt-1 block text-[10px] font-normal">Cada 20% conta como 1 requisito secundário. O inventário do Tamer precisa conter os dados da forma.</span>
+          </label>
           <div className="flex shrink-0 gap-1 overflow-x-auto pb-1 [scrollbar-gutter:stable]">
             {isNarrator && (
               <Button

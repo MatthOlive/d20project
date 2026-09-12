@@ -76,6 +76,7 @@ type Props = {
   onClose: () => void;
   onOpenSheet: () => void;
   showInitiative?: boolean;
+  isNarrator?: boolean;
   extra?: React.ReactNode;
 };
 
@@ -238,6 +239,7 @@ function DigiRoleBar({
   onOpenSheet,
   extra,
   showInitiative = false,
+  isNarrator = false,
 }: Props) {
   const isDigimon = kind === "digirole_digimon";
   const qc = useQueryClient();
@@ -551,6 +553,7 @@ function DigiRoleBar({
       />
       {digimonSpecies && (
         <DigiRoleEvolutionButton
+          isNarrator={isNarrator}
           gameId={gameId}
           digimonId={id}
           currentSpecies={digimonSpecies}
@@ -1247,6 +1250,7 @@ function DigiRoleDataScanButton({
 }
 
 function DigiRoleEvolutionButton({
+  isNarrator,
   gameId,
   digimonId,
   currentSpecies,
@@ -1260,6 +1264,7 @@ function DigiRoleEvolutionButton({
   trainingSuccesses,
   onUpdated,
 }: {
+  isNarrator: boolean;
   gameId: string;
   digimonId: string;
   currentSpecies: DigiRoleSpecies;
@@ -1285,6 +1290,7 @@ function DigiRoleEvolutionButton({
           <DialogTitle>DigiArchive · {currentSpecies.name}</DialogTitle>
         </DialogHeader>
         <DigiRoleEvolutionPanel
+          isNarrator={isNarrator}
           gameId={gameId}
           digimonId={digimonId}
           currentSpeciesId={currentSpecies.id}

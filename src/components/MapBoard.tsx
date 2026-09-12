@@ -2823,6 +2823,7 @@ export function MapBoard({
                         onClick={(e) => e.stopPropagation()}
                       >
                         <TokenActionBar
+                          isNarrator={isNarrator}
                           kind={t.character_kind}
                           id={t.character_id}
                           tokenId={t.id}

@@ -10,7 +10,7 @@ export const DIGIROLE_ATTRS = [
 export type DigiRoleAttr = (typeof DIGIROLE_ATTRS)[number]["id"];
 
 export const DIGIROLE_SKILL_GROUPS = {
-  Luta: ["Fight", "Channel", "Clash", "Evasion", "Throw", "Weapons", "Extra (Luta)"],
+  Luta: ["Fight", "Channel", "Clash", "Evasion", "Aim", "Weapons", "Extra (Luta)"],
   Sobrevivência: ["Alert", "Athletic", "Nature", "Stealth", "Extra (Sobrevivência)"],
   Social: ["Empathy", "Etiquette", "Intimidate", "Perform", "Extra (Social)"],
   Conhecimento: ["Crafts", "Lore", "Medicine", "Science", "Extra (Conhecimento)"],
@@ -93,12 +93,14 @@ export function defaultDigiRoleNotoriety(): DigiRoleNumbers {
   return Object.fromEntries(DIGIROLE_NOTORIETY.map((skill) => [skill, 0]));
 }
 
-export function digiRoleTamerHpMax(attrs: DigiRoleNumbers): number {
-  return 3 + Math.max(0, Math.trunc(attrs.vitality ?? 1));
+export function digiRoleTamerHpMax(attrs: DigiRoleNumbers, rank = "In-Training I"): number {
+  const rankIndex = Math.max(0, DIGIROLE_STAGES.indexOf(rank as DigiRoleStage));
+  return 5 + Math.max(0, Math.trunc(attrs.vitality ?? 1)) + (rankIndex + 1) * 2;
 }
 
-export function digiRoleDigimonHpMax(hpBase: number, attrs: DigiRoleNumbers): number {
-  return Math.max(1, Math.trunc(hpBase)) + Math.max(0, Math.trunc(attrs.vitality ?? 1));
+export function digiRoleDigimonHpMax(hpBase: number, attrs: DigiRoleNumbers, rank = "In-Training I"): number {
+  const rankIndex = Math.max(0, DIGIROLE_STAGES.indexOf(rank as DigiRoleStage));
+  return Math.max(1, Math.trunc(hpBase)) + Math.max(0, Math.trunc(attrs.vitality ?? 1)) + (rankIndex + 1) * 2;
 }
 
 export function digiRoleTamerDsMax(
@@ -115,8 +117,9 @@ export function digiRoleTamerDsMax(
   );
 }
 
-export function digiRoleDigimonDsMax(attrs: DigiRoleNumbers, stabilizedForms = 1): number {
-  return 2 + Math.max(0, Math.trunc(attrs.spirit ?? 1)) + Math.max(0, Math.trunc(stabilizedForms));
+export function digiRoleDigimonDsMax(attrs: DigiRoleNumbers, stabilizedForms = 1, rank = "In-Training I"): number {
+  const rankIndex = Math.max(0, DIGIROLE_STAGES.indexOf(rank as DigiRoleStage));
+  return 2 + Math.max(0, Math.trunc(attrs.spirit ?? 1)) + Math.max(0, Math.trunc(stabilizedForms)) + (rankIndex + 1) * 2;
 }
 
 export function digiRoleInitiativePool(attrs: DigiRoleNumbers, skills: DigiRoleNumbers): number {

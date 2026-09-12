@@ -1,5 +1,6 @@
 import { type ReactNode } from "react";
 import { TYPE_COLORS } from "@/lib/pokerole";
+import { digiRoleFieldColor } from "@/lib/digirole-colors";
 import { EffectIcons } from "@/components/EffectIcons";
 import { cn } from "@/lib/utils";
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
@@ -93,6 +94,9 @@ export type MoveRollMessage = {
       required: number;
       critRequired: number;
       isCrit: boolean;
+      failureRequired?: number;
+      ones?: number;
+      isCriticalFailure?: boolean;
     };
   };
   damage: {
@@ -240,10 +244,9 @@ export function MoveRollResultCard({
   const chance = message.chance ?? [];
   const chanceSuccesses = chance.reduce((sum, item) => sum + item.successes, 0);
   const hasDamageBubble = !!message.damage && !message.damage.isStatus && !hasTargets;
-  const tcol = TYPE_COLORS[message.card.type as keyof typeof TYPE_COLORS] ?? {
-    bg: "#888",
-    fg: "#fff",
-  };
+  const tcol = message.system === "digirole"
+    ? { bg: digiRoleFieldColor(message.card.type), fg: "#fff" }
+    : TYPE_COLORS[message.card.type as keyof typeof TYPE_COLORS] ?? { bg: "#888", fg: "#fff" };
   const requiredSuccesses = crit?.required ?? 1;
   const isHit = message.accuracy.isHit ?? message.accuracy.successes >= requiredSuccesses;
   // A resolved move remains a single, complete card: accuracy first, then resolution.
@@ -322,8 +325,13 @@ export function MoveRollResultCard({
               isHit ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive",
             )}
           >
-            {isHit ? "Acerto" : "Erro"}
+            {crit?.isCriticalFailure ? "Erro crítico" : isHit ? "Acerto" : "Erro"}
           </p>
+          {crit?.isCriticalFailure && (
+            <p className="mt-2 text-center text-xs text-destructive">
+              {crit.ones} resultados 1 na Accuracy (necessários: {crit.failureRequired}). O mestre decide o efeito.
+            </p>
+          )}
           {crit?.isCrit && (
             <p className="mt-2 rounded-md bg-amber-400/15 px-2 py-1 text-center text-sm font-black uppercase text-amber-500">
               Critical Hit +1 dado
