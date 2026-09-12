@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useGameSpdefUsesInsight } from "@/hooks/use-game-spdef-uses-insight";
 import { toast } from "sonner";
+import { digiRoleSheetResources } from "@/lib/digirole-resources";
 
 type Stat = {
   label: string;
@@ -50,14 +51,14 @@ function DigiRoleStats({
   const qc = useQueryClient();
   const table = kind === "digirole_tamer" ? "digirole_tamers" : "digirole_digimons";
   const { data } = useQuery({
-    queryKey: ["token-digirole-stats", kind, id],
+    queryKey: [kind === "digirole_tamer" ? "digirole-tamer" : "digirole-digimon", id],
     queryFn: async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase.from(table as never) as any)
         .select(
           kind === "digirole_tamer"
-            ? "attrs,attr_points,bonuses,hp_current,ds_current,condensed_count,hybrid_state,rank"
-            : "attrs,attr_points,bonuses,hp_current,ds_current,stabilized_forms,species:species_id(hp_base)",
+            ? "*"
+            : "*,species:species_id(*)",
         )
         .eq("id", id)
         .single();
@@ -78,12 +79,12 @@ function DigiRoleStats({
   });
   const hybridSpeciesId = kind === "digirole_tamer" ? data?.hybrid_state?.speciesId : null;
   const { data: hybridSpecies = null } = useQuery({
-    queryKey: ["token-digirole-stats-hybrid", hybridSpeciesId],
+    queryKey: ["digirole-tamer-hybrid-species", hybridSpeciesId],
     enabled: !!hybridSpeciesId,
     queryFn: async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase.from("digirole_species" as never) as any)
-        .select("base_attrs,hp_base")
+        .select("*")
         .eq("id", hybridSpeciesId)
         .single();
       if (error) throw error;
@@ -99,28 +100,10 @@ function DigiRoleStats({
     (currentData.bonuses?.[key] ?? 0);
   const vit = totalAttr("vitality");
   const wis = totalAttr("wisdom");
-  const spr = totalAttr("spirit");
-  const hpBase =
-    kind === "digirole_tamer" ? (hybridSpecies?.hp_base ?? 3) : (currentData.species?.hp_base ?? 3);
-  const hpMax = hpBase + vit + (currentData.bonuses?.hp ?? 0);
-  const dsMax =
-    kind === "digirole_tamer"
-      ? 4 +
-        totalAttr("spirit") +
-        (currentData.condensed_count ?? 0) +
-        Math.max(
-          0,
-          ["In-Training I", "In-Training II", "Rookie", "Champion", "Ultimate", "Mega", "Mega+"].indexOf(
-            currentData.rank ?? "In-Training I",
-          ),
-        ) *
-          2 +
-        2 +
-        (currentData.bonuses?.ds ?? 0)
-      : 2 + spr + (currentData.stabilized_forms ?? 1) + (currentData.bonuses?.ds ?? 0);
+  const resources = digiRoleSheetResources(kind, currentData, hybridSpecies);
 
   async function patch(field: "hp_current" | "ds_current", value: number) {
-    const key = ["token-digirole-stats", kind, id] as const;
+    const key = [kind === "digirole_tamer" ? "digirole-tamer" : "digirole-digimon", id] as const;
     const previous = currentData[field];
     qc.setQueryData(key, (old: typeof currentData | undefined) =>
       old ? { ...old, [field]: value } : old,
@@ -150,15 +133,15 @@ function DigiRoleStats({
       stats={[
         {
           label: "HP",
-          cur: data.hp_current,
-          max: hpMax,
+          cur: resources.hp.current,
+          max: resources.hp.max,
           color: "#22c55e",
           onChange: (value) => void patch("hp_current", value),
         },
         {
           label: "DS",
-          cur: data.ds_current,
-          max: dsMax,
+          cur: resources.ds.current,
+          max: resources.ds.max,
           color: "#06b6d4",
           onChange: (value) => void patch("ds_current", value),
         },

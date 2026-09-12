@@ -15,6 +15,17 @@ import type {
 const SESSION_COLUMNS =
   "id,game_id,page_id,system_id,status,version,state,created_by,created_at,updated_at";
 const EVENT_COLUMNS = "id,session_id,game_id,version,actor_user_id,command,payload,created_at";
+let serverCommandUnavailableUntil = 0;
+
+function completeSessionResponse(value: unknown, gameId: string): EngineSession | null {
+  const row = Array.isArray(value) && value.length === 1 ? value[0] : value;
+  if (!row || typeof row !== "object") return null;
+  const session = row as EngineSession;
+  if (typeof session.id !== "string" || session.game_id !== gameId ||
+      !Number.isFinite(session.version) || !session.state ||
+      typeof session.state.phase !== "string" || !Array.isArray(session.state.participants)) return null;
+  return session;
+}
 
 function messageOf(error: unknown) {
   if (error instanceof Error) return error.message;
@@ -133,6 +144,10 @@ function retainEngineSubscription(gameId: string, queryClient: QueryClient) {
         }
         const incoming = payload.new as unknown as EngineSession;
         if (!incoming?.id) return;
+        if (!incoming.state || !Array.isArray(incoming.state.participants)) {
+          void entry.queryClient.invalidateQueries({ queryKey: sessionKey });
+          return;
+        }
         entry.queryClient.setQueryData<EngineSession | null>(sessionKey, (currentSession) =>
           reconcileVersionedState(currentSession, incoming),
         );
@@ -217,7 +232,11 @@ export function useGameEngine({ gameId, actor }: { gameId: string; actor: Engine
       });
       if (error) throw error;
       if (!data) throw new Error("O banco não retornou a sessão criada.");
-      return data;
+      const session = completeSessionResponse(data, gameId) ?? await fetchSession(gameId);
+      if (!session?.state || !Array.isArray(session.state.participants)) {
+        throw new Error("Não foi possível carregar o estado completo do encontro. Tente atualizar o Motor.");
+      }
+      return session;
     },
     onSuccess: (session) => {
       queryClient.setQueryData(sessionKey, session);
@@ -235,13 +254,16 @@ export function useGameEngine({ gameId, actor }: { gameId: string; actor: Engine
 
       for (let attempt = 0; attempt < 4; attempt += 1) {
         const payload = { ...engineCommandPayload(command), commandId: id };
-        let result = await supabase.rpc("commit_game_engine_command", {
+        let result = Date.now() < serverCommandUnavailableUntil
+          ? { data: null, error: { code: "PGRST202", message: "Command RPC unavailable" } }
+          : await supabase.rpc("commit_game_engine_command", {
           p_session_id: latest.id,
           p_expected_version: latest.version,
           p_command: command.type,
           p_payload: payload,
         });
         if (result.error && isServerCommandRpcUnavailable(result.error)) {
+          serverCommandUnavailableUntil = Date.now() + 60_000;
           const nextState = applyEngineCommand(latest.state, command, actor);
           result = await supabase.rpc("commit_game_engine_state", {
             p_session_id: latest.id,
@@ -252,7 +274,14 @@ export function useGameEngine({ gameId, actor }: { gameId: string; actor: Engine
           });
         }
         const { data, error } = result;
-        if (!error && data) return data;
+        if (!error && data) {
+          // RPC responses may be acknowledgements rather than complete session rows.
+          const session = completeSessionResponse(data, gameId) ?? await fetchSession(gameId);
+          if (!session?.state || !Array.isArray(session.state.participants)) {
+            throw new Error("Não foi possível carregar o estado completo do encontro. Tente atualizar o Motor.");
+          }
+          return session;
+        }
 
         const failure = error ?? new Error("O banco não retornou o novo estado do encontro.");
         if (!isRetryableEngineError(failure) || attempt === 3) throw failure;
@@ -285,7 +314,9 @@ export function useGameEngine({ gameId, actor }: { gameId: string; actor: Engine
   }
 
   return {
-    session: sessionQuery.data ?? null,
+    session: sessionQuery.data?.state && Array.isArray(sessionQuery.data.state.participants)
+      ? sessionQuery.data
+      : null,
     events: eventsQuery.data ?? [],
     isLoading: sessionQuery.isLoading,
     error: sessionQuery.error,

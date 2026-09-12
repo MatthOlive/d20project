@@ -170,7 +170,12 @@ export async function syncDigiRoleSignatureTechniques({
   signatureName: string | null;
   speciesName: string;
 }): Promise<string[]> {
-  let techniqueIds = await fetchDigiRoleSpeciesSignatureTechniqueIds(speciesId);
+  const [expectedIds, equipped] = await Promise.all([
+    fetchDigiRoleSpeciesSignatureTechniqueIds(speciesId),
+    table("digirole_digimon_techniques").select("technique_id").eq("digimon_id", digimonId).eq("source", "signature"),
+  ]);
+  if (equipped.error) throw equipped.error;
+  let techniqueIds = expectedIds;
   if (techniqueIds.length === 0) {
     const fallbackId = await fetchDigiRoleSignatureTechniqueId({
       speciesId,
@@ -180,6 +185,10 @@ export async function syncDigiRoleSignatureTechniques({
     if (fallbackId) techniqueIds = [fallbackId];
   }
 
+  const currentIds = new Set<string>((equipped.data ?? []).map((row: { technique_id: string }) => row.technique_id));
+  if (currentIds.size === techniqueIds.length && techniqueIds.every((id) => currentIds.has(id))) {
+    return techniqueIds;
+  }
   const cleared = await table("digirole_digimon_techniques")
     .delete()
     .eq("digimon_id", digimonId)

@@ -493,9 +493,17 @@ export function GameEnginePanel({
       return;
     }
     const state = createEngineState({ systemId, pageId: currentPageId, participants });
+    let rolled = 0;
+    if (isNarrator) {
+      for (const participant of state.participants) {
+        if (participant.ownerId !== userId) continue;
+        const result = rules.rollInitiative(participant);
+        participant.initiative = result.value;
+        rolled += 1;
+      }
+    }
     await run(async () => {
       await engine.start(state);
-      const rolled = await rollNarratorInitiatives(state.participants);
       toast.success(
         rolled > 0
           ? `Encontro criado. ${rolled} iniciativa(s) do narrador rolada(s).`

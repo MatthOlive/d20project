@@ -1,7 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { recordClientDiagnostic } from "@/lib/client-diagnostics";
+import { recordClientDiagnostic, downloadClientDiagnostics } from "@/lib/client-diagnostics";
 
 type Props = {
   children: ReactNode;
@@ -42,6 +42,15 @@ export class PanelErrorBoundary extends Component<Props, State> {
         </div>
         <Button size="sm" variant="outline" onClick={() => this.setState({ error: null })}>
           <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Tentar novamente
+        </Button>
+        <details className="max-w-full text-left text-xs">
+          <summary className="cursor-pointer">Detalhes do erro</summary>
+          <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words">
+            {this.state.error.message}
+          </pre>
+        </details>
+        <Button size="sm" variant="outline" onClick={downloadClientDiagnostics}>
+          Baixar diagnóstico
         </Button>
       </div>
     );

@@ -57,6 +57,7 @@ import {
 } from "@/components/digirole/DigiRoleProgression";
 import { DigiRoleTechniqueRollDialog } from "@/components/digirole/DigiRoleTechniqueRollDialog";
 import { emitEngineActionRolled } from "@/lib/game-engine/action-events";
+import { digiRoleSheetResources } from "@/lib/digirole-resources";
 import { fetchDigiApiImage } from "@/lib/digi-api";
 import { DigiRoleImage } from "@/components/digirole/DigiRoleImage";
 import {
@@ -84,8 +85,6 @@ import {
   digiRoleDigimonHpMax,
   digiRoleFormulaPool,
   digiRoleInitiativePool,
-  digiRoleTamerDsMax,
-  digiRoleTamerHpMax,
   rollDigiRole,
   type DigiRoleNumbers,
   type DigiRoleRoll,
@@ -1454,10 +1453,7 @@ function DigiRoleTamerSheet({
     draft.attr_points ?? {},
     draft.bonuses ?? {},
   );
-  const hpMax = hybridSpecies
-    ? digiRoleDigimonHpMax(hybridSpecies.hp_base, effectiveAttrs, draft.rank)
-    : digiRoleTamerHpMax(effectiveAttrs, draft.rank);
-  const dsMax = digiRoleTamerDsMax(effectiveAttrs, draft.condensed_count, draft.rank);
+  const resources = digiRoleSheetResources("digirole_tamer", draft, hybridSpecies);
   const initiativePool =
     digiRoleInitiativePool(effectiveAttrs, draft.skills) + (draft.bonuses?.initiative ?? 0);
   const clashPool = actionPool(
@@ -1502,7 +1498,12 @@ function DigiRoleTamerSheet({
       .eq("id", id)
       .select("id")
       .maybeSingle();
-    if (result.error) toast.error(messageOf(result.error));
+    if (result.error) {
+      toast.error(messageOf(result.error));
+      await query.refetch();
+    } else {
+      queryClient.setQueryData<TamerSheet>(["digirole-tamer", id], (current) => current ? { ...current, ...values } : current);
+    }
   }
   async function remove() {
     if (!confirm("Excluir este Tamer?")) return;
@@ -1937,7 +1938,7 @@ function DigiRoleTamerSheet({
                           className="h-8"
                         />
                         <span className="text-xs text-muted-foreground">
-                          /{hpMax + (draft.bonuses?.hp ?? 0)}
+                          /{resources.hp.max}
                         </span>
                         <Input
                           title="Bônus de HP"
@@ -1971,7 +1972,7 @@ function DigiRoleTamerSheet({
                           className="h-8"
                         />
                         <span className="text-xs text-muted-foreground">
-                          /{dsMax + (draft.bonuses?.ds ?? 0)}
+                          /{resources.ds.max}
                         </span>
                         <Input
                           title="Bônus de DS"
@@ -2450,8 +2451,7 @@ function DigiRoleDigimonSheet({
     draft.attr_points ?? {},
     draft.bonuses ?? {},
   );
-  const hpMax = digiRoleDigimonHpMax(species?.hp_base ?? 3, effectiveAttrs, draft.rank);
-  const dsMax = digiRoleDigimonDsMax(effectiveAttrs, draft.stabilized_forms, draft.rank);
+  const resources = digiRoleSheetResources("digirole_digimon", draft);
   const displayImage = draft.image_hidden ? null : draft.image_url || species?.image_url || null;
   const initiativePool =
     digiRoleInitiativePool(effectiveAttrs, draft.skills) + (draft.bonuses?.initiative ?? 0);
@@ -2547,7 +2547,12 @@ function DigiRoleDigimonSheet({
       .eq("id", id)
       .select("id")
       .maybeSingle();
-    if (result.error) toast.error(messageOf(result.error));
+    if (result.error) {
+      toast.error(messageOf(result.error));
+      await query.refetch();
+    } else {
+      queryClient.setQueryData<DigimonSheet>(["digirole-digimon", id], (current) => current ? { ...current, ...values } : current);
+    }
   }
 
   async function setFormVictories(value: number) {
@@ -2846,6 +2851,13 @@ function DigiRoleDigimonSheet({
     void techniqueQuery.refetch();
   }
   async function unequip(technique: Technique) {
+    if (draft?.evolution_state?.npc === true && !draft.tamer_id) {
+      const result = await table("digirole_digimon_techniques").delete().eq("digimon_id", id).eq("technique_id", technique.id);
+      if (result.error) return toast.error(messageOf(result.error));
+      await techniqueQuery.refetch();
+      toast.success("Técnica desequipada do NPC.");
+      return;
+    }
     if (!draft?.tamer_id || !linkedTamerQuery.data) {
       toast.error("Vincule este Digimon a um Tamer para guardar a técnica no inventário.");
       return;
@@ -2935,6 +2947,13 @@ function DigiRoleDigimonSheet({
             >
               <Dices className="mr-1 h-3.5 w-3.5" />
               {autoFilling ? "Preenchendo..." : "Preencher"}
+            </Button>
+          )}
+          {canEdit && (
+            <Button size="sm" className="h-7" variant={draft.evolution_state?.npc === true ? "default" : "outline"}
+              aria-pressed={draft.evolution_state?.npc === true}
+              onClick={() => void patch({ evolution_state: { ...draft.evolution_state, npc: draft.evolution_state?.npc !== true } })}>
+              NPC
             </Button>
           )}
         </div>
@@ -3040,7 +3059,7 @@ function DigiRoleDigimonSheet({
                     className="h-8"
                   />
                   <span className="text-xs text-muted-foreground">
-                    /{hpMax + (draft.bonuses?.hp ?? 0)}
+                    /{resources.hp.max}
                   </span>
                   <Input
                     title="Bônus de HP"
@@ -3069,7 +3088,7 @@ function DigiRoleDigimonSheet({
                     className="h-8"
                   />
                   <span className="text-xs text-muted-foreground">
-                    /{dsMax + (draft.bonuses?.ds ?? 0)}
+                    /{resources.ds.max}
                   </span>
                   <Input
                     title="Bônus de DS"
@@ -3281,6 +3300,7 @@ function DigiRoleDigimonSheet({
           canEdit={canEdit}
           isNarrator={isNarrator}
           tamerId={draft.tamer_id}
+          isNpc={draft.evolution_state?.npc === true}
           onUpdated={() => Promise.all([query.refetch(), techniqueQuery.refetch()])}
         />
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">

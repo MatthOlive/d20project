@@ -718,6 +718,7 @@ export function DigiRoleEvolutionPanel({
   canEdit,
   isNarrator,
   tamerId,
+  isNpc = false,
   onUpdated,
 }: {
   gameId: string;
@@ -736,6 +737,7 @@ export function DigiRoleEvolutionPanel({
   canEdit: boolean;
   isNarrator: boolean;
   tamerId?: string | null;
+  isNpc?: boolean;
   onUpdated: () => Promise<unknown> | void;
 }) {
   const queryClient = useQueryClient();
@@ -745,6 +747,8 @@ export function DigiRoleEvolutionPanel({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [dataPercent, setDataPercent] = useState(0);
+  const [ignoreRequirements, setIgnoreRequirements] = useState(false);
+  const masterOverride = isNarrator && ignoreRequirements;
   const tamerInventoryQuery = useQuery({
     queryKey: ["digirole-evolution-data", tamerId],
     enabled: open && !!tamerId,
@@ -833,7 +837,7 @@ export function DigiRoleEvolutionPanel({
     return (catalogQuery.data ?? [])
       .filter((entry) => !unlocked.has(entry.id) && entry.id !== currentSpeciesId)
       .filter((entry) => {
-        if (isNarrator) return true;
+        if (masterOverride) return true;
         const isNextForm = route.includes(entry.name.toLocaleUpperCase("pt-BR"));
         const isPreviousForm =
           (FORM_STAGE_ORDER[entry.stage] ?? 99) < currentOrder &&
@@ -857,7 +861,7 @@ export function DigiRoleEvolutionPanel({
     rank,
     search,
     unlocked,
-    isNarrator,
+    masterOverride,
   ]);
   const selected = candidates.find((entry) => entry.id === selectedId) ?? null;
 
@@ -872,7 +876,7 @@ export function DigiRoleEvolutionPanel({
   }
 
   function candidateStatus(entry: SpeciesSummary) {
-    const hasDataItem = (tamerInventoryQuery.data ?? []).some((item) =>
+    const hasDataItem = isNpc || (tamerInventoryQuery.data ?? []).some((item) =>
       item.quantity !== 0 && normalizedRequirement(item.name).includes(normalizedRequirement(entry.name)),
     );
     return evaluateEvolutionRequirement(candidateRequirement(entry), entry, {
@@ -890,7 +894,7 @@ export function DigiRoleEvolutionPanel({
   }
 
   const filteredCandidates = candidates.filter((entry) =>
-    isNarrator
+    masterOverride
       ? catalogFilter === "available" || entry.stage === catalogFilter
       : catalogFilter === "available"
         ? candidateStatus(entry).met
@@ -936,11 +940,11 @@ export function DigiRoleEvolutionPanel({
       victories,
       trainingSuccesses,
       techniques: techniquesQuery.data ?? [],
-      dataUnits: (tamerInventoryQuery.data ?? []).some((item) =>
+      dataUnits: (isNpc || (tamerInventoryQuery.data ?? []).some((item) =>
         item.quantity !== 0 && normalizedRequirement(item.name).includes(normalizedRequirement(selected.name)),
-      ) ? Math.floor(Math.max(0, dataPercent) / 20) : 0,
+      )) ? Math.floor(Math.max(0, dataPercent) / 20) : 0,
     });
-    if (!isNarrator && !status.met) {
+    if (!masterOverride && !status.met) {
       toast.error("Esta forma ainda possui requisitos pendentes.");
       return;
     }
@@ -950,7 +954,7 @@ export function DigiRoleEvolutionPanel({
         p_digimon_id: digimonId,
         p_species_id: selected.id,
         p_requirements_confirmed: true,
-        p_force: isNarrator,
+        p_force: masterOverride,
       });
       if (result.error) throw result.error;
       const data = result.data as { cost?: number } | null;
@@ -970,14 +974,10 @@ export function DigiRoleEvolutionPanel({
   async function transform(form: ArchiveForm) {
     setBusy(true);
     try {
-      const [beforeResult, targetResult] = await Promise.all([
-        table("digirole_digimons").select("id").eq("id", digimonId).single(),
-        table("digirole_species")
+      const targetResult = await table("digirole_species")
           .select("id,name,stage,hp_base,base_attrs,signature_technique,image_url")
           .eq("id", form.species_id)
-          .single(),
-      ]);
-      if (beforeResult.error) throw beforeResult.error;
+          .single();
       if (targetResult.error) throw targetResult.error;
       const targetAttrs = (targetResult.data?.base_attrs ?? {}) as Record<string, number>;
       const result = await callRpc("transform_digirole_form", {
@@ -1013,6 +1013,13 @@ export function DigiRoleEvolutionPanel({
         .update(transformedValues)
         .eq("id", digimonId);
       if (updated.error) throw updated.error;
+      if (movingUp) window.dispatchEvent(new CustomEvent("d20-engine-action-rolled", { detail: {
+        gameId,
+        characterId: digimonId,
+        characterKind: "digirole_digimon",
+        actionType: "move",
+        label: `Digievolução: ${form.species.name}`,
+      }}));
       const signature = targetResult.data?.signature_technique as string | null | undefined;
       await syncDigiRoleSignatureTechniques({
         digimonId,
@@ -1025,13 +1032,6 @@ export function DigiRoleEvolutionPanel({
         tamerDsCost?: number;
       } | null;
       const totalCost = (data?.digimonDsCost ?? 0) + (data?.tamerDsCost ?? 0);
-      if (movingUp) window.dispatchEvent(new CustomEvent("d20-engine-action-rolled", { detail: {
-        gameId,
-        characterId: digimonId,
-        characterKind: "digirole_digimon",
-        actionType: "move",
-        label: `Digievolução: ${form.species.name}`,
-      }}));
       toast.success(
         `${form.species.name} ativado${totalCost ? ` por ${totalCost} DS` : ""}.`,
       );
@@ -1083,6 +1083,7 @@ export function DigiRoleEvolutionPanel({
             onClick={() => {
               setCatalogFilter("available");
               setSelectedId(null);
+              setIgnoreRequirements(false);
               setOpen(true);
             }}
           >
@@ -1183,11 +1184,12 @@ export function DigiRoleEvolutionPanel({
                 variant="outline"
                 className="shrink-0 border-amber-500/60 px-3 text-[10px] text-amber-600"
                 onClick={() => {
+                  setIgnoreRequirements((current) => !current);
                   setCatalogFilter("available");
                   setSelectedId(null);
                 }}
               >
-                Mestre: todas as formas
+                {masterOverride ? "Mestre: ignorando requisitos e PE" : "Mestre: ignorar requisitos e PE"}
               </Button>
             )}
             {EVOLUTION_CATALOG_FILTERS.map((filter) => (
@@ -1215,10 +1217,10 @@ export function DigiRoleEvolutionPanel({
                 <button
                   type="button"
                   key={entry.id}
-                  disabled={!status.met}
-                  onClick={() => status.met && setSelectedId(entry.id)}
+                  disabled={!masterOverride && !status.met}
+                  onClick={() => (masterOverride || status.met) && setSelectedId(entry.id)}
                   className={`flex w-full items-center gap-2 rounded border px-3 py-2 text-left transition-colors ${
-                    status.met
+                    masterOverride || status.met
                       ? active
                         ? "border-primary bg-primary/10"
                         : "border-border hover:bg-accent"
@@ -1228,13 +1230,13 @@ export function DigiRoleEvolutionPanel({
                   <span className="min-w-0 flex-1">
                     <strong className="block truncate text-xs">{entry.name}</strong>
                     <span className="block text-[10px] text-muted-foreground">
-                      {entry.stage} · {status.cost} PE
+                      {entry.stage} · {masterOverride ? 0 : status.cost} PE
                     </span>
                     <span className="mt-0.5 block text-[10px] text-foreground">
                       {requirement || "Sem requisito adicional descrito"}
                     </span>
                     <span className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[9px]">
-                      {isNarrator ? (
+                      {masterOverride ? (
                         <span className="text-amber-600">Mestre: requisitos ignorados</span>
                       ) : status.checks.map((check) => (
                         <span

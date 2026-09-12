@@ -41,8 +41,8 @@ export function createEngineState({
   };
 }
 
-export function currentEngineParticipant(state: EngineState): EngineParticipant | null {
-  if (state.phase !== "turns" || state.participants.length === 0) return null;
+export function currentEngineParticipant(state: EngineState | null | undefined): EngineParticipant | null {
+  if (!state || state.phase !== "turns" || !Array.isArray(state.participants) || state.participants.length === 0) return null;
   return state.participants[state.turnIndex] ?? null;
 }
 

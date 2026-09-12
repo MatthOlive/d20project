@@ -1884,10 +1884,7 @@ export function MapBoard({
       size: gridSettings.size,
       layer: "tokens",
     };
-    qc.setQueryData<Token[]>(["tokens", gameId, pageId], (old) => [
-      ...(old ?? []),
-      optimisticToken,
-    ]);
+    // Shared token data must contain only persisted IDs: consumers send them to RPCs.
     const removeOptimistic = () => {
       qc.setQueryData<Token[]>(["tokens", gameId, pageId], (old) =>
         (old ?? []).filter((t) => t.id !== optimisticId),
