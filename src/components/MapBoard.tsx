@@ -858,6 +858,8 @@ export function MapBoard({
       if (flushTimer === null) flushTimer = window.setTimeout(flushCharacterUpdates, 300);
     };
 
+    let digiRoleRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+    let refreshDigiRoleRoster = false;
     const applyDigiRoleUpdate = (
       kind: "digirole_tamer" | "digirole_digimon",
       payload: { new: unknown; old: unknown },
@@ -894,10 +896,16 @@ export function MapBoard({
         void qc.invalidateQueries({ queryKey: ["token-digirole-stats", kind, id] });
         void qc.invalidateQueries({ queryKey: [`token-${kind}-status`, id] });
       }
-      void qc.invalidateQueries({ queryKey: ["digirole-target-info", gameId] });
-      void qc.invalidateQueries({ queryKey: ["digirole-files", gameId] });
-      if (kind === "digirole_digimon") {
-        void qc.invalidateQueries({ queryKey: ["digirole-roster"] });
+      refreshDigiRoleRoster ||= kind === "digirole_digimon";
+      if (digiRoleRefreshTimer === undefined) {
+        digiRoleRefreshTimer = setTimeout(() => {
+          digiRoleRefreshTimer = undefined;
+          void qc.invalidateQueries({ queryKey: ["digirole-target-info", gameId] }, { cancelRefetch: false });
+          if (refreshDigiRoleRoster) {
+            void qc.invalidateQueries({ queryKey: ["digirole-roster"] }, { cancelRefetch: false });
+          }
+          refreshDigiRoleRoster = false;
+        }, 400);
       }
     };
 
@@ -962,6 +970,7 @@ export function MapBoard({
       });
     return () => {
       active = false;
+      if (digiRoleRefreshTimer !== undefined) clearTimeout(digiRoleRefreshTimer);
       if (flushTimer !== null) window.clearTimeout(flushTimer);
       clearRealtimeStatus(`characters:${gameId}`);
       void supabase.removeChannel(ch);

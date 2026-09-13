@@ -243,14 +243,35 @@ export function DigiRoleFilesPanel({
   });
 
   useEffect(() => {
+    let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+    const scheduleRefresh = (
+      kind: "tamers" | "digimons",
+      payload: { eventType: string; new: unknown },
+    ) => {
+      const row = payload.new as Record<string, unknown>;
+      const cached = queryClient.getQueryData<{ tamers: TamerRow[]; digimons: DigimonRow[] }>(
+        ["digirole-files", gameId, userId, isNarrator],
+      );
+      const existing = cached?.[kind].find((entry) => entry.id === row.id);
+      const fields = ["name", "nickname", "owner_id", "image_url", "image_hidden", "rank",
+        "folder", "file_order", "allowed_editors", "allowed_viewers"];
+      // Resource and skill updates do not change the Files listing.
+      if (payload.eventType === "UPDATE" && existing && fields.every((key) =>
+        !(key in row) || JSON.stringify(row[key]) ===
+          JSON.stringify((existing as unknown as Record<string, unknown>)[key]),
+      ) && (kind === "tamers" || row.species_id === (existing as DigimonRow).species?.id)) return;
+      if (refreshTimer !== undefined) return;
+      refreshTimer = setTimeout(() => {
+        refreshTimer = undefined;
+        void queryClient.invalidateQueries({ queryKey: ["digirole-files", gameId] });
+      }, 400);
+    };
     const channel = supabase
       .channel(`digirole-files:${gameId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "digirole_tamers", filter: `game_id=eq.${gameId}` },
-        () => {
-          void queryClient.invalidateQueries({ queryKey: ["digirole-files", gameId] });
-        },
+        (payload) => scheduleRefresh("tamers", payload),
       )
       .on(
         "postgres_changes",
@@ -260,15 +281,14 @@ export function DigiRoleFilesPanel({
           table: "digirole_digimons",
           filter: `game_id=eq.${gameId}`,
         },
-        () => {
-          void queryClient.invalidateQueries({ queryKey: ["digirole-files", gameId] });
-        },
+        (payload) => scheduleRefresh("digimons", payload),
       )
       .subscribe();
     return () => {
+      if (refreshTimer !== undefined) clearTimeout(refreshTimer);
       void supabase.removeChannel(channel);
     };
-  }, [gameId, queryClient]);
+  }, [gameId, queryClient, userId, isNarrator]);
 
   const speciesQuery = useQuery({
     queryKey: ["digirole-species-list"],
