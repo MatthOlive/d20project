@@ -1858,7 +1858,8 @@ function DigiRoleTamerSheet({
                       <Input
                         value={draft.name}
                         readOnly={!canEdit}
-                        onChange={(event) => void patch({ name: event.target.value })}
+                        onChange={(event) => setDraft((current) => current ? { ...current, name: event.target.value } : current)}
+                        onBlur={(event) => void patch({ name: event.target.value })}
                         className="h-9 min-w-0 flex-1 text-base font-bold"
                       />
                       {isNarrator && (
@@ -2164,7 +2165,8 @@ function DigiRoleTamerSheet({
               <Textarea
                 value={draft.notes ?? ""}
                 readOnly={!canEdit}
-                onChange={(event) => void patch({ notes: event.target.value })}
+                onChange={(event) => setDraft((current) => current ? { ...current, notes: event.target.value } : current)}
+                onBlur={(event) => void patch({ notes: event.target.value })}
                 className="mt-2 min-h-32"
               />
             </section>
@@ -3010,7 +3012,8 @@ function DigiRoleDigimonSheet({
                 value={draft.nickname ?? ""}
                 placeholder={species?.name || "Nome do Digimon"}
                 readOnly={!canEdit}
-                onChange={(event) => void patch({ nickname: event.target.value || null })}
+                onChange={(event) => setDraft((current) => current ? { ...current, nickname: event.target.value || null } : current)}
+                onBlur={(event) => void patch({ nickname: event.target.value || null })}
                 className="h-9 min-w-0 flex-1 text-base font-bold"
               />
               {isNarrator && (
@@ -3354,7 +3357,8 @@ function DigiRoleDigimonSheet({
         <Textarea
           value={draft.notes ?? ""}
           readOnly={!canEdit}
-          onChange={(event) => void patch({ notes: event.target.value })}
+          onChange={(event) => setDraft((current) => current ? { ...current, notes: event.target.value } : current)}
+          onBlur={(event) => void patch({ notes: event.target.value })}
           className="mt-2 min-h-32"
         />
       </section>

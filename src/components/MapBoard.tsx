@@ -1571,6 +1571,9 @@ export function MapBoard({
       const unique = Array.from(new Set([...prev, ...visibilityPolygons].filter(Boolean))).slice(
         -160,
       );
+      if (unique.length === prev.length && unique.every((path, index) => path === prev[index])) {
+        return prev;
+      }
       try {
         window.localStorage.setItem(exploredStorageKey, JSON.stringify(unique));
       } catch {
@@ -1584,11 +1587,13 @@ export function MapBoard({
     if (isNarrator || exploredPaths.length === 0) return;
     const ownerToken = tokens.find((t) => canActAsOwner(t) && (t.vision_radius ?? 0) > 0);
     if (!ownerToken) return;
+    const nextMask = exploredPaths.slice(-160);
+    if (JSON.stringify(ownerToken.explored_mask ?? []) === JSON.stringify(nextMask)) return;
     const timer = window.setTimeout(() => {
       void (async () => {
         const { error } = await (supabase
           .from("tokens" as never)
-          .update({ explored_mask: exploredPaths.slice(-160) } as never)
+          .update({ explored_mask: nextMask } as never)
           .eq("id", ownerToken.id) as unknown as Promise<{ error: { message: string } | null }>);
         if (error && !isSchemaCacheColumnError(error, ["explored_mask"]))
           toast.error(error.message);
