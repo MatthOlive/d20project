@@ -6,6 +6,10 @@ import type {
   EngineSystemId,
 } from "@/lib/game-engine/types";
 
+export function engineTracksActions(systemId: EngineSystemId): boolean {
+  return systemId === "pokerole" || systemId === "digirole";
+}
+
 function cloneState(state: EngineState): EngineState {
   return JSON.parse(JSON.stringify(state)) as EngineState;
 }
@@ -121,6 +125,7 @@ export function applyEngineCommand(
   }
 
   if (command.type === "record_action") {
+    if (!engineTracksActions(next.systemId)) return next;
     if (next.status !== "running") throw new Error("O encontro precisa estar em andamento.");
     const participant = next.participants.find((entry) => entry.id === command.participantId);
     if (!participant) throw new Error("Participante não encontrado no encontro.");

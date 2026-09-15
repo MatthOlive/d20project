@@ -1932,6 +1932,14 @@ export function MapBoard({
       return;
     }
     if (error) {
+      // A timeout may have committed the RPC already; do not create a second token.
+      if (error.code !== "PGRST202" && error.code !== "42883") {
+        toast.error("Não foi possível confirmar a criação do token. Confira o mapa antes de tentar novamente.", {
+          description: error.message,
+        });
+        void qc.invalidateQueries({ queryKey: ["tokens", gameId, pageId] });
+        return;
+      }
       const fallback = await supabase
         .from("tokens")
         .insert({

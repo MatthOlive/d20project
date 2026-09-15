@@ -31,7 +31,8 @@ import {
   TYPE_COLORS,
   type Rank,
   rankAtLeast,
-  resolveSkillValue,
+  correctedMoveAccuracy,
+  moveAccuracyPool,
   preferredPokemonSprite,
   computeDefensiveEffectiveness,
 } from "@/lib/pokerole";
@@ -652,6 +653,8 @@ export function PokemonSheet({
     "Etiquette",
     "Intimidate",
     "Perform",
+    "Empathy",
+    "Medicine",
   ];
   const allAttrs = POKEMON_ATTRS.map((a) => ({ name: a, value: pokemon.current_attrs[a] ?? 1 }));
   const allSocial = SOCIAL_ATTRS.map((a) => ({ name: a, value: pokemon.social_attrs?.[a] ?? 1 }));
@@ -1163,7 +1166,7 @@ export function PokemonSheet({
           <SkillGroup
             title="Survival"
             tint="bg-emerald-500/15 text-emerald-500"
-            skills={["Alert", "Athletic", "Nature", "Stealth"]}
+            skills={["Alert", "Athletic", "Nature", "Stealth", "Medicine"]}
             values={pokemon.skills}
             canEdit={canEdit}
             onChange={(s) => patch({ skills: { ...pokemon.skills, ...s } })}
@@ -1171,7 +1174,7 @@ export function PokemonSheet({
           <SkillGroup
             title="Social"
             tint="bg-pink-500/15 text-pink-500"
-            skills={["Allure", "Etiquette", "Intimidate", "Perform"]}
+            skills={["Allure", "Etiquette", "Intimidate", "Perform", "Empathy"]}
             values={pokemon.skills}
             canEdit={canEdit}
             onChange={(s) => patch({ skills: { ...pokemon.skills, ...s } })}
@@ -1291,19 +1294,21 @@ export function PokemonSheet({
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           {knownMoves.map((baseMove) => {
+            const correctedBase = { ...baseMove, ...correctedMoveAccuracy(baseMove) };
             const m: Move = (() => {
               if (zMode && baseMove.power > 0)
                 return {
-                  ...baseMove,
+                  ...correctedBase,
                   name: Z_MOVE_NAMES[baseMove.type] ?? `Z-${baseMove.name}`,
                   power: zMovePower(baseMove.power),
                 };
               if (gMaxMode && baseMove.power > 0)
-                return { ...baseMove, name: `G-Max ${baseMove.name}`, power: baseMove.power + 3 };
-              return baseMove;
+                return { ...correctedBase, name: `G-Max ${baseMove.name}`, power: baseMove.power + 3 };
+              return correctedBase;
             })();
             const attrValue = (raw: string): number => {
               const key = raw.toLowerCase().trim();
+              if (key === "will") return pokemon.will ?? 0;
               if (SOCIAL_ATTRS.includes(key as (typeof SOCIAL_ATTRS)[number])) {
                 return (
                   (pokemon.social_attrs?.[key] ?? 1) +
@@ -1331,12 +1336,8 @@ export function PokemonSheet({
               }
               return best ?? { name: raw, value: 1 };
             };
-            const accPick = pickBestAttr(m.accuracy_stat ?? "dexterity");
-            const accStat = accPick.name;
-            const accAttrVal = accPick.value;
-            const accSkill = resolveSkillValue(m.accuracy_skill, pokemon.skills);
-            const accSkillVal = accSkill.value;
-            const accPool = accAttrVal + accSkillVal;
+            const accuracy = moveAccuracyPool(m, attrValue, pokemon.skills);
+            const accPool = accuracy.pool;
             const cat = (m.category ?? "").toLowerCase();
             const isStatus =
               cat === "support" || cat === "status" || m.power <= 0 || !m.damage_stat;
@@ -1351,7 +1352,7 @@ export function PokemonSheet({
             const stabBonus = hasStab ? 1 : 0;
             const dmgPool = isStatus ? 0 : m.power + dmgAttrVal + stabBonus;
             const isSpecial = cat === "special";
-            const accuracyText = `${cap(accStat)}${m.accuracy_skill ? ` + ${accSkill.label}` : ""}`;
+            const accuracyText = accuracy.label;
             const damagePoolText = isStatus
               ? "—"
               : `${cap(dmgStat)} + ${m.power}${hasStab ? " + 1 STAB" : ""}`;

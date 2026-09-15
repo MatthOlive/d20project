@@ -1476,13 +1476,14 @@ function PokemonBar({
       const { data, error } = await supabase
         .from("pokemon")
         .select(
-          "current_attrs, attr_points, attr_bonus, social_attrs, social_attr_points, social_attr_bonus, skills, rank, image_url, hp, current_hp, status, is_shiny, species:species_id(abilities, base_attrs, attr_limits, name, sprite_url, types)",
+          "current_attrs, attr_points, attr_bonus, social_attrs, social_attr_points, social_attr_bonus, skills, rank, image_url, hp, current_hp, will, status, is_shiny, species:species_id(abilities, base_attrs, attr_limits, name, sprite_url, types)",
         )
         .eq("id", id)
         .single();
       if (error) throw error;
       return data as {
         current_attrs: Record<string, number>;
+        will: number;
         attr_points: Record<string, number>;
         attr_bonus: Record<string, number>;
         social_attrs: Record<string, number>;
@@ -1764,6 +1765,7 @@ function MovesButton({
   moves: MoveData[];
   label: string;
   pokemonData: {
+    will?: number;
     current_attrs: Record<string, number>;
     attr_points: Record<string, number>;
     attr_bonus: Record<string, number>;
@@ -1803,6 +1805,7 @@ function MovesButton({
               m,
               {
                 current_attrs: pokemonData.current_attrs,
+                will: pokemonData.will,
                 attr_points: pokemonData.attr_points,
                 attr_bonus: pokemonData.attr_bonus,
                 social_attrs: pokemonData.social_attrs,

@@ -5,7 +5,7 @@ import {
   ENGINE_ACTION_ROLLED_EVENT,
   type EngineActionRolledDetail,
 } from "@/lib/game-engine/action-events";
-import { engineParticipantControllerIds } from "@/lib/game-engine/core";
+import { engineParticipantControllerIds, engineTracksActions } from "@/lib/game-engine/core";
 import type { EngineSession } from "@/lib/game-engine/types";
 
 function messageOf(error: unknown): string {
@@ -49,6 +49,7 @@ export function GameEngineActionBridge({
         sessionRef.current = session;
       }
       if (!session || !sessionAcceptsEvent(session)) return;
+      if (detail.actionType !== "initiative" && !engineTracksActions(session.state.systemId)) return;
 
       const matching = session.state.participants.filter(
         (participant) =>

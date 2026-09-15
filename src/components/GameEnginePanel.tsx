@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { DigiRoleImage } from "@/components/digirole/DigiRoleImage";
 import {
   createEngineState,
+  engineTracksActions,
   currentEngineParticipant,
   mayControlEngineParticipant,
 } from "@/lib/game-engine/core";
@@ -138,6 +139,7 @@ export function GameEnginePanel({
 }) {
   const queryClient = useQueryClient();
   const rules = getEngineRulePack(systemId);
+  const tracksActions = engineTracksActions(systemId);
   const [selectedTokenIds, setSelectedTokenIds] = useState<Set<string>>(new Set());
   const [actionType, setActionType] = useState(rules.actionTypes[0]?.id ?? "other");
   const [actionLabel, setActionLabel] = useState("");
@@ -799,9 +801,9 @@ export function GameEnginePanel({
                     <div className="text-[10px] font-bold uppercase text-primary">Turno atual</div>
                     <div className="truncate text-base font-black">{current.name}</div>
                     <div className="text-[11px] text-muted-foreground">
-                      {rules.actionHint(current)}
+                      {tracksActions ? rules.actionHint(current) : ""}
                     </div>
-                    {actionEntries(current).length > 0 && (
+                    {tracksActions && actionEntries(current).length > 0 && (
                       <div className="mt-1 flex flex-wrap gap-1">
                         {actionEntries(current).map((entry, index) => (
                           <Badge
@@ -820,14 +822,14 @@ export function GameEnginePanel({
                       </div>
                     )}
                   </div>
-                  <div className="text-center">
+                  <div className="text-center" hidden={!tracksActions}>
                     <div className="text-xl font-black tabular-nums">{current.actionsUsed}</div>
                     <div className="text-[9px] uppercase text-muted-foreground">ações</div>
                   </div>
                 </div>
 
                 <div className="space-y-2 rounded-md border border-border p-2">
-                  <Select
+                  {tracksActions && <><Select
                     value={actionType}
                     onValueChange={setActionType}
                     disabled={!mayControlCurrent || session.status !== "running"}
@@ -849,9 +851,9 @@ export function GameEnginePanel({
                     placeholder="Descrição opcional"
                     className="h-8 text-xs"
                     disabled={!mayControlCurrent || session.status !== "running"}
-                  />
+                  /></>}
                   <div className="grid grid-cols-2 gap-2">
-                    <Button
+                    {tracksActions && <Button
                       size="sm"
                       variant="secondary"
                       disabled={!mayControlCurrent || session.status !== "running" || engine.isBusy}
@@ -869,7 +871,7 @@ export function GameEnginePanel({
                       }
                     >
                       <Activity className="mr-1 h-3.5 w-3.5" /> Registrar ação
-                    </Button>
+                    </Button>}
                     <Button
                       size="sm"
                       disabled={!mayControlCurrent || session.status !== "running" || engine.isBusy}
@@ -908,7 +910,7 @@ export function GameEnginePanel({
                       <span className="min-w-0 flex-1 truncate font-semibold">
                         {participant.name}
                       </span>
-                      {participant.actionsUsed > 0 && (
+                      {tracksActions && participant.actionsUsed > 0 && (
                         <span
                           className="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold text-primary"
                           title={actionEntries(participant)

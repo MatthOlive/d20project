@@ -14,7 +14,8 @@ import {
 import { ChevronDown, ChevronUp, Dices } from "lucide-react";
 import { toast } from "sonner";
 import {
-  resolveSkillValue,
+  moveAccuracyPool,
+  moveNeedsAccuracyChoice,
   rollD6,
   SOCIAL_ATTRS,
   damageMultiplierFor,
@@ -241,11 +242,13 @@ export function computeMoveStats(
     social_attr_bonus?: Record<string, number> | null;
     skills?: Record<string, number> | null;
     base_attrs?: Record<string, number> | null;
+    will?: number;
   },
   speciesTypes: string[],
 ): ComputedMoveStats {
   const attrValue = (raw: string): number => {
     const key = raw.toLowerCase().trim();
+    if (key === "will") return p.will ?? 0;
     if ((SOCIAL_ATTRS as readonly string[]).includes(key)) {
       return (
         (p.social_attrs?.[key] ?? 1) +
@@ -273,9 +276,8 @@ export function computeMoveStats(
     }
     return best ?? { name: raw, value: 1 };
   };
-  const accPick = pickBestAttr(move.accuracy_stat ?? "dexterity");
-  const accSkill = resolveSkillValue(move.accuracy_skill, p.skills ?? {});
-  const accPool = accPick.value + accSkill.value;
+  const accuracy = moveAccuracyPool(move, attrValue, p.skills);
+  const accPool = accuracy.pool;
   const catLower = (move.category ?? "").toLowerCase();
   const isStatus =
     catLower === "support" || catLower === "status" || move.power <= 0 || !move.damage_stat;
@@ -286,7 +288,7 @@ export function computeMoveStats(
   const stabBonus = hasStab ? 1 : 0;
   const dmgPool = isStatus ? 0 : move.power + dmgPick.value + stabBonus;
   const isSpecial = catLower === "special";
-  const accuracyText = `${cap(accPick.name)}${move.accuracy_skill ? ` + ${accSkill.label}` : ""}`;
+  const accuracyText = accuracy.label;
   const damagePoolText = isStatus
     ? "—"
     : `${cap(dmgPick.name)} + ${move.power}${hasStab ? " + 1 STAB" : ""}`;
@@ -495,6 +497,8 @@ export function MoveRollDialog({
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
   const [accBonusText, setAccBonusText] = useState("0");
+  const [manualAccuracy, setManualAccuracy] = useState("");
+  const needsAccuracyChoice = moveNeedsAccuracyChoice(move);
   const [dmgBonusText, setDmgBonusText] = useState("0");
   const [targetDefText, setTargetDefText] = useState("0");
   const [critMarginText, setCritMarginText] = useState("0");
@@ -573,6 +577,7 @@ export function MoveRollDialog({
   const effectiveInitialActions = initialActions ?? engineParticipant?.actionsUsed ?? 0;
 
   function changeOpen(next: boolean) {
+    if (!next) setManualAccuracy("");
     setInternalOpen(next);
     onControlledOpenChange?.(next);
   }
@@ -596,7 +601,8 @@ export function MoveRollDialog({
     0,
     dmgPool + dmgBonus + extraDmgBonus - (hasTargets ? 0 : targetDef),
   );
-  const finalAccPoolBeforePain = Math.max(0, accPool + accBonus);
+  const manualPool = needsAccuracyChoice ? readIntegerInput(manualAccuracy, 0) : accPool;
+  const finalAccPoolBeforePain = Math.max(0, manualPool + accBonus);
   const finalAccPool = Math.max(0, finalAccPoolBeforePain - painPenalty);
   const thresholds = resolveMoveAccuracy(0, actions, critMargin);
   const requiredSuccesses = thresholds.requiredSuccesses;
@@ -608,12 +614,16 @@ export function MoveRollDialog({
   }
 
   async function confirm() {
+    if (needsAccuracyChoice && !/^\d+$/.test(manualAccuracy)) {
+      toast.error("Defina a pool de acurácia deste move.");
+      return;
+    }
     if (isSubmitting) return;
     if (onBattleConfirm) {
       setIsSubmitting(true);
       try {
         const completed = await onBattleConfirm({
-          accuracyBonus: accBonus,
+          accuracyBonus: accBonus + manualPool - accPool,
           damageBonus: dmgBonus,
           criticalMargin: critMargin,
           actionsAlreadyMade: actions,
@@ -756,7 +766,7 @@ export function MoveRollDialog({
         name: move.name,
         type: move.type as string,
         power: move.power,
-        accuracyText,
+        accuracyText: needsAccuracyChoice ? `Pool definida: ${manualPool}` : accuracyText,
         damagePoolText,
         effect: move.effect ?? "",
         category: move.category,
@@ -866,11 +876,17 @@ export function MoveRollDialog({
             : "Efetividade: RAW (+/− dados na pool)."}
         </p>
         <div className="space-y-3">
+          {needsAccuracyChoice && (
+            <label className="flex items-center justify-between gap-3">
+              <span>Pool de acurácia</span>
+              <RollNumberInput value={manualAccuracy} onValueChange={setManualAccuracy} min={0} className="h-9 w-20" />
+            </label>
+          )}
           <div className="flex items-center justify-between gap-3">
             <div>
               <Label className="text-xs">Bônus de acurácia (dados)</Label>
               <p className="text-[11px] text-muted-foreground">
-                Pool: {accPool}d6 → rolando {finalAccPool}d6
+                Pool: {manualPool}d6 → rolando {finalAccPool}d6
               </p>
             </div>
             <RollNumberInput
