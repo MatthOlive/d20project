@@ -1,0 +1,320 @@
+[
+  {
+    "name": "Sakuttomon",
+    "stage": "in-training-ii",
+    "slug": "sakuttomon",
+    "correction": "Missing artwork; preserve exact official anatomy.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\in-training-ii\\sakuttomon.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\in-training-ii\\sakuttomon-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\references\\in-training-ii\\sakuttomon.jpg",
+    "official": null
+  },
+  {
+    "name": "Gurimon",
+    "stage": "in-training-ii",
+    "slug": "gurimon",
+    "correction": "Head only. No torso, legs or separate body.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\in-training-ii\\gurimon.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\in-training-ii\\gurimon-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\references\\in-training-ii\\gurimon.jpg",
+    "official": null
+  },
+  {
+    "name": "Nyaromon",
+    "stage": "in-training-ii",
+    "slug": "nyaromon",
+    "correction": "Rebuild round head and long striped tail faithfully.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\in-training-ii\\nyaromon.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\in-training-ii\\nyaromon-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\references\\in-training-ii\\nyaromon.jpg",
+    "official": null
+  },
+  {
+    "name": "Tumblemon",
+    "stage": "in-training-ii",
+    "slug": "tumblemon",
+    "correction": "Rebuild exact official stone body with single eye.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\in-training-ii\\tumblemon.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\in-training-ii\\tumblemon-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\references\\in-training-ii\\tumblemon.jpg",
+    "official": null
+  },
+  {
+    "name": "Viximon",
+    "stage": "in-training-ii",
+    "slug": "viximon",
+    "correction": "Rebuild exact official proportions, ears and tail.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\in-training-ii\\viximon.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\in-training-ii\\viximon-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\references\\in-training-ii\\viximon.jpg",
+    "official": null
+  },
+  {
+    "name": "Agumon Saviors",
+    "stage": "rookie",
+    "slug": "agumon-alternativo-anime-2006",
+    "correction": "Restore missing claw on anatomical right hand. Exactly three claws per hand. Keep red wrist straps.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\rookie\\agumon-alternativo-anime-2006.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\rookie\\agumon-alternativo-anime-2006-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\references\\rookie\\agumon-alternativo-anime-2006-tcg.webp",
+    "official": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\references\\agumon-alternativo-anime-2006-official.jpg"
+  },
+  {
+    "name": "Bearmon",
+    "stage": "rookie",
+    "slug": "bearmon",
+    "correction": "One diagonal chest belt; gloves made from belts wrapped around both hands.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\rookie\\bearmon.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\rookie\\bearmon-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\references\\rookie\\bearmon-tcg.webp",
+    "official": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\references\\bearmon-official.jpg"
+  },
+  {
+    "name": "Betamon (X Antibody)",
+    "stage": "rookie",
+    "slug": "betamon-x-antibody",
+    "correction": "Non-humanoid low-slung amphibian anatomy, never an upright human torso.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\rookie\\betamon-x-antibody.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\rookie\\betamon-x-antibody-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\references\\rookie\\betamon-x-antibody-tcg.webp",
+    "official": null,
+    "officialError": "fetch failed"
+  },
+  {
+    "name": "Burgamon (Rookie)",
+    "stage": "rookie",
+    "slug": "burgamon-rookie",
+    "correction": "Burgamon Rookie only. Old image was wrong species Helloogarmon.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\rookie\\burgamon-rookie.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\rookie\\burgamon-rookie-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\references\\burgamon-rookie-tcg.webp",
+    "official": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\references\\burgamon-rookie-official.jpg",
+    "card": "BT12-046"
+  },
+  {
+    "name": "Chiropmon",
+    "stage": "rookie",
+    "slug": "chiropmon",
+    "correction": "No legs. Preserve canonical winged body.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\rookie\\chiropmon.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\rookie\\chiropmon-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\references\\rookie\\chiropmon-tcg.webp",
+    "official": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\references\\chiropmon-official.jpg"
+  },
+  {
+    "name": "Gaomon",
+    "stage": "rookie",
+    "slug": "gaomon",
+    "correction": "Boxing gloves on both hands, no red scarf or cloth across chest.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\rookie\\gaomon.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\rookie\\gaomon-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\references\\rookie\\gaomon-tcg.webp",
+    "official": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\references\\gaomon-official.jpg"
+  },
+  {
+    "name": "Gazimon (X Antibody)",
+    "stage": "rookie",
+    "slug": "gazimon-x-antibody",
+    "correction": "Both tails pass behind torso and hind leg, never through or in front of that leg.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\rookie\\gazimon-x-antibody.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\rookie\\gazimon-x-antibody-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\references\\rookie\\gazimon-x-antibody-tcg.webp",
+    "official": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\references\\gazimon-x-antibody-official.jpg"
+  },
+  {
+    "name": "Ghostmon",
+    "stage": "rookie",
+    "slug": "ghostmon",
+    "correction": "New composition and reference; canonical ghost anatomy.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\rookie\\ghostmon.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\rookie\\ghostmon-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\references\\ghostmon-tcg.webp",
+    "official": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\references\\ghostmon-official.jpg",
+    "card": "BT4-077"
+  },
+  {
+    "name": "Gumdramon",
+    "stage": "rookie",
+    "slug": "gumdramon",
+    "correction": "Exactly two legs. Separate tail with hammer-shaped tip, not a third leg.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\rookie\\gumdramon.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\rookie\\gumdramon-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\references\\rookie\\gumdramon-tcg.webp",
+    "official": null,
+    "officialError": "fetch failed"
+  },
+  {
+    "name": "Hawkmon",
+    "stage": "rookie",
+    "slug": "hawkmon",
+    "correction": "Two complete visible legs.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\rookie\\hawkmon.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\rookie\\hawkmon-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\references\\rookie\\hawkmon-tcg.webp",
+    "official": null,
+    "officialError": "fetch failed"
+  },
+  {
+    "name": "Kakamon",
+    "stage": "rookie",
+    "slug": "kakamon",
+    "correction": "Correct pants drawstring hanging from waistband, simple textile cord, not anatomical appendage.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\rookie\\kakamon.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\rookie\\kakamon-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\references\\rookie\\kakamon-tcg.webp",
+    "official": null,
+    "officialError": "fetch failed"
+  },
+  {
+    "name": "Penmon",
+    "stage": "rookie",
+    "slug": "penmon",
+    "correction": "Both flipper arms must be visible.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\rookie\\penmon.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\rookie\\penmon-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\references\\rookie\\penmon-tcg.webp",
+    "official": null,
+    "officialError": "fetch failed"
+  },
+  {
+    "name": "Psychemon",
+    "stage": "rookie",
+    "slug": "psychemon",
+    "correction": "Rebuild correct proportions and anatomy.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\rookie\\psychemon.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\rookie\\psychemon-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\references\\rookie\\psychemon-tcg.webp",
+    "official": null,
+    "officialError": "fetch failed"
+  },
+  {
+    "name": "Pulsemon",
+    "stage": "rookie",
+    "slug": "pulsemon",
+    "correction": "Dark shapes are feet. Show two correct separate feet attached to two legs.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\rookie\\pulsemon.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\rookie\\pulsemon-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\references\\rookie\\pulsemon-tcg.webp",
+    "official": null,
+    "newReferenceError": "fetch failed",
+    "officialError": "fetch failed"
+  },
+  {
+    "name": "Renamon (X Antibody)",
+    "stage": "rookie",
+    "slug": "renamon-x-antibody",
+    "correction": "Two separate tails. No wings.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\rookie\\renamon-x-antibody.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\rookie\\renamon-x-antibody-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\references\\rookie\\renamon-x-antibody-tcg.webp",
+    "official": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\references\\renamon-x-antibody-official.jpg"
+  },
+  {
+    "name": "Salamon",
+    "stage": "rookie",
+    "slug": "salamon",
+    "correction": "Four legs, both front paws visible.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\rookie\\salamon.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\rookie\\salamon-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\references\\rookie\\salamon-tcg.webp",
+    "official": null,
+    "officialError": "fetch failed"
+  },
+  {
+    "name": "Sistermon Blanc (Awakened)",
+    "stage": "rookie",
+    "slug": "sistermon-blanc-awakened",
+    "correction": "Correct Awakened form, anatomy, limb count, outfit and accessories.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\rookie\\sistermon-blanc-awakened.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\rookie\\sistermon-blanc-awakened-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\references\\rookie\\sistermon-blanc-awakened-tcg.webp",
+    "official": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\references\\sistermon-blanc-awakened-official.jpg"
+  },
+  {
+    "name": "Sparrowmon",
+    "stage": "rookie",
+    "slug": "sparrowmon",
+    "correction": "New reference, faithful mechanical avian aircraft anatomy.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\rookie\\sparrowmon.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\rookie\\sparrowmon-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\references\\rookie\\sparrowmon-tcg.webp",
+    "official": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\references\\sparrowmon-official.jpg",
+    "newReferenceError": "fetch failed"
+  },
+  {
+    "name": "Swimmon",
+    "stage": "rookie",
+    "slug": "swimmon",
+    "correction": "New reference, faithful fish body, fins and tail.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\rookie\\swimmon.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\rookie\\swimmon-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\references\\swimmon-tcg.webp",
+    "official": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\references\\swimmon-official.jpg",
+    "card": "BT12-020"
+  },
+  {
+    "name": "Tapirmon",
+    "stage": "rookie",
+    "slug": "tapirmon",
+    "correction": "Only front legs; cloud replaces hindquarters. No hind legs or rear paws.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\rookie\\tapirmon.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\rookie\\tapirmon-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\references\\rookie\\tapirmon-tcg.webp",
+    "official": null,
+    "officialError": "fetch failed"
+  },
+  {
+    "name": "ToyAgumon",
+    "stage": "rookie",
+    "slug": "toyagumon",
+    "correction": "Correct toy-block dinosaur assembly, separated rectangular head, limbs and tail.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\rookie\\toyagumon.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\rookie\\toyagumon-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\references\\rookie\\toyagumon-tcg.webp",
+    "official": null,
+    "officialError": "fetch failed"
+  },
+  {
+    "name": "Veemon",
+    "stage": "rookie",
+    "slug": "veemon",
+    "correction": "TCG reference, faithful blue dinosaur anatomy and white chest.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\rookie\\veemon.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\rookie\\veemon-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\references\\veemon-tcg.webp",
+    "official": null,
+    "card": "ST8-04",
+    "officialError": "fetch failed"
+  },
+  {
+    "name": "Vorvomon",
+    "stage": "rookie",
+    "slug": "vorvomon",
+    "correction": "Correct dragon anatomy, wing attachment and limb count.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\rookie\\vorvomon.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\rookie\\vorvomon-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\references\\rookie\\vorvomon-tcg.webp",
+    "official": null,
+    "officialError": "fetch failed"
+  },
+  {
+    "name": "Wormmon",
+    "stage": "rookie",
+    "slug": "wormmon",
+    "correction": "Correct caterpillar segmentation and paired feet, no fused anatomy.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\rookie\\wormmon.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\rookie\\wormmon-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\references\\rookie\\wormmon-tcg.webp",
+    "official": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\references\\wormmon-official.jpg"
+  },
+  {
+    "name": "Zenimon",
+    "stage": "rookie",
+    "slug": "zenimon",
+    "correction": "Exactly one Zenimon, no crowd, merged bodies or extra faces.",
+    "old": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\rookie\\zenimon.png",
+    "output": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\rookie\\zenimon-v2.png",
+    "reference": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\references\\rookie\\zenimon-tcg.webp",
+    "official": "C:\\Users\\REFORCEL\\Documents\\Codex\\2026-06-30\\ace\\d20-remote-20260818\\d20project-main\\assets\\digirole-anime\\corrections-20260911\\references\\zenimon-official.jpg"
+  }
+]

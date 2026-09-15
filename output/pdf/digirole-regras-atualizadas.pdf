@@ -1,0 +1,220 @@
+%PDF-1.4
+1 0 obj
+<< /Length 3042 >>
+stream
+BT
+/F1 10 Tf
+/F2 15 Tf 0.9 0.12 0.16 rg 1 0 0 1 45 797 Tm (DIGIROLE - MANUAL DE REGRAS ATUALIZADO) Tj
+/F1 10 Tf 0 0 0 rg
+1 0 0 1 45 772 Tm (Compilado a partir da implementacao atual do D20 Project. Referencia: 11/09/2026.) Tj
+1 0 0 1 45 749 Tm (Este manual resume as regras de mesa consolidadas no projeto. O mestre pode ampliar) Tj
+1 0 0 1 45 734 Tm (catalogos, tecnicas e rotas sem alterar o nucleo.) Tj
+/F2 15 Tf 0.9 0.12 0.16 rg 1 0 0 1 45 711 Tm (1. VISAO GERAL) Tj
+/F1 10 Tf 0 0 0 rg
+1 0 0 1 45 686 Tm (DigiRole e um RPG de captura, treinamento e evolucao digital. Fichas combinam atributos,) Tj
+1 0 0 1 45 671 Tm (pericias, tecnicas, Fields, formas, progresso e vinculo com um Tamer.) Tj
+1 0 0 1 45 648 Tm (O sistema usa pools de d6. Cada dado 4, 5 ou 6 gera 1 sucesso. Dados de chance geram sucesso) Tj
+1 0 0 1 45 633 Tm (somente quando mostram 6.) Tj
+/F2 15 Tf 0.9 0.12 0.16 rg 1 0 0 1 45 610 Tm (2. ATRIBUTOS E RECURSOS) Tj
+/F1 10 Tf 0 0 0 rg
+1 0 0 1 45 585 Tm (Atributos: Forca \(STR\), Destreza \(DEX\), Vitalidade \(VIT\), Sabedoria \(WIS\), Espirito \(SPR\) e) Tj
+1 0 0 1 45 570 Tm (Carisma \(CAR\).) Tj
+1 0 0 1 45 547 Tm (HP maximo do Tamer = 3 + VIT. HP maximo do Digimon = HP base da especie + VIT.) Tj
+1 0 0 1 45 524 Tm (DS maximo do Tamer = 4 + SPR + Digimons condensados + 2 por ranking do Tamer. In-Training I) Tj
+1 0 0 1 45 509 Tm (ja conta como o primeiro ranking: +2, depois +4, +6, +8, +10 e +12.) Tj
+1 0 0 1 45 486 Tm (DS maximo do Digimon = 2 + SPR + formas estabilizadas.) Tj
+1 0 0 1 45 463 Tm (O valor efetivo de uma rolagem inclui base, pontos distribuidos e bonus. Bonus pode elevar a) Tj
+1 0 0 1 45 448 Tm (pool acima do limite base.) Tj
+/F2 15 Tf 0.9 0.12 0.16 rg 1 0 0 1 45 425 Tm (3. PERICIAS) Tj
+/F1 10 Tf 0 0 0 rg
+1 0 0 1 45 400 Tm (Luta: Fight, Channel, Clash, Evasion, Throw, Weapons e Extra \(Luta\).) Tj
+1 0 0 1 45 377 Tm (Sobrevivencia: Alert, Athletic, Nature, Stealth e Extra \(Sobrevivencia\).) Tj
+1 0 0 1 45 354 Tm (Social: Empathy, Etiquette, Intimidate, Perform e Extra \(Social\).) Tj
+1 0 0 1 45 331 Tm (Conhecimento: Crafts, Lore, Medicine, Science e Extra \(Conhecimento\).) Tj
+1 0 0 1 45 308 Tm (Notoriedade: Connections, Fame, Sponsors e Supporters.) Tj
+1 0 0 1 45 285 Tm (Rolagem generica = atributos + pericias + bonus manual. Iniciativa = DEX + Alert.) Tj
+/F2 15 Tf 0.9 0.12 0.16 rg 1 0 0 1 45 262 Tm (4. ROLAGENS E ACOES) Tj
+/F1 10 Tf 0 0 0 rg
+1 0 0 1 45 237 Tm (Pool padrao: role a quantidade indicada de d6. Cada resultado 4+ vale 1 sucesso. Chance) Tj
+1 0 0 1 45 222 Tm (dice: somente 6 vale sucesso.) Tj
+1 0 0 1 45 199 Tm (Cada nova acao exige 1 + o numero de acoes ja realizadas no turno. Tecnicas, Clash e Evasion) Tj
+1 0 0 1 45 184 Tm (contam como acoes.) Tj
+1 0 0 1 45 161 Tm (Acoes continuam registradas durante o ciclo, inclusive quando o token nao esta no turno,) Tj
+1 0 0 1 45 146 Tm (para permitir reacoes. Elas zeram quando o turno retorna ao Tamer responsavel.) Tj
+1 0 0 1 45 123 Tm (O motor registra tecnica + nome da tecnica, ou Clash/Evasion quando for reacao.) Tj
+ET
+endstream
+endobj
+2 0 obj
+
+endobj
+3 0 obj
+<< /Length 3072 >>
+stream
+BT
+/F1 10 Tf
+/F2 15 Tf 0.9 0.12 0.16 rg 1 0 0 1 45 797 Tm (5. TECNICAS E COMBATE) Tj
+/F1 10 Tf 0 0 0 rg
+1 0 0 1 45 772 Tm (Uma tecnica gera um unico card no chat, dividido em Accuracy e Dano/Efeitos. Accuracy mostra) Tj
+1 0 0 1 45 757 Tm (alvos, defesa, Field, atributo e efetividade; depois das reacoes o card completa dano e) Tj
+1 0 0 1 45 742 Tm (efeitos.) Tj
+1 0 0 1 45 719 Tm (Tecnicas de assinatura nao entram no limite de tecnicas genericas. Limite de tecnicas) Tj
+1 0 0 1 45 704 Tm (genericas = 2 + WIS.) Tj
+1 0 0 1 45 681 Tm (Tecnica que acertou causa no minimo 1 de dano mesmo com 0 sucessos de dano. Evasion) Tj
+1 0 0 1 45 666 Tm (bem-sucedida causa 0 e nao reduz HP.) Tj
+1 0 0 1 45 643 Tm (Clash bem-sucedido causa 1 de dano no alvo e 1 no executor. Em varios alvos, cada alvo) Tj
+1 0 0 1 45 628 Tm (resolve sua reacao separadamente.) Tj
+/F2 15 Tf 0.9 0.12 0.16 rg 1 0 0 1 45 605 Tm (6. REACOES) Tj
+/F1 10 Tf 0 0 0 rg
+1 0 0 1 45 580 Tm (Cada personagem comeca a rodada com 1 Clash e 1 Evasion. Clash times e Evasion times mostram) Tj
+1 0 0 1 45 565 Tm (base, bonus e total.) Tj
+1 0 0 1 45 542 Tm (Itens e tecnicas podem aumentar os totais. Uma reacao so aparece se ainda houver uso) Tj
+1 0 0 1 45 527 Tm (disponivel e a pool for suficiente para alcancar os sucessos necessarios, considerando o) Tj
+1 0 0 1 45 512 Tm (movimento atacante e as acoes.) Tj
+1 0 0 1 45 489 Tm (Se nao puder reagir, o sistema segue como se tivesse escolhido nao fazer nada.) Tj
+/F2 15 Tf 0.9 0.12 0.16 rg 1 0 0 1 45 466 Tm (7. INICIATIVA E MOTOR) Tj
+/F1 10 Tf 0 0 0 rg
+1 0 0 1 45 441 Tm (O mestre seleciona os tokens participantes. Iniciativas de tokens controlados por jogadores) Tj
+1 0 0 1 45 426 Tm (sao roladas pelo proprio jogador; o motor nao as substitui. O mestre rola apenas tokens sob) Tj
+1 0 0 1 45 411 Tm (controle do mestre.) Tj
+1 0 0 1 45 388 Tm (Pokemons e Digimons entram antes dos personagens treinadores quando a ordem e organizada,) Tj
+1 0 0 1 45 373 Tm (independentemente do valor bruto.) Tj
+1 0 0 1 45 350 Tm (O motor mantem ordem, acoes, reacoes, participantes, imagens e registros no chat. O turno so) Tj
+1 0 0 1 45 335 Tm (passa quando Passar turno e acionado. Finalizar encontro fica sempre disponivel.) Tj
+/F2 15 Tf 0.9 0.12 0.16 rg 1 0 0 1 45 312 Tm (8. FIELDS E EFETIVIDADE) Tj
+/F1 10 Tf 0 0 0 rg
+1 0 0 1 45 287 Tm (Fields: VB, NSo, NSp, ME, JT, DS, WG, DR, Neutra e Unclassified. Digimons In-Training I usam) Tj
+1 0 0 1 45 272 Tm (Unclassified.) Tj
+1 0 0 1 45 249 Tm (Cada Digimon possui 1 ou 2 Fields naturais. Afinidade natural orienta aprendizado de) Tj
+1 0 0 1 45 234 Tm (tecnicas e nao deve ser confundida com Fields disponiveis.) Tj
+1 0 0 1 45 211 Tm (A efetividade compara o Field atacante aos Fields do alvo e pode alterar accuracy e dano.) Tj
+1 0 0 1 45 196 Tm (Atributos Vaccine, Virus, Data, Unknown e None tambem possuem relacoes de vantagem.) Tj
+1 0 0 1 45 173 Tm (A ficha mostra atributos base, pontos distribuidos e bonus. Atributos secundarios tem base) Tj
+1 0 0 1 45 158 Tm (derivada e bonus, sem pontos distribuidos independentes.) Tj
+ET
+endstream
+endobj
+4 0 obj
+
+endobj
+5 0 obj
+<< /Length 2929 >>
+stream
+BT
+/F1 10 Tf
+/F2 15 Tf 0.9 0.12 0.16 rg 1 0 0 1 45 797 Tm (9. EVOLUCAO E DIGIARCHIVE) Tj
+/F1 10 Tf 0 0 0 rg
+1 0 0 1 45 772 Tm (Cada forma possui PE, Battles, Victories, custo de DS, tecnicas de assinatura e requisito de) Tj
+1 0 0 1 45 757 Tm (estabilizacao proprios. Esses valores sao exclusivos da forma.) Tj
+1 0 0 1 45 734 Tm (O requisito de ranking do Tamer foi removido. O Digimon ainda precisa cumprir o rank) Tj
+1 0 0 1 45 719 Tm (definido pela forma de destino.) Tj
+1 0 0 1 45 696 Tm (Requisitos secundarios: In-Training II = 2; Rookie = 3; Champion = 4; Ultimate = 5; Mega =) Tj
+1 0 0 1 45 681 Tm (todos. O requisito principal sempre e obrigatorio.) Tj
+1 0 0 1 45 658 Tm (Formas indisponiveis podem aparecer em cinza com requisitos visiveis. Formas anteriores) Tj
+1 0 0 1 45 643 Tm (desbloqueadas aparecem para regressao.) Tj
+1 0 0 1 45 620 Tm (Evolucao e regressao trocam imagem, atributos e tecnicas de assinatura. HP e DS do Digimon) Tj
+1 0 0 1 45 605 Tm (voltam ao maximo. O custo de DS e pago pelo Tamer e nao existe manutencao.) Tj
+1 0 0 1 45 582 Tm (Custo base para Tamer In-Training I: destino In-Training II 1 DS; Rookie 1; Champion 2;) Tj
+1 0 0 1 45 567 Tm (Ultimate 4; Mega 6. Para ranks acima, formas iguais ou inferiores ao rank custam 1 DS;) Tj
+1 0 0 1 45 552 Tm (formas acima seguem a tabela original. Saltos acumulam os custos intermediarios e o) Tj
+1 0 0 1 45 537 Tm (adicional por estagio pulado.) Tj
+1 0 0 1 45 514 Tm (Victories igual ao requisito estabiliza automaticamente a forma. O botao manual continua) Tj
+1 0 0 1 45 499 Tm (disponivel.) Tj
+/F2 15 Tf 0.9 0.12 0.16 rg 1 0 0 1 45 476 Tm (10. TREINO, SCAN DATA E CONDENSACAO) Tj
+/F1 10 Tf 0 0 0 rg
+1 0 0 1 45 451 Tm (Treino e retreino sao acompanhados na ficha. Progressao usa sessoes e requisitos da forma de) Tj
+1 0 0 1 45 436 Tm (destino.) Tj
+1 0 0 1 45 413 Tm (Scan Data so pode ser feito em Digimons presentes no campo. Ao atingir 100% ou mais, clicar) Tj
+1 0 0 1 45 398 Tm (no registro cria a ficha do Digimon, liga ao Tamer e envia ao primeiro espaco do time ou a) Tj
+1 0 0 1 45 383 Tm (nuvem.) Tj
+1 0 0 1 45 360 Tm (Digimon arrastado para o time e considerado condensado. Digimons podem ir entre mapa, time e) Tj
+1 0 0 1 45 345 Tm (nuvem. Condensados entram no DS maximo do Tamer.) Tj
+/F2 15 Tf 0.9 0.12 0.16 rg 1 0 0 1 45 322 Tm (11. TIME, NUVEM, LOJA E INVENTARIO) Tj
+/F1 10 Tf 0 0 0 rg
+1 0 0 1 45 297 Tm (O Tamer possui quatro abas de time, uma nuvem e uma loja. O primeiro espaco livre recebe o) Tj
+1 0 0 1 45 282 Tm (Digimon; sem espaco, ele vai para a nuvem.) Tj
+1 0 0 1 45 259 Tm (A loja separa itens por tipo, incluindo capsulas, equipamentos e Digimentals. Unequip) Tj
+1 0 0 1 45 244 Tm (transforma uma tecnica em item no inventario.) Tj
+1 0 0 1 45 221 Tm (O inventario registra quantidade e descricao. Tecnicas no inventario podem ser aprendidas) Tj
+1 0 0 1 45 206 Tm (fora da lista natural, respeitando limite e permissao.) Tj
+ET
+endstream
+endobj
+6 0 obj
+
+endobj
+7 0 obj
+<< /Length 1328 >>
+stream
+BT
+/F1 10 Tf
+/F2 15 Tf 0.9 0.12 0.16 rg 1 0 0 1 45 797 Tm (12. MAPA, PERMISSOES E CHAT) Tj
+/F1 10 Tf 0 0 0 rg
+1 0 0 1 45 772 Tm (Arrastar uma ficha de Files para o mapa cria token. Pastas aceitam subpastas e) Tj
+1 0 0 1 45 757 Tm (reorganizacao. Mover uma ficha dentro de Files nao cria token.) Tj
+1 0 0 1 45 734 Tm (Somente criador e mestre veem informacoes privadas, controlam token e rolam com a ficha,) Tj
+1 0 0 1 45 719 Tm (salvo permissao manual.) Tj
+1 0 0 1 45 696 Tm (Token move apenas com clique pressionado e arraste. Fog of War acompanha o campo infinito.) Tj
+1 0 0 1 45 681 Tm (Chat preserva historico ao minimizar; o mestre pode apagar pelo Settings.) Tj
+/F2 15 Tf 0.9 0.12 0.16 rg 1 0 0 1 45 658 Tm (13. REFERENCIA RAPIDA) Tj
+/F1 10 Tf 0 0 0 rg
+1 0 0 1 45 633 Tm (Pool = atributo + pericia + bonus. Sucesso = 4+. Chance = 6. HP Tamer = 3 + VIT. HP Digimon) Tj
+1 0 0 1 45 618 Tm (= HP base + VIT. DS Tamer = 4 + SPR + condensados + 2 por rank. DS Digimon = 2 + SPR +) Tj
+1 0 0 1 45 603 Tm (formas estabilizadas. Tecnicas genericas = 2 + WIS. Dano acertado minimo = 1. Evasion = 0.) Tj
+1 0 0 1 45 588 Tm (Clash = 1 no alvo e 1 no atacante.) Tj
+1 0 0 1 45 565 Tm (Quando uma regra de campanha divergir do catalogo, o mestre pode registrar a excecao na) Tj
+1 0 0 1 45 550 Tm (ficha ou nas configuracoes da mesa.) Tj
+ET
+endstream
+endobj
+8 0 obj
+
+endobj
+9 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+10 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+11 0 obj
+<< /Type /Pages /Kids [12 0 R 13 0 R 14 0 R 15 0 R] /Count 4 >>
+endobj
+12 0 obj
+<< /Type /Page /Parent 11 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 9 0 R /F2 10 0 R >> >> /Contents 1 0 R >>
+endobj
+13 0 obj
+<< /Type /Page /Parent 11 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 9 0 R /F2 10 0 R >> >> /Contents 3 0 R >>
+endobj
+14 0 obj
+<< /Type /Page /Parent 11 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 9 0 R /F2 10 0 R >> >> /Contents 5 0 R >>
+endobj
+15 0 obj
+<< /Type /Page /Parent 11 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 9 0 R /F2 10 0 R >> >> /Contents 7 0 R >>
+endobj
+16 0 obj
+<< /Type /Catalog /Pages 11 0 R >>
+endobj
+xref
+0 17
+0000000000 65535 f 
+0000000009 00000 n 
+0000003103 00000 n 
+0000003119 00000 n 
+0000006243 00000 n 
+0000006259 00000 n 
+0000009240 00000 n 
+0000009256 00000 n 
+0000010636 00000 n 
+0000010652 00000 n 
+0000010749 00000 n 
+0000010852 00000 n 
+0000010932 00000 n 
+0000011071 00000 n 
+0000011210 00000 n 
+0000011349 00000 n 
+0000011488 00000 n 
+trailer
+<< /Size 17 /Root 16 0 R >>
+startxref
+11539
+%%EOF

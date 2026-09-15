@@ -1,0 +1,474 @@
+[
+  {
+    "name": "Argomon (In-Training II)",
+    "slug": "argomon-in-training-ii",
+    "key": "argomonintraining",
+    "url": null,
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\argomon-in-training-ii.jpg",
+    "downloaded": false
+  },
+  {
+    "name": "Bebydomon",
+    "slug": "bebydomon",
+    "key": "bebydomon",
+    "url": "https://digimon.net/cimages/digimon/babydmon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\bebydomon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Bibimon",
+    "slug": "bibimon",
+    "key": "bibimon",
+    "url": "https://digimon.net/cimages/digimon/bibimon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\bibimon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Bosamon",
+    "slug": "bosamon",
+    "key": "bosamon",
+    "url": "https://digimon.net/cimages/digimon/bosamon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\bosamon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Bowmon",
+    "slug": "bowmon",
+    "key": "bowmon",
+    "url": "https://digimon.net/cimages/digimon/bowmon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\bowmon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Budmon",
+    "slug": "budmon",
+    "key": "budmon",
+    "url": "https://digimon.net/cimages/digimon/budmon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\budmon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Bukamon",
+    "slug": "bukamon",
+    "key": "bukamon",
+    "url": "https://digimon.net/cimages/digimon/pukamon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\bukamon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Chapmon",
+    "slug": "chapmon",
+    "key": "chapmon",
+    "url": "https://digimon.net/cimages/digimon/chapmon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\chapmon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Chicchimon",
+    "slug": "chicchimon",
+    "key": "chicchimon",
+    "url": "https://digimon.net/cimages/digimon/chicchimon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\chicchimon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Cupimon",
+    "slug": "cupimon",
+    "key": "cupimon",
+    "url": "https://digimon.net/cimages/digimon/cupimon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\cupimon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "DemiMeramon",
+    "slug": "demimeramon",
+    "key": "demimeramon",
+    "url": "https://digimon.net/cimages/digimon/petimeramon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\demimeramon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "DemiVeemon",
+    "slug": "demiveemon",
+    "key": "demiveemon",
+    "url": "https://digimon.net/cimages/digimon/chibimon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\demiveemon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Dorimon",
+    "slug": "dorimon",
+    "key": "dorimon",
+    "url": "https://digimon.net/cimages/digimon/dorimon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\dorimon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Fluffymon",
+    "slug": "fluffymon",
+    "key": "fluffymon",
+    "url": "https://digimon.net/cimages/digimon/fluffymon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\fluffymon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Frimon",
+    "slug": "frimon",
+    "key": "frimon",
+    "url": "https://digimon.net/cimages/digimon/frimon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\frimon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Gigimon",
+    "slug": "gigimon",
+    "key": "gigimon",
+    "url": "https://digimon.net/cimages/digimon/gigimon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\gigimon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Gummymon",
+    "slug": "gummymon",
+    "key": "gummymon",
+    "url": "https://digimon.net/cimages/digimon/gummymon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\gummymon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Gurimon",
+    "slug": "gurimon",
+    "key": "gurimon",
+    "url": "https://digimon.net/cimages/digimon/gurimon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\gurimon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Hiyarimon",
+    "slug": "hiyarimon",
+    "key": "hiyarimon",
+    "url": "https://digimon.net/cimages/digimon/hiyarimon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\hiyarimon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Hopmon",
+    "slug": "hopmon",
+    "key": "hopmon",
+    "url": "https://digimon.net/cimages/digimon/hopmon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\hopmon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Kakkinmon",
+    "slug": "kakkinmon",
+    "key": "kakkinmon",
+    "url": "https://digimon.net/cimages/digimon/kakkinmon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\kakkinmon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Kapurimon",
+    "slug": "kapurimon",
+    "key": "kapurimon",
+    "url": "https://digimon.net/cimages/digimon/capromon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\kapurimon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Kekkomon",
+    "slug": "kekkomon",
+    "key": "kekkomon",
+    "url": "https://digimon.net/cimages/digimon/kekkomon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\kekkomon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Kokomon",
+    "slug": "kokomon",
+    "key": "kokomon",
+    "url": "https://digimon.net/cimages/digimon/chocomon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\kokomon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Koromon",
+    "slug": "koromon",
+    "key": "koromon",
+    "url": "https://digimon.net/cimages/digimon/koromon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\koromon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Kozenimon",
+    "slug": "kozenimon",
+    "key": "kozenimon",
+    "url": "https://digimon.net/cimages/digimon/kozenimon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\kozenimon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Kyaromon",
+    "slug": "kyaromon",
+    "key": "kyaromon",
+    "url": "https://digimon.net/cimages/digimon/kyaromon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\kyaromon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Kyokyomon",
+    "slug": "kyokyomon",
+    "key": "kyokyomon",
+    "url": "https://digimon.net/cimages/digimon/kyokyomon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\kyokyomon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Minomon",
+    "slug": "minomon",
+    "key": "minomon",
+    "url": "https://digimon.net/cimages/digimon/minomon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\minomon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Missimon",
+    "slug": "missimon",
+    "key": "missimon",
+    "url": "https://digimon.net/cimages/digimon/missimon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\missimon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Mococomon",
+    "slug": "mococomon",
+    "key": "mococomon",
+    "url": "https://digimon.net/cimages/digimon/mococomon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\mococomon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Monimon",
+    "slug": "monimon",
+    "key": "monimon",
+    "url": "https://digimon.net/cimages/digimon/monimon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\monimon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Moonmon",
+    "slug": "moonmon",
+    "key": "moonmon",
+    "url": "https://digimon.net/cimages/digimon/moonmon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\moonmon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Motimon",
+    "slug": "motimon",
+    "key": "motimon",
+    "url": "https://digimon.net/cimages/digimon/mochimon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\motimon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Negamon",
+    "slug": "negamon",
+    "key": "negamon",
+    "url": "https://digimon.net/cimages/digimon/negamon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\negamon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Nyaromon",
+    "slug": "nyaromon",
+    "key": "nyaromon",
+    "url": "https://digimon.net/cimages/digimon/nyaromon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\nyaromon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Onibimon",
+    "slug": "onibimon",
+    "key": "onibimon",
+    "url": "https://digimon.net/cimages/digimon/onibimon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\onibimon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Pagumon",
+    "slug": "pagumon",
+    "key": "pagumon",
+    "url": "https://digimon.net/cimages/digimon/pagumon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\pagumon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Pickmon",
+    "slug": "pickmon",
+    "key": "pickmon",
+    "url": "https://digimon.net/cimages/digimon/pickmon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\pickmon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Pinamon",
+    "slug": "pinamon",
+    "key": "pinamon",
+    "url": "https://digimon.net/cimages/digimon/pinamon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\pinamon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Poromon",
+    "slug": "poromon",
+    "key": "poromon",
+    "url": "https://digimon.net/cimages/digimon/poromon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\poromon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Puroromon",
+    "slug": "puroromon",
+    "key": "puroromon",
+    "url": "https://digimon.net/cimages/digimon/puroromon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\puroromon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Pusurimon",
+    "slug": "pusurimon",
+    "key": "pusurimon",
+    "url": "https://digimon.net/cimages/digimon/pusurimon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\pusurimon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Puyoyomon",
+    "slug": "puyoyomon",
+    "key": "puyoyomon",
+    "url": "https://digimon.net/cimages/digimon/puyoyomon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\puyoyomon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Sakuttomon",
+    "slug": "sakuttomon",
+    "key": "sakuttomon",
+    "url": "https://digimon.net/cimages/digimon/sakuttomon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\sakuttomon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Sunmon",
+    "slug": "sunmon",
+    "key": "sunmon",
+    "url": "https://digimon.net/cimages/digimon/sunmon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\sunmon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Tanemon",
+    "slug": "tanemon",
+    "key": "tanemon",
+    "url": "https://digimon.net/cimages/digimon/tanemon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\tanemon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Tokomon",
+    "slug": "tokomon",
+    "key": "tokomon",
+    "url": "https://digimon.net/cimages/digimon/tokomon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\tokomon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Tokomon (X Antibody)",
+    "slug": "tokomon-x-antibody",
+    "key": "tokomonxantibody",
+    "url": "https://digimon.net/cimages/digimon/tokomon_x.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\tokomon-x-antibody.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "TorikaraBallmon",
+    "slug": "torikaraballmon",
+    "key": "torikaraballmon",
+    "url": "https://digimon.net/cimages/digimon/torikaraballmon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\torikaraballmon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Tsumemon",
+    "slug": "tsumemon",
+    "key": "tsumemon",
+    "url": "https://digimon.net/cimages/digimon/tsumemon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\tsumemon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Tsunomon",
+    "slug": "tsunomon",
+    "key": "tsunomon",
+    "url": "https://digimon.net/cimages/digimon/tunomon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\tsunomon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Tumblemon",
+    "slug": "tumblemon",
+    "key": "tumblemon",
+    "url": "https://digimon.net/cimages/digimon/goromon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\tumblemon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Upamon",
+    "slug": "upamon",
+    "key": "upamon",
+    "url": "https://digimon.net/cimages/digimon/upamon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\upamon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Viximon",
+    "slug": "viximon",
+    "key": "viximon",
+    "url": "https://digimon.net/cimages/digimon/pokomon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\viximon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Wanyamon",
+    "slug": "wanyamon",
+    "key": "wanyamon",
+    "url": "https://digimon.net/cimages/digimon/wanyamon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\wanyamon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Xiaomon",
+    "slug": "xiaomon",
+    "key": "xiaomon",
+    "url": "https://digimon.net/cimages/digimon/xiaomon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\xiaomon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Yaamon",
+    "slug": "yaamon",
+    "key": "yaamon",
+    "url": "https://digimon.net/cimages/digimon/yarmon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\yaamon.jpg",
+    "downloaded": true
+  },
+  {
+    "name": "Yokomon",
+    "slug": "yokomon",
+    "key": "yokomon",
+    "url": "https://digimon.net/cimages/digimon/pyocomon.jpg",
+    "reference": "assets\\digirole-anime\\references\\in-training-ii\\yokomon.jpg",
+    "downloaded": true
+  }
+]

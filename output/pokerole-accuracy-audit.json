@@ -1,0 +1,1136 @@
+{
+  "revision": "e0f5c1615c4ba06b934bfb2663a2edba6062dca4",
+  "referenceCount": 734,
+  "importedCount": 597,
+  "changes": [
+    {
+      "name": "After You",
+      "before": [
+        null,
+        "etiquette"
+      ],
+      "after": [
+        "cool",
+        "etiquette"
+      ]
+    },
+    {
+      "name": "Air Cutter",
+      "before": [
+        "dexterity",
+        "channel e"
+      ],
+      "after": [
+        "dexterity",
+        "channel"
+      ]
+    },
+    {
+      "name": "Attack Order",
+      "before": [
+        null,
+        "nature"
+      ],
+      "after": [
+        "tough",
+        "nature"
+      ]
+    },
+    {
+      "name": "Attract",
+      "before": [
+        null,
+        "allure"
+      ],
+      "after": [
+        "beautiful",
+        "allure"
+      ]
+    },
+    {
+      "name": "Baby-Doll Eyes",
+      "before": [
+        null,
+        "allure"
+      ],
+      "after": [
+        "cute",
+        "allure"
+      ]
+    },
+    {
+      "name": "Baneful Bunker",
+      "before": [
+        null,
+        "channel"
+      ],
+      "after": [
+        "vitality",
+        "nature"
+      ]
+    },
+    {
+      "name": "Belly Drum",
+      "before": [
+        null,
+        "perform"
+      ],
+      "after": [
+        "tough",
+        "perform"
+      ]
+    },
+    {
+      "name": "Bug Buzz",
+      "before": [
+        null,
+        "+p efrifgohrtm+canalize"
+      ],
+      "after": [
+        "special",
+        "perform"
+      ]
+    },
+    {
+      "name": "Bulk Up",
+      "before": [
+        "vitality",
+        "athletics"
+      ],
+      "after": [
+        "vitality",
+        "athletic"
+      ]
+    },
+    {
+      "name": "Charge Beam",
+      "before": [
+        "dexterity",
+        "channel e"
+      ],
+      "after": [
+        "dexterity",
+        "channel"
+      ]
+    },
+    {
+      "name": "Charm",
+      "before": [
+        null,
+        "allure"
+      ],
+      "after": [
+        "cute",
+        "allure"
+      ]
+    },
+    {
+      "name": "Coil",
+      "before": [
+        null,
+        "intimidate"
+      ],
+      "after": [
+        "tough",
+        "intimidate"
+      ]
+    },
+    {
+      "name": "Confide",
+      "before": [
+        null,
+        "allure"
+      ],
+      "after": [
+        "cute",
+        "allure"
+      ]
+    },
+    {
+      "name": "Covet",
+      "before": [
+        null,
+        "stealth"
+      ],
+      "after": [
+        "clever",
+        "stealth"
+      ]
+    },
+    {
+      "name": "Curse",
+      "before": [
+        null,
+        "channel"
+      ],
+      "after": [
+        "will",
+        "channel"
+      ]
+    },
+    {
+      "name": "Dark Pulse",
+      "before": [
+        "insight",
+        "channel e"
+      ],
+      "after": [
+        "insight",
+        "channel"
+      ]
+    },
+    {
+      "name": "Defend Order",
+      "before": [
+        null,
+        "nature"
+      ],
+      "after": [
+        "tough",
+        "nature"
+      ]
+    },
+    {
+      "name": "Destiny Bond",
+      "before": [
+        null,
+        "channel"
+      ],
+      "after": [
+        "will",
+        "channel"
+      ]
+    },
+    {
+      "name": "Draco Meteor",
+      "before": [
+        "special",
+        "channel e"
+      ],
+      "after": [
+        "special",
+        "channel"
+      ]
+    },
+    {
+      "name": "Dragon Breath",
+      "before": [
+        "dexterity",
+        "channel e"
+      ],
+      "after": [
+        "dexterity",
+        "channel"
+      ]
+    },
+    {
+      "name": "Dragon Dance",
+      "before": [
+        null,
+        "perform"
+      ],
+      "after": [
+        "tough",
+        "perform"
+      ]
+    },
+    {
+      "name": "Encore",
+      "before": [
+        null,
+        "allure"
+      ],
+      "after": [
+        "cool",
+        "allure"
+      ]
+    },
+    {
+      "name": "Endeavor",
+      "before": [
+        null,
+        "channel"
+      ],
+      "after": [
+        "will",
+        "channel"
+      ]
+    },
+    {
+      "name": "Endure",
+      "before": [
+        null,
+        "channel"
+      ],
+      "after": [
+        "will",
+        "channel"
+      ]
+    },
+    {
+      "name": "Entrainment",
+      "before": [
+        null,
+        "perform"
+      ],
+      "after": [
+        "cool",
+        "perform"
+      ]
+    },
+    {
+      "name": "Fake Tears",
+      "before": [
+        null,
+        "perform"
+      ],
+      "after": [
+        "cute",
+        "perform"
+      ]
+    },
+    {
+      "name": "Feather Dance",
+      "before": [
+        null,
+        "perform"
+      ],
+      "after": [
+        "beautiful",
+        "perform"
+      ]
+    },
+    {
+      "name": "Final Gambit",
+      "before": [
+        null,
+        "athletic e"
+      ],
+      "after": [
+        "will",
+        "athletic"
+      ]
+    },
+    {
+      "name": "Fire Pledge",
+      "before": [
+        "dexterity",
+        "channel e"
+      ],
+      "after": [
+        "dexterity",
+        "channel"
+      ]
+    },
+    {
+      "name": "Fire Spin",
+      "before": [
+        "dexterity",
+        "channel e"
+      ],
+      "after": [
+        "dexterity",
+        "channel"
+      ]
+    },
+    {
+      "name": "Flatter",
+      "before": [
+        null,
+        "allure"
+      ],
+      "after": [
+        "cool",
+        "allure"
+      ]
+    },
+    {
+      "name": "Follow Me",
+      "before": [
+        null,
+        "perform"
+      ],
+      "after": [
+        "cool",
+        "perform"
+      ]
+    },
+    {
+      "name": "Glare",
+      "before": [
+        null,
+        "intimidate"
+      ],
+      "after": [
+        "tough",
+        "intimidate"
+      ]
+    },
+    {
+      "name": "Growl",
+      "before": [
+        null,
+        "perform"
+      ],
+      "after": [
+        "tough/cute",
+        "perform"
+      ]
+    },
+    {
+      "name": "Heal Pulse",
+      "before": [
+        null,
+        "channel"
+      ],
+      "after": [
+        "will",
+        "channel"
+      ]
+    },
+    {
+      "name": "Healing Wish",
+      "before": [
+        null,
+        "channel"
+      ],
+      "after": [
+        "will",
+        "channel"
+      ]
+    },
+    {
+      "name": "Heat Wave",
+      "before": [
+        "dexterity",
+        "channel e"
+      ],
+      "after": [
+        "dexterity",
+        "channel"
+      ]
+    },
+    {
+      "name": "Howl",
+      "before": [
+        null,
+        "intimidate"
+      ],
+      "after": [
+        "cool",
+        "intimidate"
+      ]
+    },
+    {
+      "name": "Icicle Spear",
+      "before": [
+        "dexterity",
+        "brawl e"
+      ],
+      "after": [
+        "dexterity",
+        "brawl"
+      ]
+    },
+    {
+      "name": "Imprison",
+      "before": [
+        null,
+        "channel"
+      ],
+      "after": [
+        "clever",
+        "channel"
+      ]
+    },
+    {
+      "name": "Incinerate",
+      "before": [
+        "dexterity",
+        "channel e"
+      ],
+      "after": [
+        "dexterity",
+        "channel"
+      ]
+    },
+    {
+      "name": "Infestation",
+      "before": [
+        "dexterity",
+        "channel e"
+      ],
+      "after": [
+        "dexterity",
+        "channel"
+      ]
+    },
+    {
+      "name": "Instruct",
+      "before": [
+        null,
+        "perform"
+      ],
+      "after": [
+        "clever",
+        "perform"
+      ]
+    },
+    {
+      "name": "Leafage",
+      "before": [
+        "dexterity",
+        "channel"
+      ],
+      "after": [
+        "dexterity",
+        "brawl"
+      ]
+    },
+    {
+      "name": "Leer",
+      "before": [
+        null,
+        "intimidate"
+      ],
+      "after": [
+        "tough",
+        "intimidate"
+      ]
+    },
+    {
+      "name": "Liquidation",
+      "before": [
+        "dexterity",
+        "brawl"
+      ],
+      "after": [
+        "strength",
+        "brawl"
+      ]
+    },
+    {
+      "name": "Mean Look",
+      "before": [
+        null,
+        "intimidate"
+      ],
+      "after": [
+        "tough",
+        "intimidate"
+      ]
+    },
+    {
+      "name": "Memento",
+      "before": [
+        null,
+        "channel"
+      ],
+      "after": [
+        "will",
+        "channel"
+      ]
+    },
+    {
+      "name": "Metal Sound",
+      "before": [
+        null,
+        "perform"
+      ],
+      "after": [
+        "tough",
+        "perform"
+      ]
+    },
+    {
+      "name": "Metronome",
+      "before": [
+        "dexterity",
+        "perform."
+      ],
+      "after": [
+        "dexterity",
+        "perform"
+      ]
+    },
+    {
+      "name": "Mimic",
+      "before": [
+        null,
+        "perform"
+      ],
+      "after": [
+        "clever",
+        "perform"
+      ]
+    },
+    {
+      "name": "Misty Terrain",
+      "before": [
+        "insight",
+        "nature e"
+      ],
+      "after": [
+        "insight",
+        "nature"
+      ]
+    },
+    {
+      "name": "Nasty Plot",
+      "before": [
+        null,
+        "alert"
+      ],
+      "after": [
+        "clever",
+        "alert"
+      ]
+    },
+    {
+      "name": "Night Daze",
+      "before": [
+        "dexterity",
+        "channel e"
+      ],
+      "after": [
+        "dexterity",
+        "channel"
+      ]
+    },
+    {
+      "name": "Noble Roar",
+      "before": [
+        null,
+        "intimidate"
+      ],
+      "after": [
+        "tough",
+        "intimidate"
+      ]
+    },
+    {
+      "name": "Pain Split",
+      "before": [
+        null,
+        "channel"
+      ],
+      "after": [
+        "will",
+        "channel"
+      ]
+    },
+    {
+      "name": "Parting Shot",
+      "before": [
+        null,
+        "intimidate"
+      ],
+      "after": [
+        "tough",
+        "intimidate"
+      ]
+    },
+    {
+      "name": "Perish Song",
+      "before": [
+        null,
+        "perform"
+      ],
+      "after": [
+        "beautiful",
+        "perform"
+      ]
+    },
+    {
+      "name": "Play Nice",
+      "before": [
+        null,
+        "allure"
+      ],
+      "after": [
+        "cute",
+        "allure"
+      ]
+    },
+    {
+      "name": "Poltergeist",
+      "before": [
+        "strength",
+        "brawl"
+      ],
+      "after": [
+        "dexterity",
+        "stealth"
+      ]
+    },
+    {
+      "name": "Powder Snow",
+      "before": [
+        "dexterity",
+        "channel e"
+      ],
+      "after": [
+        "dexterity",
+        "channel"
+      ]
+    },
+    {
+      "name": "Present",
+      "before": [
+        null,
+        "allure"
+      ],
+      "after": [
+        "cute",
+        "allure"
+      ]
+    },
+    {
+      "name": "Protect",
+      "before": [
+        null,
+        "channel"
+      ],
+      "after": [
+        "will",
+        "channel"
+      ]
+    },
+    {
+      "name": "Psychic Terrain",
+      "before": [
+        "special",
+        "nature"
+      ],
+      "after": [
+        "special",
+        "channel"
+      ]
+    },
+    {
+      "name": "Quash",
+      "before": [
+        null,
+        "intimidate"
+      ],
+      "after": [
+        "tough",
+        "intimidate"
+      ]
+    },
+    {
+      "name": "Quick Guard",
+      "before": [
+        "vitality",
+        "brawl"
+      ],
+      "after": [
+        "dexterity",
+        "athletic"
+      ]
+    },
+    {
+      "name": "Quiver Dance",
+      "before": [
+        null,
+        null
+      ],
+      "after": [
+        "beautiful",
+        "perform"
+      ]
+    },
+    {
+      "name": "Razor Leaf",
+      "before": [
+        "dexterity",
+        "channel"
+      ],
+      "after": [
+        "dexterity",
+        "brawl"
+      ]
+    },
+    {
+      "name": "Roar",
+      "before": [
+        null,
+        "intimidate"
+      ],
+      "after": [
+        "tough",
+        "intimidate"
+      ]
+    },
+    {
+      "name": "Role Play",
+      "before": [
+        null,
+        "perform"
+      ],
+      "after": [
+        "clever",
+        "perform"
+      ]
+    },
+    {
+      "name": "Sand Tomb",
+      "before": [
+        "dexterity",
+        "channel"
+      ],
+      "after": [
+        "dexterity",
+        "brawl"
+      ]
+    },
+    {
+      "name": "Scary Face",
+      "before": [
+        null,
+        "intimidate"
+      ],
+      "after": [
+        "tough",
+        "intimidate"
+      ]
+    },
+    {
+      "name": "Screech",
+      "before": [
+        null,
+        "perform"
+      ],
+      "after": [
+        "tough",
+        "perform"
+      ]
+    },
+    {
+      "name": "Seismic Toss",
+      "before": [
+        "strength",
+        "athletics"
+      ],
+      "after": [
+        "strength",
+        "athletic"
+      ]
+    },
+    {
+      "name": "Simple Beam",
+      "before": [
+        "insight",
+        "empathy e"
+      ],
+      "after": [
+        "insight",
+        "empathy"
+      ]
+    },
+    {
+      "name": "Sing",
+      "before": [
+        null,
+        "perform"
+      ],
+      "after": [
+        "cute",
+        "perform"
+      ]
+    },
+    {
+      "name": "Skill Swap",
+      "before": [
+        null,
+        "perform"
+      ],
+      "after": [
+        "clever",
+        "perform"
+      ]
+    },
+    {
+      "name": "Spit Up",
+      "before": [
+        "dexterity",
+        "channel e"
+      ],
+      "after": [
+        "dexterity",
+        "channel"
+      ]
+    },
+    {
+      "name": "Spite",
+      "before": [
+        null,
+        "intimidate"
+      ],
+      "after": [
+        "will",
+        "intimidate"
+      ]
+    },
+    {
+      "name": "Strength",
+      "before": [
+        "dexterity",
+        "channel"
+      ],
+      "after": [
+        "strength",
+        "brawl"
+      ]
+    },
+    {
+      "name": "Stuff Cheeks",
+      "before": [
+        null,
+        "nature"
+      ],
+      "after": [
+        "clever",
+        "nature"
+      ]
+    },
+    {
+      "name": "Supersonic",
+      "before": [
+        null,
+        "channel"
+      ],
+      "after": [
+        "tough",
+        "channel"
+      ]
+    },
+    {
+      "name": "Swagger",
+      "before": [
+        null,
+        "intimidate"
+      ],
+      "after": [
+        "tough",
+        "intimidate"
+      ]
+    },
+    {
+      "name": "Sweet Kiss",
+      "before": [
+        null,
+        "allure"
+      ],
+      "after": [
+        "cute",
+        "allure"
+      ]
+    },
+    {
+      "name": "Tail Whip",
+      "before": [
+        null,
+        "perform"
+      ],
+      "after": [
+        "cute",
+        "perform"
+      ]
+    },
+    {
+      "name": "Taunt",
+      "before": [
+        null,
+        "intimidate"
+      ],
+      "after": [
+        "tough",
+        "intimidate"
+      ]
+    },
+    {
+      "name": "Tearful Look",
+      "before": [
+        null,
+        "allure"
+      ],
+      "after": [
+        "cute",
+        "allure"
+      ]
+    },
+    {
+      "name": "Torment",
+      "before": [
+        null,
+        "intimidate"
+      ],
+      "after": [
+        "tough",
+        "intimidate"
+      ]
+    },
+    {
+      "name": "Transform",
+      "before": [
+        null,
+        "channel"
+      ],
+      "after": [
+        "will",
+        "channel"
+      ]
+    },
+    {
+      "name": "Wish",
+      "before": [
+        null,
+        "channel"
+      ],
+      "after": [
+        "will",
+        "channel"
+      ]
+    },
+    {
+      "name": "Work Up",
+      "before": [
+        "strength",
+        "athletics"
+      ],
+      "after": [
+        "strength",
+        "athletic"
+      ]
+    }
+  ],
+  "special": [
+    {
+      "name": "Any Move",
+      "attribute": "",
+      "skill": ""
+    },
+    {
+      "name": "Copycat",
+      "attribute": "Same as the copied move",
+      "skill": ""
+    },
+    {
+      "name": "Cover An Ally",
+      "attribute": "",
+      "skill": ""
+    },
+    {
+      "name": "Help Another",
+      "attribute": "",
+      "skill": "Varies"
+    },
+    {
+      "name": "Hidden Power",
+      "attribute": "",
+      "skill": ""
+    },
+    {
+      "name": "Lovely Kiss",
+      "attribute": "Missing beauty",
+      "skill": "ALLURE"
+    },
+    {
+      "name": "Sleep Talk",
+      "attribute": "",
+      "skill": ""
+    }
+  ],
+  "outsideReference": [
+    "Alluring Voice",
+    "Aqua Cutter",
+    "Aqua Step",
+    "Armor Cannon",
+    "Axe Kick",
+    "Barb Barrage",
+    "Bitter Blade",
+    "Bitter Malice",
+    "Bleakwind Storm",
+    "Burning Jealousy",
+    "Ceaseless Edge",
+    "Chilling Water",
+    "Chloroblast",
+    "Coaching",
+    "Collision Course",
+    "Comeuppance",
+    "Dire Claw",
+    "Doodle",
+    "Double Shock",
+    "Dragon Cheer",
+    "Dual Wingbeat",
+    "Electro Drift",
+    "Esper Wing",
+    "Expanding Force",
+    "Fillet Away",
+    "Flip Turn",
+    "Flower Trick",
+    "Gigaton Hammer",
+    "Glaive Rush",
+    "Grassy Glide",
+    "Hard Press",
+    "Headlong Rush",
+    "Hyper Drill",
+    "Ice Spinner",
+    "Infernal Parade",
+    "Jet Punch",
+    "Kowtow Cleave",
+    "Lash Out",
+    "Last Respects",
+    "Lumina Crash",
+    "Lunar Blessing",
+    "Make It Rain",
+    "Meteor Beam",
+    "Misty Explosion",
+    "Mortal Spin",
+    "Mountain Gale",
+    "Mystical Power",
+    "Order Up",
+    "Population Bomb",
+    "Pounce",
+    "Power Shift",
+    "Psychic Noise",
+    "Psyshield Bash",
+    "Rage Fist",
+    "Raging Bull",
+    "Raging Fury",
+    "Revival Blessing",
+    "Ruination",
+    "Salt Cure",
+    "Sandsear Storm",
+    "Scale Shot",
+    "Scorching Sands",
+    "Shed Tail",
+    "Shelter",
+    "Silk Trap",
+    "Skitter Smack",
+    "Snowscape",
+    "Spicy Extract",
+    "Spin Out",
+    "Springtide Storm",
+    "Steel Roller",
+    "Stone Axe",
+    "Supercell Slam",
+    "Take Heart",
+    "Temper Flare",
+    "Tera Blast",
+    "Terrain Pulse",
+    "Tidy Up",
+    "Torch Song",
+    "Trailblaze",
+    "Triple Arrows",
+    "Triple Axel",
+    "Triple Dive",
+    "Twin Beam",
+    "Upper Hand",
+    "Victory Dance",
+    "Vise Grip",
+    "Wave Crash",
+    "Wildbolt Storm"
+  ]
+}
