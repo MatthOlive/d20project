@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { clearRealtimeStatus, reportRealtimeStatus } from "@/lib/client-health";
 import { readLocalGameSnapshot, writeLocalGameSnapshot } from "@/lib/local-game-cache";
+import { uploadGameAsset } from "@/lib/game-assets";
 import { toast } from "sonner";
 import {
   X,
@@ -574,6 +575,14 @@ export function MapBoard({
       ].sort(),
     [tokens],
   );
+  const visibleDigiTamerIds = useMemo(
+    () => [...new Set(tokens.filter((token) => token.character_kind === "digirole_tamer").map((token) => token.character_id))].sort(),
+    [tokens],
+  );
+  const visibleDigimonIds = useMemo(
+    () => [...new Set(tokens.filter((token) => token.character_kind === "digirole_digimon").map((token) => token.character_id))].sort(),
+    [tokens],
+  );
   const tokenVisualQueryKey = useMemo(
     () =>
       [
@@ -658,38 +667,48 @@ export function MapBoard({
 
   // Character ids owned by the current user or explicitly shared with them.
   const { data: editableCharIds } = useQuery({
-    queryKey: ["editable-char-ids", gameId, userId],
+    queryKey: [
+      "editable-char-ids",
+      gameId,
+      userId,
+      visiblePokemonIds.join(","),
+      visibleTrainerIds.join(","),
+      visibleDigiTamerIds.join(","),
+      visibleDigimonIds.join(","),
+    ],
+    enabled: tokens.length > 0,
     queryFn: async () => {
       const [pkm, trs, digiTamers, digimons] = await Promise.all([
-        supabase.from("pokemon").select("id, owner_id").eq("game_id", gameId),
-        supabase.from("trainers").select("id, owner_id").eq("game_id", gameId),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (supabase.from("digirole_tamers" as never) as any)
-          .select("id, owner_id")
-          .eq("game_id", gameId),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (supabase.from("digirole_digimons" as never) as any)
-          .select("id, owner_id")
-          .eq("game_id", gameId),
+        visiblePokemonIds.length
+          ? supabase.from("pokemon").select("id,owner_id,allowed_editors").in("id", visiblePokemonIds)
+          : Promise.resolve({ data: [], error: null }),
+        visibleTrainerIds.length
+          ? supabase.from("trainers").select("id,owner_id,allowed_editors").in("id", visibleTrainerIds)
+          : Promise.resolve({ data: [], error: null }),
+        visibleDigiTamerIds.length
+          ? (
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              supabase.from("digirole_tamers" as never) as any
+            )
+              .select("id,owner_id,allowed_editors")
+              .in("id", visibleDigiTamerIds)
+          : Promise.resolve({ data: [], error: null }),
+        visibleDigimonIds.length
+          ? (
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              supabase.from("digirole_digimons" as never) as any
+            )
+              .select("id,owner_id,allowed_editors")
+              .in("id", visibleDigimonIds)
+          : Promise.resolve({ data: [], error: null }),
       ]);
       const set = new Set<string>();
-      for (const r of (pkm.data ?? []) as {
+      for (const r of [...(pkm.data ?? []), ...(trs.data ?? []), ...(digiTamers.data ?? []), ...(digimons.data ?? [])] as {
         id: string;
         owner_id: string;
+        allowed_editors?: string[] | null;
       }[]) {
-        if (r.owner_id === userId) set.add(r.id);
-      }
-      for (const r of (trs.data ?? []) as {
-        id: string;
-        owner_id: string;
-      }[]) {
-        if (r.owner_id === userId) set.add(r.id);
-      }
-      for (const r of [...(digiTamers.data ?? []), ...(digimons.data ?? [])] as {
-        id: string;
-        owner_id: string;
-      }[]) {
-        if (r.owner_id === userId) set.add(r.id);
+        if (r.owner_id === userId || r.allowed_editors?.includes(userId)) set.add(r.id);
       }
       return set;
     },
@@ -702,6 +721,7 @@ export function MapBoard({
   useEffect(() => {
     if (!pageId) return;
     let active = true;
+    let wasSubscribed = false;
     const ch = supabase
       .channel(`tokens:${gameId}:${pageId}`)
       .on(
@@ -733,9 +753,10 @@ export function MapBoard({
       .subscribe((status) => {
         if (!active) return;
         reportRealtimeStatus(`tokens:${gameId}:${pageId}`, status);
-        if (status === "SUBSCRIBED") {
+        if (status === "SUBSCRIBED" && wasSubscribed) {
           void qc.invalidateQueries({ queryKey: ["tokens", gameId, pageId] });
         }
+        if (status === "SUBSCRIBED") wasSubscribed = true;
       });
     return () => {
       active = false;
@@ -1001,7 +1022,17 @@ export function MapBoard({
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "map_drawings", filter: `page_id=eq.${pageId}` },
-        () => qc.invalidateQueries({ queryKey: ["map_drawings", gameId, pageId] }),
+        (payload) => {
+          const incoming = payload.new as Drawing | null;
+          const removedId = (payload.old as Partial<Drawing> | null)?.id;
+          qc.setQueryData<Drawing[]>(["map_drawings", gameId, pageId], (current = []) => {
+            if (payload.eventType === "DELETE") {
+              return removedId ? current.filter((drawing) => drawing.id !== removedId) : current;
+            }
+            if (!incoming) return current;
+            return [...current.filter((drawing) => drawing.id !== incoming.id), incoming];
+          });
+        },
       )
       .subscribe();
     return () => {
@@ -1059,7 +1090,19 @@ export function MapBoard({
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "map_backgrounds", filter: `page_id=eq.${pageId}` },
-        () => qc.invalidateQueries({ queryKey: ["map_backgrounds", gameId, pageId] }),
+        (payload) => {
+          const incoming = payload.new as MapBg | null;
+          const removedId = (payload.old as Partial<MapBg> | null)?.id;
+          qc.setQueryData<MapBg[]>(["map_backgrounds", gameId, pageId], (current = []) => {
+            if (payload.eventType === "DELETE") {
+              return removedId ? current.filter((background) => background.id !== removedId) : current;
+            }
+            if (!incoming) return current;
+            return [...current.filter((background) => background.id !== incoming.id), incoming].sort(
+              (left, right) => left.z_index - right.z_index,
+            );
+          });
+        },
       )
       .subscribe();
     return () => {
@@ -1240,7 +1283,12 @@ export function MapBoard({
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "scenarios", filter: `id=eq.${pageId}` },
-        () => qc.invalidateQueries({ queryKey: ["scenario-meta", pageId] }),
+        (payload) => {
+          const darknessLevel = (payload.new as { darkness_level?: number } | null)?.darkness_level;
+          if (typeof darknessLevel === "number") {
+            qc.setQueryData(["scenario-meta", pageId], { darkness_level: darknessLevel });
+          }
+        },
       )
       .subscribe();
     return () => {
@@ -1254,7 +1302,17 @@ export function MapBoard({
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "fog_regions", filter: `page_id=eq.${pageId}` },
-        () => qc.invalidateQueries({ queryKey: ["fog_regions", gameId, pageId] }),
+        (payload) => {
+          const incoming = payload.new as FogRegion | null;
+          const removedId = (payload.old as Partial<FogRegion> | null)?.id;
+          qc.setQueryData<FogRegion[]>(["fog_regions", gameId, pageId], (current = []) => {
+            if (payload.eventType === "DELETE") {
+              return removedId ? current.filter((region) => region.id !== removedId) : current;
+            }
+            if (!incoming) return current;
+            return [...current.filter((region) => region.id !== incoming.id), incoming];
+          });
+        },
       )
       .subscribe();
     const ch2 = supabase
@@ -1262,7 +1320,17 @@ export function MapBoard({
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "walls", filter: `page_id=eq.${pageId}` },
-        () => qc.invalidateQueries({ queryKey: ["walls", gameId, pageId] }),
+        (payload) => {
+          const incoming = payload.new as Wall | null;
+          const removedId = (payload.old as Partial<Wall> | null)?.id;
+          qc.setQueryData<Wall[]>(["walls", gameId, pageId], (current = []) => {
+            if (payload.eventType === "DELETE") {
+              return removedId ? current.filter((wall) => wall.id !== removedId) : current;
+            }
+            if (!incoming) return current;
+            return [...current.filter((wall) => wall.id !== incoming.id), incoming];
+          });
+        },
       )
       .subscribe();
     return () => {
@@ -2040,11 +2108,12 @@ export function MapBoard({
         toast.error("Imagem muito grande (>5MB)");
         return;
       }
-      const reader = new FileReader();
-      reader.onload = () => {
-        void addBackground(String(reader.result));
-      };
-      reader.readAsDataURL(imageFile);
+      try {
+        const publicUrl = await uploadGameAsset(imageFile, "map-backgrounds", { maxDimension: 3072, quality: 0.86 });
+        await addBackground(publicUrl);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Não foi possível enviar a imagem.");
+      }
       return;
     }
     const uri = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain");
@@ -3655,7 +3724,7 @@ function BgUrlAdd({
     await onAdd(u, tileOptions);
     setUrl("");
   }
-  function handleFile(file: File) {
+  async function handleFile(file: File) {
     if (!file.type.startsWith("image/")) {
       toast.error("Selecione uma imagem");
       return;
@@ -3664,11 +3733,12 @@ function BgUrlAdd({
       toast.error("Imagem muito grande (>5MB)");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      void onAdd(String(reader.result), tileOptions);
-    };
-    reader.readAsDataURL(file);
+    try {
+      const publicUrl = await uploadGameAsset(file, "map-backgrounds", { maxDimension: 3072, quality: 0.86 });
+      await onAdd(publicUrl, tileOptions);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível enviar a imagem.");
+    }
   }
   return (
     <div className="flex flex-col gap-1">

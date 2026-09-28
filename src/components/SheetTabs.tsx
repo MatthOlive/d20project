@@ -25,6 +25,8 @@ import { preferredPokemonSprite } from "@/lib/pokerole";
 import { useGameSpriteStyle } from "@/hooks/use-game-sprite-style";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { TRAINER_SHEET_POINTER_DROP_EVENT } from "@/lib/sheet-events";
+import { fetchAllPaged } from "@/lib/supabase-paged";
+import { rollPokemonAutofill } from "@/lib/pokemon-autofill";
 
 type SlotPokemon = {
   id: string;
@@ -68,6 +70,7 @@ export function SheetTabs(props: {
   const qc = useQueryClient();
   const spriteStyle = useGameSpriteStyle(gameId);
   const [active, setActive] = useState<Tab>({ kind: "trainer" });
+  const [createTarget, setCreateTarget] = useState<number | "pc" | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const teamPointerDragRef = useRef<{
     payload: DragCharacterPayload;
@@ -86,10 +89,10 @@ export function SheetTabs(props: {
     queryFn: async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase.from("trainers") as any)
-        .select("is_minimal, name, image_url, description, owner_id, allowed_editors")
+        .select("is_minimal, name, image_url, description, owner_id, allowed_editors, allowed_viewers")
         .eq("id", trainerId).single();
       if (error) throw error;
-      return data as { is_minimal: boolean; name: string; image_url: string | null; description: string | null; owner_id: string; allowed_editors: string[] | null };
+      return data as { is_minimal: boolean; name: string; image_url: string | null; description: string | null; owner_id: string; allowed_editors: string[] | null; allowed_viewers: string[] | null };
     },
   });
   const canEditRoster = !!trainerMeta && (
@@ -138,6 +141,7 @@ export function SheetTabs(props: {
 
   useEffect(() => {
     let characterRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+    let wasSubscribed = false;
     const refreshCharacters = () => {
       if (characterRefreshTimer) clearTimeout(characterRefreshTimer);
       characterRefreshTimer = setTimeout(() => {
@@ -174,14 +178,24 @@ export function SheetTabs(props: {
               ? current.map((entry) => entry.id === pokemonId ? updated : entry)
               : [...current, updated];
           });
-          refreshCharacters();
+          const files = qc.getQueryData<{ pokemon?: Array<{ id: string }> }>([
+            "characters",
+            gameId,
+          ]);
+          const wasListed = files?.pokemon?.some((entry) => entry.id === pokemonId) ?? false;
+          // Files now contains only unassigned Pokémon. Routine combat/stat
+          // updates for linked Pokémon should update the trainer roster only.
+          if (next.owner_trainer_id == null || previous.owner_trainer_id == null || wasListed) {
+            refreshCharacters();
+          }
         },
       )
       .subscribe((status) => {
-        if (status === "SUBSCRIBED") {
+        if (status === "SUBSCRIBED" && wasSubscribed) {
           void qc.invalidateQueries({ queryKey: ["trainer-roster", trainerId] });
           refreshCharacters();
         }
+        if (status === "SUBSCRIBED") wasSubscribed = true;
       });
 
     return () => {
@@ -647,6 +661,7 @@ export function SheetTabs(props: {
                   invalidateRoster();
                   setActive({ kind: "slot", slot: active.slot, pokemonId: pid });
                 }}
+                onCreate={() => setCreateTarget(active.slot)}
               />
         )}
         {active.kind === "pc" && (
@@ -696,6 +711,7 @@ export function SheetTabs(props: {
               if (error) { toast.error(error.message); return; }
               invalidateRoster();
             }}
+            onCreate={() => setCreateTarget("pc")}
           />
         )}
         {active.kind === "pcPokemon" && (
@@ -726,6 +742,28 @@ export function SheetTabs(props: {
           {teamDragPreview.label}
         </div>
       )}
+      <CreateOwnedPokemonDialog
+        open={createTarget !== null}
+        gameId={gameId}
+        trainerId={trainerId}
+        ownerId={trainerMeta?.owner_id ?? userId}
+        allowedEditors={trainerMeta?.allowed_editors ?? []}
+        allowedViewers={trainerMeta?.allowed_viewers ?? []}
+        teamSlot={typeof createTarget === "number" ? createTarget : null}
+        onOpenChange={(open) => {
+          if (!open) setCreateTarget(null);
+        }}
+        onCreated={async (pokemonId) => {
+          await registerInPokedex(pokemonId);
+          invalidateRoster();
+          if (typeof createTarget === "number") {
+            setActive({ kind: "slot", slot: createTarget, pokemonId });
+          } else {
+            setActive({ kind: "pcPokemon", pokemonId });
+          }
+          setCreateTarget(null);
+        }}
+      />
     </div>
   );
 }
@@ -781,8 +819,124 @@ function TabButton({
   );
 }
 
+function CreateOwnedPokemonDialog({
+  open,
+  gameId,
+  trainerId,
+  ownerId,
+  allowedEditors,
+  allowedViewers,
+  teamSlot,
+  onOpenChange,
+  onCreated,
+}: {
+  open: boolean;
+  gameId: string;
+  trainerId: string;
+  ownerId: string;
+  allowedEditors: string[];
+  allowedViewers: string[];
+  teamSlot: number | null;
+  onOpenChange: (open: boolean) => void;
+  onCreated: (pokemonId: string) => void | Promise<void>;
+}) {
+  const [search, setSearch] = useState("");
+  const [nickname, setNickname] = useState("");
+  const [selectedId, setSelectedId] = useState("");
+  const [creating, setCreating] = useState(false);
+  const { data: species = [] } = useQuery({
+    queryKey: ["species-create-owned"],
+    enabled: open,
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: 60 * 60 * 1_000,
+    queryFn: () =>
+      fetchAllPaged<{ id: string; name: string; sprite_url: string | null }>(
+        "species",
+        "id,name,sprite_url",
+        { orderBy: "name", ascending: true },
+      ),
+  });
+  const visible = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase("pt-BR");
+    return species
+      .filter((entry) => !query || entry.name.toLocaleLowerCase("pt-BR").includes(query))
+      .slice(0, 100);
+  }, [search, species]);
+
+  async function create() {
+    if (!selectedId || creating) return;
+    setCreating(true);
+    try {
+      const { patch, moveIds } = await rollPokemonAutofill(selectedId, "starter");
+      const { data, error } = await supabase
+        .from("pokemon")
+        .insert({
+          ...patch,
+          game_id: gameId,
+          owner_id: ownerId,
+          allowed_editors: allowedEditors,
+          allowed_viewers: allowedViewers,
+          owner_trainer_id: trainerId,
+          team_slot: teamSlot,
+          species_id: selectedId,
+          nickname: nickname.trim() || null,
+          rank: "starter",
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      if (moveIds.length > 0) {
+        const { error: movesError } = await supabase.from("pokemon_moves").insert(
+          moveIds.map((moveId) => ({ pokemon_id: data.id, move_id: moveId })),
+        );
+        if (movesError) throw movesError;
+      }
+      await onCreated(data.id);
+      setSearch("");
+      setNickname("");
+      setSelectedId("");
+      toast.success(teamSlot == null ? "Pokémon criado no PC." : `Pokémon criado no slot ${teamSlot}.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível criar o Pokémon.");
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[85vh] max-w-lg overflow-hidden">
+        <DialogHeader>
+          <DialogTitle>{teamSlot == null ? "Criar Pokémon no PC" : `Criar Pokémon no slot ${teamSlot}`}</DialogTitle>
+        </DialogHeader>
+        <Input value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder="Apelido (opcional)" />
+        <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar espécie…" />
+        <div className="max-h-[45vh] space-y-1 overflow-y-auto">
+          {visible.map((entry) => (
+            <button
+              key={entry.id}
+              type="button"
+              onClick={() => setSelectedId(entry.id)}
+              className={cn(
+                "flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left",
+                selectedId === entry.id ? "border-primary bg-primary/10" : "border-border bg-card hover:bg-accent",
+              )}
+            >
+              <PokemonSpriteImage speciesName={entry.name} spriteUrl={entry.sprite_url} alt={entry.name} className="h-8 w-8 object-contain" />
+              <span className="text-sm font-medium">{entry.name}</span>
+            </button>
+          ))}
+        </div>
+        <Button disabled={!selectedId || creating} onClick={() => void create()}>
+          {creating ? "Criando…" : "Criar subficha"}
+        </Button>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function EmptySlot({
-  slot, gameId, trainerId, canEdit, spriteMap, onAssigned,
+  slot, gameId, trainerId, canEdit, spriteMap, onAssigned, onCreate,
 }: {
   slot: number;
   gameId: string;
@@ -791,6 +945,7 @@ function EmptySlot({
   canEdit: boolean;
   spriteMap: Record<string, { sprite_url: string | null; name: string }>;
   onAssigned: (pokemonId: string) => void;
+  onCreate: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -869,9 +1024,14 @@ function EmptySlot({
           Atribua um Pokémon dos arquivos do jogo a este slot.
         </p>
         {canEdit ? (
-          <Button size="sm" onClick={() => setOpen(true)}>
-            <Plus className="mr-1 h-3.5 w-3.5" /> Adicionar de Files
-          </Button>
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button size="sm" onClick={onCreate}>
+              <Plus className="mr-1 h-3.5 w-3.5" /> Criar neste slot
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+              Adicionar existente
+            </Button>
+          </div>
         ) : (
           <p className="text-xs text-muted-foreground">Somente editores desta ficha podem alterar o time.</p>
         )}
@@ -923,7 +1083,7 @@ function EmptySlot({
 }
 
 function PcGrid({
-  pokemon, canEdit, species, spriteStyle, name, onOpen, onPointerDragStart, onDragStart, onClickCapture, onAddToTeam, onRelease, onToggleMark,
+  pokemon, canEdit, species, spriteStyle, name, onOpen, onPointerDragStart, onDragStart, onClickCapture, onAddToTeam, onRelease, onToggleMark, onCreate,
 }: {
   pokemon: SlotPokemon[];
   canEdit: boolean;
@@ -937,6 +1097,7 @@ function PcGrid({
   onAddToTeam: (pokemonId: string) => void | Promise<void>;
   onRelease: (pokemonId: string) => void | Promise<void>;
   onToggleMark: (pokemonId: string, marked: boolean) => void | Promise<void>;
+  onCreate: () => void;
 }) {
   const [releaseTarget, setReleaseTarget] = useState<SlotPokemon | null>(null);
   const [search, setSearch] = useState("");
@@ -958,6 +1119,11 @@ function PcGrid({
         <Boxes className="h-4 w-4 text-success" />
         <h3 className="text-sm font-bold">PC · Caixa de Pokémon</h3>
         <span className="ml-auto text-xs text-muted-foreground">{pokemon.length} guardado(s)</span>
+        {canEdit && (
+          <Button size="sm" onClick={onCreate}>
+            <Plus className="mr-1 h-3.5 w-3.5" /> Criar no PC
+          </Button>
+        )}
       </div>
       {pokemon.length > 0 && (
         <div className="flex items-center gap-2">

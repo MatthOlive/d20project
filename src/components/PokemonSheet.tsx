@@ -375,6 +375,7 @@ export function PokemonSheet({
 
   useEffect(() => {
     let movesRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+    let wasSubscribed = false;
     const refreshMoves = () => {
       if (movesRefreshTimer) clearTimeout(movesRefreshTimer);
       movesRefreshTimer = setTimeout(() => {
@@ -402,10 +403,11 @@ export function PokemonSheet({
         refreshMoves,
       )
       .subscribe((status) => {
-        if (status === "SUBSCRIBED") {
+        if (status === "SUBSCRIBED" && wasSubscribed) {
           void qc.invalidateQueries({ queryKey });
           refreshMoves();
         }
+        if (status === "SUBSCRIBED") wasSubscribed = true;
       });
 
     return () => {
@@ -1816,6 +1818,8 @@ function NatureSelect({
       if (error) throw error;
       return (data ?? []) as Nature[];
     },
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: 60 * 60 * 1_000,
   });
   const current = natures.find((n) => n.name === value);
   return (

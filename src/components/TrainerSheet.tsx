@@ -37,6 +37,7 @@ import { ImageSourceDialog } from "@/components/ImageSourceDialog";
 import { AutosaveStatus } from "@/components/AutosaveStatus";
 
 import { useDebouncedPatch } from "@/lib/use-debounced-patch";
+import { uploadGameAsset } from "@/lib/game-assets";
 import { toast } from "sonner";
 import {
   Dices,
@@ -257,6 +258,7 @@ export function TrainerSheet({
   });
 
   useEffect(() => {
+    let wasSubscribed = false;
     const channel = supabase
       .channel(`trainer-sheet:${trainerId}`)
       .on(
@@ -268,7 +270,8 @@ export function TrainerSheet({
         },
       )
       .subscribe((status) => {
-        if (status === "SUBSCRIBED") void qc.invalidateQueries({ queryKey });
+        if (status === "SUBSCRIBED" && wasSubscribed) void qc.invalidateQueries({ queryKey });
+        if (status === "SUBSCRIBED") wasSubscribed = true;
       });
     return () => {
       void supabase.removeChannel(channel);
@@ -1000,15 +1003,17 @@ function BadgesSection({
   function add() {
     onChange([...(items ?? []), { name: "New badge" }]);
   }
-  function uploadImage(idx: number, file: File) {
+  async function uploadImage(idx: number, file: File) {
     if (file.size > 1_000_000) {
       toast.error("Image must be under 1 MB");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () =>
-      onChange(items.map((x, j) => (j === idx ? { ...x, image_url: reader.result as string } : x)));
-    reader.readAsDataURL(file);
+    try {
+      const publicUrl = await uploadGameAsset(file, "badge-images", { maxDimension: 512, quality: 0.82 });
+      onChange(items.map((x, j) => (j === idx ? { ...x, image_url: publicUrl } : x)));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível enviar a imagem.");
+    }
   }
   return (
     <section className="rounded-lg border border-border bg-card p-3">
@@ -1145,6 +1150,8 @@ function NatureSelect({
       if (error) throw error;
       return (data ?? []) as Nature[];
     },
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: 60 * 60 * 1_000,
   });
 
   const current = natures.find((n) => n.name === value);
@@ -1204,6 +1211,8 @@ function PokedexSection({
       return data ?? [];
     },
     enabled: open,
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: 60 * 60 * 1_000,
   });
 
   const filtered = useMemo(() => {

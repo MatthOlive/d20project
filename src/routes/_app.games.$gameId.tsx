@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatGameInviteCode } from "@/lib/game-invites";
 import { fetchAllPaged } from "@/lib/supabase-paged";
 import { readLocalGameSnapshot, writeLocalGameSnapshot } from "@/lib/local-game-cache";
+import { uploadGameAsset } from "@/lib/game-assets";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
@@ -1547,7 +1548,8 @@ function FilesPanel({
             "id,nickname,owner_id,image_url,folder,is_shiny,species:species_id(name,sprite_url)",
           )
           .eq("game_id", gameId)
-          .eq("ai_spawned", false),
+          .eq("ai_spawned", false)
+          .is("owner_trainer_id", null),
         supabase.from("trainers").select("id,name,owner_id,image_url,folder").eq("game_id", gameId),
       ]);
       if (pkm.error) throw new Error(`Pokémon: ${pkm.error.message}`);
@@ -3233,10 +3235,9 @@ function FilesPanel({
 
 type Scenario = {
   id: string;
-  game_id: string;
   name: string;
   background_url: string | null;
-  notes: string;
+  darkness_level?: number;
 };
 
 function ScenarioButtons({ gameId, currentBg }: { gameId: string; currentBg: string | null }) {
@@ -3247,7 +3248,7 @@ function ScenarioButtons({ gameId, currentBg }: { gameId: string; currentBg: str
     queryFn: async () => {
       const { data } = await supabase
         .from("scenarios")
-        .select("*")
+        .select("id,name,background_url,darkness_level")
         .eq("game_id", gameId)
         .order("created_at");
       return (data ?? []) as Scenario[];
@@ -3300,15 +3301,16 @@ function ScenarioButtons({ gameId, currentBg }: { gameId: string; currentBg: str
     setOpen(false);
   }
   async function uploadBg(s: Scenario, file: File) {
-    const reader = new FileReader();
-    reader.onload = async () => {
+    try {
+      const publicUrl = await uploadGameAsset(file, "scenario-backgrounds", { maxDimension: 2560, quality: 0.84 });
       await supabase
         .from("scenarios")
-        .update({ background_url: reader.result as string })
+        .update({ background_url: publicUrl })
         .eq("id", s.id);
       qc.invalidateQueries({ queryKey: ["scenarios", gameId] });
-    };
-    reader.readAsDataURL(file);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível enviar a imagem.");
+    }
   }
   async function deleteScenario(id: string) {
     if (!confirm("Delete this scenario?")) return;
@@ -3716,7 +3718,16 @@ type InitRow = {
   successes: number;
   position: number;
   image_url: string | null;
+  created_at?: string;
 };
+
+function sortInitiativeRows(rows: InitRow[]) {
+  return [...rows].sort((a, b) =>
+    (a.position ?? 0) - (b.position ?? 0) ||
+    (b.successes ?? 0) - (a.successes ?? 0) ||
+    (a.created_at ?? "").localeCompare(b.created_at ?? ""),
+  );
+}
 
 function InitiativePanel({
   gameId,
@@ -3735,7 +3746,7 @@ function InitiativePanel({
     queryFn: async () => {
       const { data } = await supabase
         .from("initiative")
-        .select("*")
+        .select("id,game_id,character_name,character_kind,character_ref,successes,position,image_url,created_at")
         .eq("game_id", gameId)
         .order("position", { ascending: true })
         .order("successes", { ascending: false })
@@ -3745,14 +3756,33 @@ function InitiativePanel({
   });
 
   useEffect(() => {
+    let wasSubscribed = false;
     const ch = supabase
       .channel(`initiative:${gameId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "initiative", filter: `game_id=eq.${gameId}` },
-        () => qc.invalidateQueries({ queryKey: ["initiative", gameId] }),
+        (payload) => {
+          const incoming = payload.new as InitRow | null;
+          const removedId = (payload.old as Partial<InitRow> | null)?.id;
+          qc.setQueryData<InitRow[]>(["initiative", gameId], (current = []) => {
+            if (payload.eventType === "DELETE") {
+              return removedId ? current.filter((row) => row.id !== removedId) : current;
+            }
+            if (!incoming) return current;
+            return sortInitiativeRows([
+              ...current.filter((row) => row.id !== incoming.id),
+              incoming,
+            ]);
+          });
+        },
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED" && wasSubscribed) {
+          void qc.invalidateQueries({ queryKey: ["initiative", gameId] });
+        }
+        if (status === "SUBSCRIBED") wasSubscribed = true;
+      });
     return () => {
       supabase.removeChannel(ch);
     };
@@ -3773,7 +3803,6 @@ function InitiativePanel({
       .from("initiative")
       .update({ position: maxPos + 1 })
       .eq("id", top.id);
-    qc.invalidateQueries({ queryKey: ["initiative", gameId] });
   }
 
   return (

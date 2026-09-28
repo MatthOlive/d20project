@@ -338,6 +338,7 @@ export type Database = {
           name: string
           narrator_id: string
           narrator_type: string
+          owner_id: string
           overgrown_chance: number
           shiny_chance: number
           spdef_uses_insight: boolean
@@ -367,6 +368,7 @@ export type Database = {
           name: string
           narrator_id: string
           narrator_type?: string
+          owner_id?: string
           overgrown_chance?: number
           shiny_chance?: number
           spdef_uses_insight?: boolean
@@ -396,6 +398,7 @@ export type Database = {
           name?: string
           narrator_id?: string
           narrator_type?: string
+          owner_id?: string
           overgrown_chance?: number
           shiny_chance?: number
           spdef_uses_insight?: boolean

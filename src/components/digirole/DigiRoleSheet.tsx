@@ -18,6 +18,7 @@ import {
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { AttrFourField, SkillNumberInput } from "@/components/AttrFourField";
 import { Button } from "@/components/ui/button";
@@ -70,6 +71,7 @@ import {
   fetchDigiRoleSignatureTechniqueIds,
   fetchDigiRoleSpeciesTechniqueLinks,
   fetchDigiRoleSpeciesTechniques,
+  syncDigiRoleSignatureTechniques,
   type DigiRoleSpeciesTechniqueLink,
 } from "@/lib/digirole-techniques";
 import {
@@ -1330,6 +1332,11 @@ function DigiRoleTamerSheet({
   const [draft, setDraft] = useState<TamerSheet | null>(null);
   const [active, setActive] = useState<TamerTab>({ kind: "tamer" });
   const [hybridOpen, setHybridOpen] = useState(false);
+  const [createTarget, setCreateTarget] = useState<number | "cloud" | null>(null);
+  const [createSearch, setCreateSearch] = useState("");
+  const [createNickname, setCreateNickname] = useState("");
+  const [createSpeciesId, setCreateSpeciesId] = useState("");
+  const [creatingDigimon, setCreatingDigimon] = useState(false);
   useEffect(() => {
     if (query.data) setDraft(query.data);
   }, [query.data]);
@@ -1374,6 +1381,85 @@ function DigiRoleTamerSheet({
   });
   const rosterQuery = useDigiRoleRoster(id, gameId);
   const roster = useMemo(() => rosterQuery.data ?? [], [rosterQuery.data]);
+  const createSpeciesQuery = useQuery({
+    queryKey: ["digirole-species-list"],
+    enabled: createTarget !== null,
+    staleTime: Number.POSITIVE_INFINITY,
+    queryFn: async () => {
+      const pages = await Promise.all(
+        [0, 1000].map((from) =>
+          table("digirole_species")
+            .select("id,name,stage,digi_attribute,fields,hp_base,base_attrs,signature_technique,image_url")
+            .order("name")
+            .range(from, from + 999),
+        ),
+      );
+      const error = pages.find((page) => page.error)?.error;
+      if (error) throw error;
+      return pages.flatMap((page) => page.data ?? []) as Species[];
+    },
+  });
+  const visibleCreateSpecies = useMemo(() => {
+    const search = createSearch.trim().toLocaleLowerCase("pt-BR");
+    return (createSpeciesQuery.data ?? [])
+      .filter((species) => !search || `${species.name} ${species.stage}`.toLocaleLowerCase("pt-BR").includes(search))
+      .slice(0, 100);
+  }, [createSearch, createSpeciesQuery.data]);
+
+  async function createOwnedDigimon() {
+    const species = createSpeciesQuery.data?.find((entry) => entry.id === createSpeciesId);
+    if (!species || !draft || createTarget === null || creatingDigimon) return;
+    setCreatingDigimon(true);
+    try {
+      const attrs = { ...defaultDigiRoleAttrs(), ...species.base_attrs };
+      const imageUrl = species.image_url || (await fetchDigiApiImage(species.name));
+      const inserted = await table("digirole_digimons")
+        .insert({
+          game_id: gameId,
+          owner_id: draft.owner_id,
+          allowed_editors: draft.allowed_editors ?? [],
+          allowed_viewers: draft.allowed_viewers ?? [],
+          tamer_id: id,
+          team_slot: typeof createTarget === "number" ? createTarget : null,
+          species_id: species.id,
+          nickname: createNickname.trim() || null,
+          rank: species.stage,
+          attrs,
+          skills: defaultDigiRoleSkills(),
+          hp_current: digiRoleDigimonHpMax(species.hp_base, attrs, species.stage),
+          ds_current: digiRoleDigimonDsMax(attrs, 1, species.stage),
+          image_url: imageUrl,
+        })
+        .select("id")
+        .single();
+      if (inserted.error) throw inserted.error;
+      const digimonId = (inserted.data as { id: string }).id;
+      await syncDigiRoleSignatureTechniques({
+        digimonId,
+        speciesId: species.id,
+        signatureName: species.signature_technique,
+        speciesName: species.name,
+      });
+      await Promise.all([
+        rosterQuery.refetch(),
+        queryClient.invalidateQueries({ queryKey: ["digirole-files", gameId] }),
+      ]);
+      if (typeof createTarget === "number") {
+        setActive({ kind: "slot", slot: createTarget, digimonId });
+      } else {
+        setActive({ kind: "cloudDigimon", digimonId });
+      }
+      setCreateTarget(null);
+      setCreateSearch("");
+      setCreateNickname("");
+      setCreateSpeciesId("");
+      toast.success(typeof createTarget === "number" ? "Digimon criado no Time." : "Digimon criado na Nuvem.");
+    } catch (error) {
+      toast.error(messageOf(error));
+    } finally {
+      setCreatingDigimon(false);
+    }
+  }
   useEffect(() => {
     if (active.kind === "slot") {
       const digimon = roster.find((entry) => entry.team_slot === active.slot) ?? null;
@@ -2196,8 +2282,13 @@ function DigiRoleTamerSheet({
                 </span>
                 <h3 className="font-bold">Espaço vazio</h3>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Arraste um Digimon dos Arquivos ou da Nuvem para esta aba.
+                  Crie uma subficha neste espaço ou adicione um Digimon existente.
                 </p>
+                {canEdit && (
+                  <Button className="mt-4" size="sm" onClick={() => setCreateTarget(active.slot)}>
+                    <Plus className="mr-1 h-3.5 w-3.5" /> Criar neste espaço
+                  </Button>
+                )}
                 {roster.some((entry) => entry.team_slot == null) && (
                   <div className="mt-5 space-y-1 text-left">
                     <p className="text-[10px] font-black uppercase text-muted-foreground">
@@ -2234,15 +2325,24 @@ function DigiRoleTamerSheet({
           ))}
 
         {active.kind === "cloud" && (
-          <DigiRoleRoster
-            tamerId={id}
-            gameId={gameId}
-            view="cloud"
-            canEdit={canEdit}
-            onAssign={assignDigimon}
-            onBuy={addShopItem}
-            onOpenDigimon={(digimonId) => setActive({ kind: "cloudDigimon", digimonId })}
-          />
+          <div className="min-h-full">
+            {canEdit && (
+              <div className="flex justify-end border-b border-border bg-muted/30 p-2">
+                <Button size="sm" onClick={() => setCreateTarget("cloud")}>
+                  <Plus className="mr-1 h-3.5 w-3.5" /> Criar na Nuvem
+                </Button>
+              </div>
+            )}
+            <DigiRoleRoster
+              tamerId={id}
+              gameId={gameId}
+              view="cloud"
+              canEdit={canEdit}
+              onAssign={assignDigimon}
+              onBuy={addShopItem}
+              onOpenDigimon={(digimonId) => setActive({ kind: "cloudDigimon", digimonId })}
+            />
+          </div>
         )}
         {active.kind === "cloudDigimon" && (
           <div className="min-h-full">
@@ -2274,6 +2374,49 @@ function DigiRoleTamerSheet({
           />
         )}
       </main>
+
+      <Dialog
+        open={createTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setCreateTarget(null);
+        }}
+      >
+        <DialogContent className="max-h-[85vh] max-w-lg overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>
+              {createTarget === "cloud" ? "Criar Digimon na Nuvem" : `Criar Digimon no espaço ${createTarget ?? ""}`}
+            </DialogTitle>
+          </DialogHeader>
+          <Input value={createNickname} onChange={(event) => setCreateNickname(event.target.value)} placeholder="Apelido (opcional)" />
+          <Input value={createSearch} onChange={(event) => setCreateSearch(event.target.value)} placeholder="Buscar espécie…" />
+          <div className="max-h-[45vh] space-y-1 overflow-y-auto">
+            {visibleCreateSpecies.map((species) => (
+              <button
+                key={species.id}
+                type="button"
+                onClick={() => setCreateSpeciesId(species.id)}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left",
+                  createSpeciesId === species.id ? "border-primary bg-primary/10" : "border-border bg-card hover:bg-accent",
+                )}
+              >
+                {species.image_url ? (
+                  <DigiRoleImage src={species.image_url} speciesName={species.name} alt="" className="h-9 w-9 object-contain" />
+                ) : (
+                  <span className="grid h-9 w-9 place-items-center rounded bg-muted text-[10px]">DG</span>
+                )}
+                <span>
+                  <span className="block text-sm font-medium">{species.name}</span>
+                  <span className="block text-[10px] text-muted-foreground">{species.stage}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+          <Button disabled={!createSpeciesId || creatingDigimon} onClick={() => void createOwnedDigimon()}>
+            {creatingDigimon ? "Criando…" : "Criar subficha"}
+          </Button>
+        </DialogContent>
+      </Dialog>
 
       <HybridEvolutionDialog
         open={hybridOpen}
@@ -2383,12 +2526,16 @@ function DigiRoleDigimonSheet({
     queryKey: ["digirole-technique-catalog", catalogSearch],
     enabled: catalogOpen && !!draft,
     queryFn: async () => {
-      let builder = table("digirole_techniques").select("*").order("name").limit(1200);
+      let builder = table("digirole_techniques")
+        .select("id,name,origin,grade,ds_cost,field,category,target,accuracy_formula,damage_formula,description")
+        .order("name")
+        .limit(100);
       if (catalogSearch.trim()) builder = builder.ilike("name", `%${catalogSearch.trim()}%`);
       const result = await builder;
       if (result.error) throw result.error;
       return (result.data ?? []) as Technique[];
     },
+    staleTime: 30 * 60 * 1000,
   });
   const linkedTamerQuery = useQuery({
     queryKey: ["digirole-technique-inventory", draft?.tamer_id],
@@ -2957,8 +3104,8 @@ function DigiRoleDigimonSheet({
               onClick={() => void patch({ evolution_state: { ...draft.evolution_state, npc: draft.evolution_state?.npc !== true } })}>
               NPC
             </Button>
-          )}
-        </div>
+        )}
+      </div>
 
         <div className="grid gap-3 p-3 sm:grid-cols-[160px_1fr]">
           <div className="space-y-2">

@@ -25,6 +25,26 @@ type SharedChatSubscription = {
 };
 
 const subscriptions = new Map<string, SharedChatSubscription>();
+const CHAT_COLUMNS = "id,game_id,user_id,kind,body,roll_data,created_at";
+
+async function syncRecentMessages(gameId: string, queryClient: QueryClient) {
+  const current = queryClient.getQueryData<SharedChatMessage[]>(["chat", gameId]) ?? [];
+  const newest = current[current.length - 1];
+  if (!newest) return;
+  const { data, error } = await supabase
+    .from("chat_messages")
+    .select(CHAT_COLUMNS)
+    .eq("game_id", gameId)
+    .gte("created_at", newest.created_at)
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true })
+    .limit(200);
+  if (error) return;
+  queryClient.setQueryData<SharedChatMessage[]>(["chat", gameId], (existing = []) => {
+    const known = new Set(existing.map((message) => message.id));
+    return [...existing, ...((data ?? []) as SharedChatMessage[]).filter((message) => !known.has(message.id))];
+  });
+}
 
 function retain(gameId: string, queryClient: QueryClient, listener: Listener) {
   const healthKey = `chat:${gameId}`;
@@ -63,15 +83,19 @@ function retain(gameId: string, queryClient: QueryClient, listener: Listener) {
           schema: "public",
           table: "chat_messages",
         },
-        () => {
-          void entry?.queryClient.invalidateQueries({ queryKey: ["chat", gameId] });
+        (payload) => {
+          const deletedId = (payload.old as { id?: string } | null)?.id;
+          if (!deletedId) return;
+          entry?.queryClient.setQueryData<SharedChatMessage[]>(["chat", gameId], (current = []) =>
+            current.filter((message) => message.id !== deletedId),
+          );
         },
       )
       .subscribe((status) => {
         if (!entry?.active) return;
         reportRealtimeStatus(healthKey, status);
         if (status === "SUBSCRIBED") {
-          void entry?.queryClient.invalidateQueries({ queryKey: ["chat", gameId] });
+          void syncRecentMessages(gameId, entry.queryClient);
         }
       });
     subscriptions.set(gameId, entry);

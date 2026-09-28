@@ -19,7 +19,9 @@ export const getRouter = () => {
         retry: shouldRetryQuery,
         retryDelay: (attempt) => Math.min(4_000, 500 * 2 ** attempt),
         refetchOnWindowFocus: false,
-        refetchOnReconnect: true,
+        // Critical multiplayer data already reconciles through Realtime. Avoid
+        // re-downloading every open query after a brief connection fluctuation.
+        refetchOnReconnect: false,
       },
     },
   });

@@ -54,7 +54,21 @@ export function useDigiRoleRoster(tamerId: string, gameId: string) {
           table: "digirole_digimons",
           filter: `game_id=eq.${gameId}`,
         },
-        () => {
+        (payload) => {
+          const currentTamerId = (payload.new as { tamer_id?: string | null } | null)?.tamer_id;
+          const previous = payload.old as { id?: string; tamer_id?: string | null } | null;
+          const cached = queryClient.getQueryData<DigiRoleRosterEntry[]>([
+            "digirole-roster",
+            tamerId,
+            gameId,
+          ]);
+          const belongsToCachedRoster = !!previous?.id && cached?.some((entry) => entry.id === previous.id);
+          if (
+            currentTamerId !== tamerId &&
+            previous?.tamer_id !== tamerId &&
+            !belongsToCachedRoster
+          )
+            return;
           void queryClient.invalidateQueries({ queryKey: ["digirole-roster", tamerId] });
         },
       )

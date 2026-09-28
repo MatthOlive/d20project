@@ -48,7 +48,7 @@ function Dashboard() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("games")
-        .select("*,game_members(user_id,role,display_name)")
+        .select("id,name,narrator_id,owner_id,system,game_members(user_id,role,display_name)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -369,10 +369,7 @@ function Dashboard() {
                     aria-label={`${t("delete")} ${g.name}`}
                   ><Trash2 className="h-3.5 w-3.5" /></button>
                 )}
-                <div
-                  className="h-28 rounded-t-xl bg-muted"
-                  style={g.background_url ? { backgroundImage: `url(${g.background_url})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
-                />
+                <div className="h-28 rounded-t-xl bg-gradient-to-br from-primary/25 via-muted to-accent/30" />
                 <div className="p-4">
                   <div className="flex items-center justify-between">
                     <h3 className="font-bold">{g.name}</h3>

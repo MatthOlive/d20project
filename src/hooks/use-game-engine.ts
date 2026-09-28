@@ -128,6 +128,7 @@ function retainEngineSubscription(gameId: string, queryClient: QueryClient) {
     cleanupTimer: null,
     active: true,
   };
+  let wasSubscribed = false;
   entry.channel
     .on(
       "postgres_changes",
@@ -176,10 +177,13 @@ function retainEngineSubscription(gameId: string, queryClient: QueryClient) {
       if (!entry.active) return;
       reportRealtimeStatus(`engine:${gameId}`, status);
       if (status !== "SUBSCRIBED") return;
-      // A single refetch on subscribe closes the fetch/subscription race and
-      // also restores state after the WebSocket reconnects.
-      void entry.queryClient.invalidateQueries({ queryKey: sessionKey });
-      void entry.queryClient.invalidateQueries({ queryKey: ["game-engine-events"] });
+      if (wasSubscribed) {
+        // Restore state only after an actual reconnect. The initial query already
+        // covers the first subscription and must not be downloaded twice.
+        void entry.queryClient.invalidateQueries({ queryKey: sessionKey });
+        void entry.queryClient.invalidateQueries({ queryKey: ["game-engine-events"] });
+      }
+      wasSubscribed = true;
     });
   sharedEngineSubscriptions.set(gameId, entry);
   return () => releaseEngineSubscription(gameId);

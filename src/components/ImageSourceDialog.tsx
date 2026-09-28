@@ -7,10 +7,11 @@ import {
 } from "@/components/ui/dialog";
 import { ImagePlus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { uploadGameAsset } from "@/lib/game-assets";
 
 /**
  * Generic dialog to choose an image source: file upload or URL.
- * Calls `onPick(dataUrlOrUrl)` with either a data: URL (from file) or the typed URL.
+ * Uploads local files to Supabase Storage and stores only their public URL.
  */
 export function ImageSourceDialog({
   trigger,
@@ -28,19 +29,16 @@ export function ImageSourceDialog({
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState("");
 
-  function handleFile(file: File) {
+  async function handleFile(file: File) {
     if (!file.type.startsWith("image/")) { toast.error("Selecione um arquivo de imagem."); return; }
     if (file.size > maxBytes) { toast.error(`Imagem deve ser menor que ${Math.round(maxBytes / 1_000_000)} MB.`); return; }
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        await onPick(reader.result as string);
-        setOpen(false);
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Não foi possível salvar a imagem.");
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const publicUrl = await uploadGameAsset(file, "character-images", { maxDimension: 1600 });
+      await onPick(publicUrl);
+      setOpen(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível salvar a imagem.");
+    }
   }
 
   async function applyUrl() {

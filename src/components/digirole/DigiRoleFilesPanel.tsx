@@ -218,6 +218,7 @@ export function DigiRoleFilesPanel({
             "id,nickname,owner_id,image_url,image_hidden,rank,folder,file_order,allowed_editors,allowed_viewers,species:species_id(id,name,stage,digi_attribute,fields,hp_base,base_attrs,signature_technique,image_url)",
           )
           .eq("game_id", gameId)
+          .is("tamer_id", null)
           .order("file_order")
           .order("created_at"),
       ]);
@@ -246,13 +247,16 @@ export function DigiRoleFilesPanel({
     let refreshTimer: ReturnType<typeof setTimeout> | undefined;
     const scheduleRefresh = (
       kind: "tamers" | "digimons",
-      payload: { eventType: string; new: unknown },
+      payload: { eventType: string; new: unknown; old: unknown },
     ) => {
       const row = payload.new as Record<string, unknown>;
       const cached = queryClient.getQueryData<{ tamers: TamerRow[]; digimons: DigimonRow[] }>(
         ["digirole-files", gameId, userId, isNarrator],
       );
       const existing = cached?.[kind].find((entry) => entry.id === row.id);
+      // Linked Digimon live inside their Tamer sheet and are intentionally absent
+      // from Files. Their combat/stat updates must not reload the global listing.
+      if (kind === "digimons" && row.tamer_id != null && !existing) return;
       const fields = ["name", "nickname", "owner_id", "image_url", "image_hidden", "rank",
         "folder", "file_order", "allowed_editors", "allowed_viewers"];
       // Resource and skill updates do not change the Files listing.

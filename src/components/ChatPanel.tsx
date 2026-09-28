@@ -44,6 +44,8 @@ type Msg = {
 };
 
 const DICE_FACES = [2, 4, 6, 8, 10, 12, 20, 100] as const;
+const CHAT_PAGE_SIZE = 200;
+const CHAT_COLUMNS = "id,game_id,user_id,kind,body,roll_data,created_at";
 
 export function ChatPanel({
   gameId,
@@ -60,6 +62,8 @@ export function ChatPanel({
   const qc = useQueryClient();
   const [text, setText] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
+  const [hasOlderMessages, setHasOlderMessages] = useState(false);
+  const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
   const aiBusyRef = useRef(false);
   const lastTriggeredIdRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -68,26 +72,51 @@ export function ChatPanel({
   const { data: messages = [] } = useQuery({
     queryKey: ["chat", gameId],
     queryFn: async () => {
-      const history: Msg[] = [];
-      const pageSize = 1_000;
-      for (let page = 0; page < 50; page += 1) {
-        const from = page * pageSize;
-        const { data, error } = await supabase
-          .from("chat_messages")
-          .select("*")
-          .eq("game_id", gameId)
-          .order("created_at", { ascending: true })
-          .order("id", { ascending: true })
-          .range(from, from + pageSize - 1);
-        if (error) throw error;
-        const rows = (data ?? []) as Msg[];
-        history.push(...rows);
-        if (rows.length < pageSize) break;
-      }
-      return history;
+      const { data, error } = await supabase
+        .from("chat_messages")
+        .select(CHAT_COLUMNS)
+        .eq("game_id", gameId)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(CHAT_PAGE_SIZE);
+      if (error) throw error;
+      const rows = (data ?? []) as Msg[];
+      setHasOlderMessages(rows.length === CHAT_PAGE_SIZE);
+      return rows.reverse();
     },
     staleTime: Number.POSITIVE_INFINITY,
   });
+
+  async function loadOlderMessages() {
+    const oldest = messages[0];
+    if (!oldest || loadingOlderMessages) return;
+    setLoadingOlderMessages(true);
+    const previousHeight = scrollRef.current?.scrollHeight ?? 0;
+    try {
+      const { data, error } = await supabase
+        .from("chat_messages")
+        .select(CHAT_COLUMNS)
+        .eq("game_id", gameId)
+        .lt("created_at", oldest.created_at)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(CHAT_PAGE_SIZE);
+      if (error) throw error;
+      const older = ((data ?? []) as Msg[]).reverse();
+      setHasOlderMessages(older.length === CHAT_PAGE_SIZE);
+      qc.setQueryData<Msg[]>(["chat", gameId], (current = []) => {
+        const known = new Set(current.map((message) => message.id));
+        return [...older.filter((message) => !known.has(message.id)), ...current];
+      });
+      window.requestAnimationFrame(() => {
+        if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight - previousHeight;
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível carregar mensagens antigas");
+    } finally {
+      setLoadingOlderMessages(false);
+    }
+  }
 
   const profileIds = useMemo(
     () => Array.from(new Set(messages.map((message) => message.user_id))).sort(),
@@ -164,7 +193,6 @@ export function ChatPanel({
     setAiBusy(true);
     try {
       await callNarrator({ data: { gameId, userPrompt: prompt } });
-      qc.invalidateQueries({ queryKey: ["chat", gameId] });
       qc.invalidateQueries({ queryKey: ["initiative", gameId] });
       qc.invalidateQueries({ queryKey: ["characters", gameId] });
     } catch (e) {
@@ -263,6 +291,19 @@ export function ChatPanel({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div ref={scrollRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
+        {hasOlderMessages && (
+          <div className="flex justify-center pb-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+              disabled={loadingOlderMessages}
+              onClick={() => void loadOlderMessages()}
+            >
+              {loadingOlderMessages ? "Carregando…" : "Carregar mensagens antigas"}
+            </Button>
+          </div>
+        )}
         {displayedMessages.map((m) => (
           <MessageBubble
             key={m.id}
