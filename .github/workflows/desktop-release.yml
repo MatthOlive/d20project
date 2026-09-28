@@ -34,7 +34,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install frontend dependencies
-        run: npm install --no-package-lock --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       - name: Build signed desktop app
         env:
@@ -65,3 +65,4 @@ jobs:
             src-tauri/target/release/bundle/nsis/D20 Project_*_x64-setup.exe
             src-tauri/target/release/bundle/nsis/D20 Project_*_x64-setup.exe.sig
             src-tauri/target/release/bundle/nsis/latest.json
+
