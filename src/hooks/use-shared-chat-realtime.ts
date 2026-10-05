@@ -138,4 +138,3 @@ export function useSharedChatRealtime(gameId: string, onInsert?: Listener) {
     return retain(gameId, queryClient, listener);
   }, [gameId, queryClient]);
 }
-

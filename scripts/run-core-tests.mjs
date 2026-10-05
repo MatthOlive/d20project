@@ -343,4 +343,3 @@ const digirole = await importTypeScript("src/lib/digirole.ts");
 }
 
 console.log("Core tests passed: skill aliases, move resolution and game engine.");
-

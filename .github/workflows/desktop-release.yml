@@ -65,4 +65,3 @@ jobs:
             src-tauri/target/release/bundle/nsis/D20 Project_*_x64-setup.exe
             src-tauri/target/release/bundle/nsis/D20 Project_*_x64-setup.exe.sig
             src-tauri/target/release/bundle/nsis/latest.json
-

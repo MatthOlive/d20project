@@ -335,4 +335,3 @@ export function useGameEngine({ gameId, actor }: { gameId: string; actor: Engine
     refresh: refreshSession,
   };
 }
-

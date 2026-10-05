@@ -59,4 +59,3 @@ if (errors.length > 0) {
 }
 
 console.log(`${files.length} migrações verificadas sem artefatos estruturais.`);
-

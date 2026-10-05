@@ -53,4 +53,3 @@ if (oversized.length > 0 || total > MAX_TOTAL_JS_BYTES) {
     `Orçamento do pacote aprovado: ${sizes.length} arquivos, ${Math.ceil(total / 1024)} KB no total.`,
   );
 }
-

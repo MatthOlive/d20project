@@ -95,4 +95,3 @@ export function subscribeClientHealth(listener: Listener) {
   listener(snapshot());
   return () => listeners.delete(listener);
 }
-

@@ -41,4 +41,3 @@ html = html
   .replaceAll('href="/favicon.ico"', 'href="./favicon.ico"');
 
 writeFileSync(join(clientDir, "index.html"), html);
-

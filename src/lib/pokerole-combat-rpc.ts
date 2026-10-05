@@ -51,4 +51,3 @@ export async function finalizeAtomicMove(
     p_source_message_id: sourceMessageId,
   });
 }
-

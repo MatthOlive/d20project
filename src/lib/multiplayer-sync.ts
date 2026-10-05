@@ -33,4 +33,3 @@ export function mergeServerWithPending<T extends object>(
     ...pendingPatch,
   };
 }
-

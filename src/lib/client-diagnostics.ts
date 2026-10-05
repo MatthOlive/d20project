@@ -98,4 +98,3 @@ export function installClientDiagnostics() {
     window.removeEventListener("unhandledrejection", onRejection);
   };
 }
-

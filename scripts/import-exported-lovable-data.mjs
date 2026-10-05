@@ -479,4 +479,3 @@ function argValue(name) {
   const prefix = `${name}=`;
   return process.argv.find((arg) => arg.startsWith(prefix))?.slice(prefix.length);
 }
-

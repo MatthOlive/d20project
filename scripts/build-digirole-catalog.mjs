@@ -198,4 +198,3 @@ fs.writeFileSync(destination, sql, "utf8");
 process.stdout.write(
   JSON.stringify({ species: speciesRows.length, techniques: techniqueRows.length, destination }),
 );
-

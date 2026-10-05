@@ -508,4 +508,3 @@ export type Database = Omit<GeneratedDatabase, "public"> & {
 };
 
 export type AppTableName = keyof Database["public"]["Tables"];
-
