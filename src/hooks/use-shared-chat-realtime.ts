@@ -42,7 +42,10 @@ async function syncRecentMessages(gameId: string, queryClient: QueryClient) {
   if (error) return;
   queryClient.setQueryData<SharedChatMessage[]>(["chat", gameId], (existing = []) => {
     const known = new Set(existing.map((message) => message.id));
-    return [...existing, ...((data ?? []) as SharedChatMessage[]).filter((message) => !known.has(message.id))];
+    return [
+      ...existing,
+      ...((data ?? []) as SharedChatMessage[]).filter((message) => !known.has(message.id)),
+    ];
   });
 }
 
@@ -135,3 +138,4 @@ export function useSharedChatRealtime(gameId: string, onInsert?: Listener) {
     return retain(gameId, queryClient, listener);
   }, [gameId, queryClient]);
 }
+

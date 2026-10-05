@@ -43,18 +43,43 @@ const pokerole = await importTypeScript("src/lib/pokerole.ts");
 const digirole = await importTypeScript("src/lib/digirole.ts");
 
 {
-  const values = { special: 5, cute: 3, tough: 4, cool: 2, clever: 4, insight: 3, will: 7, beautiful: 4, dexterity: 1 };
+  const values = {
+    special: 5,
+    cute: 3,
+    tough: 4,
+    cool: 2,
+    clever: 4,
+    insight: 3,
+    will: 7,
+    beautiful: 4,
+    dexterity: 1,
+  };
   const skills = { Perform: 3, Nature: 2, Channel: 4, Etiquette: 3, Athletic: 2 };
-  const move = name => ({ name, accuracy_stat: null, accuracy_skill: null });
-  const pool = name => pokerole.moveAccuracyPool(move(name), key => values[key] ?? 0, skills).pool;
+  const move = (name) => ({ name, accuracy_stat: null, accuracy_skill: null });
+  const pool = (name) =>
+    pokerole.moveAccuracyPool(move(name), (key) => values[key] ?? 0, skills).pool;
   assert.equal(pool("Bug Buzz"), 8);
   assert.equal(pool("Sing"), 6);
   assert.equal(pool("Growl"), 7);
   assert.equal(pool("After You"), 5);
   assert.equal(pool("Simple Beam"), 0);
   assert.equal(pool("Stabilize an Ally"), 0);
-  assert.equal(pokerole.moveNeedsAccuracyChoice({ name: "Simple Beam", accuracy_stat: "insight", accuracy_skill: "empathy" }), true);
-  assert.equal(pokerole.moveNeedsAccuracyChoice({ name: "Stabilize an Ally", accuracy_stat: "clever", accuracy_skill: "medicine" }), true);
+  assert.equal(
+    pokerole.moveNeedsAccuracyChoice({
+      name: "Simple Beam",
+      accuracy_stat: "insight",
+      accuracy_skill: "empathy",
+    }),
+    true,
+  );
+  assert.equal(
+    pokerole.moveNeedsAccuracyChoice({
+      name: "Stabilize an Ally",
+      accuracy_stat: "clever",
+      accuracy_skill: "medicine",
+    }),
+    true,
+  );
   assert.equal(pokerole.SKILLS.includes("Medicine"), false);
   assert.equal(pokerole.SKILLS.includes("Empathy"), false);
   assert.equal(pokerole.TRAINER_SKILLS.includes("Medicine"), true);
@@ -68,7 +93,10 @@ const digirole = await importTypeScript("src/lib/digirole.ts");
   assert.equal(pokerole.resolveSkillValue("athletic e", skills).value, 2);
   assert.deepEqual(pokerole.resolveSkillValue("channel e", {}), { value: 0, label: "Channel" });
   assert.deepEqual(pokerole.resolveSkillValue("nature e", null), { value: 0, label: "Nature" });
-  assert.deepEqual(pokerole.resolveSkillValue("perform.", { "Perform e": 3 }), { value: 3, label: "Perform" });
+  assert.deepEqual(pokerole.resolveSkillValue("perform.", { "Perform e": 3 }), {
+    value: 3,
+    label: "Perform",
+  });
 }
 
 {
@@ -315,3 +343,4 @@ const digirole = await importTypeScript("src/lib/digirole.ts");
 }
 
 console.log("Core tests passed: skill aliases, move resolution and game engine.");
+

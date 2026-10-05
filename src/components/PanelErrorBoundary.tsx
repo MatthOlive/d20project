@@ -56,3 +56,4 @@ export class PanelErrorBoundary extends Component<Props, State> {
     );
   }
 }
+

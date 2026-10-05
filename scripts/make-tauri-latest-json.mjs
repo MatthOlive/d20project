@@ -47,3 +47,4 @@ const latest = {
 
 writeFileSync(join(bundleDir, "latest.json"), `${JSON.stringify(latest, null, 2)}\n`);
 console.log(`Created ${join(bundleDir, "latest.json")}`);
+

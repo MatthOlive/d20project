@@ -51,3 +51,4 @@ if (missingTables.length || missingFunctions.length) {
 console.log(
   `Tipos Supabase cobrem ${usedTables.size} tabelas e ${usedFunctions.size} funções usadas diretamente.`,
 );
+

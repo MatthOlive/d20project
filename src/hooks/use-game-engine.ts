@@ -20,9 +20,15 @@ function completeSessionResponse(value: unknown, gameId: string): EngineSession 
   const row = Array.isArray(value) && value.length === 1 ? value[0] : value;
   if (!row || typeof row !== "object") return null;
   const session = row as EngineSession;
-  if (typeof session.id !== "string" || session.game_id !== gameId ||
-      !Number.isFinite(session.version) || !session.state ||
-      typeof session.state.phase !== "string" || !Array.isArray(session.state.participants)) return null;
+  if (
+    typeof session.id !== "string" ||
+    session.game_id !== gameId ||
+    !Number.isFinite(session.version) ||
+    !session.state ||
+    typeof session.state.phase !== "string" ||
+    !Array.isArray(session.state.participants)
+  )
+    return null;
   return session;
 }
 
@@ -229,9 +235,11 @@ export function useGameEngine({ gameId, actor }: { gameId: string; actor: Engine
       });
       if (error) throw error;
       if (!data) throw new Error("O banco não retornou a sessão criada.");
-      const session = completeSessionResponse(data, gameId) ?? await fetchSession(gameId);
+      const session = completeSessionResponse(data, gameId) ?? (await fetchSession(gameId));
       if (!session?.state || !Array.isArray(session.state.participants)) {
-        throw new Error("Não foi possível carregar o estado completo do encontro. Tente atualizar o Motor.");
+        throw new Error(
+          "Não foi possível carregar o estado completo do encontro. Tente atualizar o Motor.",
+        );
       }
       return session;
     },
@@ -251,14 +259,15 @@ export function useGameEngine({ gameId, actor }: { gameId: string; actor: Engine
 
       for (let attempt = 0; attempt < 4; attempt += 1) {
         const payload = { ...engineCommandPayload(command), commandId: id };
-        let result = Date.now() < serverCommandUnavailableUntil
-          ? { data: null, error: { code: "PGRST202", message: "Command RPC unavailable" } }
-          : await supabase.rpc("commit_game_engine_command", {
-          p_session_id: latest.id,
-          p_expected_version: latest.version,
-          p_command: command.type,
-          p_payload: payload,
-        });
+        let result =
+          Date.now() < serverCommandUnavailableUntil
+            ? { data: null, error: { code: "PGRST202", message: "Command RPC unavailable" } }
+            : await supabase.rpc("commit_game_engine_command", {
+                p_session_id: latest.id,
+                p_expected_version: latest.version,
+                p_command: command.type,
+                p_payload: payload,
+              });
         if (result.error && isServerCommandRpcUnavailable(result.error)) {
           serverCommandUnavailableUntil = Date.now() + 60_000;
           const nextState = applyEngineCommand(latest.state, command, actor);
@@ -273,9 +282,11 @@ export function useGameEngine({ gameId, actor }: { gameId: string; actor: Engine
         const { data, error } = result;
         if (!error && data) {
           // RPC responses may be acknowledgements rather than complete session rows.
-          const session = completeSessionResponse(data, gameId) ?? await fetchSession(gameId);
+          const session = completeSessionResponse(data, gameId) ?? (await fetchSession(gameId));
           if (!session?.state || !Array.isArray(session.state.participants)) {
-            throw new Error("Não foi possível carregar o estado completo do encontro. Tente atualizar o Motor.");
+            throw new Error(
+              "Não foi possível carregar o estado completo do encontro. Tente atualizar o Motor.",
+            );
           }
           return session;
         }
@@ -311,9 +322,10 @@ export function useGameEngine({ gameId, actor }: { gameId: string; actor: Engine
   }
 
   return {
-    session: sessionQuery.data?.state && Array.isArray(sessionQuery.data.state.participants)
-      ? sessionQuery.data
-      : null,
+    session:
+      sessionQuery.data?.state && Array.isArray(sessionQuery.data.state.participants)
+        ? sessionQuery.data
+        : null,
     events: eventsQuery.data ?? [],
     isLoading: sessionQuery.isLoading,
     error: sessionQuery.error,
@@ -323,3 +335,4 @@ export function useGameEngine({ gameId, actor }: { gameId: string; actor: Engine
     refresh: refreshSession,
   };
 }
+

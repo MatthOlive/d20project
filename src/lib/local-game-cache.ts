@@ -123,3 +123,4 @@ export async function writeLocalGameSnapshot<T>(key: string, data: T): Promise<v
     void pruneStoredSnapshots(database);
   }
 }
+

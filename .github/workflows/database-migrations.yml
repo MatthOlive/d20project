@@ -57,3 +57,4 @@ jobs:
       - name: Apply migrations
         if: ${{ inputs.deploy }}
         run: supabase db push --include-all
+
