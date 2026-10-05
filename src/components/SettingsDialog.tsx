@@ -1,14 +1,37 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useServerFn } from "@tanstack/react-start";
 import { ingestKnowledge, deleteKnowledgeSource } from "@/lib/knowledge.functions";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Settings as SettingsIcon, Loader2, Plus, BookOpen, Upload, FileText, Trash2, Cloud } from "lucide-react";
+import {
+  Settings as SettingsIcon,
+  Loader2,
+  Plus,
+  BookOpen,
+  Upload,
+  FileText,
+  Trash2,
+  Cloud,
+  Image as ImageIcon,
+} from "lucide-react";
 import { toast } from "sonner";
+import { migrateLegacyGameAssets } from "@/lib/legacy-game-assets";
 
 export type RpgSystem = { id: string; label: string; available: boolean };
 
@@ -47,10 +70,79 @@ export function SettingsDialog() {
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
-        <DialogHeader><DialogTitle>Settings</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Settings</DialogTitle>
+        </DialogHeader>
+        <LegacyAssetsSection />
         <RulesSection />
       </DialogContent>
     </Dialog>
+  );
+}
+
+function LegacyAssetsSection() {
+  const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<{ completed: number; total: number } | null>(null);
+
+  async function migrateImages() {
+    if (
+      !window.confirm(
+        "Migrar imagens antigas para armazenamento privado? Os originais só serão substituídos depois que cada imagem for enviada; imagens sem permissão de edição permanecerão intactas.",
+      )
+    )
+      return;
+    setBusy(true);
+    setProgress({ completed: 0, total: 0 });
+    try {
+      const result = await migrateLegacyGameAssets((completed, total) =>
+        setProgress({ completed, total }),
+      );
+      if (result.failed.length) {
+        toast.warning(
+          `${result.migrated} imagem(ns) migradas; ${result.failed.length} mantidas no banco por falha/permissão.`,
+        );
+        console.warn("Falhas na migração de imagens antigas", result.failed);
+      } else {
+        toast.success(
+          `${result.migrated} imagem(ns) migradas. ${(result.originalBytes / 1024 / 1024).toFixed(1)} MiB de Base64 original transferidos; ${(result.uploadedBytes / 1024 / 1024).toFixed(1)} MiB enviados antes da otimização.`,
+        );
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível iniciar a migração.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="space-y-2 rounded-md border p-3">
+      <div className="flex items-start gap-2">
+        <ImageIcon className="mt-0.5 h-4 w-4 text-muted-foreground" />
+        <div className="min-w-0 flex-1">
+          <h3 className="text-sm font-semibold">Otimização de imagens antigas</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Move imagens Base64 acessíveis para arquivos privados e otimizados. Apenas registros que
+            sua conta pode editar serão atualizados; outros permanecem intactos para migração pelo
+            responsável.
+          </p>
+          {progress && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {busy
+                ? `Verificando e migrando… ${progress.completed}/${progress.total || "…"}`
+                : "Processo encerrado."}
+            </p>
+          )}
+        </div>
+        <Button size="sm" variant="outline" disabled={busy} onClick={() => void migrateImages()}>
+          {busy ? (
+            <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Upload className="mr-1 h-3.5 w-3.5" />
+          )}
+          {busy ? "Migrando" : "Migrar"}
+        </Button>
+      </div>
+    </section>
   );
 }
 
@@ -62,10 +154,7 @@ function RulesSection() {
   const { data: sources } = useQuery({
     queryKey: ["knowledge-sources"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("knowledge_chunks")
-        .select("source")
-        .limit(1000);
+      const { data, error } = await supabase.from("knowledge_chunks").select("source").limit(1000);
       if (error) throw error;
       const map = new Map<string, number>();
       for (const r of data ?? []) map.set(r.source, (map.get(r.source) ?? 0) + 1);
@@ -79,15 +168,26 @@ function RulesSection() {
   const [dragOver, setDragOver] = useState(false);
 
   async function handleFiles(files: FileList | File[]) {
-    if (!system) { toast.error("Selecione um sistema"); return; }
-    const list = Array.from(files).filter((f) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"));
-    if (list.length === 0) { toast.error("Envie ao menos um PDF"); return; }
+    if (!system) {
+      toast.error("Selecione um sistema");
+      return;
+    }
+    const list = Array.from(files).filter(
+      (f) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"),
+    );
+    if (list.length === 0) {
+      toast.error("Envie ao menos um PDF");
+      return;
+    }
     setBusy(true);
     try {
       for (const f of list) {
         toast.info(`Lendo ${f.name}…`);
         const text = await extractPdfText(f);
-        if (text.trim().length < 100) { toast.error(`Não foi possível extrair texto de ${f.name}`); continue; }
+        if (text.trim().length < 100) {
+          toast.error(`Não foi possível extrair texto de ${f.name}`);
+          continue;
+        }
         const res = await ingest({ data: { source: system, text, replace: false } });
         toast.success(`${f.name}: ${res.inserted} trechos indexados`);
       }
@@ -129,18 +229,24 @@ function RulesSection() {
           <div>
             <Label className="text-xs">Sistema</Label>
             <Select value={system} onValueChange={setSystem} disabled={busy}>
-              <SelectTrigger><SelectValue placeholder="Selecione um sistema" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione um sistema" />
+              </SelectTrigger>
               <SelectContent>
                 {RPG_SYSTEMS.map((s) => (
                   <SelectItem key={s.id} value={s.id} disabled={!s.available}>
-                    {s.label}{!s.available ? " — em breve" : ""}
+                    {s.label}
+                    {!s.available ? " — em breve" : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div
-            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
             onDragLeave={() => setDragOver(false)}
             onDrop={(e) => {
               e.preventDefault();
@@ -156,9 +262,7 @@ function RulesSection() {
             ) : (
               <Upload className="h-6 w-6 text-muted-foreground" />
             )}
-            <p className="text-sm text-muted-foreground">
-              Arraste PDFs aqui ou
-            </p>
+            <p className="text-sm text-muted-foreground">Arraste PDFs aqui ou</p>
             <label>
               <input
                 type="file"
@@ -174,7 +278,15 @@ function RulesSection() {
             </label>
           </div>
           <div className="flex justify-end">
-            <Button size="sm" variant="ghost" onClick={() => { setAdding(false); setSystem(""); }} disabled={busy}>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setAdding(false);
+                setSystem("");
+              }}
+              disabled={busy}
+            >
               Cancelar
             </Button>
           </div>
@@ -188,7 +300,10 @@ function RulesSection() {
           sources!.map((s) => {
             const meta = RPG_SYSTEMS.find((r) => r.id === s.id);
             return (
-              <div key={s.id} className="flex items-center justify-between rounded-md border border-border bg-card p-3">
+              <div
+                key={s.id}
+                className="flex items-center justify-between rounded-md border border-border bg-card p-3"
+              >
                 <div className="flex items-center gap-2">
                   <FileText className="h-4 w-4 text-muted-foreground" />
                   <div>
@@ -197,7 +312,8 @@ function RulesSection() {
                   </div>
                 </div>
                 <Button
-                  size="sm" variant="ghost"
+                  size="sm"
+                  variant="ghost"
                   onClick={async () => {
                     if (!confirm(`Remover regras de ${meta?.label ?? s.id}?`)) return;
                     try {
@@ -249,18 +365,27 @@ function ImportFromBucketButton({ onDone }: { onDone: () => void }) {
     try {
       toast.info("Listando PDFs do bucket pokerole2…");
       const paths = await listAllPdfs();
-      if (paths.length === 0) { toast.error("Nenhum PDF encontrado no bucket"); return; }
+      if (paths.length === 0) {
+        toast.error("Nenhum PDF encontrado no bucket");
+        return;
+      }
       toast.info(`${paths.length} PDF(s) encontrado(s). Indexando…`);
 
       let total = 0;
       for (const path of paths) {
         try {
           const { data: blob, error } = await supabase.storage.from("pokerole2").download(path);
-          if (error || !blob) { toast.error(`Falha ao baixar ${path}`); continue; }
+          if (error || !blob) {
+            toast.error(`Falha ao baixar ${path}`);
+            continue;
+          }
           const file = new File([blob], path.split("/").pop() ?? path, { type: "application/pdf" });
           toast.info(`Lendo ${file.name}…`);
           const text = await extractPdfText(file);
-          if (text.trim().length < 100) { toast.error(`Sem texto extraível em ${path}`); continue; }
+          if (text.trim().length < 100) {
+            toast.error(`Sem texto extraível em ${path}`);
+            continue;
+          }
           const res = await ingest({ data: { source: "pokerole", text, replace: false } });
           total += res.inserted;
           toast.success(`${file.name}: ${res.inserted} trechos`);
@@ -279,7 +404,11 @@ function ImportFromBucketButton({ onDone }: { onDone: () => void }) {
 
   return (
     <Button size="sm" variant="outline" onClick={run} disabled={busy}>
-      {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Cloud className="mr-1 h-3.5 w-3.5" />}
+      {busy ? (
+        <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+      ) : (
+        <Cloud className="mr-1 h-3.5 w-3.5" />
+      )}
       Importar do bucket
     </Button>
   );

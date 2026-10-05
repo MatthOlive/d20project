@@ -61,7 +61,7 @@ const TRAINER_ATTR_KEYS = ["strength", "dexterity", "vitality", "insight"];
 const SOCIAL_KEYS = ["tough", "cool", "beautiful", "cute", "clever"];
 const POKEMON_SKILL_KEYS = [
   "Brawl", "Channel", "Clash", "Evasion", "Alert", "Athletic", "Nature", "Stealth",
-  "Allure", "Etiquette", "Intimidate", "Perform", "Crafts", "Lore", "Medicine", "Science", "Empathy",
+  "Allure", "Etiquette", "Intimidate", "Perform", "Crafts", "Lore", "Science",
 ];
 const TRAINER_SKILL_KEYS = [
   "Brawl", "Throw", "Weapons", "Clash", "Evasion", "Alert", "Athletic", "Nature", "Stealth",

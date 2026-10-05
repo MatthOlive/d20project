@@ -4,6 +4,7 @@ import { useGameSpriteStyle } from "@/hooks/use-game-sprite-style";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { TrainerAppearanceImage } from "@/components/TrainerAppearance";
 import { DigiRoleImage } from "@/components/digirole/DigiRoleImage";
+import { GameAssetImage } from "@/components/GameAssetImage";
 
 /**
  * Reads the live character image + status conditions for a token. Subscribes
@@ -190,7 +191,7 @@ export function TokenAvatar({
         draggable={false}
       />
     ) : (
-    <img
+    <GameAssetImage
       src={img}
       alt={label}
       className={`h-full w-full ${isDigiRoleCreature ? "rounded-none object-contain" : `object-cover ${variant === "handout" ? "rounded-none" : "rounded-full"}`}`}

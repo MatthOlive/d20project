@@ -44,6 +44,14 @@ export function ImageSourceDialog({
   async function applyUrl() {
     const u = url.trim();
     if (!u) { toast.error("Cole uma URL de imagem."); return; }
+    if (/^data:image\//i.test(u)) {
+      toast.error("Imagens em Base64 não são aceitas aqui. Envie o arquivo para o armazenamento usando o campo acima.");
+      return;
+    }
+    if (!/^https?:\/\//i.test(u)) {
+      toast.error("Use uma URL pública iniciada por https:// ou http://.");
+      return;
+    }
     try {
       await onPick(u);
       setUrl("");

@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { clearRealtimeStatus, reportRealtimeStatus } from "@/lib/client-health";
 import { readLocalGameSnapshot, writeLocalGameSnapshot } from "@/lib/local-game-cache";
 import { uploadGameAsset } from "@/lib/game-assets";
+import { useGameAssetUrl } from "@/hooks/use-game-asset-url";
+import { GameAssetImage } from "@/components/GameAssetImage";
 import { toast } from "sonner";
 import {
   X,
@@ -254,6 +256,7 @@ export function MapBoard({
   gridSettings?: GridSettings;
   visibility?: Visibility;
 }) {
+  const resolvedBackgroundUrl = useGameAssetUrl(backgroundUrl);
   const qc = useQueryClient();
   const isMobile = useIsMobile();
   const boardRef = useRef<HTMLDivElement>(null);
@@ -515,7 +518,9 @@ export function MapBoard({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tokens")
-        .select("*")
+        .select(
+          "id,game_id,page_id,character_kind,character_id,label,image_url,x,y,size,owner_id,layer,vision_radius,light_radius,aura1_radius,aura1_color,aura2_radius,aura2_color,tint_color,bar_label,bar_value,bar_max,bar_color,light_enabled,light_radius_bright,light_radius_dim,light_color,light_angle,vision_enabled,vision_range",
+        )
         .eq("game_id", gameId)
         .eq("page_id", pageId!);
       if (error) throw error;
@@ -576,11 +581,25 @@ export function MapBoard({
     [tokens],
   );
   const visibleDigiTamerIds = useMemo(
-    () => [...new Set(tokens.filter((token) => token.character_kind === "digirole_tamer").map((token) => token.character_id))].sort(),
+    () =>
+      [
+        ...new Set(
+          tokens
+            .filter((token) => token.character_kind === "digirole_tamer")
+            .map((token) => token.character_id),
+        ),
+      ].sort(),
     [tokens],
   );
   const visibleDigimonIds = useMemo(
-    () => [...new Set(tokens.filter((token) => token.character_kind === "digirole_digimon").map((token) => token.character_id))].sort(),
+    () =>
+      [
+        ...new Set(
+          tokens
+            .filter((token) => token.character_kind === "digirole_digimon")
+            .map((token) => token.character_id),
+        ),
+      ].sort(),
     [tokens],
   );
   const tokenVisualQueryKey = useMemo(
@@ -680,30 +699,37 @@ export function MapBoard({
     queryFn: async () => {
       const [pkm, trs, digiTamers, digimons] = await Promise.all([
         visiblePokemonIds.length
-          ? supabase.from("pokemon").select("id,owner_id,allowed_editors").in("id", visiblePokemonIds)
+          ? supabase
+              .from("pokemon")
+              .select("id,owner_id,allowed_editors")
+              .in("id", visiblePokemonIds)
           : Promise.resolve({ data: [], error: null }),
         visibleTrainerIds.length
-          ? supabase.from("trainers").select("id,owner_id,allowed_editors").in("id", visibleTrainerIds)
+          ? supabase
+              .from("trainers")
+              .select("id,owner_id,allowed_editors")
+              .in("id", visibleTrainerIds)
           : Promise.resolve({ data: [], error: null }),
         visibleDigiTamerIds.length
-          ? (
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              supabase.from("digirole_tamers" as never) as any
-            )
+          ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (supabase.from("digirole_tamers" as never) as any)
               .select("id,owner_id,allowed_editors")
               .in("id", visibleDigiTamerIds)
           : Promise.resolve({ data: [], error: null }),
         visibleDigimonIds.length
-          ? (
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              supabase.from("digirole_digimons" as never) as any
-            )
+          ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (supabase.from("digirole_digimons" as never) as any)
               .select("id,owner_id,allowed_editors")
               .in("id", visibleDigimonIds)
           : Promise.resolve({ data: [], error: null }),
       ]);
       const set = new Set<string>();
-      for (const r of [...(pkm.data ?? []), ...(trs.data ?? []), ...(digiTamers.data ?? []), ...(digimons.data ?? [])] as {
+      for (const r of [
+        ...(pkm.data ?? []),
+        ...(trs.data ?? []),
+        ...(digiTamers.data ?? []),
+        ...(digimons.data ?? []),
+      ] as {
         id: string;
         owner_id: string;
         allowed_editors?: string[] | null;
@@ -921,7 +947,10 @@ export function MapBoard({
       if (digiRoleRefreshTimer === undefined) {
         digiRoleRefreshTimer = setTimeout(() => {
           digiRoleRefreshTimer = undefined;
-          void qc.invalidateQueries({ queryKey: ["digirole-target-info", gameId] }, { cancelRefetch: false });
+          void qc.invalidateQueries(
+            { queryKey: ["digirole-target-info", gameId] },
+            { cancelRefetch: false },
+          );
           if (refreshDigiRoleRoster) {
             void qc.invalidateQueries({ queryKey: ["digirole-roster"] }, { cancelRefetch: false });
           }
@@ -1072,7 +1101,9 @@ export function MapBoard({
     queryFn: async () => {
       const { data, error } = await (supabase
         .from("map_backgrounds" as never)
-        .select("*")
+        .select(
+          "id,game_id,page_id,image_url,x,y,width,height,rotation,z_index,crop_x,crop_y,crop_w,crop_h,tile_group,tile_col,tile_row",
+        )
         .eq("game_id", gameId)
         .eq("page_id", pageId!)
         .order("z_index", { ascending: true }) as unknown as Promise<{
@@ -1095,12 +1126,15 @@ export function MapBoard({
           const removedId = (payload.old as Partial<MapBg> | null)?.id;
           qc.setQueryData<MapBg[]>(["map_backgrounds", gameId, pageId], (current = []) => {
             if (payload.eventType === "DELETE") {
-              return removedId ? current.filter((background) => background.id !== removedId) : current;
+              return removedId
+                ? current.filter((background) => background.id !== removedId)
+                : current;
             }
             if (!incoming) return current;
-            return [...current.filter((background) => background.id !== incoming.id), incoming].sort(
-              (left, right) => left.z_index - right.z_index,
-            );
+            return [
+              ...current.filter((background) => background.id !== incoming.id),
+              incoming,
+            ].sort((left, right) => left.z_index - right.z_index);
           });
         },
       )
@@ -1126,6 +1160,12 @@ export function MapBoard({
     }
     if (!url) {
       toast.error("Informe uma imagem.");
+      return;
+    }
+    if (/^data:image\//i.test(url)) {
+      toast.error(
+        "Imagem em Base64 não pode ser usada como fundo. Envie o arquivo para o armazenamento primeiro.",
+      );
       return;
     }
     const maxZ = mapBgsRaw.reduce((m, b) => Math.max(m, b.z_index), 0);
@@ -1951,6 +1991,7 @@ export function MapBoard({
       toast.error("Nenhuma página ativa");
       return;
     }
+    const tokenImageUrl = /^data:image\//i.test(p.imageUrl ?? "") ? null : (p.imageUrl ?? null);
     const optimisticId = `optimistic-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const optimisticToken: Token = {
       id: optimisticId,
@@ -1959,7 +2000,7 @@ export function MapBoard({
       character_kind: p.kind,
       character_id: p.id,
       label: p.label,
-      image_url: p.imageUrl ?? null,
+      image_url: tokenImageUrl,
       owner_id: p.ownerId || userId,
       x,
       y,
@@ -1979,7 +2020,7 @@ export function MapBoard({
       p_character_kind: p.kind,
       p_character_id: p.id,
       p_label: p.label,
-      p_image_url: p.imageUrl ?? null,
+      p_image_url: tokenImageUrl,
       p_x: x,
       p_y: y,
     });
@@ -2002,9 +2043,12 @@ export function MapBoard({
     if (error) {
       // A timeout may have committed the RPC already; do not create a second token.
       if (error.code !== "PGRST202" && error.code !== "42883") {
-        toast.error("Não foi possível confirmar a criação do token. Confira o mapa antes de tentar novamente.", {
-          description: error.message,
-        });
+        toast.error(
+          "Não foi possível confirmar a criação do token. Confira o mapa antes de tentar novamente.",
+          {
+            description: error.message,
+          },
+        );
         void qc.invalidateQueries({ queryKey: ["tokens", gameId, pageId] });
         return;
       }
@@ -2016,7 +2060,7 @@ export function MapBoard({
           character_kind: p.kind,
           character_id: p.id,
           label: p.label,
-          image_url: p.imageUrl ?? null,
+          image_url: tokenImageUrl,
           owner_id: p.ownerId || userId,
           size: gridSettings.size,
           layer: "tokens",
@@ -2057,7 +2101,8 @@ export function MapBoard({
   useEffect(() => {
     function onPointerDrop(e: Event) {
       const detail = (e as CustomEvent).detail as
-        { payload?: DragCharacterPayload; clientX?: number; clientY?: number } | undefined;
+        | { payload?: DragCharacterPayload; clientX?: number; clientY?: number }
+        | undefined;
       if (e.defaultPrevented) return;
       if (
         !detail?.payload ||
@@ -2109,8 +2154,11 @@ export function MapBoard({
         return;
       }
       try {
-        const publicUrl = await uploadGameAsset(imageFile, "map-backgrounds", { maxDimension: 3072, quality: 0.86 });
-        await addBackground(publicUrl);
+        const assetRef = await uploadGameAsset(imageFile, "map-backgrounds", {
+          maxDimension: 3072,
+          quality: 0.86,
+        });
+        await addBackground(assetRef);
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Não foi possível enviar a imagem.");
       }
@@ -2306,9 +2354,9 @@ export function MapBoard({
             className="absolute inset-0 origin-center"
             style={{
               transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-              ...(backgroundUrl
+              ...(resolvedBackgroundUrl
                 ? {
-                    backgroundImage: `url(${backgroundUrl})`,
+                    backgroundImage: `url(${resolvedBackgroundUrl})`,
                     backgroundSize: "cover",
                     backgroundPosition: "center",
                   }
@@ -2363,7 +2411,7 @@ export function MapBoard({
                     }}
                   >
                     <div className="pointer-events-none relative h-full w-full overflow-hidden">
-                      <img
+                      <GameAssetImage
                         src={bg.image_url}
                         alt=""
                         draggable={false}
@@ -2543,7 +2591,13 @@ export function MapBoard({
                     height={FOG_SVG_SIZE}
                   >
                     {/* Start fully covered */}
-                    <rect x={FOG_SVG_MIN} y={FOG_SVG_MIN} width={FOG_SVG_SIZE} height={FOG_SVG_SIZE} fill="white" />
+                    <rect
+                      x={FOG_SVG_MIN}
+                      y={FOG_SVG_MIN}
+                      width={FOG_SVG_SIZE}
+                      height={FOG_SVG_SIZE}
+                      fill="white"
+                    />
                     {/* Subtract revealed regions (manual fog) */}
                     {visibility.fogEnabled &&
                       fogRegions
@@ -2592,7 +2646,13 @@ export function MapBoard({
                     width={FOG_SVG_SIZE}
                     height={FOG_SVG_SIZE}
                   >
-                    <rect x={FOG_SVG_MIN} y={FOG_SVG_MIN} width={FOG_SVG_SIZE} height={FOG_SVG_SIZE} fill="black" />
+                    <rect
+                      x={FOG_SVG_MIN}
+                      y={FOG_SVG_MIN}
+                      width={FOG_SVG_SIZE}
+                      height={FOG_SVG_SIZE}
+                      fill="black"
+                    />
                     {savedExploredPaths.map((d, i) => (
                       <path key={`memory-soft-${i}`} d={d} fill="white" />
                     ))}
@@ -3734,8 +3794,11 @@ function BgUrlAdd({
       return;
     }
     try {
-      const publicUrl = await uploadGameAsset(file, "map-backgrounds", { maxDimension: 3072, quality: 0.86 });
-      await onAdd(publicUrl, tileOptions);
+      const assetRef = await uploadGameAsset(file, "map-backgrounds", {
+        maxDimension: 3072,
+        quality: 0.86,
+      });
+      await onAdd(assetRef, tileOptions);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível enviar a imagem.");
     }

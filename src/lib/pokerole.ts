@@ -51,8 +51,7 @@ export const HUMAN_ATTR_CAP = 5;
 export const SKILLS = [
   "Brawl", "Channel", "Clash", "Evasion",
   "Alert", "Athletic", "Nature", "Stealth", "Allure", "Etiquette",
-  "Intimidate", "Perform", "Crafts", "Lore", "Medicine", "Science",
-  "Empathy",
+  "Intimidate", "Perform", "Crafts", "Lore", "Science",
 ] as const;
 
 // Trainers do not have Channel; they have Throw and Weapons instead.
@@ -2387,10 +2386,6 @@ const MOVE_ACCURACY_CORRECTIONS: Record<string, [string | null, string | null]> 
     "dexterity",
     "channel"
   ],
-  "simple beam": [
-    "insight",
-    "empathy"
-  ],
   "sing": [
     "cute",
     "perform"
@@ -2586,10 +2581,6 @@ const MOVE_ACCURACY_CORRECTIONS: Record<string, [string | null, string | null]> 
   "spotlight": [
     "cool",
     "perform"
-  ],
-  "stabilize an ally": [
-    "clever",
-    "medicine"
   ],
   "stealth rock": [
     "dexterity",

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 import { supabase } from "@/integrations/supabase/client";
 import { clearRealtimeStatus, reportRealtimeStatus } from "@/lib/client-health";
 import { applyEngineCommand, engineCommandPayload } from "@/lib/game-engine/core";
+import { fetchGameEngineSession } from "@/lib/game-engine/session";
 import { reconcileVersionedEvents, reconcileVersionedState } from "@/lib/multiplayer-sync";
 import type {
   EngineActor,
@@ -12,8 +13,6 @@ import type {
   EngineState,
 } from "@/lib/game-engine/types";
 
-const SESSION_COLUMNS =
-  "id,game_id,page_id,system_id,status,version,state,created_by,created_at,updated_at";
 const EVENT_COLUMNS = "id,session_id,game_id,version,actor_user_id,command,payload,created_at";
 let serverCommandUnavailableUntil = 0;
 
@@ -69,13 +68,7 @@ function commandId() {
 }
 
 async function fetchSession(gameId: string): Promise<EngineSession | null> {
-  const { data, error } = await supabase
-    .from("game_engine_sessions")
-    .select(SESSION_COLUMNS)
-    .eq("game_id", gameId)
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+  return fetchGameEngineSession(gameId);
 }
 
 async function fetchEvents(sessionId: string): Promise<EngineEvent[]> {

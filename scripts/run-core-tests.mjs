@@ -43,15 +43,22 @@ const pokerole = await importTypeScript("src/lib/pokerole.ts");
 const digirole = await importTypeScript("src/lib/digirole.ts");
 
 {
-  const values = { special: 5, cute: 3, tough: 4, cool: 2, insight: 3, will: 7, beautiful: 4, dexterity: 1 };
-  const skills = { Perform: 3, Nature: 2, Empathy: 4, Medicine: 2, Etiquette: 3, Athletic: 2 };
+  const values = { special: 5, cute: 3, tough: 4, cool: 2, clever: 4, insight: 3, will: 7, beautiful: 4, dexterity: 1 };
+  const skills = { Perform: 3, Nature: 2, Channel: 4, Etiquette: 3, Athletic: 2 };
   const move = name => ({ name, accuracy_stat: null, accuracy_skill: null });
   const pool = name => pokerole.moveAccuracyPool(move(name), key => values[key] ?? 0, skills).pool;
   assert.equal(pool("Bug Buzz"), 8);
   assert.equal(pool("Sing"), 6);
   assert.equal(pool("Growl"), 7);
   assert.equal(pool("After You"), 5);
-  assert.equal(pool("Simple Beam"), 7);
+  assert.equal(pool("Simple Beam"), 0);
+  assert.equal(pool("Stabilize an Ally"), 0);
+  assert.equal(pokerole.moveNeedsAccuracyChoice({ name: "Simple Beam", accuracy_stat: "insight", accuracy_skill: "empathy" }), true);
+  assert.equal(pokerole.moveNeedsAccuracyChoice({ name: "Stabilize an Ally", accuracy_stat: "clever", accuracy_skill: "medicine" }), true);
+  assert.equal(pokerole.SKILLS.includes("Medicine"), false);
+  assert.equal(pokerole.SKILLS.includes("Empathy"), false);
+  assert.equal(pokerole.TRAINER_SKILLS.includes("Medicine"), true);
+  assert.equal(pokerole.TRAINER_SKILLS.includes("Empathy"), true);
   assert.equal(pool("Final Gambit"), 9);
   assert.equal(pool("Quiver Dance"), 7);
   assert.equal(pokerole.moveNeedsAccuracyChoice(move("Copycat")), true);

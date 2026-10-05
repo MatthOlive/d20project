@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { MoveReactionTarget, MoveRollMessage, MoveRollTarget } from "@/components/MoveCard";
 import { emitEngineActionRolled } from "@/lib/game-engine/action-events";
 import type { EngineSession } from "@/lib/game-engine/types";
+import { fetchGameEngineSession } from "@/lib/game-engine/session";
 import {
   digiRoleAttributeModifier,
   digiRoleFieldAccuracyModifier,
@@ -400,14 +401,7 @@ export function DigiRoleTechniqueRollDialog({
     queryKey: ["game-engine-session", gameId],
     enabled: open,
     retry: false,
-    queryFn: async () => {
-      const result = await table("game_engine_sessions")
-        .select("*")
-        .eq("game_id", gameId)
-        .maybeSingle();
-      if (result.error) throw result.error;
-      return (result.data as EngineSession | null) ?? null;
-    },
+    queryFn: () => fetchGameEngineSession(gameId),
   });
   const participant =
     engine?.state.participants.find(

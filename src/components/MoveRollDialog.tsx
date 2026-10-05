@@ -33,6 +33,7 @@ import {
 } from "@/lib/move-resolution";
 import { emitEngineActionRolled } from "@/lib/game-engine/action-events";
 import type { EngineSession } from "@/lib/game-engine/types";
+import { fetchGameEngineSession } from "@/lib/game-engine/session";
 import { finalizeAtomicMove, isAtomicCombatRpcUnavailable } from "@/lib/pokerole-combat-rpc";
 
 export type MoveData = {
@@ -540,22 +541,7 @@ export function MoveRollDialog({
   const { data: engineSession = null } = useQuery<EngineSession | null>({
     queryKey: ["game-engine-session", gameId],
     queryFn: async () => {
-      const query = supabase.from("game_engine_sessions" as never) as never as {
-        select: (columns: string) => {
-          eq: (
-            column: string,
-            value: string,
-          ) => {
-            maybeSingle: () => Promise<{
-              data: EngineSession | null;
-              error: { message: string } | null;
-            }>;
-          };
-        };
-      };
-      const { data, error } = await query.select("*").eq("game_id", gameId).maybeSingle();
-      if (error) throw error;
-      return data;
+      return fetchGameEngineSession(gameId);
     },
     enabled: !!characterId,
     retry: false,

@@ -303,7 +303,14 @@ export function PokemonSheet({
       return (data ?? []).map((r: { moves: Move }) => r.moves);
     },
   });
-  const speciesAbilityNames = species?.abilities ?? [];
+  const speciesAbilityNames = species
+    ? [
+        ...new Set([
+          ...species.abilities,
+          ...(species.hidden_ability ? [species.hidden_ability] : []),
+        ]),
+      ]
+    : [];
   const { data: abilityDetails = [] } = useQuery({
     queryKey: ["abilities", speciesAbilityNames],
     enabled: speciesAbilityNames.length > 0,
@@ -655,8 +662,6 @@ export function PokemonSheet({
     "Etiquette",
     "Intimidate",
     "Perform",
-    "Empathy",
-    "Medicine",
   ];
   const allAttrs = POKEMON_ATTRS.map((a) => ({ name: a, value: pokemon.current_attrs[a] ?? 1 }));
   const allSocial = SOCIAL_ATTRS.map((a) => ({ name: a, value: pokemon.social_attrs?.[a] ?? 1 }));
@@ -1168,7 +1173,7 @@ export function PokemonSheet({
           <SkillGroup
             title="Survival"
             tint="bg-emerald-500/15 text-emerald-500"
-            skills={["Alert", "Athletic", "Nature", "Stealth", "Medicine"]}
+            skills={["Alert", "Athletic", "Nature", "Stealth"]}
             values={pokemon.skills}
             canEdit={canEdit}
             onChange={(s) => patch({ skills: { ...pokemon.skills, ...s } })}
@@ -1176,7 +1181,7 @@ export function PokemonSheet({
           <SkillGroup
             title="Social"
             tint="bg-pink-500/15 text-pink-500"
-            skills={["Allure", "Etiquette", "Intimidate", "Perform", "Empathy"]}
+            skills={["Allure", "Etiquette", "Intimidate", "Perform"]}
             values={pokemon.skills}
             canEdit={canEdit}
             onChange={(s) => patch({ skills: { ...pokemon.skills, ...s } })}
@@ -1188,13 +1193,16 @@ export function PokemonSheet({
       <section className="rounded-lg border border-border bg-card p-3">
         <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-primary">Abilities</h3>
         <div className="space-y-2">
-          {species.abilities.map((a) => {
+          {speciesAbilityNames.map((a) => {
             const detail = abilityDetails.find((d) => d.name === a);
             const abilityEffect = pokemonAbilityEffect(a, detail?.effect);
-            const hasChoice = species.abilities.length > 1;
+            const hasChoice = speciesAbilityNames.length > 1;
             const mods = pokemon.modifiers as unknown as Record<string, unknown>;
             const selected =
-              (mods?._selected_ability as string | undefined) ?? species.abilities[0];
+              (mods?._selected_ability as string | undefined) ??
+              species.abilities[0] ??
+              species.hidden_ability ??
+              undefined;
             const isSelected = selected === a;
             return (
               <div
@@ -1222,6 +1230,11 @@ export function PokemonSheet({
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-semibold">
                     {a}
+                    {a === species.hidden_ability && (
+                      <span className="ml-2 text-[10px] uppercase tracking-wide text-muted-foreground">
+                        Hidden
+                      </span>
+                    )}
                     {hasChoice && isSelected && (
                       <span className="ml-2 text-[10px] uppercase tracking-wide text-primary">
                         active
@@ -1245,7 +1258,7 @@ export function PokemonSheet({
               </div>
             );
           })}
-          {species.abilities.length === 0 && (
+          {species.abilities.length === 0 && !species.hidden_ability && (
             <div className="text-xs text-muted-foreground">
               No abilities listed for this species.
             </div>

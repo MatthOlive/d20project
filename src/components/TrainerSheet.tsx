@@ -38,6 +38,7 @@ import { AutosaveStatus } from "@/components/AutosaveStatus";
 
 import { useDebouncedPatch } from "@/lib/use-debounced-patch";
 import { uploadGameAsset } from "@/lib/game-assets";
+import { GameAssetImage } from "@/components/GameAssetImage";
 import { toast } from "sonner";
 import {
   Dices,
@@ -1035,7 +1036,7 @@ function BadgesSection({
               className="group flex flex-col items-center gap-1 rounded-md border border-border bg-background p-1.5"
             >
               {b.image_url ? (
-                <img src={b.image_url} alt={b.name} className="h-10 w-10 object-contain" />
+                <GameAssetImage src={b.image_url} alt={b.name} className="h-10 w-10 object-contain" />
               ) : (
                 <div className="flex h-10 w-10 items-center justify-center rounded-full border border-dashed border-border text-[10px] text-muted-foreground">
                   ★

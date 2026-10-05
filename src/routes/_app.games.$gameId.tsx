@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ImageSourceDialog } from "@/components/ImageSourceDialog";
+import { GameAssetImage } from "@/components/GameAssetImage";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { useGameSpdefUsesInsight } from "@/hooks/use-game-spdef-uses-insight";
 import { saveGameSpriteStyle, useGameSpriteStyle } from "@/hooks/use-game-sprite-style";
@@ -3349,7 +3350,7 @@ function ScenarioButtons({ gameId, currentBg }: { gameId: string; currentBg: str
                 className="flex items-center gap-2 rounded-md border border-border bg-card p-2"
               >
                 {s.background_url ? (
-                  <img src={s.background_url} alt="" className="h-14 w-20 rounded object-cover" />
+                  <GameAssetImage src={s.background_url} alt="" className="h-14 w-20 rounded object-cover" />
                 ) : (
                   <div className="flex h-14 w-20 items-center justify-center rounded bg-muted text-[10px] text-muted-foreground">
                     No bg
@@ -3858,7 +3859,7 @@ function InitiativePanel({
                   {i + 1}
                 </span>
                 {r.image_url ? (
-                  <img
+                  <GameAssetImage
                     src={r.image_url}
                     alt=""
                     className="h-7 w-7 shrink-0 rounded-full border border-border object-cover"
@@ -4621,7 +4622,7 @@ function MinimalSheetButton({
           </div>
           <div className="flex items-start gap-3">
             {image ? (
-              <img
+              <GameAssetImage
                 src={image}
                 alt=""
                 className="h-20 w-20 rounded-md border border-border object-cover"
