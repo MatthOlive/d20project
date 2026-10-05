@@ -3,6 +3,7 @@ import { Check, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { GameAssetImage } from "@/components/GameAssetImage";
 import {
   defaultTrainerAppearance,
   resolveTrainerAppearance,
@@ -36,7 +37,7 @@ export function TrainerAppearanceImage({
   const appearance = resolveTrainerAppearance(value);
   if (!appearance) {
     return value ? (
-      <img src={value} alt={alt} className={className} draggable={false} />
+      <GameAssetImage src={value} alt={alt} className={className} draggable={false} />
     ) : null;
   }
 

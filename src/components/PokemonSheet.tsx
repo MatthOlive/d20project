@@ -303,7 +303,14 @@ export function PokemonSheet({
       return (data ?? []).map((r: { moves: Move }) => r.moves);
     },
   });
-  const speciesAbilityNames = species?.abilities ?? [];
+  const speciesAbilityNames = species
+    ? [
+        ...new Set([
+          ...species.abilities,
+          ...(species.hidden_ability ? [species.hidden_ability] : []),
+        ]),
+      ]
+    : [];
   const { data: abilityDetails = [] } = useQuery({
     queryKey: ["abilities", speciesAbilityNames],
     enabled: speciesAbilityNames.length > 0,
@@ -455,6 +462,9 @@ export function PokemonSheet({
 
   const insight = pokemon?.current_attrs.insight ?? 1;
   const moveCap = insight + 2;
+  const learnableAtRankCount = pokemon
+    ? learnable.filter(({ min_rank }) => rankAtLeast(min_rank, pokemon.rank)).length
+    : 0;
 
   const filteredLearnable = useMemo(() => {
     if (!pokemon) return [];
@@ -655,8 +665,6 @@ export function PokemonSheet({
     "Etiquette",
     "Intimidate",
     "Perform",
-    "Empathy",
-    "Medicine",
   ];
   const allAttrs = POKEMON_ATTRS.map((a) => ({ name: a, value: pokemon.current_attrs[a] ?? 1 }));
   const allSocial = SOCIAL_ATTRS.map((a) => ({ name: a, value: pokemon.social_attrs?.[a] ?? 1 }));
@@ -984,7 +992,8 @@ export function PokemonSheet({
                   loyalty={pokemon.loyalty}
                   baseSpeciesId={
                     (pokemon.modifiers as Record<string, unknown>)?._base_species as
-                      string | undefined
+                      | string
+                      | undefined
                   }
                   ownerTrainerId={pokemon.owner_trainer_id ?? null}
                   heldItem={pokemon.held_item}
@@ -1168,7 +1177,7 @@ export function PokemonSheet({
           <SkillGroup
             title="Survival"
             tint="bg-emerald-500/15 text-emerald-500"
-            skills={["Alert", "Athletic", "Nature", "Stealth", "Medicine"]}
+            skills={["Alert", "Athletic", "Nature", "Stealth"]}
             values={pokemon.skills}
             canEdit={canEdit}
             onChange={(s) => patch({ skills: { ...pokemon.skills, ...s } })}
@@ -1176,7 +1185,7 @@ export function PokemonSheet({
           <SkillGroup
             title="Social"
             tint="bg-pink-500/15 text-pink-500"
-            skills={["Allure", "Etiquette", "Intimidate", "Perform", "Empathy"]}
+            skills={["Allure", "Etiquette", "Intimidate", "Perform"]}
             values={pokemon.skills}
             canEdit={canEdit}
             onChange={(s) => patch({ skills: { ...pokemon.skills, ...s } })}
@@ -1188,13 +1197,16 @@ export function PokemonSheet({
       <section className="rounded-lg border border-border bg-card p-3">
         <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-primary">Abilities</h3>
         <div className="space-y-2">
-          {species.abilities.map((a) => {
+          {speciesAbilityNames.map((a) => {
             const detail = abilityDetails.find((d) => d.name === a);
             const abilityEffect = pokemonAbilityEffect(a, detail?.effect);
-            const hasChoice = species.abilities.length > 1;
+            const hasChoice = speciesAbilityNames.length > 1;
             const mods = pokemon.modifiers as unknown as Record<string, unknown>;
             const selected =
-              (mods?._selected_ability as string | undefined) ?? species.abilities[0];
+              (mods?._selected_ability as string | undefined) ??
+              species.abilities[0] ??
+              species.hidden_ability ??
+              undefined;
             const isSelected = selected === a;
             return (
               <div
@@ -1222,6 +1234,11 @@ export function PokemonSheet({
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-semibold">
                     {a}
+                    {a === species.hidden_ability && (
+                      <span className="ml-2 text-[10px] uppercase tracking-wide text-muted-foreground">
+                        Hidden
+                      </span>
+                    )}
                     {hasChoice && isSelected && (
                       <span className="ml-2 text-[10px] uppercase tracking-wide text-primary">
                         active
@@ -1245,7 +1262,7 @@ export function PokemonSheet({
               </div>
             );
           })}
-          {species.abilities.length === 0 && (
+          {species.abilities.length === 0 && !species.hidden_ability && (
             <div className="text-xs text-muted-foreground">
               No abilities listed for this species.
             </div>
@@ -1256,12 +1273,20 @@ export function PokemonSheet({
       {/* ============ BLOCO 5 — Moves ============ */}
       <section className="rounded-lg border border-border bg-card p-3">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-primary">
-            Moves{" "}
-            <span className="font-normal text-muted-foreground">
-              ({knownMoves.length} / {moveCap})
-            </span>
-          </h3>
+          <div className="space-y-0.5">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-primary">
+              Moves{" "}
+              <span className="font-normal text-muted-foreground">
+                ({knownMoves.length} / {moveCap})
+              </span>
+            </h3>
+            {learnable.length > 0 && (
+              <p className="text-[11px] text-muted-foreground">
+                {learnableAtRankCount} of {learnable.length} species moves unlocked at the{" "}
+                {RANK_LABELS[pokemon.rank]} rank; higher-rank moves unlock later.
+              </p>
+            )}
+          </div>
           <div className="flex items-center gap-3">
             <label className="flex cursor-pointer items-center gap-1.5 text-xs font-medium">
               <Checkbox
@@ -1305,7 +1330,11 @@ export function PokemonSheet({
                   power: zMovePower(baseMove.power),
                 };
               if (gMaxMode && baseMove.power > 0)
-                return { ...correctedBase, name: `G-Max ${baseMove.name}`, power: baseMove.power + 3 };
+                return {
+                  ...correctedBase,
+                  name: `G-Max ${baseMove.name}`,
+                  power: baseMove.power + 3,
+                };
               return correctedBase;
             })();
             const attrValue = (raw: string): number => {
@@ -1322,7 +1351,10 @@ export function PokemonSheet({
               const base = species.base_attrs?.[key] ?? 1;
               const points = pokemon.attr_points?.[key] ?? 0;
               const bonus = pokemon.attr_bonus?.[key] ?? 0;
-              const distributed = Math.min(base + points, Math.max(species.attr_limits?.[key] ?? 5, base));
+              const distributed = Math.min(
+                base + points,
+                Math.max(species.attr_limits?.[key] ?? 5, base),
+              );
               // Older records may have stored the bonus in current_attrs already.
               return current > distributed ? current : distributed + bonus;
             };

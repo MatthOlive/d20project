@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { TrainerSheet } from "@/components/TrainerSheet";
 import { ImageSourceDialog } from "@/components/ImageSourceDialog";
+import { GameAssetImage } from "@/components/GameAssetImage";
 import { PokemonSheet } from "@/components/PokemonSheet";
 import { Shop } from "@/components/Shop";
 import { CHARACTER_POINTER_DROP_EVENT, DRAG_MIME, type DragCharacterPayload } from "@/components/MapBoard";
@@ -1270,7 +1271,7 @@ function MinimalSheetView({
     <div className="space-y-3 p-4">
       <div className="flex items-start gap-3">
         {meta.image_url ? (
-          <img src={meta.image_url} alt={meta.name} className="h-40 w-40 rounded-xl border border-border object-cover" />
+          <GameAssetImage src={meta.image_url} alt={meta.name} className="h-40 w-40 rounded-xl border border-border object-cover" />
         ) : (
           <div className="flex h-40 w-40 items-center justify-center rounded-xl border border-dashed border-border bg-muted text-xs text-muted-foreground">Sem imagem</div>
         )}

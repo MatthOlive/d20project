@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ImgHTMLAttributes, type ReactNode } from "react";
 import { pokemonSpriteCandidates, type PokemonSpriteStyle } from "@/lib/pokerole";
+import { GameAssetImage } from "@/components/GameAssetImage";
 
 type PokemonSpriteImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, "src"> & {
   speciesName?: string | null;
@@ -35,7 +36,7 @@ export function PokemonSpriteImage({
   if (!source) return <>{emptyFallback}</>;
 
   return (
-    <img
+    <GameAssetImage
       loading="lazy"
       decoding="async"
       {...imageProps}

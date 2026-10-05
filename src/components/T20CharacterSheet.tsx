@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ImageSourceDialog } from "@/components/ImageSourceDialog";
+import { GameAssetImage } from "@/components/GameAssetImage";
 import {
   T20_ATTRIBUTES,
   T20_CLASSES,
@@ -251,7 +252,7 @@ export function T20CharacterSheet({
       <div className="flex flex-wrap items-start gap-4">
         <div className="flex flex-col items-center gap-2">
           {sheet.image_url ? (
-            <img src={sheet.image_url} alt="" className="h-24 w-24 rounded-md border border-border object-cover" />
+            <GameAssetImage src={sheet.image_url} alt="" className="h-24 w-24 rounded-md border border-border object-cover" />
           ) : (
             <div className="flex h-24 w-24 items-center justify-center rounded-md border border-dashed border-border text-muted-foreground">
               <ImageIcon className="h-5 w-5" />

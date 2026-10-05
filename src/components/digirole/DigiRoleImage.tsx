@@ -1,4 +1,5 @@
 import { useState, type ImgHTMLAttributes } from "react";
+import { GameAssetImage } from "@/components/GameAssetImage";
 
 type DigiRoleImageProps = ImgHTMLAttributes<HTMLImageElement> & {
   speciesName?: string | null;
@@ -8,7 +9,7 @@ export function DigiRoleImage({ src, speciesName: _speciesName, style, ...props 
   const [focusFace, setFocusFace] = useState(false);
 
   return (
-    <img
+    <GameAssetImage
       {...props}
       src={src}
       onLoad={(event) => {

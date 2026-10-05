@@ -457,6 +457,10 @@ type AdditionalFunctions = {
     };
     Returns: EngineSession;
   };
+  get_game_engine_session_compact: {
+    Args: { p_game_id: string };
+    Returns: Json;
+  };
   can_control_lancer_entity: { Args: { p_entity_id: string; p_user_id: string }; Returns: boolean };
   import_lancer_content_pack: { Args: UnknownArgs; Returns: LancerContentPack };
   create_lancer_entity: { Args: UnknownArgs; Returns: LancerEntity };

@@ -20,6 +20,7 @@ import {
   currentEngineParticipant,
   mayControlEngineParticipant,
 } from "@/lib/game-engine/core";
+import { compactParticipantImage } from "@/lib/game-engine/session";
 import { getEngineRulePack } from "@/lib/game-engine/rules";
 import type {
   EngineEvent,
@@ -48,6 +49,7 @@ type MapToken = {
   label: string;
   image_url: string | null;
   page_id: string;
+  layer?: string;
 };
 
 type CharacterData = {
@@ -162,40 +164,11 @@ export function GameEnginePanel({
     enabled: false,
   });
 
-  const { data: tokens = EMPTY_MAP_TOKENS, isLoading: tokensLoading } = useQuery({
-    queryKey: ["game-engine-tokens", gameId, currentPageId],
-    queryFn: async () => {
-      if (!currentPageId) return [] as MapToken[];
-      const { data, error } = await supabase
-        .from("tokens")
-        .select("id,character_kind,character_id,owner_id,label,image_url,page_id")
-        .eq("game_id", gameId)
-        .eq("page_id", currentPageId)
-        .eq("layer", "tokens");
-      if (error) throw error;
-      return (data ?? []) as MapToken[];
-    },
-    enabled: !!currentPageId,
+  const { data: cachedTokens = EMPTY_MAP_TOKENS, isLoading: tokensLoading } = useQuery<MapToken[]>({
+    queryKey: ["tokens", gameId, currentPageId],
+    enabled: false,
   });
-
-  useEffect(() => {
-    if (!currentPageId) return;
-    const channel = supabase
-      .channel(`game-engine-tokens:${gameId}:${currentPageId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "tokens", filter: `page_id=eq.${currentPageId}` },
-        () => {
-          void queryClient.invalidateQueries({
-            queryKey: ["game-engine-tokens", gameId, currentPageId],
-          });
-        },
-      )
-      .subscribe();
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [currentPageId, gameId, queryClient]);
+  const tokens = useMemo(() => cachedTokens.filter((token) => (token.layer ?? "tokens") === "tokens"), [cachedTokens]);
 
   const characterRefs = useMemo(() => {
     const refs = new Map<string, { kind: EngineParticipantKind; characterId: string }>();
@@ -489,7 +462,9 @@ export function GameEnginePanel({
   }
 
   async function startEncounter() {
-    const participants = candidates.filter((participant) => selectedTokenIds.has(participant.id));
+    const participants = candidates
+      .filter((participant) => selectedTokenIds.has(participant.id))
+      .map(compactParticipantImage);
     if (participants.length === 0) {
       toast.error("Selecione pelo menos um token da página.");
       return;
