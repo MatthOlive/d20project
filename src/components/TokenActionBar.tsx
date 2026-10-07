@@ -1625,17 +1625,19 @@ function Shell({
   loading?: boolean;
 }) {
   return (
-    <div className="pointer-events-auto flex max-w-[92vw] flex-wrap items-center gap-1 rounded-lg border border-primary/40 bg-card/95 p-1.5 shadow-xl backdrop-blur">
-      <span className="px-1.5 text-xs font-bold">{title}</span>
-      {loading ? <span className="px-2 text-xs text-muted-foreground">…</span> : children}
-      {onOpenSheet && (
-        <Button size="sm" variant="ghost" className="h-7" onClick={onOpenSheet}>
-          Sheet
+    <div className="pointer-events-auto w-80 max-w-[92vw] rounded-lg border border-primary/40 bg-card/95 p-2 shadow-xl backdrop-blur">
+      <div className="mb-2 flex items-center justify-between gap-2 border-b border-border pb-1">
+        <span className="min-w-0 truncate px-1 text-xs font-bold">{title}</span>
+        <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={onClose} aria-label="Fechar opções do token">
+          <X className="h-3 w-3" />
         </Button>
-      )}
-      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={onClose}>
-        <X className="h-3 w-3" />
-      </Button>
+      </div>
+      <div className="grid grid-cols-3 gap-1.5 [&>button]:h-auto [&>button]:min-h-10 [&>button]:min-w-0 [&>button]:whitespace-normal [&>button]:px-1 [&>button]:py-1.5 [&>button]:text-[11px] [&>button]:leading-tight [&>button_svg]:shrink-0">
+        {loading ? <span className="col-span-3 px-2 text-xs text-muted-foreground">Carregando…</span> : children}
+        {onOpenSheet && (
+          <Button size="sm" variant="ghost" onClick={onOpenSheet}>Abrir ficha</Button>
+        )}
+      </div>
     </div>
   );
 }
