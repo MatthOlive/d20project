@@ -72,6 +72,7 @@ export function SheetTabs(props: {
   const qc = useQueryClient();
   const spriteStyle = useGameSpriteStyle(gameId);
   const [pokemonMenu, setPokemonMenu] = useState<SlotPokemon | null>(null);
+  const [menuPoint, setMenuPoint] = useState({ x: 0, y: 0 });
   const [sendingToken, setSendingToken] = useState(false);
   const longPressRef = useRef<{ timer: ReturnType<typeof setTimeout>; x: number; y: number } | null>(null);
   function cancelLongPress() {
@@ -416,6 +417,7 @@ export function SheetTabs(props: {
     suppressTeamClickRef.current = false;
     beginTeamPointerDrag(e, pokemon, slot);
     if (e.pointerType === "mouse" || e.button !== 0) return;
+    setMenuPoint({ x: e.clientX, y: e.clientY });
     longPressRef.current = { x: e.clientX, y: e.clientY, timer: setTimeout(() => {
       longPressRef.current = null;
       teamPointerDragRef.current = null;
@@ -568,6 +570,7 @@ export function SheetTabs(props: {
               onContextMenu={pokemon ? (e) => {
                 e.preventDefault(); cancelLongPress();
                 teamPointerDragRef.current = null; setTeamDragPreview(null);
+                setMenuPoint({ x: e.clientX, y: e.clientY });
                 setPokemonMenu(pokemon);
               } : undefined}
               draggable={false}
@@ -789,19 +792,30 @@ export function SheetTabs(props: {
           <Shop trainerId={trainerId} />
         )}
       </div>
-      <Dialog open={!!pokemonMenu} onOpenChange={(open) => { if (!open && !sendingToken) setPokemonMenu(null); }}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>{pokemonMenu ? nameFor(pokemonMenu) : "Pokémon"}</DialogTitle></DialogHeader>
-          <Button disabled={!props.onOpenPokemon || sendingToken} onClick={() => {
+      <DropdownMenu open={!!pokemonMenu} onOpenChange={(open) => { if (!open && !sendingToken) setPokemonMenu(null); }}>
+        <DropdownMenuTrigger asChild>
+          <button type="button" tabIndex={-1} aria-hidden="true"
+            className="pointer-events-none fixed h-px w-px opacity-0"
+            style={{ left: menuPoint.x, top: menuPoint.y }} />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent side="right" align="start" sideOffset={6} collisionPadding={12}
+          className="w-56 max-w-[calc(100vw-24px)] rounded-xl p-1 shadow-xl">
+          <div className="truncate border-b border-border px-3 py-2 text-xs font-bold uppercase text-muted-foreground">
+            {pokemonMenu ? nameFor(pokemonMenu) : "Pokémon"}
+          </div>
+          <DropdownMenuItem className="min-h-11 gap-2 rounded-lg px-3" disabled={!props.onOpenPokemon || sendingToken} onSelect={() => {
             if (!pokemonMenu) return;
             props.onOpenPokemon?.(pokemonMenu.id, nameFor(pokemonMenu));
             setPokemonMenu(null);
-          }}><FileText className="mr-2 h-4 w-4" />Abrir ficha</Button>
-          <Button variant="outline" disabled={sendingToken} onClick={() => { if (pokemonMenu) void sendPokemonToMap(pokemonMenu); }}>
-            <ArrowUpFromLine className="mr-2 h-4 w-4" />{sendingToken ? "Enviando..." : "Enviar para o mapa"}
-          </Button>
-        </DialogContent>
-      </Dialog>
+          }}><FileText className="h-4 w-4" />Abrir ficha</DropdownMenuItem>
+          <DropdownMenuItem className="min-h-11 gap-2 rounded-lg px-3" disabled={sendingToken} onSelect={(event) => {
+            event.preventDefault();
+            if (pokemonMenu) void sendPokemonToMap(pokemonMenu);
+          }}>
+            <ArrowUpFromLine className="h-4 w-4" />{sendingToken ? "Enviando..." : "Enviar para o mapa"}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
       {teamDragPreview && (
         <div
           className="pointer-events-none fixed z-[9999] max-w-48 rounded-md border border-primary bg-popover px-3 py-2 text-sm font-semibold text-popover-foreground shadow-xl"
