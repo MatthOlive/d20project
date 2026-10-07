@@ -1,3 +1,4 @@
+import { AppDownloads } from "@/components/AppDownloads";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -155,6 +156,7 @@ function AuthPage() {
                 </form>
               </TabsContent>
             </Tabs>
+      <AppDownloads />
 
             <div className="mt-8 grid grid-cols-1 gap-3">
               <Button variant="outline" className="h-11 rounded bg-white font-bold text-zinc-800 hover:bg-zinc-100" onClick={signInWithGoogle} disabled={busy}>

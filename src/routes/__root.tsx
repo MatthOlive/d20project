@@ -82,6 +82,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
+      { name: "robots", content: "noindex, nofollow, noarchive" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "D20 Project — Virtual Tabletop for Multi-System RPGs" },
       { name: "description", content: "D20 Project is a virtual tabletop for online RPG sessions — real-time rolls, dynamic sheets, integrated chat, maps, and an optional AI narrator that learns your system." },

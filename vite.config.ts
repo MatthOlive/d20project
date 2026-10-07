@@ -1,6 +1,7 @@
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
+import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
 import tsConfigPaths from "vite-tsconfig-paths";
 
@@ -12,6 +13,7 @@ export default defineConfig({
       server: { entry: "server" },
     }),
     react(),
+    ...(process.env.NITRO_PRESET === "vercel" ? [nitro({ preset: "vercel" })] : []),
   ],
   server: {
     host: "127.0.0.1",

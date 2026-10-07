@@ -1,3 +1,4 @@
+import { AppDownloads } from "@/components/AppDownloads";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -204,6 +205,7 @@ function Dashboard() {
 
   return (
     <main className="mx-auto max-w-7xl px-6 py-8">
+      <AppDownloads />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight">{t("yourGames")}</h1>

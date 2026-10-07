@@ -16,6 +16,7 @@ import { Route as DigiroleImageRouteImport } from './routes/digirole-image'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
+import { Route as DownloadPcRouteImport } from './routes/download.pc'
 import { Route as JoinInviteCodeRouteImport } from './routes/join.$inviteCode'
 import { Route as AppGamesGameIdRouteImport } from './routes/_app.games.$gameId'
 
@@ -53,6 +54,11 @@ const AppDashboardRoute = AppDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AppRoute,
 } as any)
+const DownloadPcRoute = DownloadPcRouteImport.update({
+  id: '/download/pc',
+  path: '/download/pc',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const JoinInviteCodeRoute = JoinInviteCodeRouteImport.update({
   id: '/join/$inviteCode',
   path: '/join/$inviteCode',
@@ -71,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/health': typeof HealthRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/dashboard': typeof AppDashboardRoute
+  '/download/pc': typeof DownloadPcRoute
   '/join/$inviteCode': typeof JoinInviteCodeRoute
   '/games/$gameId': typeof AppGamesGameIdRoute
 }
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/health': typeof HealthRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/dashboard': typeof AppDashboardRoute
+  '/download/pc': typeof DownloadPcRoute
   '/join/$inviteCode': typeof JoinInviteCodeRoute
   '/games/$gameId': typeof AppGamesGameIdRoute
 }
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/health': typeof HealthRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_app/dashboard': typeof AppDashboardRoute
+  '/download/pc': typeof DownloadPcRoute
   '/join/$inviteCode': typeof JoinInviteCodeRoute
   '/_app/games/$gameId': typeof AppGamesGameIdRoute
 }
@@ -105,6 +114,7 @@ export interface FileRouteTypes {
     | '/health'
     | '/sitemap.xml'
     | '/dashboard'
+    | '/download/pc'
     | '/join/$inviteCode'
     | '/games/$gameId'
   fileRoutesByTo: FileRoutesByTo
@@ -115,6 +125,7 @@ export interface FileRouteTypes {
     | '/health'
     | '/sitemap.xml'
     | '/dashboard'
+    | '/download/pc'
     | '/join/$inviteCode'
     | '/games/$gameId'
   id:
@@ -126,6 +137,7 @@ export interface FileRouteTypes {
     | '/health'
     | '/sitemap.xml'
     | '/_app/dashboard'
+    | '/download/pc'
     | '/join/$inviteCode'
     | '/_app/games/$gameId'
   fileRoutesById: FileRoutesById
@@ -137,6 +149,7 @@ export interface RootRouteChildren {
   DigiroleImageRoute: typeof DigiroleImageRoute
   HealthRoute: typeof HealthRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  DownloadPcRoute: typeof DownloadPcRoute
   JoinInviteCodeRoute: typeof JoinInviteCodeRoute
 }
 
@@ -191,6 +204,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDashboardRouteImport
       parentRoute: typeof AppRoute
     }
+    '/download/pc': {
+      id: '/download/pc'
+      path: '/download/pc'
+      fullPath: '/download/pc'
+      preLoaderRoute: typeof DownloadPcRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/join/$inviteCode': {
       id: '/join/$inviteCode'
       path: '/join/$inviteCode'
@@ -227,6 +247,7 @@ const rootRouteChildren: RootRouteChildren = {
   DigiroleImageRoute: DigiroleImageRoute,
   HealthRoute: HealthRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  DownloadPcRoute: DownloadPcRoute,
   JoinInviteCodeRoute: JoinInviteCodeRoute,
 }
 export const routeTree = rootRouteImport

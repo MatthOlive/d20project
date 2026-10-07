@@ -8,7 +8,7 @@ type InstallPrompt = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
-export function MobileInstall() {
+export function MobileInstall({ showLabel = false }: { showLabel?: boolean }) {
   const [prompt, setPrompt] = useState<InstallPrompt | null>(null);
   const [installed, setInstalled] = useState(true);
   const [help, setHelp] = useState(false);
@@ -27,7 +27,7 @@ export function MobileInstall() {
       window.removeEventListener("appinstalled", onInstalled);
     };
   }, []);
-  if (installed) return null;
+  if (installed && !showLabel) return null;
   async function install() {
     if (!prompt) { setHelp(true); return; }
     try {
@@ -37,8 +37,8 @@ export function MobileInstall() {
     finally { setPrompt(null); }
   }
   return <>
-    <Button variant="secondary" size="sm" onClick={() => void install()} aria-label="Instalar aplicativo no celular">
-      <Download className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Instalar</span>
+    <Button variant="secondary" size="sm" disabled={installed} onClick={() => void install()} aria-label="Instalar aplicativo no celular">
+      <Download className="h-4 w-4 sm:mr-2" /><span className={showLabel ? "ml-2" : "hidden sm:inline"}>{showLabel ? (installed ? "Mobile instalado" : "Download mobile") : "Instalar"}</span>
     </Button>
     <Dialog open={help} onOpenChange={setHelp}>
       <DialogContent>
