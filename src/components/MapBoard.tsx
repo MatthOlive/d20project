@@ -1,3 +1,4 @@
+import { useMapTouchNavigation } from "@/hooks/use-map-touch-navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -280,6 +281,7 @@ export function MapBoard({
 
   // Map tool state
   const [mode, setMode] = useState<Mode>("select");
+  const touchNavigation = useMapTouchNavigation({ pan, zoom, setPan, setZoom, enabled: mode === "select" });
   const [drawTool, setDrawTool] = useState<DrawKind>("freehand");
   const [drawColor, setDrawColor] = useState("#ef4444");
   const [drawWidth, setDrawWidth] = useState(3);
@@ -1788,6 +1790,7 @@ export function MapBoard({
     window.addEventListener("mouseleave", cleanup);
   }
   function onMouseDown(e: React.MouseEvent) {
+    if (touchNavigation.suppressMouse()) return;
     // Right click pans
     if (e.button === 2) {
       e.preventDefault();
@@ -2259,6 +2262,10 @@ export function MapBoard({
       <div className="flex h-full w-full items-center justify-center">
         <div
           ref={boardRef}
+          onTouchStart={touchNavigation.onTouchStart}
+          onTouchMove={touchNavigation.onTouchMove}
+          onTouchEnd={touchNavigation.onTouchEnd}
+          onTouchCancel={touchNavigation.onTouchCancel}
           onDragOver={(e) => {
             e.preventDefault();
             e.dataTransfer.dropEffect = "move";
@@ -2271,7 +2278,8 @@ export function MapBoard({
           onMouseUp={onMouseUpBoard}
           className="relative h-full w-full overflow-hidden rounded-xl border border-border bg-muted"
           style={{
-            cursor:
+            touchAction: "none",
+            cursor: touchNavigation.panning ? "grabbing" :
               mode === "ruler" || mode === "draw" || mode === "fog" || mode === "walls"
                 ? "crosshair"
                 : undefined,
