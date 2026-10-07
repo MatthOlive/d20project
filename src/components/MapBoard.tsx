@@ -1,3 +1,4 @@
+import { useTokenResize } from "@/hooks/use-token-resize";
 import { useMapTouchNavigation } from "@/hooks/use-map-touch-navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -279,7 +280,6 @@ export function MapBoard({
 
   const [dragId, setDragId] = useState<string | null>(null);
   const [resizeTokenId, setResizeTokenId] = useState<string | null>(null);
-  const resizeOrigin = useRef<{ mx: number; my: number; size: number } | null>(null);
   const [localSize, setLocalSize] = useState<Record<string, number>>({});
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
   const [hoverTokenId, setHoverTokenId] = useState<string | null>(null);
@@ -288,6 +288,23 @@ export function MapBoard({
   // (background image now rendered full-screen; no aspect-ratio coupling)
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  function clearResizePreview(id: string) {
+    setResizeTokenId(null);
+    setLocalSize((current) => { const next = { ...current }; delete next[id]; return next; });
+  }
+  const beginTokenResize = useTokenResize({
+    zoom,
+    preview: (id, size) => { setResizeTokenId(id); setLocalSize((current) => ({ ...current, [id]: size })); },
+    cancel: clearResizePreview,
+    finish: (id, size) => {
+      void (async () => {
+        const { error } = await supabase.from("tokens").update({ size }).eq("id", id);
+        if (error) toast.error(error.message);
+        else qc.setQueryData<Token[]>(["tokens", gameId, pageId], (current) => (current ?? []).map((token) => token.id === id ? { ...token, size } : token));
+        clearResizePreview(id);
+      })();
+    },
+  });
   const panOrigin = useRef<{ mx: number; my: number; ox: number; oy: number } | null>(null);
   const [mapPings, setMapPings] = useState<MapPing[]>([]);
   const pingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -363,7 +380,6 @@ export function MapBoard({
         delete next[tokenId];
         return next;
       });
-      resizeOrigin.current = null;
       setResizeTokenId((current) => (current === tokenId ? null : current));
       void qc.invalidateQueries({ queryKey: ["tokens", gameId, pageId] });
     }
@@ -421,12 +437,6 @@ export function MapBoard({
           y: panOrigin.current.oy + e.clientY - panOrigin.current.my,
         });
       }
-      if (resizeOrigin.current && resizeTokenId) {
-        const dx = e.clientX - resizeOrigin.current.mx;
-        const dy = e.clientY - resizeOrigin.current.my;
-        const next = Math.max(24, Math.min(240, resizeOrigin.current.size + Math.max(dx, dy)));
-        setLocalSize((s) => ({ ...s, [resizeTokenId]: next }));
-      }
       // Background interactions
       const drag = bgDragRef.current;
       const rect = innerRef.current?.getBoundingClientRect();
@@ -461,23 +471,7 @@ export function MapBoard({
     }
     async function onUp() {
       panOrigin.current = null;
-      if (resizeOrigin.current && resizeTokenId) {
-        const id = resizeTokenId;
-        const finalSize = localSize[id];
-        resizeOrigin.current = null;
-        setResizeTokenId(null);
-        if (finalSize) {
-          await supabase
-            .from("tokens")
-            .update({ size: Math.round(finalSize) })
-            .eq("id", id);
-          setLocalSize((s) => {
-            const n = { ...s };
-            delete n[id];
-            return n;
-          });
-        }
-      }
+
       // Persist bg edit
       const drag = bgDragRef.current;
       if (drag) {
@@ -2208,7 +2202,9 @@ export function MapBoard({
 
   async function removeToken(id: string) {
     const { error } = await supabase.from("tokens").delete().eq("id", id);
-    if (error) toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
+    qc.setQueryData<Token[]>(["tokens", gameId, pageId], (current) => (current ?? []).filter((token) => token.id !== id));
+    setSelectedTokenId((current) => current === id ? null : current);
   }
 
   function onTokenPointerDown(e: React.PointerEvent, t: Token, canMove: boolean) {
@@ -2965,26 +2961,21 @@ export function MapBoard({
                             removeToken(t.id);
                           }}
                           className="absolute -right-1 -top-1 hidden h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow group-hover:flex"
+                          onPointerDown={(event) => event.stopPropagation()}
                           aria-label="Remove token"
                         >
                           <X className="h-3 w-3" />
                         </button>
                       )}
                       {canMove && isSelected && (
-                        <div
-                          onMouseDown={(e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            setResizeTokenId(t.id);
-                            resizeOrigin.current = {
-                              mx: e.clientX,
-                              my: e.clientY,
-                              size: renderedSize,
-                            };
-                          }}
-                          className="absolute -bottom-1 -right-1 h-4 w-4 cursor-se-resize rounded-sm border-2 border-amber-400 bg-background shadow"
-                          title="Drag to resize"
-                        />
+                        <button type="button"
+                          onPointerDown={(event) => beginTokenResize(event, t.id, renderedSize)}
+                          onClick={(event) => { event.preventDefault(); event.stopPropagation(); }}
+                          className={`absolute -bottom-2 -right-2 flex items-center justify-center rounded-full touch-none ${isMobile ? "h-8 w-8" : "h-6 w-6 cursor-se-resize"}`}
+                          aria-label="Redimensionar token"
+                          title={isMobile ? "Segure: para cima aumenta, para baixo diminui" : "Clique e arraste para redimensionar"}>
+                          <span className="h-4 w-4 rounded-full border-2 border-amber-400 bg-background shadow" />
+                        </button>
                       )}
                     </div>
                     <div className="pointer-events-none absolute left-1/2 top-full mt-0.5 -translate-x-1/2 whitespace-nowrap rounded bg-background/90 px-1.5 py-0.5 text-[10px] font-semibold shadow">
@@ -3012,7 +3003,12 @@ export function MapBoard({
                           }
                           showInitiative={!!narratorId && t.owner_id !== narratorId}
                           extra={
-                            isNarrator ? (
+                            <>
+                              {isMobile && <button type="button" onClick={() => void removeToken(t.id)}
+                                className="inline-flex min-h-9 items-center gap-1 rounded-md border border-destructive/40 bg-background px-2 text-xs font-semibold text-destructive">
+                                <X className="h-3 w-3" />Excluir token
+                              </button>}
+                            {isNarrator ? (
                               <>
                                 <button
                                   type="button"
@@ -3078,7 +3074,8 @@ export function MapBoard({
                                   Aparência
                                 </button>
                               </>
-                            ) : undefined
+                            ) : null}
+                            </>
                           }
                         />
                       </div>
