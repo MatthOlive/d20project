@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
+import { MobileInstall } from "@/components/MobileInstall";
 import { DesktopUpdater } from "@/components/DesktopUpdater";
 
 export const Route = createFileRoute("/_app")({
@@ -27,10 +28,10 @@ function AppLayout() {
   }
 
   return (
-    <div className={isGameRoute ? "h-screen overflow-hidden bg-background" : "min-h-screen bg-background"}>
+    <div className={isGameRoute ? "h-dvh overflow-hidden bg-background" : "min-h-screen bg-background"}>
       {!isGameRoute && (
         <header className="pokedex-stripe text-pokedex-foreground">
-          <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
+          <div className="mx-auto flex max-w-7xl items-center justify-between px-3 py-3 sm:px-6">
             <Link to="/dashboard" className="flex items-center gap-3">
               <div className="h-8 w-8 rounded-full border-[3px] border-white bg-white">
                 <div className="m-[3px] h-2.5 w-2.5 rounded-full bg-pokedex" />
@@ -38,6 +39,7 @@ function AppLayout() {
               <span className="text-base font-extrabold tracking-tight">D20 Project</span>
             </Link>
             <div className="flex items-center gap-3 text-sm">
+              <MobileInstall />
               <DesktopUpdater compact />
               <span className="hidden sm:inline opacity-90">{user?.email}</span>
               <Button variant="secondary" size="sm" onClick={signOut}>

@@ -164,3 +164,21 @@
 .map-ping-wave {
   animation: map-ping-wave 1.25s ease-out forwards;
 }
+
+/* Keep mobile controls clear of notches and the home indicator. */
+.mobile-game-shell {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+.mobile-game-nav {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (max-width: 767px) {
+  input, textarea, select { font-size: max(16px, 1em); }
+  [role="dialog"] {
+    max-width: calc(100vw - 1rem);
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1rem);
+    overflow-y: auto;
+  }
+}

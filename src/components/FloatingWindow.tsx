@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect, type ReactNode } from "react";
 import { X, ExternalLink } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
 // Keep windows below shadcn dialogs/popovers (z-50) so move-pickers stay on top.
@@ -30,6 +31,7 @@ export function FloatingWindow({
   minHeight?: number;
   zIndexFloor?: number;
 }) {
+  const isMobile = useIsMobile();
   const [pos, setPos] = useState({ x: initialX, y: initialY });
   const [size, setSize] = useState({ w: width, h: height });
   const [minimized, setMinimized] = useState(false);
@@ -74,10 +76,10 @@ export function FloatingWindow({
         minimized && "opacity-50 hover:opacity-100",
       )}
       style={{
-        left: pos.x,
-        top: pos.y,
-        width: minimized ? "auto" : size.w,
-        height: minimized ? 28 : size.h,
+        left: isMobile ? 0 : pos.x,
+        top: isMobile ? "env(safe-area-inset-top, 0px)" : pos.y,
+        width: isMobile ? "100%" : minimized ? "auto" : size.w,
+        height: isMobile ? (minimized ? 48 : "calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))") : minimized ? 28 : size.h,
         zIndex: z,
       }}
       onMouseDown={bringFront}
@@ -85,9 +87,10 @@ export function FloatingWindow({
       <div
         className={cn(
           "flex cursor-move select-none items-center justify-between bg-pokedex text-pokedex-foreground",
-          minimized ? "h-7 gap-2 px-2" : "h-9 px-3",
+          minimized ? "h-7 gap-2 px-2" : "h-12 shrink-0 px-3 sm:h-9",
         )}
         onMouseDown={(e) => {
+          if (isMobile) return;
           dragOrigin.current = { mx: e.clientX, my: e.clientY, ox: pos.x, oy: pos.y };
         }}
         onDoubleClick={() => setMinimized((v) => !v)}
@@ -98,21 +101,21 @@ export function FloatingWindow({
           {onPopOut && !minimized && (
             <button
               onClick={(e) => { e.stopPropagation(); onPopOut(); }}
-              className="rounded p-1 transition hover:bg-white/15"
+              className="flex h-10 w-10 items-center justify-center rounded transition hover:bg-white/15"
               aria-label="Open in new window"
               title="Open in new window"
             ><ExternalLink className="h-3.5 w-3.5" /></button>
           )}
           <button
             onClick={(e) => { e.stopPropagation(); setMinimized((v) => !v); }}
-            className="rounded p-1 transition hover:bg-white/15"
+            className="flex h-10 w-10 items-center justify-center rounded transition hover:bg-white/15"
             aria-label={minimized ? "Restore" : "Minimize"}
           >
             <span className="block h-0.5 w-3 bg-current" />
           </button>
           <button
             onClick={onClose}
-            className="rounded p-1 transition hover:bg-white/15"
+            className="flex h-10 w-10 items-center justify-center rounded transition hover:bg-white/15"
             aria-label="Close"
           ><X className={minimized ? "h-3 w-3" : "h-4 w-4"} /></button>
         </div>
@@ -120,7 +123,7 @@ export function FloatingWindow({
       {!minimized && (
         <>
           <div className={cn("flex-1 overflow-auto bg-background")}>{children}</div>
-          <div
+          {!isMobile && <div
             className="absolute bottom-0 right-0 z-10 h-4 w-4 cursor-se-resize"
             onMouseDown={(e) => {
               e.stopPropagation();
@@ -131,7 +134,7 @@ export function FloatingWindow({
                 "linear-gradient(135deg, transparent 0 50%, hsl(var(--muted-foreground) / 0.5) 50% 60%, transparent 60% 70%, hsl(var(--muted-foreground) / 0.5) 70% 80%, transparent 80%)",
             }}
             aria-label="Resize"
-          />
+          />}
         </>
       )}
     </div>

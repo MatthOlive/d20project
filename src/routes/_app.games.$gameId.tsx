@@ -804,31 +804,25 @@ function GameRoom() {
     };
 
     return (
-      <div className="relative flex h-screen w-full flex-col">
+      <div className="mobile-game-shell relative flex h-dvh w-full flex-col">
         <h1 className="sr-only">
           {game.name ? `${game.name} — D20 Project game room` : "D20 Project game room"}
         </h1>
         <GameEngineActionBridge gameId={gameId} userId={user.id} isNarrator={isNarrator} />
         <MoveReactionCoordinator gameId={gameId} userId={user.id} />
-        <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border bg-card p-1">
-          <TooltipProvider delayDuration={150}>
-            {baseTabs.map((t) => (
-              <Tooltip key={t}>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => onClickBaseTab(t)}
-                    aria-label={MAIN_PANEL_LABELS[t]}
-                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md ${mobileTab === t ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
-                  >
-                    <MainPanelIcon tab={t} className="h-4 w-4" />
-                    <span className="sr-only">{MAIN_PANEL_LABELS[t]}</span>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">{MAIN_PANEL_LABELS[t]}</TooltipContent>
-              </Tooltip>
-            ))}
-          </TooltipProvider>
+        <nav aria-label="Navegação da mesa" className="mobile-game-nav order-last grid shrink-0 grid-cols-5 border-t border-border bg-card">
+          {baseTabs.map((tab) => (
+            <button key={tab} type="button" onClick={() => onClickBaseTab(tab)}
+              aria-current={mobileTab === tab ? "page" : undefined}
+              className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 px-1 text-[11px] font-semibold ${mobileTab === tab ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}>
+              <MainPanelIcon tab={tab} className="h-5 w-5" />
+              <span>{MAIN_PANEL_LABELS[tab]}</span>
+            </button>
+          ))}
+        </nav>
+        <div className="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-border bg-card px-2 py-1">
+          <Link to="/dashboard" className="shrink-0 rounded-md px-2 py-3 text-xs font-semibold">← Mesas</Link>
+          <span className="min-w-0 truncate text-sm font-bold">{game.name}</span>
           {windows.map((w) => {
             const key = sheetTabKey(w);
             return (
@@ -842,7 +836,7 @@ function GameRoom() {
                 <span
                   role="button"
                   aria-label="Fechar ficha"
-                  className="rounded p-0.5 opacity-70 hover:bg-background/30 hover:opacity-100"
+                  className="flex h-8 w-8 items-center justify-center rounded opacity-70 hover:bg-background/30 hover:opacity-100"
                   onClick={(e) => {
                     e.stopPropagation();
                     closeWindow(w.kind, w.id);

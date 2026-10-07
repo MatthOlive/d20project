@@ -82,17 +82,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "D20 Project — Virtual Tabletop for Multi-System RPGs" },
       { name: "description", content: "D20 Project is a virtual tabletop for online RPG sessions — real-time rolls, dynamic sheets, integrated chat, maps, and an optional AI narrator that learns your system." },
       { property: "og:site_name", content: "D20 Project" },
       { property: "og:type", content: "website" },
+      { name: "theme-color", content: "#dc2626" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "icon", href: "/favicon.ico" },
-      { rel: "apple-touch-icon", href: "/pwa-icon-192.svg" },
+      { rel: "apple-touch-icon", href: "/pwa-icon-192.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;800&display=swap" },
