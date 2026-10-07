@@ -262,6 +262,21 @@ export function MapBoard({
   const isMobile = useIsMobile();
   const boardRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
+  // A phone shows a window into the desktop canvas; it must not squeeze
+  // normalized token/background positions into a narrow portrait surface.
+  const [viewportSize, setViewportSize] = useState({ width: 1280, height: 720 });
+  useEffect(() => {
+    const board = boardRef.current;
+    if (!board) return;
+    const observer = new ResizeObserver(([entry]) => {
+      setViewportSize({ width: entry.contentRect.width, height: entry.contentRect.height });
+    });
+    observer.observe(board);
+    return () => observer.disconnect();
+  }, []);
+  const sceneWidth = isMobile ? 1280 : viewportSize.width;
+  const sceneHeight = isMobile ? 720 : viewportSize.height;
+
   const [dragId, setDragId] = useState<string | null>(null);
   const [resizeTokenId, setResizeTokenId] = useState<string | null>(null);
   const resizeOrigin = useRef<{ mx: number; my: number; size: number } | null>(null);
@@ -414,18 +429,18 @@ export function MapBoard({
       }
       // Background interactions
       const drag = bgDragRef.current;
-      const rect = boardRef.current?.getBoundingClientRect();
+      const rect = innerRef.current?.getBoundingClientRect();
       if (drag && rect) {
         if (drag.kind === "move") {
-          const dx = (e.clientX - drag.sx) / rect.width / zoom;
-          const dy = (e.clientY - drag.sy) / rect.height / zoom;
+          const dx = (e.clientX - drag.sx) / rect.width;
+          const dy = (e.clientY - drag.sy) / rect.height;
           setBgLocal((s) => ({
             ...s,
             [drag.id]: { ...(s[drag.id] ?? {}), x: drag.ox + dx, y: drag.oy + dy },
           }));
         } else if (drag.kind === "resize") {
-          const dx = (e.clientX - drag.sx) / rect.width / zoom;
-          const dy = (e.clientY - drag.sy) / rect.height / zoom;
+          const dx = (e.clientX - drag.sx) / rect.width;
+          const dy = (e.clientY - drag.sy) / rect.height;
           setBgLocal((s) => ({
             ...s,
             [drag.id]: {
@@ -2254,8 +2269,8 @@ export function MapBoard({
   }, [ruler, gridSettings.size, gridSettings.unitMeters]);
   const selectedWall = walls.find((w) => w.id === selectedWallId) ?? null;
   const viewportGridSize = Math.max(4, gridSettings.size * zoom);
-  const viewportGridOffsetX = ((pan.x % viewportGridSize) + viewportGridSize) % viewportGridSize;
-  const viewportGridOffsetY = ((pan.y % viewportGridSize) + viewportGridSize) % viewportGridSize;
+  const viewportGridOffsetX = (((pan.x + (viewportSize.width - sceneWidth * zoom) / 2) % viewportGridSize) + viewportGridSize) % viewportGridSize;
+  const viewportGridOffsetY = (((pan.y + (viewportSize.height - sceneHeight * zoom) / 2) % viewportGridSize) + viewportGridSize) % viewportGridSize;
 
   return (
     <>
@@ -2359,8 +2374,12 @@ export function MapBoard({
 
           <div
             ref={innerRef}
-            className="absolute inset-0 origin-center"
+            className="absolute origin-center"
             style={{
+              width: isMobile ? sceneWidth : "100%",
+              height: isMobile ? sceneHeight : "100%",
+              left: isMobile ? "calc(50% - 640px)" : 0,
+              top: isMobile ? "calc(50% - 360px)" : 0,
               transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
               ...(resolvedBackgroundUrl
                 ? {
