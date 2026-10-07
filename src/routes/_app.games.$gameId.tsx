@@ -708,6 +708,7 @@ function GameRoom() {
               ) : w.kind === "trainer" ? (
                 <SheetTabs
                   trainerId={w.id}
+                  onOpenPokemon={(id, title) => openWindow({ kind: "pokemon", id, title })}
                   gameId={gameId}
                   userId={user.id}
                   isNarrator={isNarrator}
@@ -943,6 +944,10 @@ function GameRoom() {
                   ) : activeSheet.kind === "trainer" ? (
                     <SheetTabs
                       trainerId={activeSheet.id}
+                      onOpenPokemon={(id, title) => {
+                        openWindow({ kind: "pokemon", id, title });
+                        setMobileTab(`sheet:pokemon:${id}`);
+                      }}
                       gameId={gameId}
                       userId={user.id}
                       isNarrator={isNarrator}

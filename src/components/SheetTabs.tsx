@@ -66,10 +66,19 @@ export function SheetTabs(props: {
   onRoll: (label: string, n: number, penalty?: number, meta?: { characterKind: "trainer" | "pokemon"; characterId: string; imageUrl?: string | null }) => void;
   onChat: (body: string) => void;
   onDeleted?: () => void;
+  onOpenPokemon?: (id: string, title: string) => void;
 }) {
   const { trainerId, gameId, userId, isNarrator } = props;
   const qc = useQueryClient();
   const spriteStyle = useGameSpriteStyle(gameId);
+  const [pokemonMenu, setPokemonMenu] = useState<SlotPokemon | null>(null);
+  const [sendingToken, setSendingToken] = useState(false);
+  const longPressRef = useRef<{ timer: ReturnType<typeof setTimeout>; x: number; y: number } | null>(null);
+  function cancelLongPress() {
+    if (longPressRef.current) clearTimeout(longPressRef.current.timer);
+    longPressRef.current = null;
+  }
+  useEffect(() => () => cancelLongPress(), []);
   const [active, setActive] = useState<Tab>({ kind: "trainer" });
   const [createTarget, setCreateTarget] = useState<number | "pc" | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -380,6 +389,42 @@ export function SheetTabs(props: {
     }
   }
 
+  async function sendPokemonToMap(pokemon: SlotPokemon) {
+    setSendingToken(true);
+    try {
+      const { data: game, error: gameError } = await supabase.from("games").select("active_page_id").eq("id", gameId).single();
+      if (gameError) throw gameError;
+      if (!game.active_page_id) throw new Error("Nenhuma página ativa no mapa.");
+      const payload = payloadForPokemon(pokemon);
+      const { error } = await supabase.rpc("create_token_from_character", {
+        p_game_id: gameId, p_page_id: game.active_page_id,
+        p_character_kind: "pokemon", p_character_id: pokemon.id,
+        p_label: payload.label, p_image_url: payload.imageUrl ?? null,
+        p_x: 0.5, p_y: 0.5,
+      });
+      if (error) throw error;
+      await qc.invalidateQueries({ queryKey: ["tokens", gameId] });
+      setPokemonMenu(null);
+      toast.success("Pokémon enviado para o mapa.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível criar o token.");
+    } finally { setSendingToken(false); }
+  }
+
+  function beginPokemonPress(e: React.PointerEvent, pokemon: SlotPokemon, slot: number) {
+    cancelLongPress();
+    suppressTeamClickRef.current = false;
+    beginTeamPointerDrag(e, pokemon, slot);
+    if (e.pointerType === "mouse" || e.button !== 0) return;
+    longPressRef.current = { x: e.clientX, y: e.clientY, timer: setTimeout(() => {
+      longPressRef.current = null;
+      teamPointerDragRef.current = null;
+      setTeamDragPreview(null);
+      suppressTeamClickRef.current = true;
+      setPokemonMenu(pokemon);
+    }, 500) };
+  }
+
   function beginTeamPointerDrag(e: React.PointerEvent, pokemon: SlotPokemon, fromSlot?: number) {
     if (!canEditRoster) return;
     if (e.button !== 0) return;
@@ -429,6 +474,8 @@ export function SheetTabs(props: {
 
   useEffect(() => {
     function move(e: PointerEvent) {
+      const press = longPressRef.current;
+      if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 6) cancelLongPress();
       const drag = teamPointerDragRef.current;
       if (!drag || drag.pointerId !== e.pointerId) return;
       const distance = Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY);
@@ -439,6 +486,7 @@ export function SheetTabs(props: {
     }
 
     function up(e: PointerEvent) {
+      cancelLongPress();
       const drag = teamPointerDragRef.current;
       if (!drag || drag.pointerId !== e.pointerId) return;
       teamPointerDragRef.current = null;
@@ -459,6 +507,7 @@ export function SheetTabs(props: {
     }
 
     function cancel(e: PointerEvent) {
+      cancelLongPress();
       const drag = teamPointerDragRef.current;
       if (!drag || drag.pointerId !== e.pointerId) return;
       teamPointerDragRef.current = null;
@@ -515,7 +564,12 @@ export function SheetTabs(props: {
               title={pokemon ? `${nameFor(pokemon)} — arraste para o PC para guardar, ou para outro slot para trocar` : `Slot ${slot}`}
               tone={pokemon ? "team" : "empty"}
               slotTarget={slot}
-              onPointerDown={pokemon && canEditRoster ? (e) => beginTeamPointerDrag(e, pokemon, slot) : undefined}
+              onPointerDown={pokemon ? (e) => beginPokemonPress(e, pokemon, slot) : undefined}
+              onContextMenu={pokemon ? (e) => {
+                e.preventDefault(); cancelLongPress();
+                teamPointerDragRef.current = null; setTeamDragPreview(null);
+                setPokemonMenu(pokemon);
+              } : undefined}
               draggable={false}
               onDragOver={(e) => {
                 if (e.dataTransfer.types.includes(SLOT_DRAG_MIME) || e.dataTransfer.types.includes(DRAG_MIME)) {
@@ -735,6 +789,19 @@ export function SheetTabs(props: {
           <Shop trainerId={trainerId} />
         )}
       </div>
+      <Dialog open={!!pokemonMenu} onOpenChange={(open) => { if (!open && !sendingToken) setPokemonMenu(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{pokemonMenu ? nameFor(pokemonMenu) : "Pokémon"}</DialogTitle></DialogHeader>
+          <Button disabled={!props.onOpenPokemon || sendingToken} onClick={() => {
+            if (!pokemonMenu) return;
+            props.onOpenPokemon?.(pokemonMenu.id, nameFor(pokemonMenu));
+            setPokemonMenu(null);
+          }}><FileText className="mr-2 h-4 w-4" />Abrir ficha</Button>
+          <Button variant="outline" disabled={sendingToken} onClick={() => { if (pokemonMenu) void sendPokemonToMap(pokemonMenu); }}>
+            <ArrowUpFromLine className="mr-2 h-4 w-4" />{sendingToken ? "Enviando..." : "Enviar para o mapa"}
+          </Button>
+        </DialogContent>
+      </Dialog>
       {teamDragPreview && (
         <div
           className="pointer-events-none fixed z-[9999] max-w-48 rounded-md border border-primary bg-popover px-3 py-2 text-sm font-semibold text-popover-foreground shadow-xl"
@@ -772,7 +839,7 @@ export function SheetTabs(props: {
 const SLOT_DRAG_MIME = "application/x-pokerole-slot-move+json";
 
 function TabButton({
-  active, onClick, children, title, tone, onDragOver, onDrop, draggable, onDragStart, onPointerDown, dropTarget, slotTarget,
+  active, onClick, children, title, tone, onDragOver, onDrop, draggable, onDragStart, onPointerDown, onContextMenu, dropTarget, slotTarget,
 }: {
   active: boolean;
   onClick: () => void;
@@ -784,6 +851,7 @@ function TabButton({
   draggable?: boolean;
   onDragStart?: React.DragEventHandler<HTMLButtonElement>;
   onPointerDown?: React.PointerEventHandler<HTMLButtonElement>;
+  onContextMenu?: React.MouseEventHandler<HTMLButtonElement>;
   dropTarget?: boolean;
   slotTarget?: number;
 }) {
@@ -803,6 +871,7 @@ function TabButton({
         e.preventDefault();
       }}
       onPointerDown={onPointerDown}
+      onContextMenu={onContextMenu}
       data-pokemon-pc-drop-target={dropTarget ? "true" : undefined}
       data-pokemon-slot-drop-target={slotTarget}
       style={onPointerDown ? ({ touchAction: "none", WebkitUserDrag: "none", userSelect: "none" } as CSSProperties) : undefined}
