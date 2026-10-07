@@ -26,7 +26,7 @@ function Landing() {
         <h1 className="text-3xl font-extrabold">D20 Project</h1>
         <p className="mt-3 text-muted-foreground">Sua mesa de RPG, no computador ou no celular. Acesse suas mesas, fichas, mapas e chat com a mesma conta.</p>
         <div className="mt-5"><Button asChild><Link to={user ? "/dashboard" : "/auth"}>{user ? "Abrir minhas mesas" : "Entrar"}</Link></Button></div>
-        <AppDownloads />
+        {!user && <AppDownloads />}
       </div>
     </main>
   );
