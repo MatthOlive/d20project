@@ -1512,7 +1512,7 @@ function PokemonBar({
       const { data, error } = await supabase
         .from("pokemon_moves")
         .select(
-          "moves(id,name,type,power,accuracy_stat,accuracy_skill,damage_stat,effect,category)",
+          "moves(id,name,type,power,accuracy_stat,accuracy_skill,damage_stat,effect,category,target)",
         )
         .eq("pokemon_id", id);
       if (error) throw error;
@@ -1831,6 +1831,7 @@ function MovesButton({
                   damagePoolText: stats.damagePoolText,
                   effect: m.effect ?? "",
                   category: m.category,
+                  target: m.target,
                 }}
                 accuracySlot={
                   <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-bold text-primary">

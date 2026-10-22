@@ -46,6 +46,7 @@ export type MoveData = {
   damage_stat: string | null;
   effect: string;
   category: string;
+  target?: string;
 };
 
 export type BattleMoveRollOptions = {
@@ -756,6 +757,7 @@ export function MoveRollDialog({
         damagePoolText,
         effect: move.effect ?? "",
         category: move.category,
+        target: move.target,
       },
       accuracy: {
         pool: finalAccPool,

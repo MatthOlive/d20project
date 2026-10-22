@@ -13,6 +13,7 @@ export type MoveCardData = {
   damagePoolText: string; // e.g. "Special + 2" (PDF style)
   effect: string;
   category?: string;
+  target?: string;
 };
 
 export type MoveRollTarget = {
@@ -216,7 +217,13 @@ export function MoveCard({
           <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
             Effect
           </span>
-          <p className="mt-1 text-muted-foreground leading-relaxed whitespace-pre-wrap">
+          <EffectIcons
+            effect={data.effect}
+            category={data.category}
+            target={data.target}
+            className="mt-1"
+          />
+          <p className="mt-1 break-words text-muted-foreground leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere]">
             {data.effect}
           </p>
         </div>
@@ -244,9 +251,10 @@ export function MoveRollResultCard({
   const chance = message.chance ?? [];
   const chanceSuccesses = chance.reduce((sum, item) => sum + item.successes, 0);
   const hasDamageBubble = !!message.damage && !message.damage.isStatus && !hasTargets;
-  const tcol = message.system === "digirole"
-    ? { bg: digiRoleFieldColor(message.card.type), fg: "#fff" }
-    : TYPE_COLORS[message.card.type as keyof typeof TYPE_COLORS] ?? { bg: "#888", fg: "#fff" };
+  const tcol =
+    message.system === "digirole"
+      ? { bg: digiRoleFieldColor(message.card.type), fg: "#fff" }
+      : (TYPE_COLORS[message.card.type as keyof typeof TYPE_COLORS] ?? { bg: "#888", fg: "#fff" });
   const requiredSuccesses = crit?.required ?? 1;
   const isHit = message.accuracy.isHit ?? message.accuracy.successes >= requiredSuccesses;
   // A resolved move remains a single, complete card: accuracy first, then resolution.
@@ -281,6 +289,14 @@ export function MoveRollResultCard({
               </span>
             )}
           </div>
+          {message.system !== "digirole" && (
+            <EffectIcons
+              effect={message.card.effect}
+              category={message.card.category}
+              target={message.card.target}
+              className="mt-2"
+            />
+          )}
         </div>
         <div className="absolute right-3 top-3 flex flex-col items-center">
           <span className="text-[10px] font-black uppercase leading-none tracking-[0.24em] opacity-85">
@@ -329,7 +345,8 @@ export function MoveRollResultCard({
           </p>
           {crit?.isCriticalFailure && (
             <p className="mt-2 text-center text-xs text-destructive">
-              {crit.ones} resultados 1 na Accuracy (necessários: {crit.failureRequired}). O mestre decide o efeito.
+              {crit.ones} resultados 1 na Accuracy (necessários: {crit.failureRequired}). O mestre
+              decide o efeito.
             </p>
           )}
           {crit?.isCrit && (
@@ -557,7 +574,9 @@ export function MoveRollResultCard({
             ) : null}
             <div className="space-y-1 text-sm leading-relaxed text-muted-foreground">
               {message.card.effect ? (
-                <p className="whitespace-pre-wrap">{message.card.effect}</p>
+                <p className="break-words whitespace-pre-wrap [overflow-wrap:anywhere]">
+                  {message.card.effect}
+                </p>
               ) : (
                 <p>Sem efeito adicional.</p>
               )}

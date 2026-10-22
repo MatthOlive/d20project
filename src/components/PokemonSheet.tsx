@@ -113,6 +113,7 @@ type Move = {
   damage_stat: string | null;
   effect: string;
   category: string;
+  target?: string;
 };
 
 type Pokemon = {
@@ -1402,6 +1403,7 @@ export function PokemonSheet({
                   damagePoolText,
                   effect: m.effect ?? "",
                   category: m.category,
+                  target: m.target,
                 }}
                 accuracySlot={
                   <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-bold text-primary">
