@@ -219,7 +219,9 @@ type SheetRollMeta = {
   characterId: string;
   imageUrl?: string | null;
   tokenId?: string | null;
+  rollType?: "damage";
   diceExpressions?: InlineDiceRequest[];
+  attackTarget?: { id: string; damageExpression: string };
 };
 
 type InlineDiceRoll = {
@@ -432,7 +434,41 @@ function GameRoom() {
   async function rollFromSheet(label: string, n: number, penalty = 0, meta?: SheetRollMeta) {
     if (!user) return;
     if (meta?.characterKind === "t20" || game?.system === "t20") {
+      if (meta?.rollType === "damage") {
+        const extraDice = rollInlineDice(meta.diceExpressions);
+        if (extraDice.length === 0) {
+          toast.error("Não foi possível interpretar a expressão de dano.");
+          return;
+        }
+        const { error: chatError } = await supabase.from("chat_messages").insert({
+          game_id: gameId,
+          user_id: user.id,
+          kind: "roll",
+          body: label,
+          roll_data: { system: "t20", rollType: "damage", label, extraDice },
+        });
+        if (chatError) toast.error(`Não foi possível enviar a rolagem: ${chatError.message}`);
+        return;
+      }
       const modifier = n - (penalty || 0);
+      if (meta?.attackTarget) {
+        const finalLabel =
+          modifier === 0 ? label : `${label} (${modifier >= 0 ? "+" : ""}${modifier})`;
+        const { error: attackError } = await supabase.rpc("roll_t20_attack", {
+          p_game_id: gameId,
+          p_attacker_character_id: meta.characterId,
+          p_target_character_id: meta.attackTarget.id,
+          p_modifier: modifier,
+          p_damage_expression: meta.attackTarget.damageExpression,
+          p_label: finalLabel,
+        });
+        if (attackError) {
+          toast.error(`Não foi possível rolar o ataque: ${attackError.message}`);
+          return;
+        }
+        void qc.invalidateQueries({ queryKey: ["chat", gameId] });
+        return;
+      }
       const result = rollD20(modifier);
       const finalLabel =
         modifier === 0 ? label : `${label} (${modifier >= 0 ? "+" : ""}${modifier})`;
@@ -635,7 +671,10 @@ function GameRoom() {
         snap: (game as never as { grid_snap?: boolean }).grid_snap ?? true,
         snapMode:
           ((game as never as { grid_snap_mode?: string }).grid_snap_mode as
-            "center" | "line" | "free" | undefined) ?? "center",
+            | "center"
+            | "line"
+            | "free"
+            | undefined) ?? "center",
         size: (game as never as { grid_size?: number }).grid_size ?? 56,
         color: (game as never as { grid_color?: string }).grid_color ?? "#000000",
         opacity: (game as never as { grid_opacity?: number }).grid_opacity ?? 30,
@@ -811,18 +850,27 @@ function GameRoom() {
         </h1>
         <GameEngineActionBridge gameId={gameId} userId={user.id} isNarrator={isNarrator} />
         <MoveReactionCoordinator gameId={gameId} userId={user.id} />
-        <nav aria-label="Navegação da mesa" className="mobile-game-nav order-last grid shrink-0 grid-cols-5 border-t border-border bg-card">
+        <nav
+          aria-label="Navegação da mesa"
+          className="mobile-game-nav order-last grid shrink-0 grid-cols-5 border-t border-border bg-card"
+        >
           {baseTabs.map((tab) => (
-            <button key={tab} type="button" onClick={() => onClickBaseTab(tab)}
+            <button
+              key={tab}
+              type="button"
+              onClick={() => onClickBaseTab(tab)}
               aria-current={mobileTab === tab ? "page" : undefined}
-              className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 px-1 text-[11px] font-semibold ${mobileTab === tab ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}>
+              className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 px-1 text-[11px] font-semibold ${mobileTab === tab ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}
+            >
               <MainPanelIcon tab={tab} className="h-5 w-5" />
               <span>{MAIN_PANEL_LABELS[tab]}</span>
             </button>
           ))}
         </nav>
         <div className="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-border bg-card px-2 py-1">
-          <Link to="/dashboard" className="shrink-0 rounded-md px-2 py-3 text-xs font-semibold">← Mesas</Link>
+          <Link to="/dashboard" className="shrink-0 rounded-md px-2 py-3 text-xs font-semibold">
+            ← Mesas
+          </Link>
           <span className="min-w-0 truncate text-sm font-bold">{game.name}</span>
           {windows.map((w) => {
             const key = sheetTabKey(w);
@@ -861,23 +909,25 @@ function GameRoom() {
           </div>
           <div
             className={`h-full overflow-hidden ${
-              mobileTab === "chat" ? "relative visible" : "pointer-events-none invisible absolute inset-0"
+              mobileTab === "chat"
+                ? "relative visible"
+                : "pointer-events-none invisible absolute inset-0"
             }`}
             aria-hidden={mobileTab !== "chat"}
           >
-              <div className="p-2">
-                <OnlinePresence gameId={gameId} userId={user.id} isNarrator={isNarrator} />
-              </div>
-              <PanelErrorBoundary scope="mobile-chat" resetKey={gameId}>
-                <Suspense fallback={<PanelLoading label="Carregando chat..." />}>
-                  <ChatPanel
-                    gameId={gameId}
-                    userId={user.id}
-                    aiNarrator={game.narrator_type === "ai"}
-                    isGameOwner={isGameOwner}
-                  />
-                </Suspense>
-              </PanelErrorBoundary>
+            <div className="p-2">
+              <OnlinePresence gameId={gameId} userId={user.id} isNarrator={isNarrator} />
+            </div>
+            <PanelErrorBoundary scope="mobile-chat" resetKey={gameId}>
+              <Suspense fallback={<PanelLoading label="Carregando chat..." />}>
+                <ChatPanel
+                  gameId={gameId}
+                  userId={user.id}
+                  aiNarrator={game.narrator_type === "ai"}
+                  isGameOwner={isGameOwner}
+                />
+              </Suspense>
+            </PanelErrorBoundary>
           </div>
           {mobileTab === "files" && (
             <div className="h-full overflow-auto p-3">
@@ -1117,15 +1167,15 @@ function RightOverlayPanel({ children }: { children: React.ReactNode }) {
         style={{ width }}
         aria-hidden={!open}
       >
-          <div
-            className="absolute -left-1 top-0 bottom-0 z-10 w-1.5 cursor-ew-resize bg-transparent hover:bg-primary/40"
-            onMouseDown={(e) => {
-              dragRef.current = { mx: e.clientX, ow: width };
-              e.preventDefault();
-            }}
-            title="Drag to resize"
-          />
-          <div className="h-full opacity-95">{children}</div>
+        <div
+          className="absolute -left-1 top-0 bottom-0 z-10 w-1.5 cursor-ew-resize bg-transparent hover:bg-primary/40"
+          onMouseDown={(e) => {
+            dragRef.current = { mx: e.clientX, ow: width };
+            e.preventDefault();
+          }}
+          title="Drag to resize"
+        />
+        <div className="h-full opacity-95">{children}</div>
       </div>
       <button
         className="pointer-events-auto mt-1 rounded-l-md bg-card/95 px-1.5 py-2 text-xs shadow backdrop-blur hover:bg-accent"
@@ -1160,7 +1210,11 @@ function InviteButton({ code }: { code: string }) {
           Envie este código aos jogadores. Eles podem usá-lo no botão Participar do dashboard.
         </p>
         <div className="flex gap-2">
-          <Input value={formattedCode} readOnly className="font-mono text-base font-bold tracking-wider" />
+          <Input
+            value={formattedCode}
+            readOnly
+            className="font-mono text-base font-bold tracking-wider"
+          />
           <Button
             aria-label="Copiar código da mesa"
             title="Copiar código da mesa"
@@ -1737,6 +1791,11 @@ function FilesPanel({
           class_name: null,
           attributes: defaultT20Attributes(),
           skills: defaultT20Skills(),
+          skill_rules_enabled: true,
+          trained_skills: {},
+          class_trained_skills: {},
+          origin_trained_skills: {},
+          derived_stats_initialized: false,
         })
         .select()
         .single();
@@ -3302,11 +3361,11 @@ function ScenarioButtons({ gameId, currentBg }: { gameId: string; currentBg: str
   }
   async function uploadBg(s: Scenario, file: File) {
     try {
-      const publicUrl = await uploadGameAsset(file, "scenario-backgrounds", { maxDimension: 2560, quality: 0.84 });
-      await supabase
-        .from("scenarios")
-        .update({ background_url: publicUrl })
-        .eq("id", s.id);
+      const publicUrl = await uploadGameAsset(file, "scenario-backgrounds", {
+        maxDimension: 2560,
+        quality: 0.84,
+      });
+      await supabase.from("scenarios").update({ background_url: publicUrl }).eq("id", s.id);
       qc.invalidateQueries({ queryKey: ["scenarios", gameId] });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível enviar a imagem.");
@@ -3349,7 +3408,11 @@ function ScenarioButtons({ gameId, currentBg }: { gameId: string; currentBg: str
                 className="flex items-center gap-2 rounded-md border border-border bg-card p-2"
               >
                 {s.background_url ? (
-                  <GameAssetImage src={s.background_url} alt="" className="h-14 w-20 rounded object-cover" />
+                  <GameAssetImage
+                    src={s.background_url}
+                    alt=""
+                    className="h-14 w-20 rounded object-cover"
+                  />
                 ) : (
                   <div className="flex h-14 w-20 items-center justify-center rounded bg-muted text-[10px] text-muted-foreground">
                     No bg
@@ -3722,10 +3785,11 @@ type InitRow = {
 };
 
 function sortInitiativeRows(rows: InitRow[]) {
-  return [...rows].sort((a, b) =>
-    (a.position ?? 0) - (b.position ?? 0) ||
-    (b.successes ?? 0) - (a.successes ?? 0) ||
-    (a.created_at ?? "").localeCompare(b.created_at ?? ""),
+  return [...rows].sort(
+    (a, b) =>
+      (a.position ?? 0) - (b.position ?? 0) ||
+      (b.successes ?? 0) - (a.successes ?? 0) ||
+      (a.created_at ?? "").localeCompare(b.created_at ?? ""),
   );
 }
 
@@ -3746,7 +3810,9 @@ function InitiativePanel({
     queryFn: async () => {
       const { data } = await supabase
         .from("initiative")
-        .select("id,game_id,character_name,character_kind,character_ref,successes,position,image_url,created_at")
+        .select(
+          "id,game_id,character_name,character_kind,character_ref,successes,position,image_url,created_at",
+        )
         .eq("game_id", gameId)
         .order("position", { ascending: true })
         .order("successes", { ascending: false })
@@ -4326,87 +4392,87 @@ function GameSettingsButton({ gameId, systemId }: { gameId: string; systemId: st
         </DialogHeader>
         <div className="space-y-4">
           <div className={systemId === "digirole" ? "hidden" : "contents"}>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <Label className="text-xs">Chance de Shiny (%)</Label>
-              <Input
-                type="number"
-                min={0}
-                max={100}
-                value={shiny}
-                onChange={(e) => setShiny(Number(e.target.value))}
-              />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label className="text-xs">Chance de Shiny (%)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={shiny}
+                  onChange={(e) => setShiny(Number(e.target.value))}
+                />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Aplicada ao criar um Pokémon novo.
+                </p>
+              </div>
+              <div>
+                <Label className="text-xs">Chance de Overgrown (%)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={over}
+                  onChange={(e) => setOver(Number(e.target.value))}
+                />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  0 = só manual (checkbox na criação).
+                </p>
+              </div>
+            </div>
+            <div className="rounded-md border border-border bg-card p-3">
+              <Label className="text-xs">Sprites dos Pokemon</Label>
+              <Select
+                value={spriteStyle}
+                onValueChange={(value) => setSpriteStyle(value as PokemonSpriteStyle)}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pixel">Pixel</SelectItem>
+                  <SelectItem value="3d">3D / animado</SelectItem>
+                </SelectContent>
+              </Select>
               <p className="mt-1 text-[11px] text-muted-foreground">
-                Aplicada ao criar um Pokémon novo.
+                Pixel e o padrao. Afeta fichas, Files e tokens no mapa.
               </p>
             </div>
-            <div>
-              <Label className="text-xs">Chance de Overgrown (%)</Label>
-              <Input
-                type="number"
-                min={0}
-                max={100}
-                value={over}
-                onChange={(e) => setOver(Number(e.target.value))}
-              />
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                0 = só manual (checkbox na criação).
-              </p>
-            </div>
-          </div>
-          <div className="rounded-md border border-border bg-card p-3">
-            <Label className="text-xs">Sprites dos Pokemon</Label>
-            <Select
-              value={spriteStyle}
-              onValueChange={(value) => setSpriteStyle(value as PokemonSpriteStyle)}
+            <div
+              className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-card p-3"
+              onClick={() => setSpdefIns((v) => !v)}
             >
-              <SelectTrigger className="mt-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pixel">Pixel</SelectItem>
-                <SelectItem value="3d">3D / animado</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              Pixel e o padrao. Afeta fichas, Files e tokens no mapa.
-            </p>
-          </div>
-          <div
-            className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-card p-3"
-            onClick={() => setSpdefIns((v) => !v)}
-          >
-            <Checkbox
-              checked={spdefIns}
-              onCheckedChange={(v) => setSpdefIns(!!v)}
-              onClick={(e) => e.stopPropagation()}
-            />
-            <div>
-              <span className="text-sm font-semibold">SpDef usa Insight (regra da casa)</span>
-              <p className="text-[11px] text-muted-foreground">
-                Quando ligado, a Defesa Especial usa Insight no lugar de Vitality em toda a mesa.
-              </p>
+              <Checkbox
+                checked={spdefIns}
+                onCheckedChange={(v) => setSpdefIns(!!v)}
+                onClick={(e) => e.stopPropagation()}
+              />
+              <div>
+                <span className="text-sm font-semibold">SpDef usa Insight (regra da casa)</span>
+                <p className="text-[11px] text-muted-foreground">
+                  Quando ligado, a Defesa Especial usa Insight no lugar de Vitality em toda a mesa.
+                </p>
+              </div>
             </div>
-          </div>
-          <div
-            className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-card p-3"
-            onClick={() => setEffFlat((v) => !v)}
-          >
-            <Checkbox
-              checked={effFlat}
-              onCheckedChange={(v) => setEffFlat(!!v)}
-              onClick={(e) => e.stopPropagation()}
-            />
-            <div>
-              <span className="text-sm font-semibold">
-                Efetividade: regra da casa (+/− sucessos)
-              </span>
-              <p className="text-[11px] text-muted-foreground">
-                Ligado: super-efetivo soma +1/+2 sucessos de dano (e não-efetivo subtrai 1/2).
-                Desligado: usa o RAW e adiciona/remove dados da pool antes de rolar.
-              </p>
+            <div
+              className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-card p-3"
+              onClick={() => setEffFlat((v) => !v)}
+            >
+              <Checkbox
+                checked={effFlat}
+                onCheckedChange={(v) => setEffFlat(!!v)}
+                onClick={(e) => e.stopPropagation()}
+              />
+              <div>
+                <span className="text-sm font-semibold">
+                  Efetividade: regra da casa (+/− sucessos)
+                </span>
+                <p className="text-[11px] text-muted-foreground">
+                  Ligado: super-efetivo soma +1/+2 sucessos de dano (e não-efetivo subtrai 1/2).
+                  Desligado: usa o RAW e adiciona/remove dados da pool antes de rolar.
+                </p>
+              </div>
             </div>
-          </div>
           </div>
           <div className="rounded-md border border-border bg-card p-3 space-y-2">
             <div className="text-xs font-bold uppercase tracking-wider text-primary">

@@ -44,6 +44,19 @@ type T20CharacterRow = {
   xp: number;
   attributes: Json;
   skills: Json;
+  skill_rules_enabled: boolean;
+  trained_skills: Json;
+  class_trained_skills: Json;
+  origin_trained_skills: Json;
+  armor_penalty: number;
+  armor_name: string | null;
+  shield_name: string | null;
+  equipment_rules_enabled: boolean;
+  inventory_items: Json;
+  coins_total: number;
+  adventure_backpack: boolean;
+  derived_stats_initialized: boolean;
+  weapons: Json;
   hp_current: number;
   hp_max: number;
   mp_current: number;
@@ -106,6 +119,17 @@ type T20CharacterSpellRow = {
   notes: string | null;
   prepared: boolean;
   created_at: string;
+};
+
+type T20AttackResolutionRow = {
+  source_message_id: string;
+  game_id: string;
+  target_character_id: string;
+  damage: number;
+  hp_before: number;
+  hp_after: number;
+  applied_by: string;
+  applied_at: string;
 };
 
 type DigiRoleSpeciesRow = {
@@ -281,6 +305,7 @@ type AdditionalTables = {
   game_engine_sessions: Table<EngineSession>;
   game_engine_events: Table<EngineEvent>;
   t20_characters: Table<T20CharacterRow>;
+  t20_attack_resolutions: Table<T20AttackResolutionRow>;
   t20_powers: Table<T20PowerRow>;
   t20_spells: Table<T20SpellRow>;
   t20_character_powers: Table<
@@ -375,6 +400,21 @@ type ChatMessageRow = GeneratedDatabase["public"]["Tables"]["chat_messages"]["Ro
 type UnknownArgs = Record<string, unknown>;
 
 type AdditionalFunctions = {
+  roll_t20_attack: {
+    Args: {
+      p_game_id: string;
+      p_attacker_character_id: string;
+      p_target_character_id: string;
+      p_modifier: number;
+      p_damage_expression: string;
+      p_label: string;
+    };
+    Returns: string;
+  };
+  apply_t20_attack_damage: {
+    Args: { p_source_message_id: string; p_damage: number };
+    Returns: Json;
+  };
   assign_pokemon_to_trainer: {
     Args: { p_pokemon_id: string; p_trainer_id: string; p_team_slot?: number | null };
     Returns: undefined;

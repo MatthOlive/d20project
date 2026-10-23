@@ -20,6 +20,7 @@ import {
 import { FloatingWindow } from "@/components/FloatingWindow";
 import type { EngineReactionResolution } from "@/lib/game-engine/action-events";
 import { useSharedChatRealtime } from "@/hooks/use-shared-chat-realtime";
+import { parseT20DamageExpression } from "@/lib/tormenta20";
 
 type Msg = {
   id: string;
@@ -64,6 +65,8 @@ export function ChatPanel({
   const [aiBusy, setAiBusy] = useState(false);
   const [hasOlderMessages, setHasOlderMessages] = useState(false);
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
+  const [applyingAttackId, setApplyingAttackId] = useState<string | null>(null);
+  const [locallyResolvedAttackIds, setLocallyResolvedAttackIds] = useState<Set<string>>(() => new Set());
   const aiBusyRef = useRef(false);
   const lastTriggeredIdRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -86,6 +89,104 @@ export function ChatPanel({
     },
     staleTime: Number.POSITIVE_INFINITY,
   });
+
+  const t20AttackIds = useMemo(
+    () => messages.flatMap((message) => {
+      const data = message.roll_data as unknown as { attackTarget?: unknown } | null;
+      return message.kind === "roll" && data?.attackTarget ? [message.id] : [];
+    }),
+    [messages],
+  );
+  const { data: t20AttackResolutions = [] } = useQuery({
+    queryKey: ["t20-attack-resolutions", gameId, t20AttackIds.join(",")],
+    enabled: t20AttackIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("t20_attack_resolutions")
+        .select("source_message_id,damage,hp_before,hp_after,target_character_id")
+        .eq("game_id", gameId)
+        .in("source_message_id", t20AttackIds);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const t20ResolutionsByAttackId = useMemo(
+    () => new Map(t20AttackResolutions.map((resolution) => [resolution.source_message_id, resolution])),
+    [t20AttackResolutions],
+  );
+
+  async function applyT20Damage(message: Msg, expression: string, targetName: string) {
+    if (!isGameOwner || applyingAttackId === message.id) return;
+    const parsed = parseT20DamageExpression(expression);
+    if (!parsed) {
+      toast.error("A expressão de dano desta arma não é válida.");
+      return;
+    }
+    if (t20ResolutionsByAttackId.has(message.id) || locallyResolvedAttackIds.has(message.id)) {
+      toast.info("O dano deste ataque já foi aplicado.");
+      return;
+    }
+
+    setApplyingAttackId(message.id);
+    try {
+      const dice = Array.from({ length: parsed.count }, () => Math.floor(Math.random() * parsed.faces) + 1);
+      const diceTotal = dice.reduce((sum, value) => sum + value, 0);
+      const damage = Math.max(0, diceTotal + parsed.modifier);
+      const confirmed = window.confirm(
+        `Confirmar dano em ${targetName}?\n\n${expression}: ${dice.join(" + ")}${parsed.modifier ? ` ${parsed.modifier > 0 ? "+" : "−"} ${Math.abs(parsed.modifier)}` : ""} = ${damage} de dano.\n\nA ficha será atualizada uma única vez.`,
+      );
+      if (!confirmed) return;
+
+      const { data, error } = await supabase.rpc("apply_t20_attack_damage", {
+        p_source_message_id: message.id,
+        p_damage: damage,
+      });
+      if (error) throw error;
+      const result = data as unknown as {
+        target_name: string;
+        target_character_id: string;
+        hp_before: number;
+        hp_after: number;
+        damage: number;
+      };
+      setLocallyResolvedAttackIds((current) => new Set(current).add(message.id));
+      void qc.invalidateQueries({ queryKey: ["t20-attack-resolutions", gameId] });
+      void qc.invalidateQueries({ queryKey: ["t20-character", result.target_character_id] });
+      void qc.invalidateQueries({ queryKey: ["token-t20-stats", result.target_character_id] });
+      void qc.invalidateQueries({ queryKey: ["characters", gameId] });
+
+      const { error: logError } = await supabase.from("chat_messages").insert({
+        game_id: gameId,
+        user_id: userId,
+        kind: "roll",
+        body: `${result.target_name} recebeu ${result.damage} de dano`,
+        roll_data: {
+          system: "t20",
+          rollType: "damage",
+          sourceAttackId: message.id,
+          extraDice: [{
+            label: result.target_name,
+            expression,
+            groups: [{ notation: `${parsed.count}d${parsed.faces}`, count: parsed.count, faces: parsed.faces, dice, total: diceTotal }],
+            flatModifier: parsed.modifier,
+            total: damage,
+          }],
+          hpBefore: result.hp_before,
+          hpAfter: result.hp_after,
+          applied: true,
+        },
+      });
+      if (logError) {
+        toast.error(`PV atualizados (${result.hp_before} → ${result.hp_after}), mas o resultado não entrou no chat: ${logError.message}`);
+      } else {
+        toast.success(`${result.target_name}: ${result.hp_before} → ${result.hp_after} PV.`);
+      }
+    } catch (error) {
+      void qc.invalidateQueries({ queryKey: ["t20-attack-resolutions", gameId] });
+      toast.error(error instanceof Error ? error.message : "Não foi possível aplicar o dano.");
+    } finally {
+      setApplyingAttackId(null);
+    }
+  }
 
   async function loadOlderMessages() {
     const oldest = messages[0];
@@ -139,6 +240,10 @@ export function ChatPanel({
 
   useSharedChatRealtime(gameId, (message) => {
     const row = message as Msg;
+    const rollData = row.roll_data as unknown as { sourceAttackId?: string } | null;
+    if (rollData?.sourceAttackId) {
+      void qc.invalidateQueries({ queryKey: ["t20-attack-resolutions", gameId] });
+    }
     if (!aiNarrator || !isGameOwner) return;
     if (row.kind === "narrator" || row.kind === "move_reaction") return;
     if (
@@ -319,6 +424,10 @@ export function ChatPanel({
                 resolvedMoveIds.has(m.roll_data.resolutionId)
               )
             }
+            isGameOwner={isGameOwner}
+            applyingT20Damage={applyingAttackId === m.id}
+            t20DamageResolution={t20ResolutionsByAttackId.get(m.id) ?? null}
+            onApplyT20Damage={(expression, targetName) => void applyT20Damage(m, expression, targetName)}
           />
         ))}
         {displayedMessages.length === 0 && (
@@ -469,11 +578,19 @@ function MessageBubble({
   authorName,
   isMe,
   resolutionComplete,
+  isGameOwner,
+  applyingT20Damage,
+  t20DamageResolution,
+  onApplyT20Damage,
 }: {
   msg: Msg;
   authorName: string;
   isMe: boolean;
   resolutionComplete: boolean;
+  isGameOwner: boolean;
+  applyingT20Damage: boolean;
+  t20DamageResolution: { source_message_id: string; target_character_id: string; damage: number; hp_before: number; hp_after: number } | null;
+  onApplyT20Damage: (expression: string, targetName: string) => void;
 }) {
   if (msg.kind === "move_reaction") return null;
   if (msg.kind === "narrator") {
@@ -542,9 +659,41 @@ function MessageBubble({
     isHit?: boolean;
     rawSuccesses?: number;
     engineReaction?: EngineReactionResolution;
+    rollType?: "damage";
+    extraDice?: {
+      label: string;
+      expression: string;
+      groups: { notation: string; count: number; faces: number; dice: number[]; total: number }[];
+      flatModifier: number;
+      total: number;
+    }[];
+    attackTarget?: { id: string; name: string; defense: number; damageExpression: string; hit: boolean };
   } | null;
   if (msg.kind === "roll" && rd) {
     if (rd.system === "t20" || typeof rd.die === "number") {
+      if (rd.rollType === "damage") {
+        return (
+          <div className="rounded-lg border border-border bg-card p-3">
+            <div className="mb-2 flex items-baseline justify-between text-xs">
+              <span className="font-semibold text-foreground">{authorName}</span>
+              <span className="text-muted-foreground">rolled {msg.body}</span>
+            </div>
+            <div className="space-y-2">
+              {(rd.extraDice ?? []).map((roll) => (
+                <div key={`${roll.label}:${roll.expression}`} className="flex flex-wrap items-center gap-1.5">
+                  <span className="mr-1 text-xs font-medium">{roll.label} ({roll.expression})</span>
+                  {roll.groups.flatMap((group, groupIndex) => group.dice.map((die, dieIndex) => (
+                    <span key={`${groupIndex}:${dieIndex}`} className="inline-flex h-7 min-w-7 items-center justify-center rounded-md border border-border bg-muted px-1.5 text-sm font-bold tabular-nums text-foreground">{die}</span>
+                  )))}
+                  <span className="ml-1 rounded-full bg-primary/15 px-2.5 py-0.5 text-xs font-bold text-primary">
+                    dano {roll.total}{roll.flatModifier !== 0 ? ` (${roll.groups.map((group) => group.total).join(" + ")}${roll.flatModifier > 0 ? ` +${roll.flatModifier}` : ` ${roll.flatModifier}`})` : ""}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
       const die = rd.die ?? 0;
       const mod = rd.modifier ?? 0;
       const total = rd.total ?? die + mod;
@@ -563,6 +712,26 @@ function MessageBubble({
               {mod !== 0 ? ` (${die}${mod > 0 ? ` +${mod}` : ` ${mod}`})` : ""}
             </span>
           </div>
+          {rd.attackTarget && (
+            <div className={cn("mt-2 rounded-md border px-2.5 py-2 text-xs", rd.attackTarget.hit ? "border-emerald-500/40 bg-emerald-500/10" : "border-muted bg-muted/40")}>
+              <span className="font-semibold">{rd.attackTarget.hit ? "Acerto" : "Errou"}</span>
+              {" · "}{rd.attackTarget.name}: Defesa {rd.attackTarget.defense}
+              {" · dano se acertou: "}<b>{rd.attackTarget.damageExpression || "não definido"}</b>
+              {t20DamageResolution ? (
+                <div className="mt-1 font-semibold text-emerald-700">
+                  Dano aplicado pelo narrador: {t20DamageResolution.damage} · PV {t20DamageResolution.hp_before} → {t20DamageResolution.hp_after}
+                </div>
+              ) : rd.attackTarget.hit && isGameOwner && rd.attackTarget.damageExpression ? (
+                <div className="mt-2">
+                  <Button size="sm" variant="outline" disabled={applyingT20Damage} onClick={() => onApplyT20Damage(rd.attackTarget!.damageExpression, rd.attackTarget!.name)}>
+                    {applyingT20Damage ? "Aplicando…" : "Confirmar e aplicar dano"}
+                  </Button>
+                </div>
+              ) : (
+                <div className="mt-1 text-muted-foreground">PV do alvo não alterados</div>
+              )}
+            </div>
+          )}
         </div>
       );
     }

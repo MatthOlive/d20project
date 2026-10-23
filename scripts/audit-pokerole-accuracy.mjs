@@ -51,6 +51,32 @@ assert.deepEqual(
   "Duplicate normalized move names exist in the imported catalog",
 );
 
+// A conservative audit for descriptions ending in a phrase that usually signals
+// a page-break truncation. This is not a semantic proof; each flagged move is
+// cross-checked against the Corebook and recorded in the guarded repair migration.
+const danglingEnding =
+  /\b(?:to|of|the|a|an|if|when|at|by|for|from|with|and|or|until|during|after|before|because|equal|than|on|into|up|per|its|their|is|are|will|can|cannot|must|has|have|this|that|which|who|whom|each|every|such|one|two|three|four|damage|roll|add|reduce|increase|against|affected|effects|effect|user|foe|target|ally|allies|round|scene|sleep)$/i;
+const flaggedMoves = importedMoves.filter((move) =>
+  danglingEnding.test((move.effect ?? "").trim()),
+);
+const repairSql = await readFile(
+  "supabase/migrations/20261022210500_restore_truncated_pokerole_move_effects.sql",
+  "utf8",
+);
+const repairedNames = new Set(
+  [...repairSql.matchAll(/^\s{2}\(\s*\r?\n\s{4}'([^']+)'/gm)].map((match) =>
+    match[1].normalize("NFKC").trim().toLocaleLowerCase("en"),
+  ),
+);
+const unrepairedFlags = flaggedMoves
+  .filter((move) => !repairedNames.has(move.name.normalize("NFKC").trim().toLocaleLowerCase("en")))
+  .map((move) => move.name);
+assert.deepEqual(
+  unrepairedFlags,
+  [],
+  `Potentially truncated imported move descriptions lack a guarded repair: ${unrepairedFlags.join(", ")}`,
+);
+
 console.log(
-  `Pokérole accuracy checks passed; ${importedMoves.length} imported move names are unique after normalization.`,
+  `Pokérole accuracy checks passed; ${importedMoves.length} imported move names are unique and ${flaggedMoves.length} suspicious description endings have guarded repairs.`,
 );
