@@ -32,7 +32,7 @@ import {
 } from "@/lib/pokerole";
 import { MoveCard } from "@/components/MoveCard";
 import { MoveRollDialog, computeMoveStats, type MoveData } from "@/components/MoveRollDialog";
-import { T20_QUICK_ROLLS } from "@/lib/tormenta20";
+import { calculateT20Encumbrance, T20_QUICK_ROLLS, t20ClassTrainedSkills, t20OriginTrainedSkills, t20SkillCheck } from "@/lib/tormenta20";
 import { useGameSpriteStyle } from "@/hooks/use-game-sprite-style";
 import {
   DIGIROLE_ATTRS,
@@ -1319,11 +1319,29 @@ function T20Bar({ id, label, onRoll, onClose, onOpenSheet, extra }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("t20_characters")
-        .select("image_url,skills")
+        .select("image_url,skills,attributes,level,class_name,class_trained_skills,origin,origin_trained_skills,skill_rules_enabled,trained_skills,armor_penalty,inventory_items,coins_total,adventure_backpack,armor_name,shield_name,weapons")
         .eq("id", id)
         .single();
       if (error) throw error;
-      return data as { image_url: string | null; skills: Record<string, number> | null };
+      return data as {
+        image_url: string | null;
+        skills: Record<string, number> | null;
+        attributes: Record<string, number> | null;
+        level: number;
+        class_name: string | null;
+        class_trained_skills: Record<string, boolean> | null;
+        origin: string | null;
+        origin_trained_skills: Record<string, boolean> | null;
+        skill_rules_enabled: boolean;
+        trained_skills: Record<string, boolean> | null;
+        armor_penalty: number;
+        inventory_items: { id: string; name: string; quantity: number; spacesEach: number }[];
+        coins_total: number;
+        adventure_backpack: boolean;
+        armor_name: string | null;
+        shield_name: string | null;
+        weapons: { id: string; name: string; spaces?: number }[];
+      };
     },
   });
   const quick = T20_QUICK_ROLLS.slice(0, 4);
@@ -1340,13 +1358,42 @@ function T20Bar({ id, label, onRoll, onClose, onOpenSheet, extra }: Props) {
             )
           }
           label={item.label}
-          onClick={() =>
-            onRoll(`${label} - ${item.label}`, c?.skills?.[item.skill] ?? 0, 0, {
+          onClick={() => {
+            const check = t20SkillCheck(item.skill, {
+              level: c?.level ?? 1,
+              attributes: c?.attributes ?? {},
+              trained: !!c?.trained_skills?.[item.skill] || t20ClassTrainedSkills(
+                c?.class_name,
+                c?.class_trained_skills ?? {},
+              ).has(item.skill) || t20OriginTrainedSkills(
+                c?.origin,
+                c?.origin_trained_skills ?? {},
+              ).has(item.skill),
+              useRules: !!c?.skill_rules_enabled,
+              manualBonus: c?.skills?.[item.skill] ?? 0,
+              armorPenalty: (c?.armor_penalty ?? 0) + calculateT20Encumbrance(
+                c?.attributes?.forca ?? 0,
+                [
+                  ...(c?.inventory_items ?? []),
+                  ...(c?.weapons ?? []).map((weapon) => ({
+                    id: `weapon-${weapon.id}`,
+                    name: weapon.name,
+                    quantity: 1,
+                    spacesEach: Math.max(0, Number(weapon.spaces) || 0),
+                  })),
+                ],
+                c?.coins_total ?? 0,
+                c?.adventure_backpack ?? false,
+                c?.armor_name,
+                c?.shield_name,
+              ).skillPenalty,
+            });
+            onRoll(`${label} - ${item.label}`, check.modifier, 0, {
               characterKind: "t20",
               characterId: id,
               imageUrl: c?.image_url,
-            })
-          }
+            });
+          }}
         />
       ))}
       <ActionBtn

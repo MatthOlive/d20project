@@ -45,9 +45,13 @@ jobs:
       - name: Align existing migration history
         shell: bash
         run: |
+          # The production project already contains the schema represented by
+          # migrations through this release. Never mark later migrations as
+          # applied here: they must remain visible to `db push` below.
+          baseline_version=20261023010804
           versions=$(find supabase/migrations -maxdepth 1 -type f -name '*.sql' -printf '%f\n' \
             | sed -E 's/^([0-9]+)_.*/\1/' \
-            | grep -v '^20260915130000$' \
+            | awk -v baseline="$baseline_version" '$1 <= baseline' \
             | tr '\n' ' ')
           supabase migration repair --status applied $versions
 

@@ -2510,7 +2510,7 @@ export function MapBoard({
             {/* Walls layer — visible to narrator only */}
             {isNarrator && (walls.length > 0 || (wallStart && wallCursor)) && (
               <svg
-                className="pointer-events-none absolute inset-0 h-full w-full"
+                className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
                 viewBox="0 0 1000 1000"
                 preserveAspectRatio="none"
               >

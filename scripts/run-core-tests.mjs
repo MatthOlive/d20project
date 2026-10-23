@@ -41,6 +41,373 @@ const resolution = await importTypeScript("src/lib/move-resolution.ts");
 const engine = await importTypeScript("src/lib/game-engine/core.ts");
 const pokerole = await importTypeScript("src/lib/pokerole.ts");
 const digirole = await importTypeScript("src/lib/digirole.ts");
+const tormenta20 = await importTypeScript("src/lib/tormenta20.ts");
+
+{
+  const sql = await readFile(
+    "supabase/migrations/20261023004817_t20_attack_damage_resolution.sql",
+    "utf8",
+  );
+  const inventoryMigration = await readFile(
+    "supabase/migrations/20261023010804_t20_inventory_load.sql",
+    "utf8",
+  );
+  assert.match(inventoryMigration, /inventory_items jsonb not null default '\[\]'::jsonb/i);
+  assert.match(
+    inventoryMigration,
+    /coins_total integer not null default 0 check \(coins_total >= 0\)/i,
+  );
+  assert.match(inventoryMigration, /adventure_backpack boolean not null default false/i);
+  assert.doesNotMatch(
+    inventoryMigration,
+    /\bupdate\s+public\.t20_characters\b/i,
+    "Legacy text inventories must not be guessed or rewritten",
+  );
+  const equipmentMigration = await readFile(
+    "supabase/migrations/20261023010251_t20_equipment_defense.sql",
+    "utf8",
+  );
+  assert.match(
+    equipmentMigration,
+    /equipment_rules_enabled boolean not null default false/i,
+    "Existing manual Defense remains opt-in",
+  );
+  assert.match(sql, /security invoker/i, "T20 damage RPC must respect caller RLS");
+  assert.match(
+    sql,
+    /floor\(random\(\) \* 20\)::integer \+ 1/i,
+    "Attack die is rolled on the database",
+  );
+  assert.match(
+    sql,
+    /v_total >= v_target\.defense/i,
+    "Attack result compares against database target Defense",
+  );
+  assert.match(sql, /v_user_id <> v_attacker_owner_id AND v_user_id <> v_narrator_id/i);
+  assert.match(sql, /revoke all on function public\.roll_t20_attack[\s\S]*?from public, anon/i);
+  assert.match(
+    sql,
+    /is_game_narrator\(game_id, \(select auth\.uid\(\)\)\)/i,
+    "Only narrator may create a resolution",
+  );
+  assert.match(sql, /for update/i, "Target HP must be locked while applying damage");
+  assert.match(
+    sql,
+    /on conflict \(source_message_id\) do nothing/i,
+    "A source attack may resolve only once",
+  );
+  assert.match(sql, /Damage for this attack has already been applied/i);
+  assert.match(sql, /v_total < v_defense/i, "The RPC must reject attacks that did not hit");
+  assert.match(sql, /is distinct from 'true'/i, "Missing or false hit flags must be rejected");
+  assert.match(sql, /v_die is null or v_modifier is null or v_total is null or v_defense is null/i);
+}
+
+{
+  const attrs = {
+    forca: 4,
+    destreza: 2,
+    constituicao: 1,
+    inteligencia: 0,
+    sabedoria: 1,
+    carisma: 0,
+  };
+  assert.equal(tormenta20.t20TrainingBonus(1), 2);
+  assert.equal(tormenta20.t20TrainingBonus(6), 2);
+  assert.equal(tormenta20.t20TrainingBonus(7), 4);
+  assert.equal(tormenta20.t20TrainingBonus(14), 4);
+  assert.equal(tormenta20.t20TrainingBonus(15), 6);
+  assert.equal(Object.keys(tormenta20.T20_CLASS_TRAINING).length, tormenta20.T20_CLASSES.length);
+  assert.equal(
+    Object.keys(tormenta20.T20_CLASS_DERIVED_STATS).length,
+    tormenta20.T20_CLASSES.length,
+  );
+  assert.deepEqual(tormenta20.calculateT20ClassDerivedStats("Arcanista", 1, 2, 3), {
+    hpMax: 10,
+    mpMax: 6,
+    baseDefense: 13,
+  });
+  assert.deepEqual(tormenta20.calculateT20ClassDerivedStats("Bárbaro", 3, 2, 1), {
+    hpMax: 42,
+    mpMax: 9,
+    baseDefense: 11,
+  });
+  assert.deepEqual(tormenta20.calculateT20ClassDerivedStats("Arcanista", 3, -3, 0), {
+    hpMax: 7,
+    mpMax: 18,
+    baseDefense: 10,
+  });
+  assert.equal(tormenta20.calculateT20ClassDerivedStats("Desconhecida", 1, 0, 0), null);
+  assert.deepEqual(tormenta20.calculateT20EquipmentDefense(3, null, null), {
+    defense: 13,
+    armorPenalty: 0,
+    armorIsHeavy: false,
+    armorBonus: 0,
+    shieldBonus: 0,
+  });
+  assert.deepEqual(tormenta20.calculateT20EquipmentDefense(3, "Armadura de couro", "Escudo leve"), {
+    defense: 16,
+    armorPenalty: 1,
+    armorIsHeavy: false,
+    armorBonus: 2,
+    shieldBonus: 1,
+  });
+  assert.deepEqual(tormenta20.calculateT20EquipmentDefense(3, "Cota de malha", "Escudo pesado"), {
+    defense: 18,
+    armorPenalty: 4,
+    armorIsHeavy: true,
+    armorBonus: 6,
+    shieldBonus: 2,
+  });
+  assert.equal(tormenta20.calculateT20EquipmentDefense(2, "armadura completa", null)?.defense, 20);
+  assert.equal(tormenta20.calculateT20EquipmentDefense(2, "armadura desconhecida", null), null);
+  assert.equal(tormenta20.calculateT20CarryingCapacity(2), 14);
+  assert.equal(tormenta20.calculateT20CarryingCapacity(-2), 8);
+  assert.equal(tormenta20.calculateT20CarryingCapacity(2, true), 16);
+  assert.deepEqual(
+    tormenta20.calculateT20Encumbrance(
+      2,
+      [{ id: "sword", name: "Montante", quantity: 1, spacesEach: 2 }],
+      1500,
+      true,
+    ),
+    {
+      capacity: 16,
+      maximumCapacity: 32,
+      itemSpaces: 2,
+      carriedItemSpaces: 2,
+      equipmentSpaces: 0,
+      coinSpaces: 1.5,
+      spaces: 3.5,
+      overloaded: false,
+      overMaximum: false,
+      skillPenalty: 0,
+      speedPenalty: 0,
+    },
+  );
+  assert.deepEqual(
+    tormenta20.calculateT20Encumbrance(
+      0,
+      [{ id: "load", name: "Caixa", quantity: 11, spacesEach: 1 }],
+      0,
+    ),
+    {
+      capacity: 10,
+      maximumCapacity: 20,
+      itemSpaces: 11,
+      carriedItemSpaces: 11,
+      equipmentSpaces: 0,
+      coinSpaces: 0,
+      spaces: 11,
+      overloaded: true,
+      overMaximum: false,
+      skillPenalty: 5,
+      speedPenalty: 3,
+    },
+  );
+  assert.equal(
+    tormenta20.calculateT20Encumbrance(
+      0,
+      [{ id: "load", name: "Caixa", quantity: 21, spacesEach: 1 }],
+      0,
+    ).overMaximum,
+    true,
+  );
+  assert.deepEqual(
+    tormenta20.calculateT20Encumbrance(
+      0,
+      [{ id: "dagger", name: "Adaga", quantity: 1, spacesEach: 1 }],
+      0,
+      false,
+      "Armadura completa",
+      "Escudo pesado",
+    ),
+    {
+      capacity: 10,
+      maximumCapacity: 20,
+      itemSpaces: 8,
+      carriedItemSpaces: 1,
+      equipmentSpaces: 7,
+      coinSpaces: 0,
+      spaces: 8,
+      overloaded: false,
+      overMaximum: false,
+      skillPenalty: 0,
+      speedPenalty: 0,
+    },
+  );
+  assert.equal(tormenta20.isValidT20DamageDice("1d8"), true);
+  assert.equal(tormenta20.isValidT20DamageDice("20d20"), true);
+  assert.equal(tormenta20.isValidT20DamageDice("21d20"), false);
+  assert.equal(tormenta20.isValidT20DamageDice("1d100"), false);
+  assert.equal(
+    tormenta20.t20WeaponDamageExpression(
+      { damageDice: "1d8", damageBonus: 2, addStrength: true },
+      3,
+    ),
+    "1d8+5",
+  );
+  assert.equal(
+    tormenta20.t20WeaponDamageExpression(
+      { damageDice: "1d6", damageBonus: 0, addStrength: false },
+      4,
+    ),
+    "1d6",
+  );
+  assert.equal(tormenta20.t20AttackHits(15, 15), true);
+  assert.equal(tormenta20.t20AttackHits(14, 15), false);
+  assert.equal(tormenta20.t20AttackHits(Number.NaN, 15), false);
+  assert.deepEqual(tormenta20.parseT20DamageExpression("2d6+5"), {
+    count: 2,
+    faces: 6,
+    modifier: 5,
+  });
+  assert.deepEqual(tormenta20.parseT20DamageExpression("1d8-2"), {
+    count: 1,
+    faces: 8,
+    modifier: -2,
+  });
+  assert.equal(tormenta20.parseT20DamageExpression("21d20"), null);
+  assert.equal(tormenta20.parseT20DamageExpression("1d100"), null);
+  assert.equal(tormenta20.T20_ORIGINS.length, 35);
+  const validT20Skills = new Set(tormenta20.T20_SKILLS);
+  for (const rule of Object.values(tormenta20.T20_CLASS_TRAINING)) {
+    for (const skill of [...rule.fixed, ...rule.choices, ...(rule.requiredChoice ?? [])]) {
+      assert.equal(validT20Skills.has(skill), true, `Unknown class skill: ${skill}`);
+    }
+  }
+  for (const [origin, skills] of Object.entries(tormenta20.T20_ORIGIN_SKILL_OPTIONS)) {
+    assert.equal(
+      skills.length >= 2 || origin === "Amnésico",
+      true,
+      `Origin needs its exception reviewed: ${origin}`,
+    );
+    for (const skill of skills)
+      assert.equal(validT20Skills.has(skill), true, `Unknown origin skill: ${skill}`);
+  }
+  assert.equal(
+    tormenta20.t20OriginTrainingComplete("Acólito", { Religiao: true, Cura: true }),
+    true,
+  );
+  assert.equal(
+    tormenta20.t20OriginTrainingComplete("Acolito", { Religiao: true, Cura: true }),
+    true,
+  );
+  assert.equal(tormenta20.t20OriginTrainingComplete("Acólito", { Religiao: true }), false);
+  assert.equal(
+    tormenta20.t20OriginTrainingComplete("Amnésico", { Religiao: true, Cura: true }),
+    false,
+  );
+  assert.deepEqual(
+    [...tormenta20.t20OriginTrainedSkills("Acólito", { Religiao: true, Cura: true })].sort(),
+    ["Cura", "Religiao"].sort(),
+  );
+  assert.equal(tormenta20.t20ClassTrainingComplete("Arcanista", {}), false);
+  const arcanistTraining = { Conhecimento: true, Diplomacia: true };
+  assert.equal(tormenta20.t20ClassTrainingComplete("Arcanista", arcanistTraining), true);
+  assert.deepEqual(
+    [...tormenta20.t20ClassTrainedSkills("Arcanista", arcanistTraining)].sort(),
+    ["Conhecimento", "Diplomacia", "Misticismo", "Vontade"].sort(),
+  );
+  assert.equal(
+    tormenta20.t20ClassTrainingComplete("Cacador", {
+      Pontaria: true,
+      Atletismo: true,
+      Cavalgar: true,
+    }),
+    false,
+  );
+  assert.equal(
+    tormenta20.t20ClassTrainingComplete("Cacador", {
+      Pontaria: true,
+      Atletismo: true,
+      Cavalgar: true,
+      Cura: true,
+      Fortitude: true,
+      Furtividade: true,
+      Iniciativa: true,
+    }),
+    true,
+  );
+  assert.equal(
+    tormenta20.t20ClassTrainingComplete("Caçador", {
+      Pontaria: true,
+      Atletismo: true,
+      Cavalgar: true,
+      Cura: true,
+      Fortitude: true,
+      Furtividade: true,
+      Iniciativa: true,
+    }),
+    true,
+  );
+  assert.deepEqual(
+    tormenta20.t20SkillCheck("Luta", {
+      level: 3,
+      attributes: attrs,
+      trained: false,
+      useRules: true,
+    }),
+    { modifier: 5, canRoll: true, trainedOnly: false },
+  );
+  assert.equal(
+    tormenta20.t20SkillCheck("Luta", {
+      level: 3,
+      attributes: attrs,
+      trained: true,
+      useRules: true,
+    }).modifier,
+    7,
+  );
+  assert.equal(
+    tormenta20.t20SkillCheck("Conhecimento", {
+      level: 8,
+      attributes: attrs,
+      trained: false,
+      useRules: true,
+    }).canRoll,
+    false,
+  );
+  assert.equal(
+    tormenta20.t20SkillCheck("Conhecimento", {
+      level: 8,
+      attributes: attrs,
+      trained: false,
+      useRules: false,
+      manualBonus: 11,
+    }).modifier,
+    11,
+  );
+  assert.equal(
+    tormenta20.t20SkillCheck("Acrobacia", {
+      level: 4,
+      attributes: attrs,
+      trained: false,
+      useRules: true,
+      armorPenalty: 3,
+    }).modifier,
+    1,
+  );
+  assert.equal(
+    tormenta20.t20SkillCheck("Furtividade", {
+      level: 4,
+      attributes: attrs,
+      trained: true,
+      useRules: true,
+      armorPenalty: 2,
+    }).modifier,
+    4,
+  );
+  assert.equal(
+    tormenta20.t20SkillCheck("Luta", {
+      level: 4,
+      attributes: attrs,
+      trained: false,
+      useRules: true,
+      armorPenalty: 3,
+    }).modifier,
+    6,
+  );
+}
 
 {
   const values = {
@@ -342,4 +709,6 @@ const digirole = await importTypeScript("src/lib/digirole.ts");
   assert.equal(withPartnerInitiative.participants[0].initiative, 3);
 }
 
-console.log("Core tests passed: skill aliases, move resolution and game engine.");
+console.log(
+  "Core tests passed: T20 attack/damage contract, skill aliases, move resolution and game engine.",
+);

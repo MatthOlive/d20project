@@ -181,16 +181,27 @@ export function PageSwitcher({
   async function moveSelectedPlayers(target: Scenario, userIds: string[], clear: boolean) {
     if (userIds.length === 0) { toast.error("Selecione ao menos 1 jogador"); return; }
     const newValue = clear ? null : target.id;
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("game_members")
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .update({ viewing_page_id: newValue } as any)
       .eq("game_id", gameId)
-      .in("user_id", userIds);
+      .in("user_id", userIds)
+      .select("user_id");
     if (error) { toast.error(error.message); return; }
-    toast.success(clear
-      ? `Removidos overrides de ${userIds.length} jogador(es)`
-      : `${userIds.length} jogador(es) movidos para "${target.name}"`);
+    const updatedCount = data?.length ?? 0;
+    if (updatedCount === 0) {
+      toast.error("Nenhum jogador foi atualizado. Confira se ainda estão na mesa e tente novamente.");
+      return;
+    }
+    if (updatedCount < userIds.length) {
+      toast.warning(`A página foi atualizada para ${updatedCount} de ${userIds.length} jogador(es).`);
+    }
+    if (updatedCount === userIds.length) {
+      toast.success(clear
+        ? `Removidos overrides de ${updatedCount} jogador(es)`
+        : `${updatedCount} jogador(es) movidos para "${target.name}"`);
+    }
     qc.invalidateQueries({ queryKey: ["game-members-view", gameId] });
     setMoveTarget(null);
   }
@@ -198,7 +209,7 @@ export function PageSwitcher({
   if (!isNarrator) return null;
 
   return (
-    <div data-map-toolbar className={embedded ? "pointer-events-auto w-full" : "pointer-events-auto absolute left-3 top-3 z-30"}>
+    <div data-map-toolbar className={embedded ? "pointer-events-auto relative w-full" : "pointer-events-auto absolute left-3 top-3 z-30"}>
       <button
         type="button"
         onClick={() => void togglePages()}
@@ -215,10 +226,31 @@ export function PageSwitcher({
 
       {open && (
         <div
-          className={`${embedded ? "w-full" : "w-80"} mt-1 rounded-lg border border-border bg-card/95 p-1 shadow-xl backdrop-blur`}
-          onMouseDown={(e) => e.stopPropagation()}
+          className="fixed inset-0 z-[55] flex items-start justify-center overflow-y-auto bg-black/40 p-4 pt-[10vh] backdrop-blur-[2px]"
+          onClick={() => setOpen(false)}
         >
-          <div className="max-h-80 overflow-auto">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Gerenciar páginas da mesa"
+          className="w-full max-w-md max-h-[80vh] overflow-y-auto rounded-xl border border-border bg-card p-2 shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="mb-1 flex items-center justify-between border-b border-border px-1 pb-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Páginas da mesa · {scenarios.length}
+            </span>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+              aria-label="Fechar páginas"
+              title="Fechar"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <div className="max-h-[min(36vh,18rem)] overflow-auto">
             {scenarios.map((s) => {
               const isViewing = viewingPageId === s.id;
               const isActive = activePageId === s.id;
@@ -241,7 +273,7 @@ export function PageSwitcher({
                     <button
                       type="button"
                       onClick={() => setActive(s.id)}
-                      className="rounded p-1 text-emerald-500 opacity-0 hover:bg-background group-hover:opacity-100"
+                      className="rounded p-1 text-emerald-500 opacity-70 hover:bg-background hover:opacity-100 group-hover:opacity-100"
                       title="Tornar ativa para TODOS os jogadores"
                     >
                       <Radio className="h-3 w-3" />
@@ -250,7 +282,7 @@ export function PageSwitcher({
                   <button
                     type="button"
                     onClick={() => setMoveTarget(s)}
-                    className="rounded p-1 text-amber-500 opacity-0 hover:bg-background group-hover:opacity-100"
+                    className="rounded p-1 text-amber-500 opacity-70 hover:bg-background hover:opacity-100 group-hover:opacity-100"
                     title="Mover jogadores selecionados para esta página"
                   >
                     <Users className="h-3 w-3" />
@@ -258,7 +290,7 @@ export function PageSwitcher({
                   <button
                     type="button"
                     onClick={() => renamePage(s)}
-                    className="rounded p-1 opacity-0 hover:bg-background group-hover:opacity-100"
+                    className="rounded p-1 opacity-70 hover:bg-background hover:opacity-100 group-hover:opacity-100"
                     title="Renomear"
                   >
                     <Pencil className="h-3 w-3" />
@@ -266,7 +298,7 @@ export function PageSwitcher({
                   <button
                     type="button"
                     onClick={() => deletePage(s)}
-                    className="rounded p-1 text-destructive opacity-0 hover:bg-background group-hover:opacity-100"
+                    className="rounded p-1 text-destructive opacity-70 hover:bg-background hover:opacity-100 group-hover:opacity-100"
                     title="Excluir página"
                   >
                     <Trash2 className="h-3 w-3" />
@@ -343,6 +375,7 @@ export function PageSwitcher({
               <Plus className="h-3 w-3" /> Nova página
             </button>
           )}
+        </div>
         </div>
       )}
 
